@@ -70,7 +70,7 @@ export const useTestsStore = create<TestsState>()(
                               set({error: null})
                          }
 
-                         const response = await fetch(`${API_BASE_URL}/tests`)
+                         const response = await fetch(`${API_BASE_URL}/tests?limit=200`)
                          if (!response.ok) {
                               throw new Error(
                                    `HTTP error! status: ${response.status}`,

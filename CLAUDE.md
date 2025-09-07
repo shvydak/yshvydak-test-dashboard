@@ -185,6 +185,24 @@ The dashboard implements a **WebSocket-based process tracking** system that ensu
 -    **Force Reset API**: `POST /api/tests/force-reset` - Emergency clear all processes
 -    **Debug Buttons**: UI provides manual reset options when processes appear stuck
 
+### Test Display Consistency Architecture
+
+The dashboard ensures **accurate test count display** throughout the testing lifecycle, preventing discrepancies between discovered and displayed tests.
+
+#### How It Works
+
+1. **Stable Test ID Generation**: Both discovery service and reporter use identical algorithms for generating test IDs based on file path + title hash
+2. **Optimized SQL Queries**: Repository uses Window Functions and proper grouping to handle test execution history without losing tests
+3. **Frontend Limit Parameters**: API calls include explicit `limit=200` to ensure all tests are fetched from backend
+4. **Database History Management**: Accumulated test execution records are properly handled to show latest results for each unique test
+
+#### Key Benefits
+
+-    **Consistent Counts**: Discovery of 80 tests = Display of 80 tests throughout the lifecycle
+-    **History Preservation**: Test execution history maintained without affecting current test display
+-    **Performance Optimized**: Efficient SQL queries handle large test suites and execution history
+-    **Reliable Updates**: Real-time test status updates maintain accuracy during execution
+
 ## Technology Stack
 
 **Frontend:**
@@ -254,7 +272,10 @@ The dashboard implements a **WebSocket-based process tracking** system that ensu
 
 ### Centralized Environment Configuration
 
-All project configuration is managed through environment variables in the `.env` file:
+-    All project configuration is managed through environment variables in the `.env` file:
+-    Always use the current active Playwright reporter by default when analyzing or editing code.  
+     For this project, the reporter is located at:  
+     `/Users/y.shvydak/QA/probuild-qa/e2e/testUtils/yshvydakReporter.ts`
 
 **Server Configuration:**
 
@@ -311,6 +332,6 @@ All project configuration is managed through environment variables in the `.env`
 
 -    `connection:status` - Current active processes status (sent on connect)
 -    `process:started` - New process notification
--    `process:ended` - Process completion notification  
+-    `process:ended` - Process completion notification
 -    `run:started`, `run:completed` - Legacy run events (still supported)
 -    `test:status`, `test:progress`, `test:completed` - Individual test updates

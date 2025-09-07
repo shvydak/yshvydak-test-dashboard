@@ -1,0 +1,46 @@
+import { createApp } from './app'
+import { createWebSocketServer, setWebSocketManager } from './websocket/server'
+import { config } from './config/environment.config'
+import { Logger } from './utils/logger.util'
+
+function startServer() {
+    const { app, serviceContainer } = createApp()
+    
+    // Start HTTP server
+    const server = app.listen(config.server.port, () => {
+        Logger.serverStart(config.server.port)
+        Logger.info(`📁 Output directory: ${config.storage.outputDir}`)
+    })
+
+    // Start WebSocket server
+    const wsServer = createWebSocketServer(server)
+    setWebSocketManager(wsServer)
+
+    // Graceful shutdown
+    const gracefulShutdown = () => {
+        Logger.info('🛑 Shutting down gracefully...')
+
+        server.close(() => {
+            Logger.info('HTTP server closed')
+
+            wsServer.close(() => {
+                Logger.info('WebSocket server closed')
+
+                serviceContainer.dbManager.close()
+                process.exit(0)
+            })
+        })
+    }
+
+    process.on('SIGTERM', gracefulShutdown)
+    process.on('SIGINT', gracefulShutdown)
+
+    return { server, wsServer, serviceContainer }
+}
+
+// Start the server if this file is run directly
+if (require.main === module) {
+    startServer()
+}
+
+export { startServer, createApp }

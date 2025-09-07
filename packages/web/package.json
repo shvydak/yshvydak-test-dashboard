@@ -1,0 +1,45 @@
+{
+     "name": "@yshvydak/web",
+     "version": "1.0.0",
+     "type": "module",
+     "description": "Frontend web application for yshvydak-test-dashboard",
+     "main": "dist/index.js",
+     "scripts": {
+          "dev": "vite",
+          "build": "vite build",
+          "preview": "vite preview",
+          "type-check": "tsc --noEmit",
+          "lint": "eslint src --ext .ts,.tsx"
+     },
+     "keywords": [
+          "react",
+          "vite",
+          "typescript",
+          "tailwind",
+          "dashboard"
+     ],
+     "author": "Yurii Shvydak <y.shvydak@gmail.com>",
+     "license": "MIT",
+     "dependencies": {
+          "react": "^18.2.0",
+          "react-dom": "^18.2.0",
+          "@yshvydak/core": "file:../core",
+          "zustand": "^4.4.7",
+          "@tanstack/react-query": "^5.8.4"
+     },
+     "devDependencies": {
+          "@types/react": "^18.2.0",
+          "@types/react-dom": "^18.2.0",
+          "@vitejs/plugin-react": "^4.1.1",
+          "vite": "^5.0.0",
+          "typescript": "^5.0.0",
+          "tailwindcss": "^3.3.0",
+          "autoprefixer": "^10.4.16",
+          "postcss": "^8.4.31",
+          "eslint": "^8.0.0",
+          "@typescript-eslint/eslint-plugin": "^6.0.0",
+          "@typescript-eslint/parser": "^6.0.0",
+          "eslint-plugin-react": "^7.33.0",
+          "eslint-plugin-react-hooks": "^4.6.0"
+     }
+}

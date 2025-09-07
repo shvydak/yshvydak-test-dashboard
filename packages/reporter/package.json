@@ -1,0 +1,45 @@
+{
+  "name": "@yshvydak/playwright-reporter",
+  "version": "1.0.0",
+  "description": "YShvydak Test Dashboard Playwright Reporter",
+  "main": "dist/index.js",
+  "module": "dist/index.mjs",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsup src/index.ts --format cjs,esm --dts --clean",
+    "dev": "tsup src/index.ts --format cjs,esm --dts --watch",
+    "type-check": "tsc --noEmit"
+  },
+  "keywords": [
+    "playwright",
+    "reporter",
+    "testing",
+    "dashboard"
+  ],
+  "author": "YShvydak",
+  "license": "MIT",
+  "dependencies": {
+    "uuid": "^11.1.0",
+    "dotenv": "^16.3.1"
+  },
+  "peerDependencies": {
+    "@playwright/test": "^1.40.0"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.55.0",
+    "@types/node": "^22.5.4",
+    "@types/uuid": "^10.0.0",
+    "tsup": "^8.3.5",
+    "typescript": "^5.9.2"
+  },
+  "files": [
+    "dist"
+  ]
+}

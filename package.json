@@ -1,0 +1,63 @@
+{
+     "name": "yshvydak-test-dashboard",
+     "version": "1.0.0",
+     "description": "Modern, full-stack dashboard for Playwright tests with rerun capabilities. Built with React, TypeScript, Express, and SQLite.",
+     "homepage": "https://github.com/yshvydak/yshvydak-test-dashboard#readme",
+     "repository": {
+          "type": "git",
+          "url": "https://github.com/yshvydak/yshvydak-test-dashboard.git"
+     },
+     "bugs": {
+          "url": "https://github.com/yshvydak/yshvydak-test-dashboard/issues"
+     },
+     "main": "packages/core/dist/index.js",
+     "types": "packages/core/dist/index.d.ts",
+     "directories": {
+          "doc": "docs",
+          "example": "examples"
+     },
+     "engines": {
+          "node": ">=18.0.0",
+          "npm": ">=10.0.0"
+     },
+     "scripts": {
+          "build": "turbo build",
+          "dev": "turbo dev",
+          "test": "turbo test",
+          "type-check": "turbo type-check",
+          "lint": "turbo lint",
+          "clean": "turbo clean && rm -rf node_modules/.turbo",
+          "clear-data": "node scripts/clear-data.js"
+     },
+     "keywords": [
+          "playwright",
+          "testing",
+          "dashboard",
+          "rerun",
+          "qa",
+          "automation",
+          "react",
+          "typescript",
+          "express",
+          "sqlite",
+          "websocket",
+          "monorepo",
+          "turborepo",
+          "tailwind",
+          "vite",
+          "test-runner",
+          "ui-testing",
+          "e2e-testing"
+     ],
+     "author": "Yurii Shvydak <y.shvydak@gmail.com>",
+     "license": "MIT",
+     "packageManager": "npm@10.0.0",
+     "devDependencies": {
+          "@types/node": "^20.0.0",
+          "turbo": "^2.5.6",
+          "typescript": "^5.0.0"
+     },
+     "workspaces": [
+          "packages/*"
+     ]
+}

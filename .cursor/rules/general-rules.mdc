@@ -1,0 +1,25 @@
+---
+description:
+globs:
+alwaysApply: true
+---
+
+# Cursor Rules
+
+-    **Use `sequentialthinking-mcp`**  
+     When structured, step-by-step reasoning will be helpful.
+
+-    **Use `context7-mcp`**
+
+     -    When adding or updating project dependencies.
+     -    When there is an error related to interaction with existing libraries.
+     -    For documentation descriptions.
+
+-    **Update `PROJECT_CONTEXT.md`**
+
+     -    After implementing or updating features or dependencies (not a bugs/issues), keep the file in
+          sync with the project state.
+
+-    **Update `PROJECT_ISSUES.md`**
+     -    If there is some bug/issue - check this file for searching a solution or help.
+     -    After fixing the bug/regression bug add the short description and solution to the file for future.

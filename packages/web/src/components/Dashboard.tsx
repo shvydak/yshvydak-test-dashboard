@@ -39,6 +39,7 @@ export default function Dashboard() {
      } = useTestsStore()
      const isAnyTestRunning = getIsAnyTestRunning()
      const [clearingData, setClearingData] = useState(false)
+     const [forceResetting, setForceResetting] = useState(false)
 
      const {
           data: stats,
@@ -50,6 +51,34 @@ export default function Dashboard() {
           queryFn: fetchDashboardStats,
           refetchInterval: 30000, // Обновляем каждые 30 секунд
      })
+
+     const forceResetProcesses = async () => {
+          try {
+               setForceResetting(true)
+               const response = await fetch(`${config.api.baseUrl}/tests/force-reset`, {
+                    method: 'POST',
+                    headers: {
+                         'Content-Type': 'application/json',
+                    },
+               })
+
+               if (!response.ok) {
+                    throw new Error('Failed to force reset processes')
+               }
+
+               const result = await response.json()
+               console.log('🚨 Force reset successful:', result.data)
+
+               // Refresh state
+               fetchTests()
+               setRunningAllTests(false)
+          } catch (error) {
+               console.error('❌ Force reset failed:', error)
+               alert('Failed to force reset processes: ' + (error as Error).message)
+          } finally {
+               setForceResetting(false)
+          }
+     }
 
      const clearAllData = async () => {
           if (
@@ -261,13 +290,27 @@ export default function Dashboard() {
                                    onClick={() => window.location.reload()}>
                                    ♻️ Reload Dashboard
                               </button>
-                              {/* Временная кнопка для отладки */}
+                              {/* Debug/Emergency Actions */}
                               {isRunningAllTests && (
-                                   <button
-                                        className="w-full px-4 py-2 bg-orange-600 text-white rounded-md hover:bg-orange-700 transition-colors"
-                                        onClick={() => setRunningAllTests(false)}>
-                                        🔧 Force Enable Buttons (Debug)
-                                   </button>
+                                   <>
+                                        <button
+                                             className="w-full px-4 py-2 bg-orange-600 text-white rounded-md hover:bg-orange-700 transition-colors"
+                                             onClick={() => setRunningAllTests(false)}>
+                                             🔧 Force Enable Buttons (Client)
+                                        </button>
+                                        <button
+                                             className={`w-full px-4 py-2 rounded-md transition-colors ${
+                                                  forceResetting
+                                                       ? 'bg-gray-400 text-gray-200 cursor-not-allowed'
+                                                       : 'bg-red-500 text-white hover:bg-red-600'
+                                             }`}
+                                             onClick={forceResetProcesses}
+                                             disabled={forceResetting}>
+                                             {forceResetting
+                                                  ? '🔄 Resetting...'
+                                                  : '🚨 Force Reset Server Processes'}
+                                        </button>
+                                   </>
                               )}
                               <button
                                    className={`w-full px-4 py-2 rounded-md transition-colors ${

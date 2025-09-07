@@ -35,8 +35,12 @@ export function useWebSocket(url: string, options?: WebSocketOptions) {
                isAnyProcessRunning
           })
 
-          // Clear all current running states
+          // Clear all current running states first
           setRunningAllTests(false)
+          
+          // Clear any existing running test/group states
+          // Note: In a real implementation, we might want to track and clear these individually
+          // For now, we rely on the store to handle this properly
           
           // Restore states based on active processes
           if (isAnyProcessRunning && activeRuns.length > 0) {
@@ -261,6 +265,20 @@ export function useWebSocket(url: string, options?: WebSocketOptions) {
                case 'connection:status':
                     console.log('📡 Connection status received:', message.data)
                     handleConnectionStatus(message.data)
+                    break
+
+               case 'process:started':
+                    console.log('🚀 Process started:', message.data)
+                    // Refresh data when process starts
+                    fetchTests()
+                    fetchRuns()
+                    break
+
+               case 'process:ended':
+                    console.log('🏁 Process ended:', message.data)
+                    // Refresh data when process ends and request updated connection status
+                    fetchTests()
+                    fetchRuns()
                     break
 
                case 'pong':

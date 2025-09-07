@@ -331,34 +331,86 @@ export class TestController {
     processEnd = async (req: ServiceRequest, res: Response): Promise<Response> => {
         try {
             const processData: ProcessEndData = req.body
+            Logger.info(`📥 Received process end notification: ${JSON.stringify(processData)}`)
 
             // Validate required fields
             if (!processData.runId || !processData.status) {
+                Logger.warn('❌ Process end notification missing required fields', { processData })
                 return res.status(400).json(ResponseHelper.badRequest(
                     'Missing required fields: runId, status'
                 ))
             }
 
+            // Check if process exists before removal
+            const wasProcessRunning = activeProcessesTracker.isProcessRunning(processData.runId)
+            Logger.info(`🔍 Process ${processData.runId} was running: ${wasProcessRunning}`)
+
             // Remove process from tracker
             activeProcessesTracker.removeProcess(processData.runId)
+
+            // Get current state after removal
+            const currentState = activeProcessesTracker.getConnectionStatus()
+            Logger.info(`📊 State after process removal:`, currentState)
 
             // Notify all WebSocket clients
             const wsManager = getWebSocketManager()
             if (wsManager) {
                 wsManager.broadcastProcessEnd(processData)
                 wsManager.broadcastConnectionStatus()
+                Logger.info('📡 Broadcasted process end and connection status via WebSocket')
+            } else {
+                Logger.warn('⚠️ WebSocket manager not available for broadcasting')
             }
 
-            Logger.info(`Process ended: ${processData.runId} (${processData.status})`)
+            Logger.info(`✅ Process ended successfully: ${processData.runId} (${processData.status})`)
 
             return res.json(ResponseHelper.success(
-                { processId: processData.runId },
+                { processId: processData.runId, wasRunning: wasProcessRunning },
                 'Process end notification received'
             ))
         } catch (error) {
-            Logger.error('Error handling process end notification', error)
+            Logger.error('❌ Error handling process end notification', error)
             return res.status(500).json(ResponseHelper.error(
                 'Failed to handle process end notification',
+                error instanceof Error ? error.message : 'Unknown error'
+            ))
+        }
+    }
+
+    // POST /api/tests/force-reset - Emergency reset of all active processes
+    forceReset = async (req: ServiceRequest, res: Response): Promise<Response> => {
+        try {
+            Logger.warn('🚨 Force reset requested - clearing all active processes')
+            
+            // Get state before reset
+            const stateBefore = activeProcessesTracker.getConnectionStatus()
+            
+            // Force reset
+            activeProcessesTracker.forceReset()
+            
+            // Get state after reset
+            const stateAfter = activeProcessesTracker.getConnectionStatus()
+            
+            // Notify all WebSocket clients
+            const wsManager = getWebSocketManager()
+            if (wsManager) {
+                wsManager.broadcastConnectionStatus()
+                Logger.info('📡 Broadcasted updated connection status after force reset')
+            }
+
+            Logger.warn('✅ Force reset completed')
+
+            return res.json(ResponseHelper.success(
+                { 
+                    before: stateBefore,
+                    after: stateAfter
+                },
+                'Force reset completed successfully'
+            ))
+        } catch (error) {
+            Logger.error('❌ Error during force reset', error)
+            return res.status(500).json(ResponseHelper.error(
+                'Failed to perform force reset',
                 error instanceof Error ? error.message : 'Unknown error'
             ))
         }

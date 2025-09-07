@@ -101,13 +101,20 @@ export class ActiveProcessesTracker {
 
     /**
      * Get current state for WebSocket connection status
+     * Also performs cleanup of old processes as a failsafe
      */
     getConnectionStatus() {
-        return {
+        // Perform cleanup of old processes before returning status
+        this.cleanupOldProcesses(5) // Clean up processes older than 5 minutes
+        
+        const status = {
             activeRuns: this.getActiveProcesses(),
             activeGroups: this.getActiveGroups(),
             isAnyProcessRunning: this.isAnyProcessRunning()
         }
+        
+        Logger.debug('📊 Connection status requested', status)
+        return status
     }
 
     /**
@@ -130,6 +137,16 @@ export class ActiveProcessesTracker {
             Logger.info(`Cleaned up ${cleanedCount} old processes`)
             this.logCurrentState()
         }
+    }
+
+    /**
+     * Force clear all processes (emergency reset)
+     */
+    forceReset(): void {
+        const count = this.activeProcesses.size
+        this.activeProcesses.clear()
+        Logger.warn(`🚨 Force reset: cleared ${count} processes`)
+        this.logCurrentState()
     }
 
     /**

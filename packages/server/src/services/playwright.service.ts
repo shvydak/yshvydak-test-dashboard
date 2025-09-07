@@ -23,8 +23,32 @@ export class PlaywrightService implements IPlaywrightService {
 
         const discoveredTests: DiscoveredTest[] = []
 
-        // Extract all tests from the nested structure
+        // Extract all tests from both top-level and nested structures
         for (const suite of playwrightData.suites || []) {
+            // Handle top-level specs directly under the suite
+            for (const spec of suite.specs || []) {
+                // Generate stable test ID (same as in reporter)
+                const fullFilePath = `e2e/tests/${spec.file}`
+                const stableTestId = this.generateStableTestId(fullFilePath, spec.title)
+
+                discoveredTests.push({
+                    id: uuidv4(),
+                    testId: stableTestId,
+                    runId: null,
+                    name: spec.title,
+                    filePath: fullFilePath,
+                    status: 'pending',
+                    duration: 0,
+                    metadata: JSON.stringify({
+                        line: spec.line || 0,
+                        playwrightId: spec.id || null,
+                        discoveredAt: new Date().toISOString()
+                    }),
+                    timestamp: new Date().toISOString()
+                })
+            }
+
+            // Handle nested specs within sub-suites
             for (const subSuite of suite.suites || []) {
                 for (const spec of subSuite.specs || []) {
                     // Generate stable test ID (same as in reporter)

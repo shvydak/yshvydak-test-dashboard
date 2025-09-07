@@ -46,6 +46,11 @@ A comprehensive testing dashboard that transforms your Playwright test experienc
 - Integration troubleshooting with detailed error reporting
 - API endpoint for programmatic monitoring
 
+### 🔒 **Reliable State Management**
+- **Process tracking**: Real-time monitoring of active test processes
+- **Page-reload safe**: UI state correctly restores after browser refresh
+- **Auto-recovery**: Automatic cleanup of stuck/orphaned processes
+
 ## 🚀 Quick Start
 
 ### Prerequisites

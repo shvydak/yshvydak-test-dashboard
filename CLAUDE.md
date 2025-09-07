@@ -106,6 +106,7 @@ The server follows a clean **Layered Architecture** with clear separation of con
 -    `PlaywrightService` - Playwright integration and process spawning, automated test discovery via `npx playwright test --list`
 -    `WebSocketService` - Real-time event broadcasting
 -    `AttachmentService` - File handling and processing
+-    `ActiveProcessesTracker` - Real-time tracking of running test processes in memory
 
 **Repository Layer:**
 
@@ -159,6 +160,30 @@ The dashboard uses a **dynamic reporter injection** architecture that provides c
 -    **Validation**: Automatic detection of configuration issues
 -    **Health Checks**: Reporter connectivity and API availability
 -    **Error Reporting**: Detailed integration troubleshooting information
+
+### Real-time Process Tracking Architecture
+
+The dashboard implements a **WebSocket-based process tracking** system that ensures UI state correctly reflects actual running processes, eliminating "stuck button" issues after page reloads.
+
+#### How It Works
+
+1. **Process Registration**: When tests start, the reporter notifies the server via `POST /api/tests/process-start`
+2. **Memory Tracking**: Server maintains active processes in `ActiveProcessesTracker` (in-memory store)
+3. **WebSocket Synchronization**: On connection, server sends `connection:status` with current active processes
+4. **Process Cleanup**: When tests complete, reporter notifies via `POST /api/tests/process-end`
+5. **Automatic Failsafe**: Old processes (>5 minutes) are automatically cleaned up
+
+#### Key Benefits
+
+-    **Reliable State**: UI buttons reflect actual process state, not database records
+-    **Page Reload Safe**: State correctly restores after manual page refresh
+-    **Fault Tolerant**: Automatic cleanup of orphaned processes
+-    **Real-time Updates**: WebSocket events keep all connected clients synchronized
+
+#### Emergency Controls
+
+-    **Force Reset API**: `POST /api/tests/force-reset` - Emergency clear all processes
+-    **Debug Buttons**: UI provides manual reset options when processes appear stuck
 
 ## Technology Stack
 
@@ -232,23 +257,28 @@ The dashboard uses a **dynamic reporter injection** architecture that provides c
 All project configuration is managed through environment variables in the `.env` file:
 
 **Server Configuration:**
+
 -    `PORT` - API server port (default: 3001)
 -    `NODE_ENV` - Environment mode (development/production)
 
 **Test Integration:**
+
 -    `PLAYWRIGHT_PROJECT_DIR` - Path to your Playwright project directory
 -    `USE_NPM_REPORTER` - Use npm package vs local reporter file (true/false)
 -    `DASHBOARD_API_URL` - API endpoint for reporter integration
 
 **Storage:**
+
 -    `OUTPUT_DIR` - Test results and database storage directory
 
 **Web Application (Vite prefixed):**
+
 -    `VITE_API_BASE_URL` - Frontend API endpoint
--    `VITE_WEBSOCKET_URL` - WebSocket connection URL  
+-    `VITE_WEBSOCKET_URL` - WebSocket connection URL
 -    `VITE_SERVER_URL` - Server base URL for file serving
 
 ### Technical Details
+
 -    **Requirements**: Node.js 18+ and npm 10+ required
 -    **Database**: SQLite with automatic schema initialization
 -    **Test Discovery**: Fully automated - no manual file generation required. Uses `npx playwright test --list --reporter=json` internally
@@ -273,5 +303,14 @@ All project configuration is managed through environment variables in the `.env`
 -    Test management: `GET /api/tests`, `POST /api/tests/discovery`, `DELETE /api/tests/all`
 -    Test execution: `POST /api/tests/test-save`, `POST /api/tests/run-all`, `POST /api/tests/run-group`
 -    Test operations: `POST /api/tests/:id/rerun`, `GET /api/tests/:id/history`, `GET /api/tests/:id/attachments`
+-    Process tracking: `POST /api/tests/process-start`, `POST /api/tests/process-end`, `POST /api/tests/force-reset`
 -    Diagnostics: `GET /api/tests/diagnostics`
 -    All endpoints return consistent `ApiResponse<T>` format
+
+### WebSocket Events:
+
+-    `connection:status` - Current active processes status (sent on connect)
+-    `process:started` - New process notification
+-    `process:ended` - Process completion notification  
+-    `run:started`, `run:completed` - Legacy run events (still supported)
+-    `test:status`, `test:progress`, `test:completed` - Individual test updates

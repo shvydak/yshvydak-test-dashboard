@@ -70,3 +70,6 @@ Thumbs.db
 .temp/
 *.tmp
 *.temp
+
+# Test results
+packages/server/test-results/

@@ -1,6 +1,7 @@
 import WebSocket from 'ws'
 import {Server} from 'http'
 import {v4 as uuidv4} from 'uuid'
+import {activeProcessesTracker} from '../services/activeProcesses.service'
 
 export interface WebSocketMessage {
      type: string
@@ -47,6 +48,12 @@ export class WebSocketManager {
                          clientId,
                          message: 'Connected to YShvydak Test Dashboard',
                     },
+               })
+
+               // Send connection status with current active processes
+               this.sendToClient(clientId, {
+                    type: 'connection:status',
+                    data: activeProcessesTracker.getConnectionStatus(),
                })
 
                // Handle incoming messages
@@ -211,6 +218,30 @@ export class WebSocketManager {
           this.broadcast({
                type: 'stats:update',
                data: stats,
+          })
+     }
+
+     // Broadcast process start
+     public broadcastProcessStart(processInfo: any): void {
+          this.broadcast({
+               type: 'process:started',
+               data: processInfo,
+          })
+     }
+
+     // Broadcast process end
+     public broadcastProcessEnd(processInfo: any): void {
+          this.broadcast({
+               type: 'process:ended',
+               data: processInfo,
+          })
+     }
+
+     // Send connection status to all clients (useful for manual refresh)
+     public broadcastConnectionStatus(): void {
+          this.broadcast({
+               type: 'connection:status',
+               data: activeProcessesTracker.getConnectionStatus(),
           })
      }
 

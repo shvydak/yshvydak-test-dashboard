@@ -36,4 +36,4 @@ export const WEBSOCKET_EVENTS = {
 export const DEFAULT_LIMITS = {
     TESTS_PER_PAGE: 100,
     TEST_HISTORY: 10
-} as const
+}

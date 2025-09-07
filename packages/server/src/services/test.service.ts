@@ -6,6 +6,7 @@ import { PlaywrightService } from './playwright.service'
 import { WebSocketService } from './websocket.service'
 import { AttachmentService } from './attachment.service'
 import { Logger } from '../utils/logger.util'
+import { activeProcessesTracker } from './activeProcesses.service'
 
 export class TestService implements ITestService {
     constructor(
@@ -66,7 +67,7 @@ export class TestService implements ITestService {
         return test
     }
 
-    async getTestHistory(testId: string, limit?: number): Promise<TestResult[]> {
+    async getTestHistory(testId: string, limit: number = 10): Promise<TestResult[]> {
         return this.testRepository.getTestResultsByTestId(testId, limit)
     }
 
@@ -95,6 +96,13 @@ export class TestService implements ITestService {
     async runAllTests(): Promise<any> {
         const result = await this.playwrightService.runAllTests()
         
+        // Add process to tracker
+        activeProcessesTracker.addProcess({
+            runId: result.runId,
+            type: 'run-all',
+            totalTests: undefined // Will be determined during execution
+        })
+        
         // Create test run record
         await this.runRepository.createTestRun({
             id: result.runId,
@@ -117,7 +125,11 @@ export class TestService implements ITestService {
         if (result.process) {
             result.process.on('close', (code) => {
                 Logger.info(`All tests completed with code: ${code}`)
-                this.websocketService.broadcastRunCompleted(result.runId, code, 'run-all')
+                
+                // Remove process from tracker
+                activeProcessesTracker.removeProcess(result.runId)
+                
+                this.websocketService.broadcastRunCompleted(result.runId, code || 1, 'run-all')
             })
         }
 
@@ -126,6 +138,13 @@ export class TestService implements ITestService {
 
     async runTestGroup(filePath: string): Promise<any> {
         const result = await this.playwrightService.runTestGroup(filePath)
+
+        // Add process to tracker
+        activeProcessesTracker.addProcess({
+            runId: result.runId,
+            type: 'run-group',
+            filePath: filePath
+        })
 
         // Create test run record
         await this.runRepository.createTestRun({
@@ -150,7 +169,11 @@ export class TestService implements ITestService {
         if (result.process) {
             result.process.on('close', (code) => {
                 Logger.info(`Group tests completed with code: ${code}`)
-                this.websocketService.broadcastRunCompleted(result.runId, code, 'run-group', filePath)
+                
+                // Remove process from tracker
+                activeProcessesTracker.removeProcess(result.runId)
+                
+                this.websocketService.broadcastRunCompleted(result.runId, code || 1, 'run-group', filePath)
             })
         }
 
@@ -165,6 +188,15 @@ export class TestService implements ITestService {
         }
 
         const result = await this.playwrightService.rerunSingleTest(test.filePath, test.name)
+
+        // Add process to tracker
+        activeProcessesTracker.addProcess({
+            runId: result.runId,
+            type: 'rerun',
+            testId: testId,
+            originalTestId: testId,
+            filePath: test.filePath
+        })
 
         // Create a new run for this rerun
         await this.runRepository.createTestRun({
@@ -202,6 +234,9 @@ export class TestService implements ITestService {
                     await this.runRepository.updateTestRun(result.runId, { status: runStatus })
 
                     Logger.info(`Test rerun completed with code: ${code}`)
+
+                    // Remove process from tracker
+                    activeProcessesTracker.removeProcess(result.runId)
 
                     // Send WebSocket updates
                     this.websocketService.broadcast({

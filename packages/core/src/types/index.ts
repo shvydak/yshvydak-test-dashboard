@@ -70,3 +70,55 @@ export interface AttachmentData {
      fileSize: number
      url: string
 }
+
+// WebSocket and Active Process Tracking Types
+export interface ActiveProcessInfo {
+     id: string
+     type: 'run-all' | 'run-group' | 'rerun'
+     startedAt: string
+     details: {
+          runId?: string
+          testId?: string
+          filePath?: string
+          totalTests?: number
+          originalTestId?: string
+     }
+}
+
+export interface ConnectionStatusMessage {
+     type: 'connection:status'
+     data: {
+          activeRuns: ActiveProcessInfo[]
+          activeGroups: string[]
+          isAnyProcessRunning: boolean
+     }
+     timestamp: string
+     clientId?: string
+}
+
+export interface ProcessStartData {
+     runId: string
+     type: 'run-all' | 'run-group' | 'rerun'
+     totalTests?: number
+     filePath?: string
+     testId?: string
+     originalTestId?: string
+}
+
+export interface ProcessEndData {
+     runId: string
+     status: 'completed' | 'failed' | 'interrupted'
+     results?: {
+          passed: number
+          failed: number
+          skipped: number
+          duration: number
+     } | null
+}
+
+export interface WebSocketMessage {
+     type: string
+     data?: any
+     timestamp?: string
+     clientId?: string
+}

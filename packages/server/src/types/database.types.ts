@@ -18,8 +18,8 @@ export interface TestResultData {
     filePath: string
     status: 'passed' | 'failed' | 'skipped' | 'timedOut' | 'pending'
     duration: number
-    errorMessage?: string | null
-    errorStack?: string | null
+    errorMessage?: string
+    errorStack?: string
     retryCount?: number
     metadata?: any
     timestamp: string

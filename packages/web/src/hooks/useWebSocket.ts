@@ -26,6 +26,55 @@ export function useWebSocket(url: string, options?: WebSocketOptions) {
      const reconnectAttempts = useRef(0)
      const maxReconnectAttempts = 5
 
+     const handleConnectionStatus = (statusData: any) => {
+          const { activeRuns, activeGroups, isAnyProcessRunning } = statusData
+          
+          console.log(`🔄 Restoring state from WebSocket:`, {
+               activeRuns: activeRuns.length,
+               activeGroups: activeGroups.length,
+               isAnyProcessRunning
+          })
+
+          // Clear all current running states
+          setRunningAllTests(false)
+          
+          // Restore states based on active processes
+          if (isAnyProcessRunning && activeRuns.length > 0) {
+               activeRuns.forEach((run: any) => {
+                    switch (run.type) {
+                         case 'run-all':
+                              console.log(`🔄 Restoring run-all state (Run ID: ${run.id})`)
+                              setRunningAllTests(true)
+                              break
+                         case 'run-group':
+                              if (run.details.filePath) {
+                                   console.log(`🔄 Restoring group running state: ${run.details.filePath}`)
+                                   setGroupRunning(run.details.filePath, true)
+                              }
+                              break
+                         case 'rerun':
+                              if (run.details.originalTestId) {
+                                   console.log(`🔄 Restoring test running state: ${run.details.originalTestId}`)
+                                   setTestRunning(run.details.originalTestId, true)
+                              }
+                              break
+                    }
+               })
+               
+               console.log(`✅ State restored: ${activeRuns.length} active processes`)
+          } else {
+               console.log('✅ No active processes found - all buttons will be enabled')
+               
+               // Ensure all states are cleared
+               // Note: We don't need to clear individual running states here as the store
+               // should handle this, but we can add it if needed
+          }
+
+          // Refresh data to get latest state
+          fetchTests()
+          fetchRuns()
+     }
+
      const connect = () => {
           try {
                console.log('🔌 Connecting to WebSocket:', url)
@@ -207,6 +256,11 @@ export function useWebSocket(url: string, options?: WebSocketOptions) {
 
                case 'connection':
                     console.log('🔗 Connection established:', message.data)
+                    break
+
+               case 'connection:status':
+                    console.log('📡 Connection status received:', message.data)
+                    handleConnectionStatus(message.data)
                     break
 
                case 'pong':

@@ -3,6 +3,9 @@ import { TestService } from '../services/test.service'
 import { ResponseHelper } from '../utils/response.helper'
 import { Logger } from '../utils/logger.util'
 import { ServiceRequest } from '../types/api.types'
+import { ProcessStartData, ProcessEndData } from '@yshvydak/core'
+import { activeProcessesTracker } from '../services/activeProcesses.service'
+import { getWebSocketManager } from '../websocket/server'
 
 export class TestController {
     constructor(private testService: TestService) {}
@@ -187,7 +190,7 @@ export class TestController {
     }
 
     // GET /api/tests/:id - Get specific test result with attachments
-    getTestById = async (req: ServiceRequest, res: Response): Promise<void> => {
+    getTestById = async (req: ServiceRequest, res: Response): Promise<Response> => {
         try {
             const { id } = req.params
             const test = await this.testService.getTestById(id)
@@ -196,10 +199,10 @@ export class TestController {
                 return res.status(404).json(ResponseHelper.notFound('Test'))
             }
 
-            res.json(ResponseHelper.success(test))
+            return res.json(ResponseHelper.success(test))
         } catch (error) {
             Logger.error('Error fetching test', error)
-            res.status(500).json(ResponseHelper.error(
+            return res.status(500).json(ResponseHelper.error(
                 'Failed to fetch test',
                 error instanceof Error ? error.message : 'Unknown error'
             ))
@@ -207,19 +210,19 @@ export class TestController {
     }
 
     // POST /api/tests/:id/rerun - Rerun a specific test
-    rerunTest = async (req: ServiceRequest, res: Response): Promise<void> => {
+    rerunTest = async (req: ServiceRequest, res: Response): Promise<Response> => {
         try {
             const { id } = req.params
             const result = await this.testService.rerunTest(id)
 
-            res.json(ResponseHelper.success(result, 'Test rerun started'))
+            return res.json(ResponseHelper.success(result, 'Test rerun started'))
         } catch (error) {
             if (error instanceof Error && error.message === 'Test not found') {
                 return res.status(404).json(ResponseHelper.notFound('Test'))
             }
 
             Logger.error('Error starting test rerun', error)
-            res.status(500).json(ResponseHelper.error(
+            return res.status(500).json(ResponseHelper.error(
                 'Failed to start test rerun',
                 error instanceof Error ? error.message : 'Unknown error'
             ))
@@ -227,7 +230,7 @@ export class TestController {
     }
 
     // GET /api/tests/:id/history - Get test history (all runs of this test)
-    getTestHistory = async (req: ServiceRequest, res: Response): Promise<void> => {
+    getTestHistory = async (req: ServiceRequest, res: Response): Promise<Response> => {
         try {
             const { id } = req.params
             const { limit = 10 } = req.query
@@ -239,13 +242,13 @@ export class TestController {
 
             const history = await this.testService.getTestHistory(
                 test.testId,
-                parseInt(limit as string)
+                parseInt(limit as string) || 10
             )
 
-            res.json(ResponseHelper.success(history, undefined, history.length))
+            return res.json(ResponseHelper.success(history, undefined, history.length))
         } catch (error) {
             Logger.error('Error fetching test history', error)
-            res.status(500).json(ResponseHelper.error(
+            return res.status(500).json(ResponseHelper.error(
                 'Failed to fetch test history',
                 error instanceof Error ? error.message : 'Unknown error'
             ))
@@ -253,7 +256,7 @@ export class TestController {
     }
 
     // GET /api/tests/:id/attachments - Get attachments for a specific test result
-    getTestAttachments = async (req: ServiceRequest, res: Response): Promise<void> => {
+    getTestAttachments = async (req: ServiceRequest, res: Response): Promise<Response> => {
         try {
             const { id } = req.params
 
@@ -263,10 +266,10 @@ export class TestController {
                 return res.status(404).json(ResponseHelper.notFound('Test result'))
             }
 
-            res.json(ResponseHelper.success(test.attachments || []))
+            return res.json(ResponseHelper.success(test.attachments || []))
         } catch (error) {
             Logger.error('Error fetching test attachments', error)
-            res.status(500).json(ResponseHelper.error(
+            return res.status(500).json(ResponseHelper.error(
                 'Failed to fetch test attachments',
                 error instanceof Error ? error.message : 'Unknown error'
             ))
@@ -282,6 +285,80 @@ export class TestController {
             Logger.error('Error fetching diagnostics', error)
             return res.status(500).json(ResponseHelper.error(
                 'Failed to fetch diagnostics',
+                error instanceof Error ? error.message : 'Unknown error'
+            ))
+        }
+    }
+
+    // POST /api/tests/process-start - Notification that a process has started
+    processStart = async (req: ServiceRequest, res: Response): Promise<Response> => {
+        try {
+            const processData: ProcessStartData = req.body
+
+            // Validate required fields
+            if (!processData.runId || !processData.type) {
+                return res.status(400).json(ResponseHelper.badRequest(
+                    'Missing required fields: runId, type'
+                ))
+            }
+
+            // Add process to tracker
+            activeProcessesTracker.addProcess(processData)
+
+            // Notify all WebSocket clients
+            const wsManager = getWebSocketManager()
+            if (wsManager) {
+                wsManager.broadcastProcessStart(processData)
+                wsManager.broadcastConnectionStatus()
+            }
+
+            Logger.info(`Process started: ${processData.runId} (${processData.type})`)
+
+            return res.json(ResponseHelper.success(
+                { processId: processData.runId },
+                'Process start notification received'
+            ))
+        } catch (error) {
+            Logger.error('Error handling process start notification', error)
+            return res.status(500).json(ResponseHelper.error(
+                'Failed to handle process start notification',
+                error instanceof Error ? error.message : 'Unknown error'
+            ))
+        }
+    }
+
+    // POST /api/tests/process-end - Notification that a process has ended
+    processEnd = async (req: ServiceRequest, res: Response): Promise<Response> => {
+        try {
+            const processData: ProcessEndData = req.body
+
+            // Validate required fields
+            if (!processData.runId || !processData.status) {
+                return res.status(400).json(ResponseHelper.badRequest(
+                    'Missing required fields: runId, status'
+                ))
+            }
+
+            // Remove process from tracker
+            activeProcessesTracker.removeProcess(processData.runId)
+
+            // Notify all WebSocket clients
+            const wsManager = getWebSocketManager()
+            if (wsManager) {
+                wsManager.broadcastProcessEnd(processData)
+                wsManager.broadcastConnectionStatus()
+            }
+
+            Logger.info(`Process ended: ${processData.runId} (${processData.status})`)
+
+            return res.json(ResponseHelper.success(
+                { processId: processData.runId },
+                'Process end notification received'
+            ))
+        } catch (error) {
+            Logger.error('Error handling process end notification', error)
+            return res.status(500).json(ResponseHelper.error(
+                'Failed to handle process end notification',
                 error instanceof Error ? error.message : 'Unknown error'
             ))
         }

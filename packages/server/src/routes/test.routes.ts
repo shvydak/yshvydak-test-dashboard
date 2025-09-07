@@ -12,6 +12,10 @@ export function createTestRoutes(container: ServiceContainer): Router {
     router.post('/run-all', testController.runAllTests)
     router.post('/run-group', testController.runTestGroup)
 
+    // Process notification endpoints
+    router.post('/process-start', testController.processStart)
+    router.post('/process-end', testController.processEnd)
+
     // CRUD endpoints
     router.get('/', testController.getAllTests)
     router.get('/stats', testController.getTestStats)

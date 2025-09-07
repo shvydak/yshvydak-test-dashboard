@@ -170,6 +170,10 @@ curl http://localhost:3001/api/tests/diagnostics
    - Ensure reporter file is copied to `e2e/testUtils/yshvydakReporter.ts`
 3. **Connection issues**: Ensure dashboard is running on correct port
 4. **File not found errors**: Verify reporter file path matches dashboard configuration
+5. **Test count inconsistency**: If test discovery shows different counts than after test execution:
+   - Discovery finds fewer tests: Check if all test files are being scanned properly
+   - Fewer tests after execution: Usually resolved by API limit parameters (dashboard uses `limit=200`)
+   - See [Test Display Architecture](docs/TEST_DISPLAY.md) for technical details
 
 ## 🏗️ Architecture
 

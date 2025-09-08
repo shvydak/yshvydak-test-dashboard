@@ -23,7 +23,9 @@ export interface EnvironmentConfig {
 
 export const config: EnvironmentConfig = {
     server: {
-        port: parseInt(process.env.PORT || '3001'),
+        get port() {
+            return parseInt(process.env.PORT || '3001')
+        },
         environment: process.env.NODE_ENV || 'development'
     },
     playwright: {
@@ -34,12 +36,22 @@ export const config: EnvironmentConfig = {
         useNpmPackage: process.env.USE_NPM_REPORTER === 'true'
     },
     storage: {
+        // Derive OUTPUT_DIR from current working directory if not specified
         outputDir: process.env.OUTPUT_DIR || path.join(process.cwd(), 'test-results'),
         attachmentsDir: 'attachments',
         reportsDir: 'reports'
     },
     api: {
-        baseUrl: process.env.DASHBOARD_API_URL || 'http://localhost:3001',
+        // Derive API base URL from BASE_URL or PORT, with fallback override support
+        get baseUrl() {
+            if (process.env.DASHBOARD_API_URL) {
+                return process.env.DASHBOARD_API_URL
+            }
+            if (process.env.BASE_URL) {
+                return process.env.BASE_URL
+            }
+            return `http://localhost:${config.server.port}`
+        },
         requestLimit: '50mb'
     }
 }

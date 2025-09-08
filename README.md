@@ -116,8 +116,8 @@ npm run dev
 ```
 
 The dashboard will be available at:
-- **Web UI**: http://localhost:3000 
-- **API**: http://localhost:3001
+- **Web UI**: http://localhost:3000 (or your VITE_PORT value)
+- **API**: http://localhost:3001 (or your PORT value)
 
 ### 5. Discover and Run Tests
 
@@ -220,16 +220,32 @@ cd packages/reporter && npm run dev # Reporter package
 - `npm run clear-data` - Interactive data cleanup
 
 ### Environment Variables
-```bash
-# Server Configuration
-PORT=3001                                    # API server port
-NODE_ENV=development                         # Environment mode
-PLAYWRIGHT_PROJECT_DIR=/path/to/your/tests   # Test project location
 
-# Reporter Configuration  
-DASHBOARD_API_URL=http://localhost:3001      # Dashboard API endpoint (set in test project)
-# USE_NPM_REPORTER=true                      # Future: Use npm package (not yet available)
+The dashboard uses a **simplified .env configuration** with automatic derivation of most values:
+
+```bash
+# Core Configuration (6 variables only)
+PORT=3001                                    # API server port
+NODE_ENV=development                         # Environment mode  
+PLAYWRIGHT_PROJECT_DIR=/path/to/your/tests   # Test project location
+USE_NPM_REPORTER=false                       # Use npm package vs local file
+BASE_URL=http://localhost:3001               # Base URL for all services
+VITE_BASE_URL=http://localhost:3001          # Base URL accessible to web client
+VITE_PORT=3000                               # Web dev server port (optional)
+
+# All other variables are derived automatically:
+# - DASHBOARD_API_URL = BASE_URL (for API integration)
+# - VITE_API_BASE_URL = BASE_URL/api (for web API calls)  
+# - VITE_WEBSOCKET_URL = ws://BASE_URL/ws (for WebSocket)
+# - OUTPUT_DIR = test-results (default storage)
+
+# Advanced users can still override any derived variable
 ```
+
+**Port Management:**
+- **API Server**: Uses `PORT` (default: 3001)
+- **Web Dev Server**: Uses `VITE_PORT` if set, otherwise `PORT + 1000`, fallback: 4001
+- **Production**: Both services can run on same port with different paths
 
 ## 📊 Technology Stack
 

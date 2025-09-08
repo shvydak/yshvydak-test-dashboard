@@ -270,33 +270,41 @@ The dashboard ensures **accurate test count display** throughout the testing lif
 
 ## Configuration Notes
 
-### Centralized Environment Configuration
+### Simplified Environment Configuration
 
--    All project configuration is managed through environment variables in the `.env` file:
--    Always use the current active Playwright reporter by default when analyzing or editing code.  
-     For this project, the reporter is located at:  
-     `/Users/y.shvydak/QA/probuild-qa/e2e/testUtils/yshvydakReporter.ts`
+The project uses a **minimal .env configuration** where users only need to set 6 core variables. All other configuration values are automatically derived to eliminate duplication and reduce setup complexity.
 
-**Server Configuration:**
+Always use the current active Playwright reporter by default when analyzing or editing code.  
+For this project, the reporter is located at:  
+`/Users/y.shvydak/QA/probuild-qa/e2e/testUtils/yshvydakReporter.ts`
+
+**Required User Configuration (6 variables only):**
 
 -    `PORT` - API server port (default: 3001)
 -    `NODE_ENV` - Environment mode (development/production)
-
-**Test Integration:**
-
 -    `PLAYWRIGHT_PROJECT_DIR` - Path to your Playwright project directory
 -    `USE_NPM_REPORTER` - Use npm package vs local reporter file (true/false)
--    `DASHBOARD_API_URL` - API endpoint for reporter integration
+-    `BASE_URL` - Base URL for all services (e.g., http://localhost:3001)
+-    `VITE_BASE_URL` - Same as BASE_URL but accessible to web client
+-    `VITE_PORT` - Web development server port (optional, defaults to derived value)
 
-**Storage:**
+**Automatically Derived Variables:**
 
--    `OUTPUT_DIR` - Test results and database storage directory
+-    `DASHBOARD_API_URL` - Derived from BASE_URL (for server API)
+-    `OUTPUT_DIR` - Defaults to 'test-results' directory
+-    `VITE_API_BASE_URL` - Derived as BASE_URL + '/api' (for web API)
+-    `VITE_WEBSOCKET_URL` - Derived as 'ws://' + BASE_URL + '/ws' (for WebSocket)
+-    `VITE_SERVER_URL` - Same as BASE_URL (for web server)
 
-**Web Application (Vite prefixed):**
+**Override Support:**
 
--    `VITE_API_BASE_URL` - Frontend API endpoint
--    `VITE_WEBSOCKET_URL` - WebSocket connection URL
--    `VITE_SERVER_URL` - Server base URL for file serving
+Advanced users can still override any derived variable by setting it explicitly in .env. The system maintains backward compatibility with all existing environment variables.
+
+**Technical Requirements:**
+
+-    **Vite dotenv**: The web package requires explicit dotenv loading in `vite.config.ts` to access environment variables during configuration
+-    **Port Management**: Web dev server uses `VITE_PORT` if set, otherwise derives from `PORT - 1`, with fallback to 4001
+-    **Environment Isolation**: Server variables (PORT, BASE_URL) are separate from client variables (VITE_*)
 
 ### Technical Details
 

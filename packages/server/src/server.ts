@@ -10,6 +10,7 @@ function startServer() {
     const server = app.listen(config.server.port, () => {
         Logger.serverStart(config.server.port)
         Logger.info(`📁 Output directory: ${config.storage.outputDir}`)
+        Logger.info(`🎭 Playwright project directory: ${config.playwright.projectDir}`)
     })
 
     // Start WebSocket server

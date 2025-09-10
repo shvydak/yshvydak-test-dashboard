@@ -278,11 +278,11 @@ Always use the current active Playwright reporter by default when analyzing or e
 For this project, the reporter is located at:  
 `/Users/y.shvydak/QA/probuild-qa/e2e/testUtils/yshvydakReporter.ts`
 
-**Required User Configuration (6 variables only):**
+**Required User Configuration (6 core variables only):**
 
 -    `PORT` - API server port (default: 3001)
 -    `NODE_ENV` - Environment mode (development/production)
--    `PLAYWRIGHT_PROJECT_DIR` - Path to your Playwright project directory
+-    `PLAYWRIGHT_PROJECT_DIR` - Path to your Playwright project directory (REQUIRED)
 -    `USE_NPM_REPORTER` - Use npm package vs local reporter file (true/false)
 -    `BASE_URL` - Base URL for all services (e.g., http://localhost:3001)
 -    `VITE_BASE_URL` - Same as BASE_URL but accessible to web client
@@ -304,7 +304,7 @@ Advanced users can still override any derived variable by setting it explicitly 
 
 -    **Vite dotenv**: The web package requires explicit dotenv loading in `vite.config.ts` to access environment variables during configuration
 -    **Port Management**: Web dev server uses `VITE_PORT` if set, otherwise derives from `PORT - 1`, with fallback to 4001
--    **Environment Isolation**: Server variables (PORT, BASE_URL) are separate from client variables (VITE_*)
+-    **Environment Isolation**: Server variables (PORT, BASE*URL) are separate from client variables (VITE*\*)
 
 ### Technical Details
 

@@ -29,7 +29,9 @@ export const config: EnvironmentConfig = {
         environment: process.env.NODE_ENV || 'development'
     },
     playwright: {
-        projectDir: process.env.PLAYWRIGHT_PROJECT_DIR || process.cwd(),
+        get projectDir() {
+            return process.env.PLAYWRIGHT_PROJECT_DIR || process.cwd()
+        },
         reporterPath: process.env.USE_NPM_REPORTER === 'true' 
             ? '@yshvydak/playwright-reporter' 
             : './e2e/testUtils/yshvydakReporter.ts',

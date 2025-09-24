@@ -74,3 +74,4 @@ Thumbs.db
 # Test results
 packages/server/test-results/
 .turbo/cookies
+.env.production

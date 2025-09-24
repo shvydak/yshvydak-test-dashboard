@@ -23,6 +23,7 @@
      "scripts": {
           "build": "turbo build",
           "dev": "turbo dev",
+          "dev:prod": "NODE_ENV=production turbo dev",
           "test": "turbo test",
           "type-check": "turbo type-check",
           "lint": "turbo lint",

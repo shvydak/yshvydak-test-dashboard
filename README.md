@@ -217,6 +217,14 @@ The dashboard uses **dynamic reporter injection** - no changes needed to your `p
 4. **Environment Detection**: Reporter activates when `DASHBOARD_API_URL` is set
 5. **Clean Separation**: Your `playwright.config.ts` stays unchanged
 
+### Architecture Improvements
+
+The dashboard follows clean **Layered Architecture** principles with recent refinements:
+
+-    **Pure Service Injection**: Streamlined dependency injection without legacy components
+-    **Optimized Routes**: Removed unused endpoints, focused on active functionality
+-    **100% Compatibility**: All existing integrations continue to work seamlessly
+
 ## 🛠️ Development
 
 ### Local Development

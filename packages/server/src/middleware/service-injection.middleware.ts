@@ -7,13 +7,11 @@ import { TestService } from '../services/test.service'
 import { PlaywrightService } from '../services/playwright.service'
 import { WebSocketService } from '../services/websocket.service'
 import { AttachmentService } from '../services/attachment.service'
-import { createAttachmentManager } from '../storage/attachmentManager'
 import { config } from '../config/environment.config'
 
 // Dependency container
 export interface ServiceContainer {
-    dbManager: DatabaseManager
-    attachmentManager: any
+    // Core services and repositories for Layered Architecture
     testRepository: TestRepository
     runRepository: RunRepository
     attachmentRepository: AttachmentRepository
@@ -27,7 +25,6 @@ export interface ServiceContainer {
 export function createServiceContainer(): ServiceContainer {
     // Initialize core services
     const dbManager = new DatabaseManager(config.storage.outputDir)
-    const attachmentManager = createAttachmentManager(config.storage.outputDir)
 
     // Initialize repositories
     const testRepository = new TestRepository(dbManager)
@@ -47,8 +44,6 @@ export function createServiceContainer(): ServiceContainer {
     )
 
     return {
-        dbManager,
-        attachmentManager,
         testRepository,
         runRepository,
         attachmentRepository,
@@ -62,12 +57,7 @@ export function createServiceContainer(): ServiceContainer {
 // Middleware to inject services into request
 export function injectServices(container: ServiceContainer) {
     return (req: Request, res: Response, next: NextFunction) => {
-        // Legacy support for existing code
-        req.dbManager = container.dbManager
-        req.attachmentManager = container.attachmentManager
-        req.config = config
-
-        // New service injection
+        // Service injection for Layered Architecture
         req.services = {
             testService: container.testService,
             playwrightService: container.playwrightService,

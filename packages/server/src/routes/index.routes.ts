@@ -3,7 +3,6 @@ import { HealthController } from '../controllers/health.controller'
 import { ServiceContainer } from '../middleware/service-injection.middleware'
 import { createTestRoutes } from './test.routes'
 import { createRunRoutes } from './run.routes'
-import { createAttachmentRoutes } from './attachment.routes'
 
 export function createApiRoutes(container: ServiceContainer): Router {
     const router = Router()
@@ -15,7 +14,7 @@ export function createApiRoutes(container: ServiceContainer): Router {
     // API routes with service injection
     router.use('/tests', createTestRoutes(container))
     router.use('/runs', createRunRoutes(container))
-    router.use('/attachments', createAttachmentRoutes(container))
+    // Note: Attachments are handled via /tests/:id/attachments endpoint
 
     return router
 }

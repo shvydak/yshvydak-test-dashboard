@@ -8,7 +8,6 @@ export function createTestRoutes(container: ServiceContainer): Router {
 
     // Test management endpoints
     router.post('/discovery', testController.discoverTests)
-    router.post('/test-save', testController.testSave)
     router.post('/run-all', testController.runAllTests)
     router.post('/run-group', testController.runTestGroup)
 

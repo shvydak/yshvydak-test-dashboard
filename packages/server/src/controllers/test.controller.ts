@@ -24,39 +24,6 @@ export class TestController {
         }
     }
 
-    // POST /api/tests/test-save - Test saving single test (for debugging)
-    testSave = async (req: ServiceRequest, res: Response): Promise<void> => {
-        try {
-            const testData = {
-                id: 'debug-test-' + Date.now(),
-                testId: 'test-debug-123',
-                runId: '',
-                name: 'Debug Test',
-                filePath: 'debug/test.test.ts',
-                status: 'pending' as any,
-                duration: 0,
-                errorMessage: undefined,
-                errorStack: undefined,
-                retryCount: 0,
-                metadata: { debug: true },
-                timestamp: new Date().toISOString()
-            }
-
-            const resultId = await this.testService.saveTestResult(testData)
-            Logger.success('Test saved with ID:', resultId)
-
-            res.json(ResponseHelper.success({
-                resultId,
-                testData
-            }))
-        } catch (error) {
-            Logger.error('Error saving test', error)
-            res.status(500).json(ResponseHelper.error(
-                'Failed to save test',
-                error instanceof Error ? error.message : 'Unknown error'
-            ))
-        }
-    }
 
     // POST /api/tests/run-all - Run all tests
     runAllTests = async (req: ServiceRequest, res: Response): Promise<void> => {

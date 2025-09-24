@@ -2,10 +2,14 @@ import { createApp } from './app'
 import { createWebSocketServer, setWebSocketManager } from './websocket/server'
 import { config } from './config/environment.config'
 import { Logger } from './utils/logger.util'
+import { DatabaseManager } from './database/database.manager'
 
 function startServer() {
     const { app, serviceContainer } = createApp()
-    
+
+    // Create database manager instance for cleanup
+    const dbManager = new DatabaseManager(config.storage.outputDir)
+
     // Start HTTP server
     const server = app.listen(config.server.port, () => {
         Logger.serverStart(config.server.port)
@@ -27,7 +31,7 @@ function startServer() {
             wsServer.close(() => {
                 Logger.info('WebSocket server closed')
 
-                serviceContainer.dbManager.close()
+                dbManager.close()
                 process.exit(0)
             })
         })

@@ -283,24 +283,38 @@ export class DatabaseManager {
           // If testId is provided, search by testId; otherwise search by name + file_path for discovered tests
           let existingResult
           if (testData.testId) {
-               const existingSql = `SELECT id FROM test_results WHERE test_id = ? ORDER BY created_at DESC LIMIT 1`
+               const existingSql = `SELECT id, updated_at FROM test_results WHERE test_id = ? ORDER BY updated_at DESC LIMIT 1`
                existingResult = await this.get(existingSql, [testData.testId])
+               console.log(`🔍 Looking for existing test with testId: ${testData.testId}`)
+               console.log(`🔍 Found existing result:`, existingResult)
           } else {
                // For discovered tests, search by name + file_path combination
-               const existingSql = `SELECT id FROM test_results WHERE name = ? AND file_path = ? AND (test_id IS NULL OR test_id = '') ORDER BY created_at DESC LIMIT 1`
+               const existingSql = `SELECT id, updated_at FROM test_results WHERE name = ? AND file_path = ? AND (test_id IS NULL OR test_id = '') ORDER BY updated_at DESC LIMIT 1`
                existingResult = await this.get(existingSql, [
                     testData.name,
                     testData.filePath,
                ])
+               console.log(`🔍 Looking for existing test with name: ${testData.name}, filePath: ${testData.filePath}`)
+               console.log(`🔍 Found existing result:`, existingResult)
           }
 
           if (existingResult) {
                // Update existing record
+               console.log(`🔄 Updating existing test result with ID: ${existingResult.id}`)
+               console.log(`🔄 Old updated_at: ${existingResult.updated_at}`)
+               console.log(`🔄 Test data:`, {
+                    runId: testData.runId,
+                    testId: testData.testId,
+                    name: testData.name,
+                    status: testData.status,
+                    duration: testData.duration
+               })
+               
                const updateSql = `
                     UPDATE test_results SET 
                          run_id = ?, test_id = ?, name = ?, file_path = ?, status = ?, 
                          duration = ?, error_message = ?, error_stack = ?, 
-                         retry_count = ?, metadata = ?
+                         retry_count = ?, metadata = ?, updated_at = CURRENT_TIMESTAMP
                     WHERE id = ?
                `
                await this.run(updateSql, [
@@ -319,10 +333,21 @@ export class DatabaseManager {
                     existingResult.id,
                ])
 
+               console.log(`✅ Test result updated successfully`)
+               
                // Return the existing ID
                return existingResult.id
           } else {
                // Insert new record
+               console.log(`➕ Creating new test result with ID: ${testData.id}`)
+               console.log(`➕ Test data:`, {
+                    runId: testData.runId,
+                    testId: testData.testId,
+                    name: testData.name,
+                    status: testData.status,
+                    duration: testData.duration
+               })
+               
                const insertSql = `
                     INSERT INTO test_results 
                     (id, run_id, test_id, name, file_path, status, duration, error_message, error_stack, retry_count, metadata)
@@ -344,6 +369,8 @@ export class DatabaseManager {
                          : null,
                ])
 
+               console.log(`✅ New test result created successfully`)
+               
                // Return the new ID
                return testData.id
           }

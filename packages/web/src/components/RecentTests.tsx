@@ -100,9 +100,11 @@ export default function RecentTests({tests}: RecentTestsProps) {
                                              {formatDuration(test.duration)}
                                         </span>
                                         <span className="text-gray-400 dark:text-gray-500">
-                                             {new Date(
-                                                  test.timestamp as any,
-                                             ).toLocaleTimeString()}
+                                             {test.status === 'pending' 
+                                                  ? 'Not run' 
+                                                  : new Date(
+                                                       test.updatedAt || test.updated_at || test.createdAt || test.created_at || test.timestamp as any,
+                                                  ).toLocaleTimeString()}
                                         </span>
                                    </div>
                               </div>

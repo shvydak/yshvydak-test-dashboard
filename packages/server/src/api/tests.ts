@@ -409,7 +409,7 @@ router.get('/', async (req, res) => {
                 WHERE tr.id IN (
                     SELECT id FROM test_results tr2 
                     WHERE tr2.test_id = tr.test_id 
-                    ORDER BY tr2.created_at DESC 
+                    ORDER BY tr2.updated_at DESC 
                     LIMIT 1
                 )
                 ${status ? `AND tr.status = '${status}'` : ''}
@@ -420,6 +420,13 @@ router.get('/', async (req, res) => {
                const rows = await dbManager.queryAll(sql, [
                     parseInt(limit as string),
                ])
+
+               console.log(`🔍 API: Found ${rows.length} test result rows`)
+               if (rows.length > 0) {
+                    const firstRow = rows[0] as any
+                    console.log(`🔍 API: First row sample:`, firstRow)
+                    console.log(`🔍 API: Row keys:`, Object.keys(firstRow))
+               }
 
                // Group attachments by test result
                const testsMap = new Map()
@@ -438,6 +445,8 @@ router.get('/', async (req, res) => {
                          testData.filePath = file_path
                          testData.errorMessage = error_message
                          testData.errorStack = error_stack
+                         testData.createdAt = row.created_at
+                         testData.updatedAt = row.updated_at
                          testData.attachments = []
                          testsMap.set(row.id, testData)
                     }

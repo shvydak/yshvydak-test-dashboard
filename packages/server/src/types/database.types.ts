@@ -23,6 +23,8 @@ export interface TestResultData {
     retryCount?: number
     metadata?: any
     timestamp: string
+    createdAt?: string
+    updatedAt?: string
 }
 
 export interface AttachmentData {

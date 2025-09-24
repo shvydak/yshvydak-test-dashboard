@@ -126,6 +126,15 @@ The server follows a clean **Layered Architecture** with clear separation of con
 -    WebSocket events preserved for real-time updates
 -    Database schema supports both old and new status values
 
+### Architecture Refinement (September 2024)
+
+The server has been refactored to remove unused components from the pre-Layered Architecture migration:
+
+-    **Removed**: Empty attachment routes (`/api/attachments`) - attachments handled via `/api/tests/:id/attachments`
+-    **Removed**: Debug endpoints (`POST /api/tests/test-save`) - not used by any client
+-    **Cleaned**: Service injection middleware - removed legacy properties, pure Layered Architecture
+-    **Maintained**: 100% compatibility with reporter and web client - all active endpoints preserved
+
 ### Timestamp Management & Data Consistency
 
 The dashboard implements proper timestamp tracking for accurate test execution history and UI updates. Key features include automatic database triggers, proper API data mapping, and intelligent frontend display logic for pending vs executed tests.
@@ -336,7 +345,7 @@ Advanced users can still override any derived variable by setting it explicitly 
 -    Test runs: `POST /api/runs`, `GET /api/runs`, `PUT /api/runs/:id`, `GET /api/runs/:id`
 -    Dashboard stats: `GET /api/runs/stats`, `GET /api/tests/stats`
 -    Test management: `GET /api/tests`, `POST /api/tests/discovery`, `DELETE /api/tests/all`
--    Test execution: `POST /api/tests/test-save`, `POST /api/tests/run-all`, `POST /api/tests/run-group`
+-    Test execution: `POST /api/tests/run-all`, `POST /api/tests/run-group`
 -    Test operations: `POST /api/tests/:id/rerun`, `GET /api/tests/:id/history`, `GET /api/tests/:id/attachments`
 -    Process tracking: `POST /api/tests/process-start`, `POST /api/tests/process-end`, `POST /api/tests/force-reset`
 -    Diagnostics: `GET /api/tests/diagnostics`

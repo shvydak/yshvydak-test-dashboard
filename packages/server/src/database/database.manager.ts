@@ -283,11 +283,11 @@ export class DatabaseManager {
           // If testId is provided, search by testId; otherwise search by name + file_path for discovered tests
           let existingResult
           if (testData.testId) {
-               const existingSql = `SELECT id FROM test_results WHERE test_id = ? ORDER BY created_at DESC LIMIT 1`
+               const existingSql = `SELECT id, updated_at FROM test_results WHERE test_id = ? ORDER BY updated_at DESC LIMIT 1`
                existingResult = await this.get(existingSql, [testData.testId])
           } else {
                // For discovered tests, search by name + file_path combination
-               const existingSql = `SELECT id FROM test_results WHERE name = ? AND file_path = ? AND (test_id IS NULL OR test_id = '') ORDER BY created_at DESC LIMIT 1`
+               const existingSql = `SELECT id, updated_at FROM test_results WHERE name = ? AND file_path = ? AND (test_id IS NULL OR test_id = '') ORDER BY updated_at DESC LIMIT 1`
                existingResult = await this.get(existingSql, [
                     testData.name,
                     testData.filePath,
@@ -296,11 +296,12 @@ export class DatabaseManager {
 
           if (existingResult) {
                // Update existing record
+               
                const updateSql = `
                     UPDATE test_results SET 
                          run_id = ?, test_id = ?, name = ?, file_path = ?, status = ?, 
                          duration = ?, error_message = ?, error_stack = ?, 
-                         retry_count = ?, metadata = ?
+                         retry_count = ?, metadata = ?, updated_at = CURRENT_TIMESTAMP
                     WHERE id = ?
                `
                await this.run(updateSql, [
@@ -323,6 +324,7 @@ export class DatabaseManager {
                return existingResult.id
           } else {
                // Insert new record
+               
                const insertSql = `
                     INSERT INTO test_results 
                     (id, run_id, test_id, name, file_path, status, duration, error_message, error_stack, retry_count, metadata)

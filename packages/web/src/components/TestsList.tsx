@@ -48,8 +48,13 @@ function formatDuration(duration: number) {
 }
 
 function formatLastRun(test: any): string {
-     // Try updated_at first (most recent), then created_at, then timestamp
-     const dateValue = test.updated_at || test.created_at || test.timestamp
+     // For pending tests (discovered but never run), show N/A
+     if (test.status === 'pending') {
+          return 'N/A'
+     }
+     
+     // For actual test runs, try updatedAt first (most recent), then createdAt, then timestamp
+     const dateValue = test.updatedAt || test.updated_at || test.createdAt || test.created_at || test.timestamp
 
      if (!dateValue) {
           return 'N/A'

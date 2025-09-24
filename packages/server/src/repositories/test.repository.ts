@@ -61,17 +61,17 @@ export class TestRepository extends BaseRepository implements ITestRepository {
             sql += ` WHERE tr.run_id = ?`
             params.push(filters.runId)
         } else {
-            // Get latest test results grouped by test_id - simple and reliable approach
+            // Get latest test results grouped by test_id - use updated_at to get most recent execution
             sql = `
                 SELECT DISTINCT tr.*, 
                        a.id as attachment_id, a.type as attachment_type, a.url as attachment_url
                 FROM test_results tr
                 LEFT JOIN attachments a ON tr.id = a.test_result_id
                 WHERE tr.id IN (
-                    SELECT MAX(id) as latest_id 
-                    FROM test_results 
-                    GROUP BY test_id
-                    HAVING latest_id IS NOT NULL
+                    SELECT id FROM test_results tr2 
+                    WHERE tr2.test_id = tr.test_id 
+                    ORDER BY tr2.updated_at DESC 
+                    LIMIT 1
                 )
             `
         }
@@ -111,6 +111,8 @@ export class TestRepository extends BaseRepository implements ITestRepository {
             retryCount: row.retry_count,
             metadata: row.metadata ? JSON.parse(row.metadata) : undefined,
             timestamp: row.created_at,
+            createdAt: row.created_at,
+            updatedAt: row.updated_at,
             attachments: []
         }
     }

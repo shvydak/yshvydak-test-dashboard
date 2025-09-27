@@ -9,8 +9,8 @@ interface LoginFormData {
 
 export default function LoginPage() {
   const [formData, setFormData] = useState<LoginFormData>({
-    email: 'admin@admin.com',
-    password: 'qwe123'
+    email: '',
+    password: ''
   })
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -32,8 +32,6 @@ export default function LoginPage() {
     setError(null)
 
     try {
-      console.log('🔐 Attempting login with:', { email: formData.email })
-
       const response = await fetch(`${config.api.baseUrl}/auth/login`, {
         method: 'POST',
         headers: {
@@ -43,10 +41,8 @@ export default function LoginPage() {
       })
 
       const data = await response.json()
-      console.debug('🔐 Login API response:', { ok: response.ok, status: response.status, data })
 
       if (response.ok && data.success) {
-        console.log('✅ Login successful - storing token and navigating')
 
         // Store token in localStorage for now (without React Auth Kit)
         localStorage.setItem('_auth', JSON.stringify({
@@ -60,11 +56,9 @@ export default function LoginPage() {
         // Simple navigation to dashboard
         window.location.href = '/'
       } else {
-        console.warn('❌ Login failed:', data)
         setError(data.message || 'Login failed. Please check your credentials.')
       }
     } catch (err) {
-      console.error('Login error:', err)
       setError('Network error. Please check your connection and try again.')
     } finally {
       setIsLoading(false)

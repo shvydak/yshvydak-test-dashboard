@@ -26,14 +26,11 @@ function App() {
         if (authData) {
           const parsed = JSON.parse(authData)
           const hasToken = parsed?.auth?.token || parsed?.token
-          console.log('🔍 Auth check:', hasToken ? 'Authenticated' : 'Not authenticated')
           setIsAuthenticated(!!hasToken)
         } else {
-          console.log('🔍 Auth check: No auth data found')
           setIsAuthenticated(false)
         }
       } catch (error) {
-        console.error('❌ Auth check error:', error)
         setIsAuthenticated(false)
       } finally {
         setIsLoading(false)
@@ -47,8 +44,6 @@ function App() {
   const webSocketUrl = useMemo(() => {
     // Only connect to WebSocket if we're authenticated AND not loading
     if (isAuthenticated && !isLoading) {
-      console.debug('🔗 User is authenticated, getting WebSocket URL with token')
-
       // Try to get token directly from storage
       try {
         const authData = localStorage.getItem('_auth') || sessionStorage.getItem('_auth')
@@ -63,22 +58,19 @@ function App() {
           }
 
           if (token) {
-            console.debug('✅ Got token from storage for WebSocket')
             return `${config.websocket.url}?token=${encodeURIComponent(token)}`
           }
         }
       } catch (error) {
-        console.error('❌ Error extracting token for WebSocket:', error)
+        // Silent error handling
       }
     }
 
     // Return null to prevent WebSocket connection when not ready
     if (isLoading) {
-      console.debug('🔗 Still loading, delaying WebSocket connection')
       return null
     }
 
-    console.debug('🔗 No authentication or token found, using WebSocket without auth')
     return config.websocket.url
   }, [isAuthenticated, isLoading])
 
@@ -112,7 +104,6 @@ function App() {
     await rerunTest(testId)
   }
 
-  console.log('🚀 App component rendered', { isAuthenticated, isLoading, currentView })
 
   if (isLoading) {
     return (
@@ -149,7 +140,6 @@ function App() {
               return parsed?.user || parsed?.auth?.user || { email: 'admin@admin.com' }
             }
           } catch (error) {
-            console.error('Error getting user data:', error)
           }
           return { email: 'admin@admin.com' }
         }}

@@ -51,7 +51,6 @@ export default function TestDetailModal({
                }
           } catch (err) {
                setError('Error fetching attachments')
-               console.error('Error fetching attachments:', err)
           } finally {
                setLoading(false)
           }

@@ -5,41 +5,31 @@
 // Get JWT token from storage (React Auth Kit storage)
 function getAuthToken(): string | null {
   try {
-    // React Auth Kit stores token with _auth key in localStorage
     const authData = localStorage.getItem('_auth') || sessionStorage.getItem('_auth')
-
-    console.debug('🔍 Auth data from storage:', authData ? 'Found' : 'Not found')
 
     if (!authData) {
       return null
     }
 
-    // React Auth Kit stores the token in JSON format: {"auth":{"token":"...", "type":"Bearer"}}
     const parsedAuth = JSON.parse(authData)
-    console.debug('🔍 Parsed auth data:', parsedAuth)
 
     // Check different possible structures
     if (parsedAuth?.auth?.token) {
-      console.debug('✅ Found token in auth.token format')
       return parsedAuth.auth.token
     }
 
     if (parsedAuth?.token) {
-      console.debug('✅ Found token in direct token format')
       return parsedAuth.token
     }
 
     // If it's just a string token
     if (typeof parsedAuth === 'string') {
-      console.debug('✅ Found plain string token')
       return parsedAuth
     }
 
-    console.warn('⚠️ Token found but in unexpected format:', parsedAuth)
     return null
 
   } catch (error) {
-    console.error('❌ Error parsing auth token from storage:', error)
     return null
   }
 }
@@ -73,7 +63,6 @@ export async function authFetch(
 
   // Handle authentication errors
   if (response.status === 401) {
-    console.warn('🚨 Authentication failed (401), clearing auth data')
     // Token might be expired or invalid
     // Clear auth data and redirect to login
     localStorage.removeItem('_auth')

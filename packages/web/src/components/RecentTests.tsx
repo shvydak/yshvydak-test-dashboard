@@ -33,7 +33,6 @@ function formatTestDateTime(test: TestResult) {
         })
         return `${formattedTime}, ${formattedDate}`
     } catch (error) {
-        console.warn('Error formatting date:', dateValue, error)
         return 'N/A'
     }
 }

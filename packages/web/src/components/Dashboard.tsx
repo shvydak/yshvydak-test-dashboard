@@ -71,13 +71,11 @@ export default function Dashboard() {
             }
 
             const result = await response.json()
-            console.log('🚨 Force reset successful:', result.data)
 
             // Refresh state
             fetchTests()
             setRunningAllTests(false)
         } catch (error) {
-            console.error('❌ Force reset failed:', error)
             alert(
                 'Failed to force reset processes: ' + (error as Error).message,
             )

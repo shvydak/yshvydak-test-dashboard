@@ -150,7 +150,6 @@ export const useTestsStore = create<TestsState>()(
                          const data = await response.json()
 
                          if (data.success) {
-                              console.log(`✅ Started running test: ${testId} (Rerun ID: ${data.rerunId})`)
                               // Обновляем тесты через некоторое время, чтобы получить обновленный статус
                               setTimeout(() => {
                                    get().fetchTests()
@@ -188,9 +187,6 @@ export const useTestsStore = create<TestsState>()(
                          const data = await response.json()
 
                          if (data.success) {
-                              console.log(
-                                   `✅ Discovered ${data.data.discovered} tests, saved ${data.data.saved}`,
-                              )
                               // Обновляем список тестов после discovery
                               await get().fetchTests()
                          } else {
@@ -227,9 +223,6 @@ export const useTestsStore = create<TestsState>()(
 
                          if (data.success) {
                               const runId = data.data.runId
-                              console.log(
-                                   `✅ Started running all tests (Run ID: ${runId})`,
-                              )
                               
                               // Сохраняем ID run для отслеживания (используется WebSocket для завершения)
                               set({currentRunAllId: runId})
@@ -274,9 +267,6 @@ export const useTestsStore = create<TestsState>()(
                          const data = await response.json()
 
                          if (data.success) {
-                              console.log(
-                                   `✅ Started running tests group: ${filePath} (Run ID: ${data.data.runId})`,
-                              )
                               // Обновляем runs и tests списки
                               setTimeout(() => {
                                    get().fetchRuns()
@@ -337,8 +327,6 @@ export const useTestsStore = create<TestsState>()(
                checkAndRestoreActiveStates: async () => {
                     // This function is now simplified since state restoration
                     // is handled by WebSocket connection:status event
-                    console.log('🔍 State restoration now handled by WebSocket connection:status event')
-                    console.log('✅ No action needed - waiting for WebSocket to provide current state')
                },
           }),
           {

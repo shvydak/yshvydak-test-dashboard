@@ -87,7 +87,6 @@ function formatLastRun(test: any): string {
         })
         return `${formattedTime}, ${formattedDate}`
     } catch (error) {
-        console.warn('Error formatting date:', dateValue, error)
         return 'N/A'
     }
 }

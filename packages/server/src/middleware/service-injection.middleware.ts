@@ -7,6 +7,7 @@ import { TestService } from '../services/test.service'
 import { PlaywrightService } from '../services/playwright.service'
 import { WebSocketService } from '../services/websocket.service'
 import { AttachmentService } from '../services/attachment.service'
+import { AuthService } from '../services/auth.service'
 import { config } from '../config/environment.config'
 
 // Dependency container
@@ -19,6 +20,7 @@ export interface ServiceContainer {
     playwrightService: PlaywrightService
     websocketService: WebSocketService
     attachmentService: AttachmentService
+    authService: AuthService
 }
 
 // Create service container
@@ -35,6 +37,7 @@ export function createServiceContainer(): ServiceContainer {
     const websocketService = new WebSocketService()
     const playwrightService = new PlaywrightService()
     const attachmentService = new AttachmentService(attachmentRepository)
+    const authService = new AuthService()
     const testService = new TestService(
         testRepository,
         runRepository,
@@ -50,7 +53,8 @@ export function createServiceContainer(): ServiceContainer {
         testService,
         playwrightService,
         websocketService,
-        attachmentService
+        attachmentService,
+        authService
     }
 }
 

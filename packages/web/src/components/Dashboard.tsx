@@ -5,6 +5,7 @@ import StatsCard from './StatsCard'
 import RecentTests from './RecentTests'
 import ErrorsOverview from './ErrorsOverview'
 import {config} from '../config/environment.config'
+import {authFetch} from '../utils/authFetch'
 
 interface DashboardStats {
     totalTests: number
@@ -17,7 +18,7 @@ interface DashboardStats {
 }
 
 async function fetchDashboardStats(): Promise<DashboardStats> {
-    const response = await fetch(`${config.api.baseUrl}/runs/stats`)
+    const response = await authFetch(`${config.api.baseUrl}/runs/stats`)
     if (!response.ok) {
         throw new Error('Failed to fetch dashboard stats')
     }
@@ -96,7 +97,7 @@ export default function Dashboard() {
 
         setClearingData(true)
         try {
-            const response = await fetch(`${config.api.baseUrl}/tests/all`, {
+            const response = await authFetch(`${config.api.baseUrl}/tests/all`, {
                 method: 'DELETE',
             })
 

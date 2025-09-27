@@ -1,6 +1,7 @@
 import {create} from 'zustand'
 import {devtools} from 'zustand/middleware'
 import {TestResult, TestRun} from '@yshvydak/core'
+import { authGet, authPost } from '../utils/authFetch'
 
 interface TestsState {
      tests: TestResult[]
@@ -70,7 +71,7 @@ export const useTestsStore = create<TestsState>()(
                               set({error: null})
                          }
 
-                         const response = await fetch(`${API_BASE_URL}/tests?limit=200`)
+                         const response = await authGet(`${API_BASE_URL}/tests?limit=200`)
                          if (!response.ok) {
                               throw new Error(
                                    `HTTP error! status: ${response.status}`,
@@ -107,7 +108,7 @@ export const useTestsStore = create<TestsState>()(
 
                fetchRuns: async () => {
                     try {
-                         const response = await fetch(`${API_BASE_URL}/runs`)
+                         const response = await authGet(`${API_BASE_URL}/runs`)
                          if (!response.ok) {
                               throw new Error(
                                    `HTTP error! status: ${response.status}`,
@@ -138,15 +139,7 @@ export const useTestsStore = create<TestsState>()(
                          get().setTestRunning(testId, true)
                          set({error: null})
 
-                         const response = await fetch(
-                              `${API_BASE_URL}/tests/${testId}/rerun`,
-                              {
-                                   method: 'POST',
-                                   headers: {
-                                        'Content-Type': 'application/json',
-                                   },
-                              },
-                         )
+                         const response = await authPost(`${API_BASE_URL}/tests/${testId}/rerun`)
 
                          if (!response.ok) {
                               throw new Error(
@@ -184,15 +177,7 @@ export const useTestsStore = create<TestsState>()(
                     try {
                          set({isDiscovering: true, error: null})
 
-                         const response = await fetch(
-                              `${API_BASE_URL}/tests/discovery`,
-                              {
-                                   method: 'POST',
-                                   headers: {
-                                        'Content-Type': 'application/json',
-                                   },
-                              },
-                         )
+                         const response = await authPost(`${API_BASE_URL}/tests/discovery`)
 
                          if (!response.ok) {
                               throw new Error(
@@ -230,15 +215,7 @@ export const useTestsStore = create<TestsState>()(
                     try {
                          set({isRunningAllTests: true, error: null})
 
-                         const response = await fetch(
-                              `${API_BASE_URL}/tests/run-all`,
-                              {
-                                   method: 'POST',
-                                   headers: {
-                                        'Content-Type': 'application/json',
-                                   },
-                              },
-                         )
+                         const response = await authPost(`${API_BASE_URL}/tests/run-all`)
 
                          if (!response.ok) {
                               throw new Error(
@@ -286,16 +263,7 @@ export const useTestsStore = create<TestsState>()(
                          get().setGroupRunning(filePath, true)
                          set({error: null})
 
-                         const response = await fetch(
-                              `${API_BASE_URL}/tests/run-group`,
-                              {
-                                   method: 'POST',
-                                   headers: {
-                                        'Content-Type': 'application/json',
-                                   },
-                                   body: JSON.stringify({filePath}),
-                              },
-                         )
+                         const response = await authPost(`${API_BASE_URL}/tests/run-group`, {filePath})
 
                          if (!response.ok) {
                               throw new Error(

@@ -13,9 +13,7 @@ export class RunController {
 
             // Validate required fields
             if (!runData.id || !runData.status || typeof runData.totalTests !== 'number') {
-                return res.status(400).json(ResponseHelper.badRequest(
-                    'Missing required fields: id, status, totalTests'
-                ))
+                return ResponseHelper.badRequest(res, 'Missing required fields: id, status, totalTests')
             }
 
             const runId = await this.runRepository.createTestRun({
@@ -31,16 +29,16 @@ export class RunController {
 
             Logger.success(`Test run created with ID: ${runId}`)
 
-            return res.json(ResponseHelper.success(
+            return ResponseHelper.success(res,
                 { id: runId },
                 'Test run created successfully'
-            ))
+            )
         } catch (error) {
             Logger.error('Error creating test run', error)
-            return res.status(500).json(ResponseHelper.error(
-                'Failed to create test run',
-                error instanceof Error ? error.message : 'Unknown error'
-            ))
+            return ResponseHelper.error(res,
+                error instanceof Error ? error.message : 'Unknown error',
+                'Failed to create test run', 500
+            )
         }
     }
 
@@ -54,16 +52,16 @@ export class RunController {
 
             Logger.success(`Test run updated: ${id}`)
 
-            return res.json(ResponseHelper.success(
+            return ResponseHelper.success(res,
                 { id },
                 'Test run updated successfully'
-            ))
+            )
         } catch (error) {
             Logger.error('Error updating test run', error)
-            return res.status(500).json(ResponseHelper.error(
-                'Failed to update test run',
-                error instanceof Error ? error.message : 'Unknown error'
-            ))
+            return ResponseHelper.error(res,
+                error instanceof Error ? error.message : 'Unknown error',
+                'Failed to update test run', 500
+            )
         }
     }
 
@@ -73,10 +71,10 @@ export class RunController {
             const { limit = 50, status } = req.query
             const runs = await this.runRepository.getAllTestRuns(parseInt(limit as string))
 
-            return res.json(ResponseHelper.success(runs, `Found ${runs.length} runs`))
+            return res.json(ResponseHelper.successData(runs, `Found ${runs.length} runs`))
         } catch (error) {
             Logger.error('Error fetching runs', error)
-            return res.status(500).json(ResponseHelper.error(
+            return res.status(500).json(ResponseHelper.errorData(
                 'Failed to fetch runs',
                 error instanceof Error ? error.message : 'Unknown error'
             ))
@@ -102,10 +100,10 @@ export class RunController {
                 recent_runs: recentRuns,
             }
 
-            return res.json(ResponseHelper.success(responseData))
+            return res.json(ResponseHelper.successData(responseData))
         } catch (error) {
             Logger.error('Error fetching stats', error)
-            return res.status(500).json(ResponseHelper.error(
+            return res.status(500).json(ResponseHelper.errorData(
                 'Failed to fetch stats',
                 error instanceof Error ? error.message : 'Unknown error'
             ))
@@ -119,16 +117,16 @@ export class RunController {
             const run = await this.runRepository.getTestRun(id)
 
             if (!run) {
-                return res.status(404).json(ResponseHelper.notFound('Test run'))
+                return ResponseHelper.notFound(res, 'Test run')
             }
 
-            return res.json(ResponseHelper.success(run))
+            return ResponseHelper.success(res, run)
         } catch (error) {
             Logger.error('Error fetching test run', error)
-            return res.status(500).json(ResponseHelper.error(
-                'Failed to fetch test run',
-                error instanceof Error ? error.message : 'Unknown error'
-            ))
+            return ResponseHelper.error(res,
+                error instanceof Error ? error.message : 'Unknown error',
+                'Failed to fetch test run', 500
+            )
         }
     }
 }

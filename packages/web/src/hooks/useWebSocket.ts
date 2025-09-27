@@ -14,7 +14,7 @@ interface WebSocketOptions {
      onRunCompleted?: (data: any) => void
 }
 
-export function useWebSocket(url: string, options?: WebSocketOptions) {
+export function useWebSocket(url: string | null, options?: WebSocketOptions) {
      const [isConnected, setIsConnected] = useState(false)
      const [lastMessage, setLastMessage] = useState<WebSocketMessage | null>(
           null,
@@ -80,6 +80,12 @@ export function useWebSocket(url: string, options?: WebSocketOptions) {
      }
 
      const connect = () => {
+          // Don't connect if URL is null
+          if (!url) {
+               console.debug('🔌 WebSocket URL is null, skipping connection')
+               return
+          }
+
           try {
                console.log('🔌 Connecting to WebSocket:', url)
                wsRef.current = new WebSocket(url)
@@ -312,7 +318,14 @@ export function useWebSocket(url: string, options?: WebSocketOptions) {
      }
 
      useEffect(() => {
-          connect()
+          // Only try to connect if we have a valid URL
+          if (url) {
+               connect()
+          } else {
+               // Disconnect existing connection if URL becomes null
+               disconnect()
+               setIsConnected(false)
+          }
 
           // Send periodic ping to keep connection alive
           const pingInterval = setInterval(() => {

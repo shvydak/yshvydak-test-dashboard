@@ -1,7 +1,10 @@
 import WebSocket from 'ws'
 import {Server} from 'http'
+import {IncomingMessage} from 'http'
 import {v4 as uuidv4} from 'uuid'
 import {activeProcessesTracker} from '../services/activeProcesses.service'
+import {AuthService} from '../services/auth.service'
+import {config} from '../config/environment.config'
 
 export interface WebSocketMessage {
      type: string
@@ -27,19 +30,36 @@ export interface TestProgressUpdate {
 export class WebSocketManager {
      private wss: WebSocket.Server
      private clients: Map<string, WebSocket> = new Map()
+     private authService: AuthService
 
      constructor(server: Server) {
+          this.authService = new AuthService()
+
           this.wss = new WebSocket.Server({
                server,
                path: '/ws',
                perMessageDeflate: false,
           })
 
-          this.wss.on('connection', (ws: WebSocket, request) => {
+          this.wss.on('connection', async (ws: WebSocket, request: IncomingMessage) => {
                const clientId = uuidv4()
-               this.clients.set(clientId, ws)
 
-               console.log(`WebSocket client connected: ${clientId}`)
+               // Authenticate WebSocket connection if authentication is enabled
+               if (config.auth.enableAuth) {
+                    const authResult = await this.authenticateWebSocketConnection(request)
+
+                    if (!authResult.isAuthenticated) {
+                         console.warn(`WebSocket authentication failed: ${authResult.message}`)
+                         ws.close(1008, authResult.message || 'Authentication required')
+                         return
+                    }
+
+                    console.log(`WebSocket client authenticated and connected: ${clientId} (User: ${authResult.user?.email})`)
+               } else {
+                    console.log(`WebSocket client connected: ${clientId} (Authentication disabled)`)
+               }
+
+               this.clients.set(clientId, ws)
 
                // Send welcome message
                this.sendToClient(clientId, {
@@ -101,6 +121,47 @@ export class WebSocketManager {
           })
 
           console.log('WebSocket server initialized on /ws')
+     }
+
+     private async authenticateWebSocketConnection(request: IncomingMessage): Promise<{
+          isAuthenticated: boolean
+          user?: { email: string; role: string }
+          message?: string
+     }> {
+          try {
+               if (!request.url) {
+                    return { isAuthenticated: false, message: 'No URL provided' }
+               }
+
+               // Parse URL to get query parameters
+               const url = new URL(request.url, `http://${request.headers.host}`)
+               const token = url.searchParams.get('token')
+
+               if (!token) {
+                    return { isAuthenticated: false, message: 'No authentication token provided' }
+               }
+
+               // Verify JWT token
+               const result = await this.authService.verifyJWT(token)
+
+               if (result.valid && result.user) {
+                    return {
+                         isAuthenticated: true,
+                         user: result.user
+                    }
+               } else {
+                    return {
+                         isAuthenticated: false,
+                         message: result.message || 'Invalid authentication token'
+                    }
+               }
+          } catch (error) {
+               console.error('WebSocket authentication error:', error)
+               return {
+                    isAuthenticated: false,
+                    message: 'Authentication service error'
+               }
+          }
      }
 
      private handleClientMessage(

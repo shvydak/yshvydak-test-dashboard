@@ -19,6 +19,14 @@ export interface EnvironmentConfig {
         baseUrl: string
         requestLimit: string
     }
+    auth: {
+        enableAuth: boolean
+        jwtSecret: string
+        expiresIn: string
+        adminEmail: string
+        adminPassword: string
+        reporterApiKey: string
+    }
 }
 
 export const config: EnvironmentConfig = {
@@ -55,5 +63,45 @@ export const config: EnvironmentConfig = {
             return `http://localhost:${config.server.port}`
         },
         requestLimit: '50mb'
+    },
+    auth: {
+        get enableAuth() {
+            return process.env.ENABLE_AUTH === 'true'
+        },
+        get jwtSecret() {
+            return process.env.JWT_SECRET || (() => {
+                if (config.auth.enableAuth) {
+                    throw new Error('JWT_SECRET environment variable is required when authentication is enabled')
+                }
+                return 'dev-secret-not-for-production'
+            })()
+        },
+        get expiresIn() {
+            return process.env.JWT_EXPIRES_IN || '24h'
+        },
+        get adminEmail() {
+            return process.env.ADMIN_EMAIL || (() => {
+                if (config.auth.enableAuth) {
+                    throw new Error('ADMIN_EMAIL environment variable is required when authentication is enabled')
+                }
+                return 'admin@admin.com'
+            })()
+        },
+        get adminPassword() {
+            return process.env.ADMIN_PASSWORD || (() => {
+                if (config.auth.enableAuth) {
+                    throw new Error('ADMIN_PASSWORD environment variable is required when authentication is enabled')
+                }
+                return 'qwe123'
+            })()
+        },
+        get reporterApiKey() {
+            return process.env.REPORTER_API_KEY || (() => {
+                if (config.auth.enableAuth) {
+                    console.warn('REPORTER_API_KEY not configured - reporter authentication will fail')
+                }
+                return ''
+            })()
+        }
     }
 }

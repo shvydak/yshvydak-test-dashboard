@@ -43,4 +43,27 @@ export class AttachmentRepository extends BaseRepository {
             [testResultId]
         )
     }
+
+    async getAttachmentById(attachmentId: string): Promise<AttachmentData | null> {
+        const rows = await this.queryAll<any>(
+            'SELECT * FROM attachments WHERE id = ?',
+            [attachmentId]
+        )
+
+        if (rows.length === 0) {
+            return null
+        }
+
+        const row = rows[0]
+        return {
+            id: row.id,
+            testResultId: row.test_result_id,
+            type: row.type,
+            fileName: row.file_name,
+            filePath: row.file_path,
+            fileSize: row.file_size,
+            mimeType: row.mime_type,
+            url: row.url
+        }
+    }
 }

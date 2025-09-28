@@ -3,7 +3,7 @@
  */
 
 // Get JWT token from storage (React Auth Kit storage)
-function getAuthToken(): string | null {
+export function getAuthToken(): string | null {
   try {
     const authData = localStorage.getItem('_auth') || sessionStorage.getItem('_auth')
 

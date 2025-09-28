@@ -6,6 +6,7 @@ import { PlaywrightService } from './playwright.service'
 import { WebSocketService } from './websocket.service'
 import { AttachmentService } from './attachment.service'
 import { Logger } from '../utils/logger.util'
+import { FileUtil } from '../utils/file.util'
 import { activeProcessesTracker } from './activeProcesses.service'
 
 export class TestService implements ITestService {
@@ -317,6 +318,43 @@ export class TestService implements ITestService {
                 stats: dbStats
             },
             timestamp: new Date().toISOString()
+        }
+    }
+
+    async getTraceFileById(attachmentId: string): Promise<{ filePath: string; fileName: string } | null> {
+        try {
+            // Get attachment from database
+            const attachment = await this.attachmentService.getAttachmentById(attachmentId)
+
+            if (!attachment) {
+                Logger.warn(`Attachment not found: ${attachmentId}`)
+                return null
+            }
+
+            // Check if attachment is a trace file
+            if (attachment.type !== 'trace') {
+                Logger.warn(`Attachment ${attachmentId} is not a trace file, type: ${attachment.type}`)
+                return null
+            }
+
+            // Check if file exists
+            if (!attachment.filePath) {
+                Logger.warn(`Attachment ${attachmentId} has no file path`)
+                return null
+            }
+
+            if (!FileUtil.fileExists(attachment.filePath)) {
+                Logger.warn(`Trace file not found: ${attachment.filePath}`)
+                return null
+            }
+
+            return {
+                filePath: attachment.filePath,
+                fileName: attachment.fileName || 'trace.zip'
+            }
+        } catch (error) {
+            Logger.error('Error getting trace file:', error)
+            throw error
         }
     }
 }

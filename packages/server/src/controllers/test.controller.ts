@@ -1,14 +1,19 @@
 import {Request, Response} from 'express'
 import {TestService} from '../services/test.service'
+import {AuthService} from '../services/auth.service'
 import {ResponseHelper} from '../utils/response.helper'
 import {Logger} from '../utils/logger.util'
 import {ServiceRequest} from '../types/api.types'
 import {ProcessStartData, ProcessEndData} from '@yshvydak/core'
 import {activeProcessesTracker} from '../services/activeProcesses.service'
 import {getWebSocketManager} from '../websocket/server'
+import path from 'path'
 
 export class TestController {
-    constructor(private testService: TestService) {}
+    constructor(
+        private testService: TestService,
+        private authService: AuthService
+    ) {}
 
     // POST /api/tests/discovery - Discover all available tests
     discoverTests = async (
@@ -483,6 +488,66 @@ export class TestController {
                 res,
                 error instanceof Error ? error.message : 'Unknown error',
                 'Failed to perform force reset',
+                500,
+            )
+        }
+    }
+
+    // GET /api/tests/traces/:attachmentId - Get trace file with JWT query parameter
+    getTraceFile = async (req: ServiceRequest, res: Response): Promise<void> => {
+        try {
+            const { attachmentId } = req.params
+            const token = req.query.token as string
+
+            // Validate JWT token from query parameter
+            if (!token) {
+                ResponseHelper.unauthorized(res, 'Token required in query parameter')
+                return
+            }
+
+            // Verify JWT token using AuthService
+            const tokenResult = await this.authService.verifyJWT(`Bearer ${token}`)
+
+            if (!tokenResult.valid) {
+                ResponseHelper.unauthorized(res, tokenResult.message || 'Invalid token')
+                return
+            }
+
+            // Get trace file
+            const traceFile = await this.testService.getTraceFileById(attachmentId)
+
+            if (!traceFile) {
+                ResponseHelper.notFound(res, 'Trace file not found')
+                return
+            }
+
+            // Sanitize filename for security
+            const sanitizedFileName = path.basename(traceFile.fileName).replace(/[^a-zA-Z0-9.-]/g, '_')
+
+            // Set appropriate headers for file download with security
+            res.setHeader('Content-Type', 'application/zip')
+            res.setHeader('Content-Disposition', `attachment; filename="${sanitizedFileName}"`)
+            res.setHeader('Cache-Control', 'private, no-cache, no-store, must-revalidate')
+            res.setHeader('Pragma', 'no-cache')
+            res.setHeader('Expires', '0')
+            res.setHeader('X-Content-Type-Options', 'nosniff')
+
+            // Send file with absolute path
+            res.sendFile(path.resolve(traceFile.filePath), (err) => {
+                if (err) {
+                    Logger.error('Error sending trace file:', err)
+                    if (!res.headersSent) {
+                        ResponseHelper.serverError(res, 'Failed to send trace file')
+                    }
+                }
+            })
+
+        } catch (error) {
+            Logger.error('Error serving trace file', error)
+            ResponseHelper.error(
+                res,
+                error instanceof Error ? error.message : 'Unknown error',
+                'Failed to serve trace file',
                 500,
             )
         }

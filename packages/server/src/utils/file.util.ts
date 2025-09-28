@@ -1,11 +1,11 @@
 import fs from 'fs'
 import path from 'path'
-import { config } from '../config/environment.config'
+import {config} from '../config/environment.config'
 
 export class FileUtil {
     static ensureDirectoryExists(dirPath: string): void {
         if (!fs.existsSync(dirPath)) {
-            fs.mkdirSync(dirPath, { recursive: true })
+            fs.mkdirSync(dirPath, {recursive: true})
         }
     }
 
@@ -38,7 +38,10 @@ export class FileUtil {
             .replace(/\\/g, '/') // Convert Windows paths
     }
 
-    static mapContentTypeToDbType(contentType: string, fileName: string): 'video' | 'screenshot' | 'trace' | 'log' {
+    static mapContentTypeToDbType(
+        contentType: string,
+        fileName: string,
+    ): 'video' | 'screenshot' | 'trace' | 'log' {
         // Video files
         if (
             contentType.startsWith('video/') ||

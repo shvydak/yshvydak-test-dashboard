@@ -213,6 +213,36 @@ Get attachments (screenshots, videos, traces) for a test.
 }
 ```
 
+### GET /api/tests/traces/:attachmentId
+
+Download trace file for Playwright Trace Viewer with JWT authentication.
+
+**Query Parameters:**
+- `token` (required) - JWT authentication token
+
+**Example:**
+```
+GET /api/tests/traces/att_123?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+```
+
+**Response:**
+- Returns the trace file (application/zip) as a download
+- Used by Playwright Trace Viewer to load trace files
+- Requires valid JWT token for authentication
+
+**Headers:**
+```
+Content-Type: application/zip
+Content-Disposition: attachment; filename="trace.zip"
+Cache-Control: private, no-cache, no-store, must-revalidate
+X-Content-Type-Options: nosniff
+```
+
+**Error Responses:**
+- `401` - Invalid or missing JWT token
+- `404` - Trace file not found or attachment is not a trace type
+- `500` - Server error reading file
+
 ## Test Runs
 
 ### POST /api/runs

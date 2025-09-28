@@ -2,7 +2,7 @@ import {useState, useEffect} from 'react'
 import {TestResult} from '@yshvydak/core'
 import {formatErrorLines} from '../utils/errorFormatter'
 import {config} from '../config/environment.config'
-import {authFetch, createProtectedFileURL} from '../utils/authFetch'
+import {authFetch, createProtectedFileURL, getAuthToken} from '../utils/authFetch'
 
 interface Attachment {
      id: string
@@ -145,14 +145,21 @@ export default function TestDetailModal({
 
      const openTraceViewer = async (attachment: AttachmentWithBlobURL) => {
           try {
-               const blobURL = await createProtectedFileURL(attachment.url, config.api.serverUrl)
-               // For trace files, open in Playwright Trace Viewer
+               // Get JWT token for authentication
+               const token = getAuthToken()
+               if (!token) {
+                    setError('Authentication required to view trace')
+                    return
+               }
+
+               // Create direct URL to our trace endpoint with JWT token
+               const traceURL = `${config.api.serverUrl}/api/tests/traces/${attachment.id}?token=${encodeURIComponent(token)}`
+
+               // For trace files, open in Playwright Trace Viewer with direct URL
                window.open(
-                    `https://trace.playwright.dev/?trace=${encodeURIComponent(blobURL)}`,
+                    `https://trace.playwright.dev/?trace=${encodeURIComponent(traceURL)}`,
                     '_blank',
                )
-               // Note: We don't revoke the blob URL immediately since trace viewer needs it
-               // It will be cleaned up when the browser session ends
           } catch (error) {
                console.error('Failed to open trace viewer:', error)
                setError('Failed to open trace viewer')

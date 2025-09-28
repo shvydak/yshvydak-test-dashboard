@@ -118,10 +118,43 @@ Authorization: Bearer <jwt-token>
 #### API Endpoints:
 Reporter API endpoints (`/api/tests/*`, `/api/runs/*`) are publicly accessible for local network integration.
 
+#### Special Trace File Access:
+The trace file endpoint uses query-based JWT authentication for compatibility with Playwright Trace Viewer:
+```
+GET /api/tests/traces/:attachmentId?token=jwt_token
+```
+
 ### Public Endpoints
 These endpoints remain publicly accessible:
 - `GET /api/health`
 - `GET /api/tests/diagnostics`
+
+### Protected Endpoints with Special Authentication
+
+#### Trace File Download (Query-based JWT)
+**Endpoint:** `GET /api/tests/traces/:attachmentId`
+
+This endpoint uses a special authentication method where the JWT token is passed as a query parameter instead of an Authorization header. This is required for compatibility with Playwright Trace Viewer.
+
+**Authentication:**
+```
+GET /api/tests/traces/att_123?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+```
+
+**Usage:**
+- Frontend extracts JWT from localStorage
+- Constructs URL with token query parameter
+- Passes URL to Playwright Trace Viewer
+- Trace Viewer makes direct HTTP request with token
+
+**Example Frontend Implementation:**
+```javascript
+const openTraceViewer = async (attachment) => {
+  const token = getAuthToken()
+  const traceURL = `${config.api.serverUrl}/api/tests/traces/${attachment.id}?token=${encodeURIComponent(token)}`
+  window.open(`https://trace.playwright.dev/?trace=${encodeURIComponent(traceURL)}`, '_blank')
+}
+```
 
 ## Configuration
 

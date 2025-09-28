@@ -54,4 +54,8 @@ export class AttachmentService implements IAttachmentService {
             await this.attachmentRepository.saveAttachment(attachment)
         }
     }
+
+    async getAttachmentById(attachmentId: string): Promise<AttachmentData | null> {
+        return this.attachmentRepository.getAttachmentById(attachmentId)
+    }
 }

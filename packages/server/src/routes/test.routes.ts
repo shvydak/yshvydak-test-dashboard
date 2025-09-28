@@ -1,6 +1,6 @@
-import { Router } from 'express'
-import { TestController } from '../controllers/test.controller'
-import { ServiceContainer } from '../middleware/service-injection.middleware'
+import {Router} from 'express'
+import {TestController} from '../controllers/test.controller'
+import {ServiceContainer} from '../middleware/service-injection.middleware'
 
 export function createTestRoutes(container: ServiceContainer): Router {
     const router = Router()

@@ -1,4 +1,4 @@
-import { createSigner, createVerifier, JWTPayload } from 'fast-jwt'
+import { createSigner, createVerifier } from 'fast-jwt'
 import { config } from '../config/environment.config'
 import { Logger } from '../utils/logger.util'
 
@@ -35,13 +35,11 @@ export interface VerifyResult {
 export class AuthService {
     private jwtSigner: any
     private jwtVerifier: any
-    private apiKeys: Set<string>
-    private users: Map<string, { password: string; role: string }>
+    private users: Map<string, { password: string; role: string }> = new Map()
 
     constructor() {
         this.initializeJWT()
         this.initializeUsers()
-        this.initializeApiKeys()
     }
 
     private initializeJWT() {
@@ -105,20 +103,6 @@ export class AuthService {
         }
     }
 
-    private initializeApiKeys() {
-        this.apiKeys = new Set()
-
-        const reporterApiKey = config.auth.reporterApiKey
-        if (reporterApiKey) {
-            this.apiKeys.add(reporterApiKey)
-            Logger.info('Reporter API key configured successfully')
-        } else {
-            Logger.warn('No REPORTER_API_KEY configured - reporter authentication will fail')
-        }
-
-        // Additional API keys can be added here in the future
-        // Example: ADDITIONAL_API_KEYS environment variable
-    }
 
     async login(credentials: LoginCredentials): Promise<LoginResult> {
         try {
@@ -205,24 +189,6 @@ export class AuthService {
         }
     }
 
-    async verifyApiKey(apiKey: string): Promise<boolean> {
-        try {
-            if (!apiKey) {
-                return false
-            }
-
-            const isValid = this.apiKeys.has(apiKey)
-
-            if (!isValid) {
-                Logger.warn('Invalid API key provided')
-            }
-
-            return isValid
-        } catch (error) {
-            Logger.error('API key verification failed', error)
-            return false
-        }
-    }
 
     async logout(token?: string): Promise<{ success: boolean; message: string }> {
         try {
@@ -254,10 +220,4 @@ export class AuthService {
         return Array.from(this.users.keys())
     }
 
-    // Utility method to regenerate API keys (for future implementation)
-    regenerateApiKey(oldKey?: string): string {
-        // Implementation for API key rotation
-        // This would be used for security maintenance
-        throw new Error('API key regeneration not implemented yet')
-    }
 }

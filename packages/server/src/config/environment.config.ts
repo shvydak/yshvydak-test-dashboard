@@ -25,7 +25,6 @@ export interface EnvironmentConfig {
         expiresIn: string
         adminEmail: string
         adminPassword: string
-        reporterApiKey: string
     }
 }
 
@@ -80,28 +79,18 @@ export const config: EnvironmentConfig = {
             return process.env.JWT_EXPIRES_IN || '24h'
         },
         get adminEmail() {
-            return process.env.ADMIN_EMAIL || (() => {
-                if (config.auth.enableAuth) {
-                    throw new Error('ADMIN_EMAIL environment variable is required when authentication is enabled')
-                }
-                return 'admin@admin.com'
-            })()
+            const email = process.env.ADMIN_EMAIL
+            if (!email && config.auth.enableAuth) {
+                throw new Error('ADMIN_EMAIL environment variable is required when authentication is enabled')
+            }
+            return email || ''
         },
         get adminPassword() {
-            return process.env.ADMIN_PASSWORD || (() => {
-                if (config.auth.enableAuth) {
-                    throw new Error('ADMIN_PASSWORD environment variable is required when authentication is enabled')
-                }
-                return 'qwe123'
-            })()
-        },
-        get reporterApiKey() {
-            return process.env.REPORTER_API_KEY || (() => {
-                if (config.auth.enableAuth) {
-                    console.warn('REPORTER_API_KEY not configured - reporter authentication will fail')
-                }
-                return ''
-            })()
+            const password = process.env.ADMIN_PASSWORD
+            if (!password && config.auth.enableAuth) {
+                throw new Error('ADMIN_PASSWORD environment variable is required when authentication is enabled')
+            }
+            return password || ''
         }
     }
 }

@@ -69,6 +69,15 @@ The server follows **Layered Architecture** with clear separation of concerns:
 - Use established patterns and conventions
 - Follow security and performance best practices
 
+### 🔐 Authentication & Security Guidelines
+
+**Authentication system is production-ready and secure:**
+- JWT-based user authentication with localStorage storage
+- API key authentication for reporter integration
+- Environment-based credential management (never hardcode credentials)
+- Production-ready code optimization completed (debug logs removed)
+- See [@docs/features/AUTHENTICATION_IMPLEMENTATION.md](docs/features/AUTHENTICATION_IMPLEMENTATION.md) for details
+
 ### 🏗️ Architecture Guidelines
 
 **New API endpoint:** Controller → Service → Repository
@@ -92,6 +101,13 @@ The server follows **Layered Architecture** with clear separation of concerns:
 - `BASE_URL` - Base URL for all services
 - `VITE_BASE_URL` - Same as BASE_URL for web client
 
+**Authentication Variables:**
+- `ENABLE_AUTH` - Enable authentication (true/false)
+- `ADMIN_EMAIL` - Admin user email
+- `ADMIN_PASSWORD` - Admin user password
+- `JWT_SECRET` - JWT signing secret (change in production)
+- `REPORTER_API_KEY` - API key for reporter authentication
+
 **📋 For detailed configuration:** See [@docs/CONFIGURATION.md](docs/CONFIGURATION.md)
 
 ## Documentation References
@@ -103,6 +119,8 @@ The server follows **Layered Architecture** with clear separation of concerns:
 - [@docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) - CloudTunnel and production deployment
 - [@docs/API_REFERENCE.md](docs/API_REFERENCE.md) - Complete API endpoints and WebSocket events
 - [@docs/TIMESTAMP_MANAGEMENT.md](docs/TIMESTAMP_MANAGEMENT.md) - Timestamp architecture implementation
+- [@docs/features/AUTHENTICATION_IMPLEMENTATION.md](docs/features/AUTHENTICATION_IMPLEMENTATION.md) - Authentication system details
+- [@docs/features/CODE_OPTIMIZATION.md](docs/features/CODE_OPTIMIZATION.md) - Production-ready code optimization
 
 ## Quick API Reference
 

@@ -48,30 +48,9 @@ export function createAuthMiddleware(authService: AuthService) {
                 return
             }
 
-            const apiKey = req.headers['x-api-key'] as string
             const authHeader = req.headers.authorization as string
 
-            // Priority 1: API Key authentication (for reporter)
-            if (apiKey) {
-                const isValidApiKey = await authService.verifyApiKey(apiKey)
-
-                if (isValidApiKey) {
-                    req.authType = 'apikey'
-                    req.user = {
-                        email: 'reporter',
-                        role: 'reporter'
-                    }
-                    Logger.debug(`API Key authentication successful for ${req.method} ${req.path}`)
-                    next()
-                    return
-                } else {
-                    Logger.warn(`Invalid API Key provided for ${req.method} ${req.path}`)
-                    ResponseHelper.unauthorized(res, 'Invalid API Key')
-                    return
-                }
-            }
-
-            // Priority 2: JWT authentication (for browser users)
+            // JWT authentication (for browser users)
             if (authHeader) {
                 const tokenResult = await authService.verifyJWT(authHeader)
 
@@ -110,15 +89,6 @@ export function requireJWT() {
     }
 }
 
-export function requireApiKey() {
-    return (req: Request, res: Response, next: NextFunction): void => {
-        if (req.authType !== 'apikey') {
-            ResponseHelper.forbidden(res, 'API Key authentication required for this endpoint')
-            return
-        }
-        next()
-    }
-}
 
 // Middleware for endpoints that require admin role
 export function requireAdmin() {

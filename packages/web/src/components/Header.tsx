@@ -53,7 +53,7 @@ export default function Header({
           if (typeof user === 'function') {
                return user()
           }
-          return user || { email: 'admin@admin.com' }
+          return user || null
      }
 
      return (
@@ -135,10 +135,10 @@ export default function Header({
                                         >
                                              <div className="w-6 h-6 bg-blue-600 rounded-full flex items-center justify-center">
                                                   <span className="text-white text-xs font-medium">
-                                                       {getUserData().email[0].toUpperCase()}
+                                                       {getUserData()?.email?.[0]?.toUpperCase() || 'U'}
                                                   </span>
                                              </div>
-                                             <span className="hidden md:inline">{getUserData().email}</span>
+                                             <span className="hidden md:inline">{getUserData()?.email || 'User'}</span>
                                              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                                                   <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
                                              </svg>
@@ -149,9 +149,9 @@ export default function Header({
                                              <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-md shadow-lg border border-gray-200 dark:border-gray-700 z-50">
                                                   <div className="py-1">
                                                        <div className="px-4 py-2 text-sm text-gray-700 dark:text-gray-300 border-b border-gray-200 dark:border-gray-700">
-                                                            <div className="font-medium">{getUserData().email}</div>
-                                                            {getUserData().role && (
-                                                                 <div className="text-xs text-gray-500 dark:text-gray-400 capitalize">{getUserData().role}</div>
+                                                            <div className="font-medium">{getUserData()?.email || 'User'}</div>
+                                                            {getUserData()?.role && (
+                                                                 <div className="text-xs text-gray-500 dark:text-gray-400 capitalize">{getUserData()?.role}</div>
                                                             )}
                                                        </div>
                                                        <button

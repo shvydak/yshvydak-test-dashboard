@@ -137,11 +137,11 @@ function App() {
             const authData = localStorage.getItem('_auth')
             if (authData) {
               const parsed = JSON.parse(authData)
-              return parsed?.user || parsed?.auth?.user || { email: 'admin@admin.com' }
+              return parsed?.user || parsed?.auth?.user || null
             }
           } catch (error) {
           }
-          return { email: 'admin@admin.com' }
+          return null
         }}
       />
 
@@ -186,7 +186,18 @@ function App() {
             </p>
             <div className="flex items-center space-x-4">
               <span className="text-xs text-gray-500 dark:text-gray-500">
-                Welcome, admin@admin.com
+                Welcome, {(() => {
+                  try {
+                    const authData = localStorage.getItem('_auth')
+                    if (authData) {
+                      const parsed = JSON.parse(authData)
+                      const user = parsed?.user || parsed?.auth?.user
+                      return user?.email || 'User'
+                    }
+                  } catch (error) {
+                  }
+                  return 'User'
+                })()}
               </span>
               <span className="text-xs text-gray-500 dark:text-gray-500">v1.0.0</span>
             </div>

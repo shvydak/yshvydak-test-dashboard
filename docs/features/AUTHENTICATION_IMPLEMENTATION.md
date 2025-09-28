@@ -2,24 +2,24 @@
 
 ## Overview
 
-The YShvydak Test Dashboard implements a robust JWT-based authentication system with API Key support for external reporter integration. This ensures secure access to the dashboard while maintaining full compatibility with existing functionality and deployment scenarios.
+The YShvydak Test Dashboard implements a simplified JWT-based authentication system that protects the web interface while keeping API endpoints open for reporter integration. This provides security for users while maintaining simplicity for test execution.
 
 ## Architecture
 
-### Authentication Strategy: Hybrid Dual-Layer
+### Authentication Strategy: Simplified Single-Layer
 
-The system implements **two parallel authentication mechanisms**:
+The system implements **JWT authentication for web users only**:
 
-1. **JWT Authentication** - For user browser sessions
-2. **API Key Authentication** - For external reporter integration
+1. **JWT Authentication** - For user browser sessions and web interface
+2. **Open API** - Reporter endpoints are publicly accessible in local network
 
-Both mechanisms can access the same API endpoints, providing flexibility without compromising security.
+This approach prioritizes simplicity and ease of configuration while maintaining security for the web dashboard.
 
 ### Technology Stack
 
 - **Backend JWT**: `fast-jwt` - High-performance JWT library for Node.js
 - **Frontend Auth**: Custom localStorage-based authentication (production-ready and optimized)
-- **Storage**: Environment variables for credentials and API keys
+- **Storage**: Environment variables for user credentials
 - **Architecture**: Integrated with existing layered architecture pattern
 
 ## Security Model
@@ -29,16 +29,16 @@ Both mechanisms can access the same API endpoints, providing flexibility without
 1. User visits dashboard → Redirect to login page
 2. User submits credentials → Server validates against .env
 3. Server generates JWT token → Client stores token
-4. Client includes JWT in all API requests → Server validates JWT
+4. Client accesses protected web UI and static files with JWT
 5. WebSocket connection includes JWT via query params
 ```
 
-### Reporter Authentication Flow
+### Reporter Integration Flow
 ```
-1. Reporter starts → Reads REPORTER_API_KEY from environment
-2. Reporter includes API key in request headers
-3. Server validates API key → Grants access to reporter endpoints
-4. Reporter functions normally without user session dependency
+1. Reporter starts → Connects directly to API endpoints
+2. Reporter sends test data → No authentication required
+3. Server accepts all reporter data → Stores in database
+4. Dashboard users view data → Protected by JWT authentication
 ```
 
 ## API Reference
@@ -110,15 +110,13 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 
 All existing API endpoints require authentication:
 
-#### User Requests (JWT required):
+#### Web UI Access (JWT required):
 ```
 Authorization: Bearer <jwt-token>
 ```
 
-#### Reporter Requests (API Key required):
-```
-X-API-Key: <reporter-api-key>
-```
+#### API Endpoints:
+Reporter API endpoints (`/api/tests/*`, `/api/runs/*`) are publicly accessible for local network integration.
 
 ### Public Endpoints
 These endpoints remain publicly accessible:
@@ -138,9 +136,6 @@ ADMIN_PASSWORD=qwe123
 # JWT Configuration
 JWT_SECRET=your-secure-jwt-secret-key
 JWT_EXPIRES_IN=24h
-
-# Reporter API Key
-REPORTER_API_KEY=your-secure-reporter-api-key
 
 # Authentication Control
 ENABLE_AUTH=true
@@ -166,7 +161,6 @@ VITE_BASE_URL=https://api-dashboard.shvydak.com
 ADMIN_EMAIL=your-admin@email.com
 ADMIN_PASSWORD=your-secure-password
 JWT_SECRET=your-production-jwt-secret
-REPORTER_API_KEY=your-production-reporter-key
 ENABLE_AUTH=true
 ```
 
@@ -351,13 +345,12 @@ Users must be authenticated to access:
 
 The external reporter at `/Users/y.shvydak/QA/probuild-qa/e2e/testUtils/yshvydakReporter.ts` requires minimal changes:
 
-**Add API Key header to all requests:**
+**Simple API requests:**
 ```typescript
 const response = await fetch(`${this.apiBaseUrl}/api/tests`, {
   method: 'POST',
   headers: {
-    'Content-Type': 'application/json',
-    'X-API-Key': process.env.REPORTER_API_KEY
+    'Content-Type': 'application/json'
   },
   body: JSON.stringify(result)
 })
@@ -367,7 +360,6 @@ const response = await fetch(`${this.apiBaseUrl}/api/tests`, {
 
 In your test project's `.env`:
 ```bash
-REPORTER_API_KEY=your-reporter-api-key
 DASHBOARD_API_URL=https://api-dashboard.shvydak.com
 ```
 
@@ -399,7 +391,6 @@ DASHBOARD_API_URL=https://api-dashboard.shvydak.com
    ADMIN_EMAIL=your-production-admin@email.com
    ADMIN_PASSWORD=your-secure-password
    JWT_SECRET=your-long-secure-jwt-secret-key
-   REPORTER_API_KEY=your-secure-reporter-api-key
    ```
 
 2. **Deploy to production:**
@@ -422,11 +413,11 @@ DASHBOARD_API_URL=https://api-dashboard.shvydak.com
 - **Storage**: Secure HTTP-only cookies in production
 - **Transmission**: HTTPS only in production
 
-### API Key Security
-- **Generation**: Use cryptographically secure random strings
-- **Rotation**: Regularly rotate API keys
-- **Environment**: Store in environment variables, never in code
-- **Logging**: Never log API keys or JWT tokens
+### Network Security
+- **Local Network**: Dashboard designed for local network deployment
+- **HTTPS**: Use HTTPS in production environments
+- **Environment**: Store secrets in environment variables, never in code
+- **Logging**: Never log JWT tokens or sensitive data
 
 ### Password Security
 - **Complexity**: Enforce strong passwords in production
@@ -445,7 +436,7 @@ DASHBOARD_API_URL=https://api-dashboard.shvydak.com
 #### Common Issues:
 1. **WebSocket connection fails** - Check JWT token in query params
 2. **Static files return 401** - Ensure auth headers in requests
-3. **Reporter fails** - Verify REPORTER_API_KEY environment variable
+3. **Reporter connection fails** - Verify DASHBOARD_API_URL environment variable
 4. **Login redirects infinitely** - Check JWT secret consistency
 
 #### Debug Logging:
@@ -457,7 +448,7 @@ DEBUG=auth:* npm run dev
 ### Production Monitoring
 - Monitor authentication failure rates
 - Track JWT token expiration patterns
-- Monitor API key usage for reporter
+- Monitor reporter API connection health
 - Set up alerts for authentication errors
 
 ## Migration Guide
@@ -471,7 +462,7 @@ DEBUG=auth:* npm run dev
 
 2. **Add authentication environment variables**
 3. **Update frontend with AuthProvider**
-4. **Update reporter with API key**
+4. **Test authentication flows**
 5. **Test authentication flows**
 6. **Deploy gradually with rollback plan**
 

@@ -12,7 +12,7 @@ declare global {
                 email: string
                 role: string
             }
-            authType?: 'jwt' | 'apikey' | 'none'
+            authType?: 'jwt' | 'none'
         }
     }
 }

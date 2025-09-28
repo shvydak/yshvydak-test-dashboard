@@ -73,7 +73,7 @@ The server follows **Layered Architecture** with clear separation of concerns:
 
 **Authentication system is production-ready and secure:**
 - JWT-based user authentication with localStorage storage
-- API key authentication for reporter integration
+- Simplified local network integration for reporters
 - Environment-based credential management (never hardcode credentials)
 - Production-ready code optimization completed (debug logs removed)
 - See [@docs/features/AUTHENTICATION_IMPLEMENTATION.md](docs/features/AUTHENTICATION_IMPLEMENTATION.md) for details
@@ -106,7 +106,6 @@ The server follows **Layered Architecture** with clear separation of concerns:
 - `ADMIN_EMAIL` - Admin user email
 - `ADMIN_PASSWORD` - Admin user password
 - `JWT_SECRET` - JWT signing secret (change in production)
-- `REPORTER_API_KEY` - API key for reporter authentication
 
 **📋 For detailed configuration:** See [@docs/CONFIGURATION.md](docs/CONFIGURATION.md)
 

@@ -2,8 +2,8 @@ import { Response } from 'express'
 import { ApiResponse } from '../types/api.types'
 
 export class ResponseHelper {
-    static success<T>(res: Response, data: T, message?: string, count?: number): void {
-        res.status(200).json({
+    static success<T>(res: Response, data: T, message?: string, count?: number): Response {
+        return res.status(200).json({
             success: true,
             data,
             message,
@@ -12,8 +12,8 @@ export class ResponseHelper {
         })
     }
 
-    static error(res: Response, error: string, message?: string, status: number = 400): void {
-        res.status(status).json({
+    static error(res: Response, error: string, message?: string, status: number = 400): Response {
+        return res.status(status).json({
             success: false,
             error,
             message,
@@ -21,16 +21,16 @@ export class ResponseHelper {
         })
     }
 
-    static notFound(res: Response, resource: string): void {
-        res.status(404).json({
+    static notFound(res: Response, resource: string): Response {
+        return res.status(404).json({
             success: false,
             error: `${resource} not found`,
             timestamp: new Date().toISOString()
         })
     }
 
-    static badRequest(res: Response, message: string): void {
-        res.status(400).json({
+    static badRequest(res: Response, message: string): Response {
+        return res.status(400).json({
             success: false,
             error: 'Bad request',
             message,
@@ -38,8 +38,8 @@ export class ResponseHelper {
         })
     }
 
-    static unauthorized(res: Response, message?: string): void {
-        res.status(401).json({
+    static unauthorized(res: Response, message?: string): Response {
+        return res.status(401).json({
             success: false,
             error: 'Unauthorized',
             message: message || 'Authentication required',
@@ -47,8 +47,8 @@ export class ResponseHelper {
         })
     }
 
-    static forbidden(res: Response, message?: string): void {
-        res.status(403).json({
+    static forbidden(res: Response, message?: string): Response {
+        return res.status(403).json({
             success: false,
             error: 'Forbidden',
             message: message || 'Access denied',
@@ -56,8 +56,8 @@ export class ResponseHelper {
         })
     }
 
-    static serverError(res: Response, message?: string): void {
-        res.status(500).json({
+    static serverError(res: Response, message?: string): Response {
+        return res.status(500).json({
             success: false,
             error: 'Internal server error',
             message,

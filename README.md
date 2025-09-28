@@ -54,7 +54,7 @@ A comprehensive testing dashboard that transforms your Playwright test experienc
 ### 🔐 **Secure Authentication**
 
 -   JWT-based user authentication with secure login
--   API key authentication for reporter integration
+-   Simplified local network integration for reporters
 -   Protected access to test results and attachments
 -   Production-ready security implementation
 
@@ -128,7 +128,6 @@ ENABLE_AUTH=true
 ADMIN_EMAIL=admin@admin.com
 ADMIN_PASSWORD=qwe123
 JWT_SECRET=dev-jwt-secret-change-in-production-12345
-REPORTER_API_KEY=dev-reporter-key-12345
 ```
 
 **Note:** All other variables are automatically derived from these core settings. For production deployment, use strong passwords and secure JWT secrets. See [Authentication Documentation](docs/features/AUTHENTICATION_IMPLEMENTATION.md) for detailed security setup.
@@ -284,7 +283,6 @@ ENABLE_AUTH=true                             # Enable authentication
 ADMIN_EMAIL=admin@admin.com                  # Admin user email
 ADMIN_PASSWORD=qwe123                        # Admin user password
 JWT_SECRET=dev-jwt-secret-change-in-production-12345    # JWT signing key
-REPORTER_API_KEY=dev-reporter-key-12345      # API key for reporter
 
 # All other variables are derived automatically:
 # - DASHBOARD_API_URL = BASE_URL (for API integration)

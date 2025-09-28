@@ -43,7 +43,6 @@ const [formData, setFormData] = useState<LoginFormData>({
 ADMIN_EMAIL=admin@admin.com
 ADMIN_PASSWORD=qwe123
 JWT_SECRET=dev-jwt-secret-change-in-production-12345
-REPORTER_API_KEY=dev-reporter-key-12345
 ```
 
 Frontend code retrieves credentials through authenticated API calls, never storing them in client-side code.
@@ -298,7 +297,7 @@ When adding new code, follow these optimization principles:
 4. **Remove unused code**: Regular cleanup of dead components
 
 ### Security Updates
-- **Rotate credentials**: Regularly update JWT secrets and API keys
+- **Rotate credentials**: Regularly update JWT secrets
 - **Monitor authentication**: Watch for authentication failures in logs
 - **Update dependencies**: Keep security-related packages current
 

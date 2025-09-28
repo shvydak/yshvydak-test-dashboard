@@ -13,9 +13,6 @@ export function createApp() {
     // Create service container
     const serviceContainer = createServiceContainer()
 
-    // Create authentication middleware
-    const authMiddleware = createAuthMiddleware(serviceContainer.authService)
-
     // Basic middleware
     app.use(corsMiddleware)
     app.use(express.json({ limit: config.api.requestLimit }))
@@ -27,7 +24,8 @@ export function createApp() {
     // API routes
     app.use('/api', createApiRoutes(serviceContainer))
 
-    // Protected static files (test reports, attachments) - require authentication
+    // Protected static files (test reports, attachments) - require JWT authentication
+    const authMiddleware = createAuthMiddleware(serviceContainer.authService)
     app.use('/reports', authMiddleware, express.static(path.join(config.storage.outputDir, 'reports')))
     app.use('/attachments', authMiddleware, express.static(path.join(config.storage.outputDir, 'attachments')))
 

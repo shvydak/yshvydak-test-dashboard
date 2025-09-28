@@ -97,6 +97,24 @@ export const authPut = (url: string, data?: any, options: RequestInit = {}) =>
 export const authDelete = (url: string, options: RequestInit = {}) =>
   authFetch(url, { ...options, method: 'DELETE' })
 
+// Download protected file and return blob URL
+export async function downloadProtectedFile(url: string): Promise<string> {
+  const response = await authFetch(url)
+
+  if (!response.ok) {
+    throw new Error(`Failed to download file: ${response.status}`)
+  }
+
+  const blob = await response.blob()
+  return URL.createObjectURL(blob)
+}
+
+// Create blob URL for protected static file
+export async function createProtectedFileURL(relativePath: string, baseUrl: string): Promise<string> {
+  const fullUrl = `${baseUrl}/${relativePath}`
+  return downloadProtectedFile(fullUrl)
+}
+
 // Hook-compatible versions for React components
 export function useAuthFetch() {
   return {
@@ -106,6 +124,8 @@ export function useAuthFetch() {
     authPut,
     authDelete,
     getAuthToken,
-    createAuthHeaders
+    createAuthHeaders,
+    downloadProtectedFile,
+    createProtectedFileURL
   }
 }

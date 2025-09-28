@@ -2,6 +2,7 @@ import {useState, useEffect} from 'react'
 import {TestResult} from '@yshvydak/core'
 import {formatErrorLines} from '../utils/errorFormatter'
 import {config} from '../config/environment.config'
+import {authFetch, createProtectedFileURL} from '../utils/authFetch'
 
 interface Attachment {
      id: string
@@ -10,6 +11,10 @@ interface Attachment {
      filePath: string
      fileSize: number
      url: string
+}
+
+interface AttachmentWithBlobURL extends Attachment {
+     blobURL?: string
 }
 
 interface TestDetailModalProps {
@@ -23,7 +28,7 @@ export default function TestDetailModal({
      isOpen,
      onClose,
 }: TestDetailModalProps) {
-     const [attachments, setAttachments] = useState<Attachment[]>([])
+     const [attachments, setAttachments] = useState<AttachmentWithBlobURL[]>([])
      const [loading, setLoading] = useState(false)
      const [error, setError] = useState<string | null>(null)
      const [activeTab, setActiveTab] = useState<
@@ -34,18 +39,58 @@ export default function TestDetailModal({
           if (isOpen && test) {
                fetchAttachments(test.id)
           }
+
+          // Cleanup blob URLs when modal closes
+          return () => {
+               attachments.forEach(attachment => {
+                    if (attachment.blobURL) {
+                         URL.revokeObjectURL(attachment.blobURL)
+                    }
+               })
+          }
      }, [isOpen, test])
+
+     // Cleanup blob URLs when component unmounts
+     useEffect(() => {
+          return () => {
+               attachments.forEach(attachment => {
+                    if (attachment.blobURL) {
+                         URL.revokeObjectURL(attachment.blobURL)
+                    }
+               })
+          }
+     }, [attachments])
 
      const fetchAttachments = async (testId: string) => {
           setLoading(true)
           setError(null)
           try {
-               const response = await fetch(
+               const response = await authFetch(
                     `${config.api.serverUrl}/api/tests/${testId}/attachments`,
                )
                if (response.ok) {
                     const data = await response.json()
-                    setAttachments(data.data || [])
+                    const attachmentsData: Attachment[] = data.data || []
+
+                    // Create blob URLs for preview attachments (screenshots, videos)
+                    const attachmentsWithBlobs = await Promise.all(
+                         attachmentsData.map(async (attachment) => {
+                              let blobURL: string | undefined
+
+                              // Create blob URLs for files that need preview
+                              if (attachment.type === 'screenshot' || attachment.type === 'video') {
+                                   try {
+                                        blobURL = await createProtectedFileURL(attachment.url, config.api.serverUrl)
+                                   } catch (error) {
+                                        console.error(`Failed to create blob URL for ${attachment.type}:`, error)
+                                   }
+                              }
+
+                              return { ...attachment, blobURL }
+                         })
+                    )
+
+                    setAttachments(attachmentsWithBlobs)
                } else {
                     setError('Failed to fetch attachments')
                }
@@ -81,23 +126,37 @@ export default function TestDetailModal({
           )
      }
 
-     const downloadAttachment = (attachment: Attachment) => {
-          const url = `${config.api.serverUrl}/${attachment.url}`
-          const link = document.createElement('a')
-          link.href = url
-          link.download = attachment.url.split('/').pop() || 'attachment'
-          document.body.appendChild(link)
-          link.click()
-          document.body.removeChild(link)
+     const downloadAttachment = async (attachment: AttachmentWithBlobURL) => {
+          try {
+               const blobURL = await createProtectedFileURL(attachment.url, config.api.serverUrl)
+               const link = document.createElement('a')
+               link.href = blobURL
+               link.download = attachment.url.split('/').pop() || 'attachment'
+               document.body.appendChild(link)
+               link.click()
+               document.body.removeChild(link)
+               // Clean up the blob URL after download
+               URL.revokeObjectURL(blobURL)
+          } catch (error) {
+               console.error('Failed to download attachment:', error)
+               setError('Failed to download attachment')
+          }
      }
 
-     const openTraceViewer = (attachment: Attachment) => {
-          const url = `${config.api.serverUrl}/${attachment.url}`
-          // For trace files, open in Playwright Trace Viewer
-          window.open(
-               `https://trace.playwright.dev/?trace=${encodeURIComponent(url)}`,
-               '_blank',
-          )
+     const openTraceViewer = async (attachment: AttachmentWithBlobURL) => {
+          try {
+               const blobURL = await createProtectedFileURL(attachment.url, config.api.serverUrl)
+               // For trace files, open in Playwright Trace Viewer
+               window.open(
+                    `https://trace.playwright.dev/?trace=${encodeURIComponent(blobURL)}`,
+                    '_blank',
+               )
+               // Note: We don't revoke the blob URL immediately since trace viewer needs it
+               // It will be cleaned up when the browser session ends
+          } catch (error) {
+               console.error('Failed to open trace viewer:', error)
+               setError('Failed to open trace viewer')
+          }
      }
 
      const getStatusColor = (status: string) => {
@@ -422,15 +481,17 @@ export default function TestDetailModal({
                                                             'screenshot' && (
                                                             <div className="mt-4">
                                                                  <img
-                                                                      src={`${config.api.serverUrl}/${attachment.url}`}
+                                                                      src={attachment.blobURL || `${config.api.serverUrl}/${attachment.url}`}
                                                                       alt="Test Screenshot"
                                                                       className="max-w-full h-auto rounded border border-gray-200 dark:border-gray-700 cursor-pointer hover:opacity-90 transition-opacity"
-                                                                      onClick={() =>
-                                                                           window.open(
-                                                                                `${config.api.serverUrl}/${attachment.url}`,
-                                                                                '_blank',
-                                                                           )
-                                                                      }
+                                                                      onClick={async () => {
+                                                                           try {
+                                                                                const blobURL = attachment.blobURL || await createProtectedFileURL(attachment.url, config.api.serverUrl)
+                                                                                window.open(blobURL, '_blank')
+                                                                           } catch (error) {
+                                                                                console.error('Failed to open screenshot:', error)
+                                                                           }
+                                                                      }}
                                                                  />
                                                             </div>
                                                        )}
@@ -440,11 +501,7 @@ export default function TestDetailModal({
                                                                  <video
                                                                       controls
                                                                       className="max-w-full h-auto rounded border border-gray-200 dark:border-gray-700"
-                                                                      src={`${config.api.serverUrl}/${attachment.url}`}
-                                                                      poster={attachment.url.replace(
-                                                                           '.webm',
-                                                                           '-poster.png',
-                                                                      )}>
+                                                                      src={attachment.blobURL || `${config.api.serverUrl}/${attachment.url}`}>
                                                                       Your
                                                                       browser
                                                                       does not

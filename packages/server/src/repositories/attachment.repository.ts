@@ -28,13 +28,24 @@ export class AttachmentRepository extends BaseRepository {
 
     async getAttachmentsWithUrls(testResultId: string): Promise<AttachmentData[]> {
         const attachments = await this.getAttachmentsByTestResult(testResultId)
-        
-        return attachments.map(attachment => ({
-            ...attachment,
-            url: attachment.filePath 
-                ? FileUtil.convertToRelativeUrl(attachment.filePath)
-                : attachment.url
-        }))
+
+        return attachments.map(attachment => {
+            if (!attachment.url) {
+                return {
+                    ...attachment,
+                    url: attachment.filePath ? FileUtil.convertToRelativeUrl(attachment.filePath) : ''
+                }
+            }
+
+            if (attachment.url.startsWith('/attachments/')) {
+                return attachment
+            }
+
+            return {
+                ...attachment,
+                url: attachment.filePath ? FileUtil.convertToRelativeUrl(attachment.filePath) : attachment.url
+            }
+        })
     }
 
     async deleteAttachmentsByTestResult(testResultId: string): Promise<void> {

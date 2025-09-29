@@ -111,7 +111,9 @@ export async function downloadProtectedFile(url: string): Promise<string> {
 
 // Create blob URL for protected static file
 export async function createProtectedFileURL(relativePath: string, baseUrl: string): Promise<string> {
-  const fullUrl = `${baseUrl}/${relativePath}`
+  const cleanPath = relativePath.startsWith('/') ? relativePath : `/${relativePath}`
+  const cleanBaseUrl = baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl
+  const fullUrl = `${cleanBaseUrl}${cleanPath}`
   return downloadProtectedFile(fullUrl)
 }
 

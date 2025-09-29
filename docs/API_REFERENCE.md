@@ -197,6 +197,8 @@ Get execution history for a specific test.
 
 Get attachments (screenshots, videos, traces) for a test.
 
+**Important**: Attachments are automatically copied to permanent storage (`{OUTPUT_DIR}/attachments/{testResultId}/`) when tests are reported. URLs point to permanent storage locations that survive Playwright's cleanup cycles.
+
 **Response:**
 ```json
 {
@@ -204,14 +206,22 @@ Get attachments (screenshots, videos, traces) for a test.
   "data": [
     {
       "id": "att_123",
-      "name": "screenshot.png",
-      "type": "image/png",
-      "path": "/attachments/screenshot.png",
-      "size": 45678
+      "testResultId": "af679466-96f7-4a00-ad72-c02adc779fd8",
+      "type": "screenshot",
+      "fileName": "screenshot-1759177234280-abc123.png",
+      "filePath": "/absolute/path/to/attachments/af679466.../screenshot-1759177234280-abc123.png",
+      "fileSize": 45678,
+      "mimeType": "image/png",
+      "url": "/attachments/af679466-96f7-4a00-ad72-c02adc779fd8/screenshot-1759177234280-abc123.png"
     }
   ]
 }
 ```
+
+**URL Format**: `/attachments/{testResultId}/{fileName}`
+- Files are served from permanent storage with JWT authentication
+- Each test result has isolated directory
+- Files use unique names with timestamp + random suffix
 
 ### GET /api/tests/traces/:attachmentId
 
@@ -521,3 +531,4 @@ No rate limiting is currently implemented. All endpoints accept unlimited reques
 - [Development Guidelines](./DEVELOPMENT.md)
 - [Configuration Details](./CONFIGURATION.md)
 - [Deployment Guide](./DEPLOYMENT.md)
+- [Attachment Management System](./features/PER_RUN_ATTACHMENTS.md)

@@ -27,7 +27,7 @@ export interface IWebSocketService {
 
 export interface IAttachmentService {
     mapContentTypeToDbType(contentType: string, fileName: string): string
-    processAttachments(attachments: any[]): Promise<AttachmentData[]>
+    processAttachments(attachments: any[], testResultId: string): Promise<AttachmentData[]>
     getAttachmentsByTestResult(testResultId: string): Promise<AttachmentData[]>
     getAttachmentById(attachmentId: string): Promise<AttachmentData | null>
 }

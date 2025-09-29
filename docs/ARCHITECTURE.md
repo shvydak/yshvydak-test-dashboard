@@ -48,14 +48,18 @@ The server follows a clean **Layered Architecture** with clear separation of con
 - `TestService` - Test discovery, execution, and rerun logic
 - `PlaywrightService` - Playwright integration and process spawning, automated test discovery via `npx playwright test --list`
 - `WebSocketService` - Real-time event broadcasting
-- `AttachmentService` - File handling and processing
+- `AttachmentService` - Permanent attachment storage with automatic file copying from Playwright's temporary directory
 - `ActiveProcessesTracker` - Real-time tracking of running test processes in memory
 
 ### Repository Layer
 
 - `TestRepository` - Test result CRUD operations
 - `RunRepository` - Test run lifecycle management
-- `AttachmentRepository` - File metadata persistence
+- `AttachmentRepository` - Attachment metadata persistence and URL management
+
+### Storage Layer
+
+- `AttachmentManager` - File operations for permanent attachment storage (copy, delete, generate URLs)
 
 ### Dependency Injection
 
@@ -155,6 +159,62 @@ The dashboard ensures **accurate test count display** throughout the testing lif
 - **Performance Optimized**: Efficient SQL queries handle large test suites and execution history
 - **Reliable Updates**: Real-time test status updates maintain accuracy during execution
 
+## Attachment Storage Architecture
+
+The dashboard implements a **permanent attachment storage system** that solves the critical problem of Playwright cleaning its temporary `test-results/` directory between test executions.
+
+### The Problem
+
+Playwright stores test artifacts (videos, screenshots, traces) in a temporary `test-results/` directory and automatically cleans this directory when running new tests. This causes a critical bug: after running Test A then Test B, Test A's attachments become inaccessible (404 errors, failed downloads).
+
+### The Solution
+
+The dashboard implements **automatic file copying to permanent storage**:
+
+1. **Interception**: When reporter sends attachment paths, AttachmentService copies files to permanent storage
+2. **Isolated Storage**: Each test result gets unique directory: `{OUTPUT_DIR}/attachments/{testResultId}/`
+3. **Unique Naming**: Files get timestamp + random suffix to prevent collisions
+4. **Clean Replacement**: Re-running a test deletes old physical files before saving new ones
+5. **Database Tracking**: Store permanent file paths and URLs in database
+
+### Architecture Flow
+
+```
+Reporter → AttachmentService → AttachmentManager → Permanent Storage
+                             ↓
+                       AttachmentRepository → Database
+```
+
+### Key Components
+
+- **AttachmentService**: Orchestrates file copying workflow, coordinates Manager and Repository
+- **AttachmentManager**: Handles file operations (copy, delete, generate URLs)
+- **AttachmentRepository**: Database operations for attachment metadata
+- **Express Static Serving**: Serves files from `/attachments/` with JWT authentication
+
+### Storage Structure
+
+```
+{OUTPUT_DIR}/attachments/
+├── {testResultId-1}/
+│   ├── video-{timestamp}-{random}.webm
+│   ├── screenshot-{timestamp}-{random}.png
+│   └── trace-{timestamp}-{random}.zip
+├── {testResultId-2}/
+│   └── video-{timestamp}-{random}.webm
+└── {testResultId-3}/
+    └── trace-{timestamp}-{random}.zip
+```
+
+### Key Benefits
+
+- **Persistent Storage**: Attachments survive Playwright's cleanup cycles
+- **Test Isolation**: Each test result has independent file storage
+- **Clean Reruns**: Old attachments automatically replaced on test rerun
+- **Backward Compatible**: Legacy paths supported alongside new permanent storage
+
+**For detailed documentation**: See [Attachment Management System](./features/PER_RUN_ATTACHMENTS.md)
+
 ## Technology Stack
 
 ### Frontend
@@ -192,3 +252,4 @@ The dashboard ensures **accurate test count display** throughout the testing lif
 - [API Reference](./API_REFERENCE.md)
 - [Timestamp Management](./TIMESTAMP_MANAGEMENT.md)
 - [Test Display Consistency](./TEST_DISPLAY.md)
+- [Attachment Management System](./features/PER_RUN_ATTACHMENTS.md)

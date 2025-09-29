@@ -87,6 +87,16 @@ The server follows **Layered Architecture** with clear separation of concerns:
 **Services:** Business logic and orchestrate Repository calls
 **Repositories:** Database operations only
 
+### 📎 Attachment Management Guidelines
+
+**Permanent attachment storage implemented to solve Playwright's temporary file cleanup:**
+- **ALWAYS use AttachmentService** for attachment operations, never manipulate files directly
+- Attachments are automatically copied from Playwright's `test-results/` to permanent `attachments/` storage
+- Each test result has isolated directory: `{OUTPUT_DIR}/attachments/{testResultId}/`
+- Re-running tests automatically deletes old physical files before saving new ones
+- Files served via `/attachments/` route with JWT authentication
+- See [@docs/features/PER_RUN_ATTACHMENTS.md](docs/features/PER_RUN_ATTACHMENTS.md) for complete documentation
+
 ## Current Active Reporter
 
 **External Reporter Path:** `/Users/y.shvydak/QA/probuild-qa/e2e/testUtils/yshvydakReporter.ts`
@@ -121,6 +131,7 @@ The server follows **Layered Architecture** with clear separation of concerns:
 - [@docs/TESTING_METHODOLOGY.md](docs/TESTING_METHODOLOGY.md) - Adaptive testing and debugging approach
 - [@docs/features/AUTHENTICATION_IMPLEMENTATION.md](docs/features/AUTHENTICATION_IMPLEMENTATION.md) - Authentication system details
 - [@docs/features/CODE_OPTIMIZATION.md](docs/features/CODE_OPTIMIZATION.md) - Production-ready code optimization
+- [@docs/features/PER_RUN_ATTACHMENTS.md](docs/features/PER_RUN_ATTACHMENTS.md) - Permanent attachment storage system
 
 ## Quick API Reference
 

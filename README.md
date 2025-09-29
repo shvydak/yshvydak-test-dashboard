@@ -37,7 +37,7 @@ A comprehensive testing dashboard that transforms your Playwright test experienc
 -   Live test execution monitoring
 -   Interactive test results with filtering
 -   Test history and trend analysis
--   Attachment viewing (screenshots, videos, traces)
+-   Attachment viewing (screenshots, videos, traces) with persistent storage
 
 ### ⚡ **Dynamic Reporter Integration**
 
@@ -63,6 +63,7 @@ A comprehensive testing dashboard that transforms your Playwright test experienc
 -   **Process tracking**: Real-time monitoring of active test processes
 -   **Page-reload safe**: UI state correctly restores after browser refresh
 -   **Auto-recovery**: Automatic cleanup of stuck/orphaned processes
+-   **Persistent attachments**: Test artifacts stored permanently, surviving Playwright's cleanup cycles
 
 ## 🚀 Quick Start
 

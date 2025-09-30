@@ -1,8 +1,8 @@
 import {useState, useEffect} from 'react'
 import {TestResult} from '@yshvydak/core'
 import {formatErrorLines} from '../utils/errorFormatter'
-import {config} from '../config/environment.config'
-import {authFetch, createProtectedFileURL, getAuthToken} from '../utils/authFetch'
+import {config} from '@config/environment.config'
+import {authFetch, createProtectedFileURL, getAuthToken} from '@features/authentication/utils/authFetch'
 
 interface Attachment {
      id: string

@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { config } from '../config/environment.config'
+import { config } from '@config/environment.config'
 
 interface LoginFormData {
   email: string

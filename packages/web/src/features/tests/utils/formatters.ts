@@ -51,7 +51,7 @@ export function formatLastRun(test: any): string {
 			hourCycle: 'h23',
 			second: '2-digit',
 		})
-		return `${formattedTime}, ${formattedDate}`
+		return `${formattedTime} ${formattedDate}`
 	} catch (error) {
 		return 'N/A'
 	}

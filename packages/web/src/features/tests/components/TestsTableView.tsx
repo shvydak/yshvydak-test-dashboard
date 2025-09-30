@@ -90,7 +90,7 @@ export function TestsTableView({
 								<td className="py-4 px-6 text-sm text-gray-600 dark:text-gray-400">
 									{formatDuration(test.duration)}
 								</td>
-								<td className="py-4 px-6 text-sm text-gray-600 dark:text-gray-400">
+								<td className="py-4 px-6 text-sm text-gray-600 dark:text-gray-400 whitespace-nowrap">
 									{formatLastRun(test)}
 								</td>
 								<td className="py-4 px-6">

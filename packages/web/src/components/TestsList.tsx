@@ -475,9 +475,9 @@ export default function TestsList({
                         <div key={group.filePath} className="card">
                             {/* Group Header */}
                             <div
-                                className="px-6 py-4 border-b border-gray-200 dark:border-gray-700 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors"
+                                className="py-4 border-b border-gray-200 dark:border-gray-700 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors"
                                 onClick={() => toggleGroup(group.filePath)}>
-                                <div className="flex items-center justify-between">
+                                <div className="flex items-center justify-between px-6 min-h-[32px]">
                                     <div className="flex items-center space-x-3">
                                         <span className="text-gray-400">
                                             {expandedGroups.has(group.filePath)
@@ -488,9 +488,37 @@ export default function TestsList({
                                             {group.filePath}
                                         </span>
                                     </div>
-                                    <div className="flex items-center space-x-4 text-sm">
+                                    <div
+                                        className="flex items-center justify-end space-x-4 text-sm"
+                                        style={{width: '28rem'}}>
+                                        <div className="flex items-center space-x-2">
+                                            <span className="text-gray-600 dark:text-gray-400">
+                                                {group.total} test
+                                                {group.total !== 1 ? 's' : ''}
+                                            </span>
+                                            {group.passed > 0 && (
+                                                <span className="text-success-600 dark:text-success-400">
+                                                    ✅ {group.passed}
+                                                </span>
+                                            )}
+                                            {group.failed > 0 && (
+                                                <span className="text-danger-600 dark:text-danger-400">
+                                                    ❌ {group.failed}
+                                                </span>
+                                            )}
+                                            {group.skipped > 0 && (
+                                                <span className="text-warning-600 dark:text-warning-400">
+                                                    ⏭️ {group.skipped}
+                                                </span>
+                                            )}
+                                            {group.pending > 0 && (
+                                                <span className="text-blue-600 dark:text-blue-400">
+                                                    ⏸️ {group.pending}
+                                                </span>
+                                            )}
+                                        </div>
                                         <button
-                                            className={`px-3 py-1 text-xs rounded transition-colors ${
+                                            className={`px-3 py-1 text-xs rounded transition-colors h-7 flex items-center ${
                                                 runningGroups.has(
                                                     group.filePath,
                                                 ) || isAnyTestRunning
@@ -498,7 +526,7 @@ export default function TestsList({
                                                     : 'bg-primary-600 text-white hover:bg-primary-700'
                                             }`}
                                             onClick={(e) => {
-                                                e.stopPropagation() // Prevent group toggle
+                                                e.stopPropagation()
                                                 if (!isAnyTestRunning) {
                                                     runTestsGroup(
                                                         group.filePath,
@@ -519,30 +547,6 @@ export default function TestsList({
                                                 <>▶️ Run Tests Group</>
                                             )}
                                         </button>
-                                        <span className="text-gray-600 dark:text-gray-400">
-                                            {group.total} test
-                                            {group.total !== 1 ? 's' : ''}
-                                        </span>
-                                        {group.passed > 0 && (
-                                            <span className="text-success-600 dark:text-success-400">
-                                                ✅ {group.passed}
-                                            </span>
-                                        )}
-                                        {group.failed > 0 && (
-                                            <span className="text-danger-600 dark:text-danger-400">
-                                                ❌ {group.failed}
-                                            </span>
-                                        )}
-                                        {group.skipped > 0 && (
-                                            <span className="text-warning-600 dark:text-warning-400">
-                                                ⏭️ {group.skipped}
-                                            </span>
-                                        )}
-                                        {group.pending > 0 && (
-                                            <span className="text-blue-600 dark:text-blue-400">
-                                                ⏸️ {group.pending}
-                                            </span>
-                                        )}
                                     </div>
                                 </div>
                             </div>
@@ -553,19 +557,19 @@ export default function TestsList({
                                     <table className="w-full">
                                         <thead>
                                             <tr className="border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
-                                                <th className="text-left py-3 px-6 text-xs font-medium text-gray-600 dark:text-gray-400">
+                                                <th className="text-left py-3 px-6 text-xs font-medium text-gray-600 dark:text-gray-400 w-32">
                                                     Status
                                                 </th>
                                                 <th className="text-left py-3 px-6 text-xs font-medium text-gray-600 dark:text-gray-400">
                                                     Test Name
                                                 </th>
-                                                <th className="text-left py-3 px-6 text-xs font-medium text-gray-600 dark:text-gray-400">
+                                                <th className="text-left py-3 px-6 text-xs font-medium text-gray-600 dark:text-gray-400 w-24">
                                                     Duration
                                                 </th>
-                                                <th className="text-left py-3 px-6 text-xs font-medium text-gray-600 dark:text-gray-400">
+                                                <th className="text-left py-3 px-6 text-xs font-medium text-gray-600 dark:text-gray-400 w-48">
                                                     Last Run
                                                 </th>
-                                                <th className="text-left py-3 px-6 text-xs font-medium text-gray-600 dark:text-gray-400">
+                                                <th className="text-left py-3 px-6 text-xs font-medium text-gray-600 dark:text-gray-400 w-40">
                                                     Actions
                                                 </th>
                                             </tr>
@@ -583,7 +587,7 @@ export default function TestsList({
                                                     onClick={() =>
                                                         openTestDetail(test)
                                                     }>
-                                                    <td className="py-3 px-6">
+                                                    <td className="py-3 px-6 w-32">
                                                         <span
                                                             className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${getStatusColor(
                                                                 test.status,
@@ -608,15 +612,15 @@ export default function TestsList({
                                                             </div>
                                                         )}
                                                     </td>
-                                                    <td className="py-3 px-6 text-sm text-gray-600 dark:text-gray-400">
+                                                    <td className="py-3 px-6 text-sm text-gray-600 dark:text-gray-400 w-24">
                                                         {formatDuration(
                                                             test.duration,
                                                         )}
                                                     </td>
-                                                    <td className="py-3 px-6 text-sm text-gray-600 dark:text-gray-400">
+                                                    <td className="py-3 px-6 text-sm text-gray-600 dark:text-gray-400 w-48">
                                                         {formatLastRun(test)}
                                                     </td>
-                                                    <td className="py-3 px-6">
+                                                    <td className="py-3 px-6 w-40">
                                                         <button
                                                             onClick={(e) => {
                                                                 e.stopPropagation()

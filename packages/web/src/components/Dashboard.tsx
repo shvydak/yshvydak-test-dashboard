@@ -95,9 +95,12 @@ export default function Dashboard() {
 
         setClearingData(true)
         try {
-            const response = await authFetch(`${config.api.baseUrl}/tests/all`, {
-                method: 'DELETE',
-            })
+            const response = await authFetch(
+                `${config.api.baseUrl}/tests/all`,
+                {
+                    method: 'DELETE',
+                },
+            )
 
             if (!response.ok) {
                 throw new Error('Failed to clear data')
@@ -234,7 +237,7 @@ export default function Dashboard() {
                 {/* Quick Actions */}
                 <div className="card">
                     <div className="card-header">
-                        <h3 className="card-title">Quick Actions</h3>
+                        <h3 className="card-title">Debug Actions...</h3>
                         <p className="card-description">
                             Common tasks and operations
                         </p>

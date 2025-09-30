@@ -20,6 +20,9 @@
         "baseUrl": ".",
         "paths": {
             "@/*": ["./src/*"],
+            "@features/*": ["./src/features/*"],
+            "@shared/*": ["./src/shared/*"],
+            "@config/*": ["./src/config/*"],
             "@yshvydak/core": ["../core/src"]
         },
         "types": ["vite/client"]

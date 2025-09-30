@@ -15,6 +15,9 @@ export default defineConfig({
     resolve: {
         alias: {
             '@': path.resolve(__dirname, './src'),
+            '@features': path.resolve(__dirname, './src/features'),
+            '@shared': path.resolve(__dirname, './src/shared'),
+            '@config': path.resolve(__dirname, './src/config'),
             '@yshvydak/core': path.resolve(__dirname, '../core/src'),
         },
     },

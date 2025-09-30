@@ -127,7 +127,7 @@ function App() {
 
   // Authenticated user interface
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+    <div className="flex flex-col h-screen bg-gray-50 dark:bg-gray-900">
       <Header
         currentView={currentView}
         onViewChange={setCurrentView}
@@ -145,7 +145,7 @@ function App() {
         }}
       />
 
-      <main className="container mx-auto px-4 py-8">
+      <main className="flex-1 overflow-y-auto container mx-auto px-4 py-8">
         <Routes>
           <Route
             path="/"

@@ -3,7 +3,7 @@ import {
      formatErrorLines,
      extractLineNumber,
      formatShortError,
-} from '../utils/errorFormatter'
+} from '../../../utils/errorFormatter'
 
 interface ErrorsOverviewProps {
      tests: TestResult[]

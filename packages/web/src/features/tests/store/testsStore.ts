@@ -1,7 +1,7 @@
 import {create} from 'zustand'
 import {devtools} from 'zustand/middleware'
 import {TestResult, TestRun} from '@yshvydak/core'
-import { authGet, authPost } from '../utils/authFetch'
+import { authGet, authPost } from '@features/authentication/utils/authFetch'
 
 interface TestsState {
      tests: TestResult[]
@@ -32,7 +32,7 @@ interface TestsState {
      checkAndRestoreActiveStates: () => Promise<void>
 }
 
-import { config } from '../config/environment.config'
+import { config } from '@config/environment.config'
 
 const API_BASE_URL = config.api.baseUrl
 

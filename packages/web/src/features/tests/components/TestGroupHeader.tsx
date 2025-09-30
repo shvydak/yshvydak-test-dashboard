@@ -1,6 +1,6 @@
 import { ActionButton } from '@shared/components'
 import { TestGroupData } from '../hooks/useTestGroups'
-import { useTestsStore } from '../../../store/testsStore'
+import { useTestsStore } from '../store/testsStore'
 
 export interface TestGroupHeaderProps {
 	group: TestGroupData

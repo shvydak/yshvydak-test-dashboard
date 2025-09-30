@@ -1,6 +1,6 @@
 import {useEffect, useRef, useState} from 'react'
 import {useQueryClient} from '@tanstack/react-query'
-import {useTestsStore} from '../store/testsStore'
+import {useTestsStore} from '@features/tests/store/testsStore'
 
 interface WebSocketMessage {
      type: string

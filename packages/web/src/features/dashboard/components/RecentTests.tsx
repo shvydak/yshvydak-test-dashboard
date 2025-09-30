@@ -1,77 +1,8 @@
 import {TestResult} from '@yshvydak/core'
-function formatTestDateTime(test: TestResult) {
-    // For pending tests (discovered but never run), show N/A
-    if (test.status === 'pending') {
-        return 'N/A'
-    }
-
-    // For actual test runs, try updatedAt first (most recent), then createdAt, then timestamp
-    const dateValue = test.updated_at || test.created_at || test.timestamp
-
-    if (!dateValue) {
-        return 'N/A'
-    }
-
-    try {
-        const date = new Date(dateValue)
-        // Check if date is valid
-        if (isNaN(date.getTime())) {
-            return 'N/A'
-        }
-
-        date.setHours(date.getHours() + 3)
-
-        const formattedDate = date.toLocaleDateString('en-GB', {
-            day: '2-digit',
-            month: '2-digit',
-            year: 'numeric',
-        })
-        const formattedTime = date.toLocaleTimeString('en-GB', {
-            hour: '2-digit',
-            minute: '2-digit',
-            hourCycle: 'h23',
-        })
-        return `${formattedTime}, ${formattedDate}`
-    } catch (error) {
-        return 'N/A'
-    }
-}
+import {getStatusIcon, getStatusColor, formatDuration} from '@features/tests/utils/formatters'
 
 interface RecentTestsProps {
     tests: TestResult[]
-}
-
-function getStatusIcon(status: string) {
-    switch (status) {
-        case 'passed':
-            return '✅'
-        case 'failed':
-            return '❌'
-        case 'skipped':
-            return '⏭️'
-        default:
-            return '❓'
-    }
-}
-
-function getStatusColor(status: string) {
-    switch (status) {
-        case 'passed':
-            return 'text-success-600 dark:text-success-400'
-        case 'failed':
-            return 'text-danger-600 dark:text-danger-400'
-        case 'skipped':
-            return 'text-gray-500 dark:text-gray-400'
-        default:
-            return 'text-gray-600 dark:text-gray-300'
-    }
-}
-
-function formatDuration(duration: number) {
-    if (duration < 1000) {
-        return `${duration}ms`
-    }
-    return `${(duration / 1000).toFixed(1)}s`
 }
 
 export default function RecentTests({tests}: RecentTestsProps) {

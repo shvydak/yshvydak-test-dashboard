@@ -1,5 +1,6 @@
 export * from './components'
 export * from './hooks'
 export * from './utils'
+export * from './store/testsStore'
 export { FILTER_OPTIONS, TEST_STATUS_COLORS, TEST_STATUS_ICONS } from './constants'
 export type { FilterKey } from './constants'

@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { authFetch } from '@features/authentication/utils/authFetch'
 import { config } from '@config/environment.config'
-import { useTestsStore } from '../../../store/testsStore'
+import { useTestsStore } from '@features/tests/store/testsStore'
 
 export interface UseDashboardActionsReturn {
 	clearingData: boolean

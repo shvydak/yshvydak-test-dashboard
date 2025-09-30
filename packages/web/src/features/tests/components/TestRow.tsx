@@ -1,7 +1,7 @@
 import { TestResult } from '@yshvydak/core'
 import { StatusBadge, ActionButton } from '@shared/components'
 import { formatDuration, formatLastRun } from '../utils'
-import { useTestsStore } from '../../../store/testsStore'
+import { useTestsStore } from '../store/testsStore'
 
 export interface TestRowProps {
 	test: TestResult

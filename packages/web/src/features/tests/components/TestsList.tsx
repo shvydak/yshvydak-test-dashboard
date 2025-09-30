@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { TestResult } from '@yshvydak/core'
 import { ViewMode, LoadingSpinner } from '@shared/components'
-import { useTestsStore } from '../../../store/testsStore'
+import { useTestsStore } from '../store/testsStore'
 import { useTestFilters } from '../hooks'
 import { FilterKey } from '../constants'
 import { TestsListHeader } from './TestsListHeader'

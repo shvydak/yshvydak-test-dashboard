@@ -5,7 +5,7 @@ import { Header } from '@shared/components'
 import { Dashboard } from '@features/dashboard'
 import { TestsList } from '@features/tests'
 import { LoginPage } from '@features/authentication'
-import { useTestsStore } from './store/testsStore'
+import { useTestsStore } from '@features/tests/store/testsStore'
 import { useWebSocket } from './hooks/useWebSocket'
 import { config } from '@config/environment.config'
 

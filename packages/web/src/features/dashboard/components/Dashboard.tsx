@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { useTestsStore } from '../../../store/testsStore'
+import { useTestsStore } from '@features/tests/store/testsStore'
 import { useDashboardStats } from '../hooks'
 import { DashboardStats } from './DashboardStats'
 import { DashboardActions } from './DashboardActions'

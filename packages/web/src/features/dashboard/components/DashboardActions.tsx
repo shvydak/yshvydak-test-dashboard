@@ -1,6 +1,6 @@
 import { Button } from '@shared/components'
 import { config } from '@config/environment.config'
-import { useTestsStore } from '../../../store/testsStore'
+import { useTestsStore } from '@features/tests/store/testsStore'
 import { useDashboardActions } from '../hooks'
 
 export function DashboardActions() {

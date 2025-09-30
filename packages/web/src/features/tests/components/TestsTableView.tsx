@@ -3,7 +3,7 @@ import { Card } from '@shared/components'
 import { useTestSort } from '../hooks'
 import { formatDuration, formatLastRun } from '../utils'
 import { StatusBadge, ActionButton } from '@shared/components'
-import { useTestsStore } from '../../../store/testsStore'
+import { useTestsStore } from '../store/testsStore'
 
 export interface TestsTableViewProps {
 	tests: TestResult[]

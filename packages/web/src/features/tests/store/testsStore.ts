@@ -32,7 +32,7 @@ interface TestsState {
      checkAndRestoreActiveStates: () => Promise<void>
 }
 
-import { config } from '../config/environment.config'
+import { config } from '@config/environment.config'
 
 const API_BASE_URL = config.api.baseUrl
 

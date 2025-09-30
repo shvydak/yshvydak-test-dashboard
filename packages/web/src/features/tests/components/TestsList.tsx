@@ -7,7 +7,7 @@ import { FilterKey } from '../constants'
 import { TestsListHeader } from './TestsListHeader'
 import { TestsListFilters } from './TestsListFilters'
 import { TestsContent } from './TestsContent'
-import TestDetailModal from '../../../components/TestDetailModal'
+import { TestDetailModal } from './testDetail'
 
 export interface TestsListProps {
 	onTestSelect: (test: TestResult) => void

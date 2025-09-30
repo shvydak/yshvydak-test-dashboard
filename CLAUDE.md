@@ -30,7 +30,9 @@ packages/
 
 **📋 For detailed development commands:** See [@docs/DEVELOPMENT.md](docs/DEVELOPMENT.md)
 
-## Layered Architecture Principles
+## Architecture Principles
+
+### Backend: Layered Architecture
 
 The server follows **Layered Architecture** with clear separation of concerns:
 - **Controllers** (`*.controller.ts`) - HTTP request/response handling only
@@ -38,9 +40,21 @@ The server follows **Layered Architecture** with clear separation of concerns:
 - **Repositories** (`*.repository.ts`) - Data access and database operations
 - **Middleware** - Cross-cutting concerns (DI, CORS, error handling)
 
+### Frontend: Feature-Based Architecture
+
+The web package follows **Feature-Based Architecture** with **Atomic Design**:
+- **Features** (`features/{feature}/`) - Self-contained modules (authentication, dashboard, tests)
+- **Colocation** - Components, hooks, store, types, utils all within feature directory
+- **Shared Components** - Atoms (`Button`, `StatusIcon`) and Molecules (`Card`, `ActionButton`)
+- **Path Aliases** - Clean imports: `@features/*`, `@shared/*`, `@config/*`
+- **Component Size** - Maximum 200 lines per file, split large components into sub-components
+- **Store Organization** - Zustand stores inside features: `features/{feature}/store/`
+
+**📋 For complete frontend architecture:** See [@docs/ARCHITECTURE.md](docs/ARCHITECTURE.md#frontend-feature-based-architecture)
+
 ## Technology Stack
 
-**Frontend:** React 18 + TypeScript + Vite + Tailwind CSS + Zustand + React Query
+**Frontend:** React 18 + TypeScript + Vite + Tailwind CSS + Zustand + React Query + Feature-Based Architecture + Atomic Design
 **Backend:** Express.js + TypeScript + SQLite + WebSocket + Layered Architecture + DI
 **Development:** Turborepo + TypeScript 5 + ESLint
 
@@ -80,12 +94,21 @@ The server follows **Layered Architecture** with clear separation of concerns:
 
 ### 🏗️ Architecture Guidelines
 
+#### Backend (Server)
 **New API endpoint:** Controller → Service → Repository
 **New business logic:** Add to relevant Service class
 **New database operations:** Extend Repository classes
 **Controllers:** Thin layer - delegate to Services
 **Services:** Business logic and orchestrate Repository calls
 **Repositories:** Database operations only
+
+#### Frontend (Web)
+**New feature:** Create in `features/{feature-name}/` with subdirectories (components, hooks, store, types, utils, constants)
+**New component:** Keep under 200 lines; split large components into sub-components with dedicated subdirectory
+**Shared components:** Use `shared/components/atoms/` for basic elements, `shared/components/molecules/` for combinations
+**State management:** Create Zustand store in `features/{feature}/store/`
+**Path aliases:** Always use `@features/*`, `@shared/*`, `@config/*` for clean imports
+**DRY principle:** Centralize utilities and constants - avoid code duplication
 
 ### 📎 Attachment Management Guidelines
 

@@ -215,6 +215,116 @@ Reporter → AttachmentService → AttachmentManager → Permanent Storage
 
 **For detailed documentation**: See [Attachment Management System](./features/PER_RUN_ATTACHMENTS.md)
 
+## Frontend Feature-Based Architecture
+
+The web package (`packages/web/`) follows a **Feature-Based Architecture** combined with **Atomic Design** principles for maximum modularity and maintainability.
+
+### Architecture Structure
+
+```
+packages/web/src/
+├── features/                       # Feature-based modules
+│   ├── authentication/             # Authentication feature
+│   │   ├── components/             # Login, auth forms
+│   │   └── utils/                  # authFetch, JWT handling
+│   ├── dashboard/                  # Dashboard feature
+│   │   ├── components/             # Dashboard stats, actions, system info
+│   │   └── hooks/                  # useDashboardStats, useDashboardActions
+│   └── tests/                      # Tests feature (main feature)
+│       ├── components/
+│       │   ├── testDetail/         # TestDetailModal sub-components
+│       │   ├── TestsList.tsx       # Main tests list
+│       │   ├── TestsTableView.tsx
+│       │   └── ...
+│       ├── hooks/                  # useTestAttachments, useTestFilters, useTestGroups
+│       ├── store/                  # testsStore.ts (Zustand)
+│       ├── types/                  # attachment.types.ts
+│       ├── utils/                  # formatters, attachmentHelpers
+│       └── constants/              # TEST_STATUS_ICONS, FILTER_OPTIONS
+├── shared/                         # Shared components (Atomic Design)
+│   └── components/
+│       ├── atoms/                  # Button, StatusIcon, LoadingSpinner
+│       └── molecules/              # Card, ActionButton, StatusBadge
+├── config/                         # Environment configuration
+├── hooks/                          # Global hooks (useWebSocket)
+├── App.tsx                         # Main app component
+└── main.tsx                        # Application entry point
+```
+
+### Key Principles
+
+#### 1. Feature-Based Organization
+- **Colocation**: All code related to a feature lives within its directory
+- **Independence**: Features are self-contained with their own components, hooks, store, types, utils
+- **Scalability**: Easy to add new features without affecting existing code
+
+#### 2. Atomic Design Pattern
+- **Atoms**: Basic building blocks (Button, StatusIcon, LoadingSpinner)
+- **Molecules**: Simple component combinations (Card, ActionButton, StatusBadge)
+- **Organisms**: Complex components composed of molecules and atoms (TestsList, Dashboard)
+
+#### 3. Path Aliases
+Clean imports using TypeScript path aliases:
+```typescript
+import { useTestsStore } from '@features/tests/store/testsStore'
+import { Button, Card } from '@shared/components'
+import { config } from '@config/environment.config'
+```
+
+#### 4. Component Size Best Practice
+- **Maximum 200 lines per file**: Large components split into smaller, focused components
+- **Example**: TestDetailModal (577 lines) split into 8 modular components (40-100 lines each)
+
+#### 5. DRY Principle (Don't Repeat Yourself)
+- **Centralized utilities**: formatters, helpers in `features/tests/utils/`
+- **Shared constants**: TEST_STATUS_ICONS, FILTER_OPTIONS in `features/tests/constants/`
+- **No duplication**: Single source of truth for all utilities and constants
+
+#### 6. Zustand Store Organization
+- **Feature-level stores**: Each feature has its own store inside `features/{feature}/store/`
+- **Example**: `features/tests/store/testsStore.ts` manages all tests state
+- **Benefits**: Clear ownership, easier testing, better code organization
+
+### Features Breakdown
+
+#### Tests Feature (Main)
+- **Components**: TestsList, TestDetailModal (8 sub-components), TestsTableView, TestRow, TestGroupHeader
+- **Hooks**: useTestAttachments, useTestFilters, useTestGroups, useTestSort
+- **Store**: testsStore.ts (Zustand) - tests state, actions, API calls
+- **Types**: attachment.types.ts - Attachment, AttachmentWithBlobURL, TabKey
+- **Utils**: formatters (duration, dates, status), attachmentHelpers (icons, download, trace viewer)
+
+#### Dashboard Feature
+- **Components**: Dashboard, DashboardStats, DashboardActions, SystemInfo, RecentTests, ErrorsOverview
+- **Hooks**: useDashboardStats, useDashboardActions
+- **Integration**: Uses tests store for data, displays summary and quick actions
+
+#### Authentication Feature
+- **Components**: LoginPage
+- **Utils**: authFetch (JWT-based API calls), authentication helpers
+- **Security**: JWT token management, protected routes, localStorage-based auth
+
+### Barrel Exports
+Each feature exports its public API through `index.ts`:
+```typescript
+// features/tests/index.ts
+export * from './components'
+export * from './hooks'
+export * from './utils'
+export * from './store/testsStore'
+export { FILTER_OPTIONS, TEST_STATUS_COLORS, TEST_STATUS_ICONS } from './constants'
+export type { FilterKey } from './constants'
+```
+
+### Benefits of This Architecture
+
+1. **Modularity**: Features are independent modules with clear boundaries
+2. **Maintainability**: Easy to find and modify code - everything related to a feature is in one place
+3. **Scalability**: Simple to add new features without impacting existing ones
+4. **Testability**: Isolated features are easier to test
+5. **Code Reuse**: Shared components in `shared/` used across all features
+6. **Developer Experience**: Clean imports with path aliases, clear file structure
+
 ## Technology Stack
 
 ### Frontend
@@ -224,6 +334,7 @@ Reporter → AttachmentService → AttachmentManager → Permanent Storage
 - Tailwind CSS for styling
 - Zustand for state management
 - React Query for data fetching
+- **Architecture**: Feature-Based + Atomic Design
 
 ### Backend (Layered Architecture)
 

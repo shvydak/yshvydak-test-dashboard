@@ -53,10 +53,117 @@ npm run lint         # ESLint checking
 
 ## Adding New Features
 
+### Backend Features (Server)
+
 1. **New API endpoint**: Create method in appropriate Controller → Service → Repository
 2. **New business logic**: Add to relevant Service class
 3. **New database operations**: Extend Repository classes
 4. **New utilities**: Add to `utils/` directory
+
+### Frontend Features (Web)
+
+Follow the **Feature-Based Architecture** pattern:
+
+#### Creating a New Feature
+
+1. **Create feature directory**: `src/features/{feature-name}/`
+2. **Add subdirectories as needed**:
+   ```
+   features/{feature-name}/
+   ├── components/       # Feature-specific components
+   ├── hooks/           # Custom hooks for this feature
+   ├── store/           # Zustand store (if needed)
+   ├── types/           # TypeScript types/interfaces
+   ├── utils/           # Helper functions
+   ├── constants/       # Constants and enums
+   └── index.ts         # Barrel export
+   ```
+3. **Export public API**: Use `index.ts` for barrel exports
+4. **Use path aliases**: Import with `@features/{feature-name}`
+
+#### Adding Components
+
+**Component Size Rule**: Maximum 200 lines per file
+
+1. **Small components (< 200 lines)**: Create in `features/{feature}/components/`
+2. **Large components (> 200 lines)**: Split into smaller sub-components
+   - Create subdirectory: `components/{component-name}/`
+   - Break into focused pieces (Header, Content, Footer, etc.)
+   - Each sub-component should be under 200 lines
+
+**Example** (TestDetailModal split):
+```
+components/testDetail/
+├── TestDetailModal.tsx      (68 lines - orchestrator)
+├── TestDetailHeader.tsx     (42 lines)
+├── TestDetailTabs.tsx       (52 lines)
+├── TestOverviewTab.tsx      (102 lines)
+├── TestAttachmentsTab.tsx   (58 lines)
+└── ...
+```
+
+#### Shared Components
+
+For components used across multiple features:
+
+1. **Atoms** (basic elements): `src/shared/components/atoms/`
+   - Button, StatusIcon, LoadingSpinner, Badge
+2. **Molecules** (simple combinations): `src/shared/components/molecules/`
+   - Card, ActionButton, StatusBadge, SearchInput
+
+#### Adding Custom Hooks
+
+1. **Feature-specific hooks**: `features/{feature}/hooks/`
+2. **Global hooks**: `src/hooks/` (e.g., useWebSocket)
+3. **Export from feature**: Add to `hooks/index.ts`
+
+#### State Management (Zustand)
+
+1. **Feature-level stores**: Create in `features/{feature}/store/`
+2. **Store naming**: `{feature}Store.ts` (e.g., `testsStore.ts`)
+3. **Export from feature**: Add to feature's `index.ts`
+
+**Example**:
+```typescript
+// features/tests/store/testsStore.ts
+import { create } from 'zustand'
+import { devtools } from 'zustand/middleware'
+
+interface TestsState {
+  tests: TestResult[]
+  // ... state
+  fetchTests: () => Promise<void>
+  // ... actions
+}
+
+export const useTestsStore = create<TestsState>()(
+  devtools((set, get) => ({
+    // ... implementation
+  }))
+)
+```
+
+#### Utilities and Helpers
+
+1. **Feature-specific utils**: `features/{feature}/utils/`
+2. **Centralized utilities**: Avoid duplication - one source of truth
+3. **Import from shared location**: Use existing utilities before creating new ones
+
+**Example**:
+```typescript
+// features/tests/utils/formatters.ts
+export function formatDuration(ms: number): string { ... }
+export function getStatusIcon(status: string): string { ... }
+
+// Import in components
+import { formatDuration, getStatusIcon } from '@features/tests/utils'
+```
+
+#### Constants and Types
+
+1. **Constants**: `features/{feature}/constants/` for enums, status icons, filter options
+2. **Types**: `features/{feature}/types/` for TypeScript interfaces specific to feature
+3. **Shared types**: Use `@yshvydak/core` for cross-package types
 
 ## Working with Services
 
@@ -112,6 +219,77 @@ When making changes to files, first understand the file's code conventions. Mimi
 - Use TypeScript strict mode across all packages
 - Follow existing patterns and conventions in the codebase
 - Maintain consistency with existing code structure
+
+### Frontend-Specific Best Practices
+
+#### Path Aliases
+Always use TypeScript path aliases for clean imports:
+
+```typescript
+// ✅ Good - Clean imports with aliases
+import { useTestsStore } from '@features/tests/store/testsStore'
+import { Button, Card } from '@shared/components'
+import { config } from '@config/environment.config'
+
+// ❌ Bad - Relative paths
+import { useTestsStore } from '../../../features/tests/store/testsStore'
+import { Button } from '../../shared/components/atoms/Button'
+```
+
+#### Component Organization
+- **Keep components focused**: Each component should have a single responsibility
+- **Split large components**: If over 200 lines, break into smaller pieces
+- **Use composition**: Build complex UIs from simpler components
+
+#### DRY Principle
+- **Centralize utilities**: Create shared utilities in `features/{feature}/utils/`
+- **Share constants**: Define once in `constants/`, use everywhere
+- **Avoid code duplication**: Check existing utilities before creating new ones
+
+#### State Management
+- **Feature-level stores**: Each feature manages its own state
+- **Use Zustand devtools**: Enable for debugging in development
+- **Computed values**: Use functions like `getIsAnyTestRunning()` for derived state
+
+#### Example Refactoring Process
+
+**Before** (monolithic 577-line component):
+```typescript
+// TestDetailModal.tsx (577 lines)
+// Everything in one file: state, tabs, attachments, steps...
+```
+
+**After** (modular 8-component structure):
+```typescript
+// TestDetailModal.tsx (68 lines - orchestrator)
+export function TestDetailModal({ test, isOpen, onClose }) {
+  const [activeTab, setActiveTab] = useState<TabKey>('overview')
+  const { attachments, loading, error } = useTestAttachments(test?.id, isOpen)
+
+  return (
+    <div className="modal">
+      <TestDetailHeader testName={test.name} onClose={onClose} />
+      <TestDetailTabs activeTab={activeTab} onTabChange={setActiveTab} />
+      <div className="content">
+        {activeTab === 'overview' && <TestOverviewTab test={test} />}
+        {activeTab === 'attachments' && <TestAttachmentsTab attachments={attachments} />}
+        {activeTab === 'steps' && <TestStepsTab test={test} />}
+      </div>
+    </div>
+  )
+}
+
+// + 7 additional focused sub-components
+// + useTestAttachments custom hook
+// + attachment types and helpers
+```
+
+**Benefits**:
+- ✅ Each file under 100 lines
+- ✅ Single responsibility per component
+- ✅ Reusable sub-components
+- ✅ Easier to test and maintain
+- ✅ Better code organization
 
 ## Related Documentation
 

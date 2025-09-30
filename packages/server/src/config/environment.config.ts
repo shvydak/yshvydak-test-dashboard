@@ -33,22 +33,23 @@ export const config: EnvironmentConfig = {
         get port() {
             return parseInt(process.env.PORT || '3001')
         },
-        environment: process.env.NODE_ENV || 'development'
+        environment: process.env.NODE_ENV || 'development',
     },
     playwright: {
         get projectDir() {
             return process.env.PLAYWRIGHT_PROJECT_DIR || process.cwd()
         },
-        reporterPath: process.env.USE_NPM_REPORTER === 'true' 
-            ? '@yshvydak/playwright-reporter' 
-            : './e2e/testUtils/yshvydakReporter.ts',
-        useNpmPackage: process.env.USE_NPM_REPORTER === 'true'
+        reporterPath:
+            process.env.USE_NPM_REPORTER === 'true'
+                ? '@yshvydak/playwright-reporter'
+                : './e2e/testUtils/yshvydakReporter.ts',
+        useNpmPackage: process.env.USE_NPM_REPORTER === 'true',
     },
     storage: {
         // Derive OUTPUT_DIR from current working directory if not specified
         outputDir: process.env.OUTPUT_DIR || path.join(process.cwd(), 'test-results'),
         attachmentsDir: 'attachments',
-        reportsDir: 'reports'
+        reportsDir: 'reports',
     },
     api: {
         // Derive API base URL from BASE_URL or PORT, with fallback override support
@@ -61,19 +62,24 @@ export const config: EnvironmentConfig = {
             }
             return `http://localhost:${config.server.port}`
         },
-        requestLimit: '50mb'
+        requestLimit: '50mb',
     },
     auth: {
         get enableAuth() {
             return process.env.ENABLE_AUTH === 'true'
         },
         get jwtSecret() {
-            return process.env.JWT_SECRET || (() => {
-                if (config.auth.enableAuth) {
-                    throw new Error('JWT_SECRET environment variable is required when authentication is enabled')
-                }
-                return 'dev-secret-not-for-production'
-            })()
+            return (
+                process.env.JWT_SECRET ||
+                (() => {
+                    if (config.auth.enableAuth) {
+                        throw new Error(
+                            'JWT_SECRET environment variable is required when authentication is enabled'
+                        )
+                    }
+                    return 'dev-secret-not-for-production'
+                })()
+            )
         },
         get expiresIn() {
             return process.env.JWT_EXPIRES_IN || '24h'
@@ -81,16 +87,20 @@ export const config: EnvironmentConfig = {
         get adminEmail() {
             const email = process.env.ADMIN_EMAIL
             if (!email && config.auth.enableAuth) {
-                throw new Error('ADMIN_EMAIL environment variable is required when authentication is enabled')
+                throw new Error(
+                    'ADMIN_EMAIL environment variable is required when authentication is enabled'
+                )
             }
             return email || ''
         },
         get adminPassword() {
             const password = process.env.ADMIN_PASSWORD
             if (!password && config.auth.enableAuth) {
-                throw new Error('ADMIN_PASSWORD environment variable is required when authentication is enabled')
+                throw new Error(
+                    'ADMIN_PASSWORD environment variable is required when authentication is enabled'
+                )
             }
             return password || ''
-        }
-    }
+        },
+    },
 }

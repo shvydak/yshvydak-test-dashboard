@@ -6,22 +6,22 @@ This document defines the systematic debugging approach for the YShvydak Test Da
 
 ### 1. Clean Diagnostic Environment
 
--   Each debug session starts with a fresh browser (no cookies, cache, localStorage)
--   Clean environment ensures debugging replicates actual user experience
--   No interference from previous states or cached data
+- Each debug session starts with a fresh browser (no cookies, cache, localStorage)
+- Clean environment ensures debugging replicates actual user experience
+- No interference from previous states or cached data
 
 ### 2. Multi-layer Analysis
 
--   **Frontend Layer**: Browser console, network requests, DOM state, JavaScript execution
--   **Backend Layer**: Server logs, database state, API responses, process health
--   **Integration Layer**: Data flow correlation, WebSocket events, external system communication
--   Simultaneous analysis across all relevant system layers
+- **Frontend Layer**: Browser console, network requests, DOM state, JavaScript execution
+- **Backend Layer**: Server logs, database state, API responses, process health
+- **Integration Layer**: Data flow correlation, WebSocket events, external system communication
+- Simultaneous analysis across all relevant system layers
 
 ### 3. Symptom-based Approach
 
--   User provides symptom description without prescribing solution approach
--   Claude determines appropriate diagnostic scope and methodology autonomously
--   Evidence-based conclusions from observed system behavior
+- User provides symptom description without prescribing solution approach
+- Claude determines appropriate diagnostic scope and methodology autonomously
+- Evidence-based conclusions from observed system behavior
 
 ## Standard Debug Setup
 
@@ -36,7 +36,6 @@ This document defines the systematic debugging approach for the YShvydak Test Da
     ```
 
 2. **Clean Browser Environment**
-
     - Open fresh browser session → navigate to localhost:3000 (or fallback port)
     - Login with provided credentials → verify dashboard access
     - Confirm WebSocket connection establishment
@@ -68,22 +67,22 @@ Process health checking                      # Server status and performance
 
 ### Integration Diagnostic Capabilities
 
--   Data flow correlation between frontend and backend
--   WebSocket event tracking and timing analysis
--   External system integration monitoring
+- Data flow correlation between frontend and backend
+- WebSocket event tracking and timing analysis
+- External system integration monitoring
 
 ## System Access Points
 
 ### URLs & Credentials
 
--   **Web Interface**: `http://localhost:3000` (primary) or `http://localhost:3002` (fallback)
--   **API Base**: `http://localhost:3001`
--   **Health Check**: `http://localhost:3001/api/health`
+- **Web Interface**: `http://localhost:3000` (primary) or `http://localhost:3002` (fallback)
+- **API Base**: `http://localhost:3001`
+- **Health Check**: `http://localhost:3001/api/health`
 
 ### External Dependencies
 
--   **Reporter Location**: `/Users/y.shvydak/QA/probuild-qa/e2e/testUtils/yshvydakReporter.ts`
--   **Test Project**: Configured via `PLAYWRIGHT_PROJECT_DIR` environment variable
+- **Reporter Location**: `/Users/y.shvydak/QA/probuild-qa/e2e/testUtils/yshvydakReporter.ts`
+- **Test Project**: Configured via `PLAYWRIGHT_PROJECT_DIR` environment variable
 
 ---
 

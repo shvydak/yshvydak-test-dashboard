@@ -3,293 +3,281 @@ import {useQueryClient} from '@tanstack/react-query'
 import {useTestsStore} from '@features/tests/store/testsStore'
 
 interface WebSocketMessage {
-     type: string
-     data?: any
-     timestamp?: string
-     clientId?: string
+    type: string
+    data?: any
+    timestamp?: string
+    clientId?: string
 }
 
 interface WebSocketOptions {
-     onTestCompleted?: (data: any) => void
-     onRunCompleted?: (data: any) => void
+    onTestCompleted?: (data: any) => void
+    onRunCompleted?: (data: any) => void
 }
 
 export function useWebSocket(url: string | null, options?: WebSocketOptions) {
-     const [isConnected, setIsConnected] = useState(false)
-     const [lastMessage, setLastMessage] = useState<WebSocketMessage | null>(
-          null,
-     )
-     const wsRef = useRef<WebSocket | null>(null)
-     const queryClient = useQueryClient()
-     const {fetchTests, fetchRuns, setGroupRunning, setTestRunning, setRunningAllTests} = useTestsStore()
-     const reconnectTimeoutRef = useRef<NodeJS.Timeout>()
-     const reconnectAttempts = useRef(0)
-     const maxReconnectAttempts = 5
+    const [isConnected, setIsConnected] = useState(false)
+    const [lastMessage, setLastMessage] = useState<WebSocketMessage | null>(null)
+    const wsRef = useRef<WebSocket | null>(null)
+    const queryClient = useQueryClient()
+    const {fetchTests, fetchRuns, setGroupRunning, setTestRunning, setRunningAllTests} =
+        useTestsStore()
+    const reconnectTimeoutRef = useRef<NodeJS.Timeout>()
+    const reconnectAttempts = useRef(0)
+    const maxReconnectAttempts = 5
 
-     const handleConnectionStatus = (statusData: any) => {
-          const { activeRuns, activeGroups, isAnyProcessRunning } = statusData
-          
+    const handleConnectionStatus = (statusData: any) => {
+        const {activeRuns, activeGroups, isAnyProcessRunning} = statusData
 
-          // Clear all current running states first
-          setRunningAllTests(false)
-          
-          // Clear any existing running test/group states
-          // Note: In a real implementation, we might want to track and clear these individually
-          // For now, we rely on the store to handle this properly
-          
-          // Restore states based on active processes
-          if (isAnyProcessRunning && activeRuns.length > 0) {
-               activeRuns.forEach((run: any) => {
-                    switch (run.type) {
-                         case 'run-all':
-                              setRunningAllTests(true)
-                              break
-                         case 'run-group':
-                              if (run.details.filePath) {
-                                   setGroupRunning(run.details.filePath, true)
-                              }
-                              break
-                         case 'rerun':
-                              if (run.details.originalTestId) {
-                                   setTestRunning(run.details.originalTestId, true)
-                              }
-                              break
-                    }
-               })
-               
-          } else {
-               
-               // Ensure all states are cleared
-               // Note: We don't need to clear individual running states here as the store
-               // should handle this, but we can add it if needed
-          }
+        // Clear all current running states first
+        setRunningAllTests(false)
 
-          // Refresh data to get latest state
-          fetchTests()
-          fetchRuns()
-     }
+        // Clear any existing running test/group states
+        // Note: In a real implementation, we might want to track and clear these individually
+        // For now, we rely on the store to handle this properly
 
-     const connect = () => {
-          // Don't connect if URL is null
-          if (!url) {
-               return
-          }
+        // Restore states based on active processes
+        if (isAnyProcessRunning && activeRuns.length > 0) {
+            activeRuns.forEach((run: any) => {
+                switch (run.type) {
+                    case 'run-all':
+                        setRunningAllTests(true)
+                        break
+                    case 'run-group':
+                        if (run.details.filePath) {
+                            setGroupRunning(run.details.filePath, true)
+                        }
+                        break
+                    case 'rerun':
+                        if (run.details.originalTestId) {
+                            setTestRunning(run.details.originalTestId, true)
+                        }
+                        break
+                }
+            })
+        } else {
+            // Ensure all states are cleared
+            // Note: We don't need to clear individual running states here as the store
+            // should handle this, but we can add it if needed
+        }
 
-          try {
-               wsRef.current = new WebSocket(url)
+        // Refresh data to get latest state
+        fetchTests()
+        fetchRuns()
+    }
 
-               wsRef.current.onopen = () => {
-                    setIsConnected(true)
-                    reconnectAttempts.current = 0
-               }
+    const connect = () => {
+        // Don't connect if URL is null
+        if (!url) {
+            return
+        }
 
-               wsRef.current.onmessage = (event) => {
-                    try {
-                         const message: WebSocketMessage = JSON.parse(
-                              event.data,
-                         )
-                         setLastMessage(message)
-                         handleMessage(message)
-                    } catch (error) {
-                         console.error(
-                              'Error parsing WebSocket message:',
-                              error,
-                         )
-                    }
-               }
+        try {
+            wsRef.current = new WebSocket(url)
 
-               wsRef.current.onclose = (event) => {
-                    setIsConnected(false)
+            wsRef.current.onopen = () => {
+                setIsConnected(true)
+                reconnectAttempts.current = 0
+            }
 
-                    // Attempt to reconnect
-                    if (reconnectAttempts.current < maxReconnectAttempts) {
-                         const delay = Math.min(
-                              1000 * Math.pow(2, reconnectAttempts.current),
-                              30000,
-                         )
+            wsRef.current.onmessage = (event) => {
+                try {
+                    const message: WebSocketMessage = JSON.parse(event.data)
+                    setLastMessage(message)
+                    handleMessage(message)
+                } catch (error) {
+                    console.error('Error parsing WebSocket message:', error)
+                }
+            }
 
-                         reconnectTimeoutRef.current = setTimeout(() => {
-                              reconnectAttempts.current++
-                              connect()
-                         }, delay)
-                    } else {
-                         console.error('❌ Max reconnection attempts reached')
-                    }
-               }
+            wsRef.current.onclose = (event) => {
+                setIsConnected(false)
 
-               wsRef.current.onerror = (error) => {
-                    console.error('❌ WebSocket error:', error)
-               }
-          } catch (error) {
-               console.error('Error creating WebSocket connection:', error)
-          }
-     }
+                // Attempt to reconnect
+                if (reconnectAttempts.current < maxReconnectAttempts) {
+                    const delay = Math.min(1000 * Math.pow(2, reconnectAttempts.current), 30000)
 
-     const handleMessage = (message: WebSocketMessage) => {
-          switch (message.type) {
-               case 'dashboard:refresh':
-                    // Refresh both React Query and Zustand store
-                    queryClient.invalidateQueries()
-                    fetchTests()
-                    fetchRuns()
+                    reconnectTimeoutRef.current = setTimeout(() => {
+                        reconnectAttempts.current++
+                        connect()
+                    }, delay)
+                } else {
+                    console.error('❌ Max reconnection attempts reached')
+                }
+            }
 
-                    // Notify about run completion if it's a rerun
-                    if (message.data?.isRerun && options?.onRunCompleted) {
-                         options.onRunCompleted(message.data)
-                    }
-                    break
+            wsRef.current.onerror = (error) => {
+                console.error('❌ WebSocket error:', error)
+            }
+        } catch (error) {
+            console.error('Error creating WebSocket connection:', error)
+        }
+    }
 
-               case 'run:status':
-                    // Refresh both stores
-                    queryClient.invalidateQueries({
-                         queryKey: ['dashboard-stats'],
-                    })
-                    queryClient.invalidateQueries({queryKey: ['tests']})
-                    queryClient.invalidateQueries({queryKey: ['runs']})
-                    fetchTests()
-                    fetchRuns()
+    const handleMessage = (message: WebSocketMessage) => {
+        switch (message.type) {
+            case 'dashboard:refresh':
+                // Refresh both React Query and Zustand store
+                queryClient.invalidateQueries()
+                fetchTests()
+                fetchRuns()
 
-                    // Notify about run completion
-                    if (options?.onRunCompleted) {
-                         options.onRunCompleted(message.data)
-                    }
-                    break
+                // Notify about run completion if it's a rerun
+                if (message.data?.isRerun && options?.onRunCompleted) {
+                    options.onRunCompleted(message.data)
+                }
+                break
 
-               case 'test:completed':
-                    queryClient.invalidateQueries({queryKey: ['tests']})
-                    queryClient.invalidateQueries({
-                         queryKey: ['dashboard-stats'],
-                    })
-                    fetchTests()
-                    break
+            case 'run:status':
+                // Refresh both stores
+                queryClient.invalidateQueries({
+                    queryKey: ['dashboard-stats'],
+                })
+                queryClient.invalidateQueries({queryKey: ['tests']})
+                queryClient.invalidateQueries({queryKey: ['runs']})
+                fetchTests()
+                fetchRuns()
 
-               case 'test:status':
-                    queryClient.invalidateQueries({queryKey: ['tests']})
-                    fetchTests()
-                    break
+                // Notify about run completion
+                if (options?.onRunCompleted) {
+                    options.onRunCompleted(message.data)
+                }
+                break
 
-               case 'stats:update':
-                    queryClient.invalidateQueries({
-                         queryKey: ['dashboard-stats'],
-                    })
-                    fetchTests()
-                    break
+            case 'test:completed':
+                queryClient.invalidateQueries({queryKey: ['tests']})
+                queryClient.invalidateQueries({
+                    queryKey: ['dashboard-stats'],
+                })
+                fetchTests()
+                break
 
-               case 'discovery:completed':
-                    queryClient.invalidateQueries({queryKey: ['tests']})
-                    queryClient.invalidateQueries({
-                         queryKey: ['dashboard-stats'],
-                    })
-                    fetchTests()
-                    fetchRuns()
-                    break
+            case 'test:status':
+                queryClient.invalidateQueries({queryKey: ['tests']})
+                fetchTests()
+                break
 
-               case 'run:started':
-                    queryClient.invalidateQueries({queryKey: ['runs']})
-                    fetchRuns()
-                    break
+            case 'stats:update':
+                queryClient.invalidateQueries({
+                    queryKey: ['dashboard-stats'],
+                })
+                fetchTests()
+                break
 
-               case 'run:completed':
-                    queryClient.invalidateQueries({queryKey: ['tests']})
-                    queryClient.invalidateQueries({queryKey: ['runs']})
-                    queryClient.invalidateQueries({
-                         queryKey: ['dashboard-stats'],
-                    })
-                    fetchTests()
-                    fetchRuns()
+            case 'discovery:completed':
+                queryClient.invalidateQueries({queryKey: ['tests']})
+                queryClient.invalidateQueries({
+                    queryKey: ['dashboard-stats'],
+                })
+                fetchTests()
+                fetchRuns()
+                break
 
-                    // Clear group running state if this was a group run
-                    if (message.data?.type === 'run-group' && message.data?.filePath) {
-                         setGroupRunning(message.data.filePath, false)
-                    }
+            case 'run:started':
+                queryClient.invalidateQueries({queryKey: ['runs']})
+                fetchRuns()
+                break
 
-                    // Clear run-all state if this was a run-all
-                    if (message.data?.type === 'run-all') {
-                         setRunningAllTests(false)
-                    }
+            case 'run:completed':
+                queryClient.invalidateQueries({queryKey: ['tests']})
+                queryClient.invalidateQueries({queryKey: ['runs']})
+                queryClient.invalidateQueries({
+                    queryKey: ['dashboard-stats'],
+                })
+                fetchTests()
+                fetchRuns()
 
-                    // Clear individual test running state if this was a rerun
-                    if (message.data?.isRerun && message.data?.originalTestId) {
-                         setTestRunning(message.data.originalTestId, false)
-                    }
+                // Clear group running state if this was a group run
+                if (message.data?.type === 'run-group' && message.data?.filePath) {
+                    setGroupRunning(message.data.filePath, false)
+                }
 
-                    // Notify about run completion
-                    if (options?.onRunCompleted) {
-                         options.onRunCompleted(message.data)
-                    }
-                    break
+                // Clear run-all state if this was a run-all
+                if (message.data?.type === 'run-all') {
+                    setRunningAllTests(false)
+                }
 
-               case 'connection':
-                    break
+                // Clear individual test running state if this was a rerun
+                if (message.data?.isRerun && message.data?.originalTestId) {
+                    setTestRunning(message.data.originalTestId, false)
+                }
 
-               case 'connection:status':
-                    handleConnectionStatus(message.data)
-                    break
+                // Notify about run completion
+                if (options?.onRunCompleted) {
+                    options.onRunCompleted(message.data)
+                }
+                break
 
-               case 'process:started':
-                    // Refresh data when process starts
-                    fetchTests()
-                    fetchRuns()
-                    break
+            case 'connection':
+                break
 
-               case 'process:ended':
-                    // Refresh data when process ends and request updated connection status
-                    fetchTests()
-                    fetchRuns()
-                    break
+            case 'connection:status':
+                handleConnectionStatus(message.data)
+                break
 
-               case 'pong':
-                    // Keep-alive response
-                    break
+            case 'process:started':
+                // Refresh data when process starts
+                fetchTests()
+                fetchRuns()
+                break
 
-               default:
-                    // Unknown message type - ignore
-          }
-     }
+            case 'process:ended':
+                // Refresh data when process ends and request updated connection status
+                fetchTests()
+                fetchRuns()
+                break
 
-     const sendMessage = (message: WebSocketMessage) => {
-          if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
-               wsRef.current.send(JSON.stringify(message))
-          }
-     }
+            case 'pong':
+                // Keep-alive response
+                break
 
-     const disconnect = () => {
-          if (reconnectTimeoutRef.current) {
-               clearTimeout(reconnectTimeoutRef.current)
-          }
+            default:
+            // Unknown message type - ignore
+        }
+    }
 
-          if (wsRef.current) {
-               wsRef.current.close(1000, 'Intentional disconnect')
-          }
-     }
+    const sendMessage = (message: WebSocketMessage) => {
+        if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+            wsRef.current.send(JSON.stringify(message))
+        }
+    }
 
-     useEffect(() => {
-          // Only try to connect if we have a valid URL
-          if (url) {
-               connect()
-          } else {
-               // Disconnect existing connection if URL becomes null
-               disconnect()
-               setIsConnected(false)
-          }
+    const disconnect = () => {
+        if (reconnectTimeoutRef.current) {
+            clearTimeout(reconnectTimeoutRef.current)
+        }
 
-          // Send periodic ping to keep connection alive
-          const pingInterval = setInterval(() => {
-               if (isConnected) {
-                    sendMessage({type: 'ping'})
-               }
-          }, 30000)
+        if (wsRef.current) {
+            wsRef.current.close(1000, 'Intentional disconnect')
+        }
+    }
 
-          return () => {
-               clearInterval(pingInterval)
-               disconnect()
-          }
-     }, [url])
+    useEffect(() => {
+        // Only try to connect if we have a valid URL
+        if (url) {
+            connect()
+        } else {
+            // Disconnect existing connection if URL becomes null
+            disconnect()
+            setIsConnected(false)
+        }
 
-     return {
-          isConnected,
-          lastMessage,
-          sendMessage,
-          disconnect,
-     }
+        // Send periodic ping to keep connection alive
+        const pingInterval = setInterval(() => {
+            if (isConnected) {
+                sendMessage({type: 'ping'})
+            }
+        }, 30000)
+
+        return () => {
+            clearInterval(pingInterval)
+            disconnect()
+        }
+    }, [url])
+
+    return {
+        isConnected,
+        lastMessage,
+        sendMessage,
+        disconnect,
+    }
 }

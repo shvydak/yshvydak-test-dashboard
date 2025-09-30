@@ -1,9 +1,9 @@
-import { Router } from 'express'
-import { HealthController } from '../controllers/health.controller'
-import { ServiceContainer } from '../middleware/service-injection.middleware'
-import { createTestRoutes } from './test.routes'
-import { createRunRoutes } from './run.routes'
-import { createAuthRoutes } from './auth.routes'
+import {Router} from 'express'
+import {HealthController} from '../controllers/health.controller'
+import {ServiceContainer} from '../middleware/service-injection.middleware'
+import {createTestRoutes} from './test.routes'
+import {createRunRoutes} from './run.routes'
+import {createAuthRoutes} from './auth.routes'
 
 export function createApiRoutes(container: ServiceContainer): Router {
     const router = Router()

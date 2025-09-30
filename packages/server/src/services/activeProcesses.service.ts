@@ -21,8 +21,8 @@ export class ActiveProcessesTracker {
                 testId: data.testId,
                 filePath: data.filePath,
                 totalTests: data.totalTests,
-                originalTestId: data.originalTestId
-            }
+                originalTestId: data.originalTestId,
+            },
         }
 
         this.activeProcesses.set(data.runId, processInfo)
@@ -55,8 +55,8 @@ export class ActiveProcessesTracker {
      */
     getActiveGroups(): string[] {
         return Array.from(this.activeProcesses.values())
-            .filter(process => process.type === 'run-group' && process.details.filePath)
-            .map(process => process.details.filePath!)
+            .filter((process) => process.type === 'run-group' && process.details.filePath)
+            .map((process) => process.details.filePath!)
     }
 
     /**
@@ -77,7 +77,9 @@ export class ActiveProcessesTracker {
      * Check if run-all is currently active
      */
     isRunAllActive(): boolean {
-        return Array.from(this.activeProcesses.values()).some(process => process.type === 'run-all')
+        return Array.from(this.activeProcesses.values()).some(
+            (process) => process.type === 'run-all'
+        )
     }
 
     /**
@@ -85,7 +87,7 @@ export class ActiveProcessesTracker {
      */
     isGroupRunning(filePath: string): boolean {
         return Array.from(this.activeProcesses.values()).some(
-            process => process.type === 'run-group' && process.details.filePath === filePath
+            (process) => process.type === 'run-group' && process.details.filePath === filePath
         )
     }
 
@@ -94,8 +96,9 @@ export class ActiveProcessesTracker {
      */
     isTestRunning(testId: string): boolean {
         return Array.from(this.activeProcesses.values()).some(
-            process => process.type === 'rerun' && 
-                      (process.details.testId === testId || process.details.originalTestId === testId)
+            (process) =>
+                process.type === 'rerun' &&
+                (process.details.testId === testId || process.details.originalTestId === testId)
         )
     }
 
@@ -106,13 +109,13 @@ export class ActiveProcessesTracker {
     getConnectionStatus() {
         // Perform cleanup of old processes before returning status
         this.cleanupOldProcesses(5) // Clean up processes older than 5 minutes
-        
+
         const status = {
             activeRuns: this.getActiveProcesses(),
             activeGroups: this.getActiveGroups(),
-            isAnyProcessRunning: this.isAnyProcessRunning()
+            isAnyProcessRunning: this.isAnyProcessRunning(),
         }
-        
+
         Logger.debug('📊 Connection status requested', status)
         return status
     }

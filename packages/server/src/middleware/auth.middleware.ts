@@ -1,8 +1,8 @@
-import { Request, Response, NextFunction } from 'express'
-import { AuthService } from '../services/auth.service'
-import { ResponseHelper } from '../utils/response.helper'
-import { Logger } from '../utils/logger.util'
-import { config } from '../config/environment.config'
+import {Request, Response, NextFunction} from 'express'
+import {AuthService} from '../services/auth.service'
+import {ResponseHelper} from '../utils/response.helper'
+import {Logger} from '../utils/logger.util'
+import {config} from '../config/environment.config'
 
 // Extend Request type to include user and auth info
 declare global {
@@ -22,12 +22,12 @@ const PUBLIC_ENDPOINTS = [
     '/api/health',
     '/api/tests/diagnostics',
     '/api/auth/login',
-    '/api/auth/config'
+    '/api/auth/config',
 ]
 
 // Check if endpoint should be public
 function isPublicEndpoint(path: string): boolean {
-    return PUBLIC_ENDPOINTS.some(endpoint => path.startsWith(endpoint))
+    return PUBLIC_ENDPOINTS.some((endpoint) => path.startsWith(endpoint))
 }
 
 // Create authentication middleware factory
@@ -62,15 +62,19 @@ export function createAuthMiddleware(authService: AuthService) {
                     return
                 } else {
                     Logger.warn(`Invalid JWT token provided for ${req.method} ${req.path}`)
-                    ResponseHelper.unauthorized(res, tokenResult.message || 'Invalid or expired token')
+                    ResponseHelper.unauthorized(
+                        res,
+                        tokenResult.message || 'Invalid or expired token'
+                    )
                     return
                 }
             }
 
             // No authentication provided
-            Logger.warn(`No authentication provided for protected endpoint: ${req.method} ${req.path}`)
+            Logger.warn(
+                `No authentication provided for protected endpoint: ${req.method} ${req.path}`
+            )
             ResponseHelper.unauthorized(res, 'Authentication required')
-
         } catch (error) {
             Logger.error('Authentication middleware error', error)
             ResponseHelper.serverError(res, 'Authentication service error')
@@ -88,7 +92,6 @@ export function requireJWT() {
         next()
     }
 }
-
 
 // Middleware for endpoints that require admin role
 export function requireAdmin() {
@@ -110,7 +113,7 @@ export function logAuth() {
             authType: req.authType,
             user: req.user?.email || 'anonymous',
             userAgent: req.headers['user-agent'],
-            ip: req.ip
+            ip: req.ip,
         }
 
         Logger.debug('Request authentication info', authInfo)

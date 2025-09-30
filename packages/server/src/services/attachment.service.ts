@@ -1,10 +1,10 @@
-import { v4 as uuidv4 } from 'uuid'
-import { IAttachmentService } from '../types/service.types'
-import { AttachmentData } from '../types/database.types'
-import { AttachmentRepository } from '../repositories/attachment.repository'
-import { FileUtil } from '../utils/file.util'
-import { AttachmentManager, AttachmentType } from '../storage/attachmentManager'
-import { config } from '../config/environment.config'
+import {v4 as uuidv4} from 'uuid'
+import {IAttachmentService} from '../types/service.types'
+import {AttachmentData} from '../types/database.types'
+import {AttachmentRepository} from '../repositories/attachment.repository'
+import {FileUtil} from '../utils/file.util'
+import {AttachmentManager, AttachmentType} from '../storage/attachmentManager'
+import {config} from '../config/environment.config'
 import fs from 'fs'
 
 /**
@@ -60,12 +60,15 @@ export class AttachmentService implements IAttachmentService {
                         filePath: copiedAttachment.filePath,
                         fileSize: copiedAttachment.fileSize,
                         mimeType: copiedAttachment.mimeType,
-                        url: copiedAttachment.url
+                        url: copiedAttachment.url,
                     }
 
                     processedAttachments.push(attachmentData)
                 } catch (error) {
-                    console.error(`[AttachmentService] Failed to copy attachment ${sourceFilePath}:`, error)
+                    console.error(
+                        `[AttachmentService] Failed to copy attachment ${sourceFilePath}:`,
+                        error
+                    )
                 }
             }
         }
@@ -88,7 +91,8 @@ export class AttachmentService implements IAttachmentService {
      * @param attachments - Raw attachment data from Playwright reporter
      */
     async saveAttachmentsForTestResult(testResultId: string, attachments: any[]): Promise<void> {
-        const existingAttachments = await this.attachmentRepository.getAttachmentsByTestResult(testResultId)
+        const existingAttachments =
+            await this.attachmentRepository.getAttachmentsByTestResult(testResultId)
 
         if (existingAttachments.length > 0) {
             try {

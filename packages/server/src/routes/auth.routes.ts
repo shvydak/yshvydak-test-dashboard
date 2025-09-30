@@ -1,6 +1,6 @@
-import { Router } from 'express'
-import { AuthController } from '../controllers/auth.controller'
-import { AuthService } from '../services/auth.service'
+import {Router} from 'express'
+import {AuthController} from '../controllers/auth.controller'
+import {AuthService} from '../services/auth.service'
 
 export function createAuthRoutes(): Router {
     const router = Router()

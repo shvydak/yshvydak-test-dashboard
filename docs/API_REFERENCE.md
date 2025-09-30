@@ -16,13 +16,14 @@ All API endpoints return consistent `ApiResponse<T>` format with proper error ha
 Health check endpoint for monitoring dashboard status.
 
 **Response:**
+
 ```json
 {
-  "status": "success",
-  "data": {
-    "status": "healthy",
-    "timestamp": "2024-09-25T12:00:00.000Z"
-  }
+    "status": "success",
+    "data": {
+        "status": "healthy",
+        "timestamp": "2024-09-25T12:00:00.000Z"
+    }
 }
 ```
 
@@ -31,23 +32,24 @@ Health check endpoint for monitoring dashboard status.
 Complete integration status and configuration validation.
 
 **Response:**
+
 ```json
 {
-  "status": "success",
-  "data": {
-    "dashboard": {
-      "status": "healthy",
-      "version": "1.0.0"
-    },
-    "playwright": {
-      "configured": true,
-      "project_dir": "/path/to/tests"
-    },
-    "reporter": {
-      "type": "file",
-      "path": "/path/to/yshvydakReporter.ts"
+    "status": "success",
+    "data": {
+        "dashboard": {
+            "status": "healthy",
+            "version": "1.0.0"
+        },
+        "playwright": {
+            "configured": true,
+            "project_dir": "/path/to/tests"
+        },
+        "reporter": {
+            "type": "file",
+            "path": "/path/to/yshvydakReporter.ts"
+        }
     }
-  }
 }
 ```
 
@@ -58,26 +60,28 @@ Complete integration status and configuration validation.
 Retrieve all test results with optional filtering.
 
 **Query Parameters:**
+
 - `limit` - Maximum number of results (default: 200)
 - `status` - Filter by test status
 - `file` - Filter by test file
 
 **Response:**
+
 ```json
 {
-  "status": "success",
-  "data": [
-    {
-      "testId": "test-66jqtq",
-      "name": "API - Change Action Status",
-      "status": "passed",
-      "timestamp": "2025-09-24 13:41:11",
-      "createdAt": "2025-09-24 13:41:11",
-      "updatedAt": "2025-09-24 13:44:50",
-      "file": "tests/api/actions.spec.ts",
-      "duration": 1500
-    }
-  ]
+    "status": "success",
+    "data": [
+        {
+            "testId": "test-66jqtq",
+            "name": "API - Change Action Status",
+            "status": "passed",
+            "timestamp": "2025-09-24 13:41:11",
+            "createdAt": "2025-09-24 13:41:11",
+            "updatedAt": "2025-09-24 13:44:50",
+            "file": "tests/api/actions.spec.ts",
+            "duration": 1500
+        }
+    ]
 }
 ```
 
@@ -86,15 +90,16 @@ Retrieve all test results with optional filtering.
 Save test results from Playwright reporter.
 
 **Request Body:**
+
 ```json
 {
-  "testId": "test-66jqtq",
-  "name": "API - Change Action Status",
-  "status": "passed",
-  "file": "tests/api/actions.spec.ts",
-  "duration": 1500,
-  "error": null,
-  "attachments": []
+    "testId": "test-66jqtq",
+    "name": "API - Change Action Status",
+    "status": "passed",
+    "file": "tests/api/actions.spec.ts",
+    "duration": 1500,
+    "error": null,
+    "attachments": []
 }
 ```
 
@@ -103,14 +108,15 @@ Save test results from Playwright reporter.
 Discover all available tests in the Playwright project.
 
 **Response:**
+
 ```json
 {
-  "status": "success",
-  "data": {
-    "discovered": 80,
-    "files": 15,
-    "message": "Tests discovered successfully"
-  }
+    "status": "success",
+    "data": {
+        "discovered": 80,
+        "files": 15,
+        "message": "Tests discovered successfully"
+    }
 }
 ```
 
@@ -119,13 +125,14 @@ Discover all available tests in the Playwright project.
 Clear all test data from the database.
 
 **Response:**
+
 ```json
 {
-  "status": "success",
-  "data": {
-    "deleted": 150,
-    "message": "All tests cleared successfully"
-  }
+    "status": "success",
+    "data": {
+        "deleted": 150,
+        "message": "All tests cleared successfully"
+    }
 }
 ```
 
@@ -136,13 +143,14 @@ Clear all test data from the database.
 Execute all tests in the project.
 
 **Response:**
+
 ```json
 {
-  "status": "success",
-  "data": {
-    "message": "Tests execution started",
-    "processId": "proc_123456"
-  }
+    "status": "success",
+    "data": {
+        "message": "Tests execution started",
+        "processId": "proc_123456"
+    }
 }
 ```
 
@@ -151,10 +159,11 @@ Execute all tests in the project.
 Execute a group of tests by file or pattern.
 
 **Request Body:**
+
 ```json
 {
-  "pattern": "tests/api/*.spec.ts",
-  "files": ["tests/api/actions.spec.ts"]
+    "pattern": "tests/api/*.spec.ts",
+    "files": ["tests/api/actions.spec.ts"]
 }
 ```
 
@@ -163,13 +172,14 @@ Execute a group of tests by file or pattern.
 Rerun a specific test by ID.
 
 **Response:**
+
 ```json
 {
-  "status": "success",
-  "data": {
-    "message": "Test rerun started",
-    "testId": "test-66jqtq"
-  }
+    "status": "success",
+    "data": {
+        "message": "Test rerun started",
+        "testId": "test-66jqtq"
+    }
 }
 ```
 
@@ -180,16 +190,17 @@ Rerun a specific test by ID.
 Get execution history for a specific test.
 
 **Response:**
+
 ```json
 {
-  "status": "success",
-  "data": [
-    {
-      "timestamp": "2025-09-24 13:44:50",
-      "status": "passed",
-      "duration": 1500
-    }
-  ]
+    "status": "success",
+    "data": [
+        {
+            "timestamp": "2025-09-24 13:44:50",
+            "status": "passed",
+            "duration": 1500
+        }
+    ]
 }
 ```
 
@@ -200,25 +211,27 @@ Get attachments (screenshots, videos, traces) for a test.
 **Important**: Attachments are automatically copied to permanent storage (`{OUTPUT_DIR}/attachments/{testResultId}/`) when tests are reported. URLs point to permanent storage locations that survive Playwright's cleanup cycles.
 
 **Response:**
+
 ```json
 {
-  "status": "success",
-  "data": [
-    {
-      "id": "att_123",
-      "testResultId": "af679466-96f7-4a00-ad72-c02adc779fd8",
-      "type": "screenshot",
-      "fileName": "screenshot-1759177234280-abc123.png",
-      "filePath": "/absolute/path/to/attachments/af679466.../screenshot-1759177234280-abc123.png",
-      "fileSize": 45678,
-      "mimeType": "image/png",
-      "url": "/attachments/af679466-96f7-4a00-ad72-c02adc779fd8/screenshot-1759177234280-abc123.png"
-    }
-  ]
+    "status": "success",
+    "data": [
+        {
+            "id": "att_123",
+            "testResultId": "af679466-96f7-4a00-ad72-c02adc779fd8",
+            "type": "screenshot",
+            "fileName": "screenshot-1759177234280-abc123.png",
+            "filePath": "/absolute/path/to/attachments/af679466.../screenshot-1759177234280-abc123.png",
+            "fileSize": 45678,
+            "mimeType": "image/png",
+            "url": "/attachments/af679466-96f7-4a00-ad72-c02adc779fd8/screenshot-1759177234280-abc123.png"
+        }
+    ]
 }
 ```
 
 **URL Format**: `/attachments/{testResultId}/{fileName}`
+
 - Files are served from permanent storage with JWT authentication
 - Each test result has isolated directory
 - Files use unique names with timestamp + random suffix
@@ -228,19 +241,23 @@ Get attachments (screenshots, videos, traces) for a test.
 Download trace file for Playwright Trace Viewer with JWT authentication.
 
 **Query Parameters:**
+
 - `token` (required) - JWT authentication token
 
 **Example:**
+
 ```
 GET /api/tests/traces/att_123?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 ```
 
 **Response:**
+
 - Returns the trace file (application/zip) as a download
 - Used by Playwright Trace Viewer to load trace files
 - Requires valid JWT token for authentication
 
 **Headers:**
+
 ```
 Content-Type: application/zip
 Content-Disposition: attachment; filename="trace.zip"
@@ -249,6 +266,7 @@ X-Content-Type-Options: nosniff
 ```
 
 **Error Responses:**
+
 - `401` - Invalid or missing JWT token
 - `404` - Trace file not found or attachment is not a trace type
 - `500` - Server error reading file
@@ -260,11 +278,12 @@ X-Content-Type-Options: nosniff
 Create a new test run.
 
 **Request Body:**
+
 ```json
 {
-  "status": "running",
-  "startTime": "2024-09-25T12:00:00.000Z",
-  "totalTests": 80
+    "status": "running",
+    "startTime": "2024-09-25T12:00:00.000Z",
+    "totalTests": 80
 }
 ```
 
@@ -273,6 +292,7 @@ Create a new test run.
 Get all test runs with pagination.
 
 **Query Parameters:**
+
 - `limit` - Maximum number of results
 - `offset` - Skip number of results
 
@@ -281,13 +301,14 @@ Get all test runs with pagination.
 Update an existing test run.
 
 **Request Body:**
+
 ```json
 {
-  "status": "completed",
-  "endTime": "2024-09-25T12:05:00.000Z",
-  "passedTests": 75,
-  "failedTests": 3,
-  "skippedTests": 2
+    "status": "completed",
+    "endTime": "2024-09-25T12:05:00.000Z",
+    "passedTests": 75,
+    "failedTests": 3,
+    "skippedTests": 2
 }
 ```
 
@@ -300,15 +321,16 @@ Get a specific test run by ID.
 Get test run statistics and analytics.
 
 **Response:**
+
 ```json
 {
-  "status": "success",
-  "data": {
-    "totalRuns": 25,
-    "successRate": 85.5,
-    "averageDuration": 180000,
-    "recentRuns": []
-  }
+    "status": "success",
+    "data": {
+        "totalRuns": 25,
+        "successRate": 85.5,
+        "averageDuration": 180000,
+        "recentRuns": []
+    }
 }
 ```
 
@@ -317,16 +339,17 @@ Get test run statistics and analytics.
 Get test statistics and summary data.
 
 **Response:**
+
 ```json
 {
-  "status": "success",
-  "data": {
-    "total": 80,
-    "passed": 75,
-    "failed": 3,
-    "skipped": 2,
-    "pending": 0
-  }
+    "status": "success",
+    "data": {
+        "total": 80,
+        "passed": 75,
+        "failed": 3,
+        "skipped": 2,
+        "pending": 0
+    }
 }
 ```
 
@@ -337,11 +360,12 @@ Get test statistics and summary data.
 Register a new test process as started.
 
 **Request Body:**
+
 ```json
 {
-  "processId": "proc_123456",
-  "type": "test-execution",
-  "startTime": "2024-09-25T12:00:00.000Z"
+    "processId": "proc_123456",
+    "type": "test-execution",
+    "startTime": "2024-09-25T12:00:00.000Z"
 }
 ```
 
@@ -350,11 +374,12 @@ Register a new test process as started.
 Mark a test process as completed.
 
 **Request Body:**
+
 ```json
 {
-  "processId": "proc_123456",
-  "endTime": "2024-09-25T12:05:00.000Z",
-  "status": "completed"
+    "processId": "proc_123456",
+    "endTime": "2024-09-25T12:05:00.000Z",
+    "status": "completed"
 }
 ```
 
@@ -363,13 +388,14 @@ Mark a test process as completed.
 Emergency endpoint to clear all active processes.
 
 **Response:**
+
 ```json
 {
-  "status": "success",
-  "data": {
-    "message": "All processes force-reset",
-    "cleared": 3
-  }
+    "status": "success",
+    "data": {
+        "message": "All processes force-reset",
+        "cleared": 3
+    }
 }
 ```
 
@@ -380,119 +406,127 @@ Connect to WebSocket at: `ws://localhost:3001/ws` (development) or `wss://api-da
 ### Connection Events
 
 #### connection:status
+
 Sent immediately upon WebSocket connection to sync current state.
 
 ```json
 {
-  "type": "connection:status",
-  "data": {
-    "activeProcesses": ["proc_123456"],
-    "connectedAt": "2024-09-25T12:00:00.000Z"
-  }
+    "type": "connection:status",
+    "data": {
+        "activeProcesses": ["proc_123456"],
+        "connectedAt": "2024-09-25T12:00:00.000Z"
+    }
 }
 ```
 
 ### Process Events
 
 #### process:started
+
 Broadcast when a new test process begins.
 
 ```json
 {
-  "type": "process:started",
-  "data": {
-    "processId": "proc_123456",
-    "type": "test-execution",
-    "startTime": "2024-09-25T12:00:00.000Z"
-  }
+    "type": "process:started",
+    "data": {
+        "processId": "proc_123456",
+        "type": "test-execution",
+        "startTime": "2024-09-25T12:00:00.000Z"
+    }
 }
 ```
 
 #### process:ended
+
 Broadcast when a test process completes.
 
 ```json
 {
-  "type": "process:ended",
-  "data": {
-    "processId": "proc_123456",
-    "endTime": "2024-09-25T12:05:00.000Z",
-    "status": "completed"
-  }
+    "type": "process:ended",
+    "data": {
+        "processId": "proc_123456",
+        "endTime": "2024-09-25T12:05:00.000Z",
+        "status": "completed"
+    }
 }
 ```
 
 ### Test Events
 
 #### test:status
+
 Real-time test status updates during execution.
 
 ```json
 {
-  "type": "test:status",
-  "data": {
-    "testId": "test-66jqtq",
-    "status": "running",
-    "timestamp": "2024-09-25T12:01:00.000Z"
-  }
+    "type": "test:status",
+    "data": {
+        "testId": "test-66jqtq",
+        "status": "running",
+        "timestamp": "2024-09-25T12:01:00.000Z"
+    }
 }
 ```
 
 #### test:progress
+
 Test execution progress updates.
 
 ```json
 {
-  "type": "test:progress",
-  "data": {
-    "completed": 45,
-    "total": 80,
-    "percentage": 56.25
-  }
+    "type": "test:progress",
+    "data": {
+        "completed": 45,
+        "total": 80,
+        "percentage": 56.25
+    }
 }
 ```
 
 #### test:completed
+
 Individual test completion notification.
 
 ```json
 {
-  "type": "test:completed",
-  "data": {
-    "testId": "test-66jqtq",
-    "status": "passed",
-    "duration": 1500,
-    "timestamp": "2024-09-25T12:01:30.000Z"
-  }
+    "type": "test:completed",
+    "data": {
+        "testId": "test-66jqtq",
+        "status": "passed",
+        "duration": 1500,
+        "timestamp": "2024-09-25T12:01:30.000Z"
+    }
 }
 ```
 
 ### Legacy Events (Deprecated but Supported)
 
 #### run:started
+
 Legacy test run start event.
 
 ```json
 {
-  "type": "run:started",
-  "data": {
-    "runId": "run_789",
-    "startTime": "2024-09-25T12:00:00.000Z"
-  }
+    "type": "run:started",
+    "data": {
+        "runId": "run_789",
+        "startTime": "2024-09-25T12:00:00.000Z"
+    }
 }
 ```
 
 #### run:completed
+
 Legacy test run completion event.
 
 ```json
 {
-  "type": "run:completed",
-  "data": {
-    "runId": "run_789",
-    "endTime": "2024-09-25T12:05:00.000Z",
-    "status": "completed"
-  }
+    "type": "run:completed",
+    "data": {
+        "runId": "run_789",
+        "endTime": "2024-09-25T12:05:00.000Z",
+        "status": "completed"
+    }
 }
 ```
 
@@ -502,16 +536,17 @@ All API endpoints return consistent error format:
 
 ```json
 {
-  "status": "error",
-  "error": {
-    "message": "Test not found",
-    "code": "TEST_NOT_FOUND",
-    "details": {}
-  }
+    "status": "error",
+    "error": {
+        "message": "Test not found",
+        "code": "TEST_NOT_FOUND",
+        "details": {}
+    }
 }
 ```
 
 Common HTTP status codes:
+
 - `200` - Success
 - `400` - Bad Request
 - `404` - Not Found

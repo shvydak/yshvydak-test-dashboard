@@ -9,6 +9,7 @@ The YShvydak Test Dashboard implements a **permanent attachment storage system**
 **Each test result maintains independent, persistent attachments stored in permanent dashboard storage.**
 
 The system automatically copies attachment files from Playwright's temporary directory to permanent storage, ensuring that:
+
 - Running Test B does not affect Test A's attachments
 - Attachments remain accessible after page reloads
 - Re-running a test cleanly replaces its old attachments
@@ -21,16 +22,18 @@ The system automatically copies attachment files from Playwright's temporary dir
 Before implementing permanent storage, the dashboard exhibited a critical bug:
 
 **Scenario:**
+
 1. Run Test A → Attachments visible and playable
 2. Run Test B → Attachments visible and playable
 3. Open Test A again (without rerun) → **Attachments fail to load**
-   - Video player shows media element but doesn't play
-   - Trace download shows "Failed to download attachment"
-   - Browser console: `404 Not Found` for attachment files
+    - Video player shows media element but doesn't play
+    - Trace download shows "Failed to download attachment"
+    - Browser console: `404 Not Found` for attachment files
 
 **Root Cause:**
 
 The dashboard was storing direct references to Playwright's temporary `test-results/` directory:
+
 ```
 {PLAYWRIGHT_PROJECT}/test-results/{test-name}-{hash}/{attachment-name}
 ```
@@ -114,6 +117,7 @@ The attachment management system spans multiple architectural layers, following 
 **Location**: `packages/server/src/storage/attachmentManager.ts`
 
 **Responsibilities**:
+
 - Copy files from Playwright's temporary directory to permanent storage
 - Generate unique file names with timestamp + random suffix
 - Create test-result-specific subdirectories
@@ -122,24 +126,25 @@ The attachment management system spans multiple architectural layers, following 
 - Generate URL paths for attachments
 
 **Key Methods**:
+
 ```typescript
 class AttachmentManager {
-  // Copy file from Playwright temp dir to permanent storage
-  async copyPlaywrightAttachment(
-    sourceFilePath: string,
-    testResultId: string,
-    type: AttachmentType
-  ): Promise<AttachmentMetadata>
+    // Copy file from Playwright temp dir to permanent storage
+    async copyPlaywrightAttachment(
+        sourceFilePath: string,
+        testResultId: string,
+        type: AttachmentType
+    ): Promise<AttachmentMetadata>
 
-  // Delete all attachment files for a test result
-  async deleteTestAttachments(testResultId: string): Promise<number>
+    // Delete all attachment files for a test result
+    async deleteTestAttachments(testResultId: string): Promise<number>
 
-  // Generate URL path for attachment
-  generateUrl(testResultId: string, fileName: string): string
-  // Returns: /attachments/{testResultId}/{fileName}
+    // Generate URL path for attachment
+    generateUrl(testResultId: string, fileName: string): string
+    // Returns: /attachments/{testResultId}/{fileName}
 
-  // Get absolute file system path
-  getAttachmentPath(testResultId: string, fileName: string): string
+    // Get absolute file system path
+    getAttachmentPath(testResultId: string, fileName: string): string
 }
 ```
 
@@ -148,6 +153,7 @@ class AttachmentManager {
 **Location**: `packages/server/src/services/attachment.service.ts`
 
 **Responsibilities**:
+
 - Orchestrate attachment processing workflow
 - Coordinate AttachmentManager (file operations) and AttachmentRepository (database operations)
 - Handle attachment lifecycle (create, retrieve, delete)
@@ -155,39 +161,32 @@ class AttachmentManager {
 - Error handling and logging
 
 **Key Methods**:
+
 ```typescript
 class AttachmentService implements IAttachmentService {
-  /**
-   * Processes raw attachments from Playwright reporter and copies files to permanent storage
-   * @param attachments - Array of attachment objects from reporter containing file paths
-   * @param testResultId - ID of the test result to link attachments to
-   * @returns Array of processed attachment data with permanent file paths and URLs
-   */
-  async processAttachments(
-    attachments: any[],
-    testResultId: string
-  ): Promise<AttachmentData[]>
+    /**
+     * Processes raw attachments from Playwright reporter and copies files to permanent storage
+     * @param attachments - Array of attachment objects from reporter containing file paths
+     * @param testResultId - ID of the test result to link attachments to
+     * @returns Array of processed attachment data with permanent file paths and URLs
+     */
+    async processAttachments(attachments: any[], testResultId: string): Promise<AttachmentData[]>
 
-  /**
-   * Saves attachments for a test result, handling cleanup of old attachments on rerun
-   * @param testResultId - ID of the test result
-   * @param attachments - Raw attachment data from Playwright reporter
-   */
-  async saveAttachmentsForTestResult(
-    testResultId: string,
-    attachments: any[]
-  ): Promise<void>
+    /**
+     * Saves attachments for a test result, handling cleanup of old attachments on rerun
+     * @param testResultId - ID of the test result
+     * @param attachments - Raw attachment data from Playwright reporter
+     */
+    async saveAttachmentsForTestResult(testResultId: string, attachments: any[]): Promise<void>
 
-  /**
-   * Retrieves all attachments for a test result with properly formatted URLs
-   * @param testResultId - ID of the test result
-   * @returns Array of attachments with URLs ready for frontend consumption
-   */
-  async getAttachmentsByTestResult(
-    testResultId: string
-  ): Promise<AttachmentData[]>
+    /**
+     * Retrieves all attachments for a test result with properly formatted URLs
+     * @param testResultId - ID of the test result
+     * @returns Array of attachments with URLs ready for frontend consumption
+     */
+    async getAttachmentsByTestResult(testResultId: string): Promise<AttachmentData[]>
 
-  async getAttachmentById(attachmentId: string): Promise<AttachmentData | null>
+    async getAttachmentById(attachmentId: string): Promise<AttachmentData | null>
 }
 ```
 
@@ -196,24 +195,26 @@ class AttachmentService implements IAttachmentService {
 **Location**: `packages/server/src/repositories/attachment.repository.ts`
 
 **Responsibilities**:
+
 - Database CRUD operations for attachments
 - Query attachments by test result ID
 - Handle URL format conversion (legacy vs new paths)
 - Delete attachment records
 
 **Key Methods**:
+
 ```typescript
 class AttachmentRepository extends BaseRepository {
-  async saveAttachment(attachmentData: AttachmentData): Promise<void>
+    async saveAttachment(attachmentData: AttachmentData): Promise<void>
 
-  async getAttachmentsByTestResult(testResultId: string): Promise<AttachmentData[]>
+    async getAttachmentsByTestResult(testResultId: string): Promise<AttachmentData[]>
 
-  // Returns attachments with properly formatted URLs
-  async getAttachmentsWithUrls(testResultId: string): Promise<AttachmentData[]>
+    // Returns attachments with properly formatted URLs
+    async getAttachmentsWithUrls(testResultId: string): Promise<AttachmentData[]>
 
-  async deleteAttachmentsByTestResult(testResultId: string): Promise<void>
+    async deleteAttachmentsByTestResult(testResultId: string): Promise<void>
 
-  async getAttachmentById(attachmentId: string): Promise<AttachmentData | null>
+    async getAttachmentById(attachmentId: string): Promise<AttachmentData | null>
 }
 ```
 
@@ -239,6 +240,7 @@ CREATE INDEX IF NOT EXISTS idx_attachments_type ON attachments(type);
 ```
 
 **Key Features**:
+
 - `ON DELETE CASCADE`: Automatically delete attachment records when test result is deleted
 - Indexed by test_result_id for fast queries
 - Stores both file_path (absolute) and url (relative)
@@ -265,27 +267,27 @@ Attachments saved to: {PLAYWRIGHT_PROJECT}/test-results/{test-name}-{hash}/
 ```typescript
 // External reporter (yshvydakReporter.ts)
 const result = {
-  testId: 'test-66jqtq',
-  name: 'API - Change Action Status',
-  status: 'passed',
-  attachments: [
-    {
-      name: 'video',
-      path: '/Users/.../test-results/api-change-action-abcd1234/video.webm',
-      contentType: 'video/webm'
-    },
-    {
-      name: 'trace',
-      path: '/Users/.../test-results/api-change-action-abcd1234/trace.zip',
-      contentType: 'application/zip'
-    }
-  ]
+    testId: 'test-66jqtq',
+    name: 'API - Change Action Status',
+    status: 'passed',
+    attachments: [
+        {
+            name: 'video',
+            path: '/Users/.../test-results/api-change-action-abcd1234/video.webm',
+            contentType: 'video/webm',
+        },
+        {
+            name: 'trace',
+            path: '/Users/.../test-results/api-change-action-abcd1234/trace.zip',
+            contentType: 'application/zip',
+        },
+    ],
 }
 
 // POST to dashboard
 await fetch(`${DASHBOARD_API_URL}/api/tests`, {
-  method: 'POST',
-  body: JSON.stringify(result)
+    method: 'POST',
+    body: JSON.stringify(result),
 })
 ```
 
@@ -530,11 +532,13 @@ Attachments use unique file names to prevent collisions:
 **Format**: `{type}-{timestamp}-{random}.{extension}`
 
 **Examples**:
+
 - `video-1759177234271-k4bhye.webm`
 - `screenshot-1759177234280-abc123.png`
 - `trace-1759177234290-xyz789.zip`
 
 **Components**:
+
 - `type`: Attachment type (video, screenshot, trace, log)
 - `timestamp`: `Date.now()` in milliseconds
 - `random`: 6-character alphanumeric string (`Math.random().toString(36).substring(2, 8)`)
@@ -549,6 +553,7 @@ Attachments are served via Express static middleware with JWT authentication:
 **Example**: `/attachments/af679466-96f7-4a00-ad72-c02adc779fd8/video-1759177234271-k4bhye.webm`
 
 **Serving Configuration**:
+
 ```typescript
 // app.ts
 app.use('/attachments', authMiddleware, express.static(attachmentsPath))
@@ -563,43 +568,41 @@ The AttachmentService is integrated into the dependency injection container and 
 ```typescript
 // ServiceContainer initialization
 export class ServiceContainer {
-  // Storage and Repositories
-  private attachmentManager: AttachmentManager
-  private attachmentRepository: AttachmentRepository
+    // Storage and Repositories
+    private attachmentManager: AttachmentManager
+    private attachmentRepository: AttachmentRepository
 
-  // Services
-  public attachmentService: AttachmentService
+    // Services
+    public attachmentService: AttachmentService
 
-  constructor(dbManager: DatabaseManager) {
-    this.attachmentManager = new AttachmentManager(config.storage.outputDir)
-    this.attachmentRepository = new AttachmentRepository(dbManager)
+    constructor(dbManager: DatabaseManager) {
+        this.attachmentManager = new AttachmentManager(config.storage.outputDir)
+        this.attachmentRepository = new AttachmentRepository(dbManager)
 
-    this.attachmentService = new AttachmentService(
-      this.attachmentRepository
-    )
-  }
+        this.attachmentService = new AttachmentService(this.attachmentRepository)
+    }
 }
 
 // TestController usage
 export class TestController {
-  constructor(
-    private testService: ITestService,
-    private attachmentService: IAttachmentService
-  ) {}
+    constructor(
+        private testService: ITestService,
+        private attachmentService: IAttachmentService
+    ) {}
 
-  async saveTestResult(req: Request, res: Response): Promise<void> {
-    const testData = req.body
-    const testResultId = await this.testService.saveTestResult(testData)
+    async saveTestResult(req: Request, res: Response): Promise<void> {
+        const testData = req.body
+        const testResultId = await this.testService.saveTestResult(testData)
 
-    if (testData.attachments?.length > 0) {
-      await this.attachmentService.saveAttachmentsForTestResult(
-        testResultId,
-        testData.attachments
-      )
+        if (testData.attachments?.length > 0) {
+            await this.attachmentService.saveAttachmentsForTestResult(
+                testResultId,
+                testData.attachments
+            )
+        }
+
+        res.json(ResponseHelper.success({id: testResultId}))
     }
-
-    res.json(ResponseHelper.success({ id: testResultId }))
-  }
 }
 ```
 
@@ -722,6 +725,7 @@ const blobUrl = await createProtectedFileURL(
 ### Scenario 1: Running Different Tests
 
 **User Actions**:
+
 1. Run Test A (first time)
 2. Run Test B (first time)
 3. Open Test A modal (without rerun)
@@ -729,6 +733,7 @@ const blobUrl = await createProtectedFileURL(
 **System Behavior**:
 
 **Test A Execution**:
+
 ```
 1. Playwright creates: test-results/test-a-hash123/video.webm
 2. Reporter sends to dashboard:
@@ -745,6 +750,7 @@ const blobUrl = await createProtectedFileURL(
 ```
 
 **Test B Execution**:
+
 ```
 1. Playwright cleans test-results/ and creates: test-results/test-b-hash456/screenshot.png
 2. Reporter sends to dashboard
@@ -754,6 +760,7 @@ const blobUrl = await createProtectedFileURL(
 ```
 
 **Test A Modal Opens**:
+
 ```
 1. Frontend: GET /api/tests/testResultId-A/attachments
 2. Database returns: url: /attachments/testResultId-A/video-1759177234271-k4bhye.webm
@@ -766,6 +773,7 @@ const blobUrl = await createProtectedFileURL(
 ### Scenario 2: Re-running the Same Test
 
 **User Actions**:
+
 1. Run Test A (first time)
 2. Run Test A (second time - rerun)
 3. Open Test A modal
@@ -773,6 +781,7 @@ const blobUrl = await createProtectedFileURL(
 **System Behavior**:
 
 **First Run**:
+
 ```
 1. Files copied to: attachments/testResultId-A/
    - video-1759177234271-k4bhye.webm (3.5 MB)
@@ -781,6 +790,7 @@ const blobUrl = await createProtectedFileURL(
 ```
 
 **Second Run (Rerun)**:
+
 ```
 1. Reporter sends same testId but new attachments
 2. Service detects existing attachments for testResultId-A
@@ -796,6 +806,7 @@ const blobUrl = await createProtectedFileURL(
 ```
 
 **Test A Modal Opens**:
+
 ```
 1. Frontend fetches attachments
 2. Database returns NEW attachment URLs
@@ -807,9 +818,11 @@ const blobUrl = await createProtectedFileURL(
 ### Scenario 3: Multiple Concurrent Tests
 
 **User Actions**:
+
 1. Run all tests (80 tests in parallel)
 
 **System Behavior**:
+
 ```
 Each test result gets isolated storage:
 
@@ -836,31 +849,32 @@ No collisions, no interference between tests.
 **Description**: Retrieve all attachments for a specific test result.
 
 **Response**:
+
 ```json
 {
-  "status": "success",
-  "data": [
-    {
-      "id": "att_123",
-      "testResultId": "af679466-96f7-4a00-ad72-c02adc779fd8",
-      "type": "video",
-      "fileName": "video-1759177234271-k4bhye.webm",
-      "filePath": "/absolute/path/to/attachments/af679466.../video-1759177234271-k4bhye.webm",
-      "fileSize": 3670016,
-      "mimeType": "video/webm",
-      "url": "/attachments/af679466-96f7-4a00-ad72-c02adc779fd8/video-1759177234271-k4bhye.webm"
-    },
-    {
-      "id": "att_124",
-      "testResultId": "af679466-96f7-4a00-ad72-c02adc779fd8",
-      "type": "trace",
-      "fileName": "trace-1759177234290-xyz789.zip",
-      "filePath": "/absolute/path/to/attachments/af679466.../trace-1759177234290-xyz789.zip",
-      "fileSize": 1258291,
-      "mimeType": "application/zip",
-      "url": "/attachments/af679466-96f7-4a00-ad72-c02adc779fd8/trace-1759177234290-xyz789.zip"
-    }
-  ]
+    "status": "success",
+    "data": [
+        {
+            "id": "att_123",
+            "testResultId": "af679466-96f7-4a00-ad72-c02adc779fd8",
+            "type": "video",
+            "fileName": "video-1759177234271-k4bhye.webm",
+            "filePath": "/absolute/path/to/attachments/af679466.../video-1759177234271-k4bhye.webm",
+            "fileSize": 3670016,
+            "mimeType": "video/webm",
+            "url": "/attachments/af679466-96f7-4a00-ad72-c02adc779fd8/video-1759177234271-k4bhye.webm"
+        },
+        {
+            "id": "att_124",
+            "testResultId": "af679466-96f7-4a00-ad72-c02adc779fd8",
+            "type": "trace",
+            "fileName": "trace-1759177234290-xyz789.zip",
+            "filePath": "/absolute/path/to/attachments/af679466.../trace-1759177234290-xyz789.zip",
+            "fileSize": 1258291,
+            "mimeType": "application/zip",
+            "url": "/attachments/af679466-96f7-4a00-ad72-c02adc779fd8/trace-1759177234290-xyz789.zip"
+        }
+    ]
 }
 ```
 
@@ -871,6 +885,7 @@ No collisions, no interference between tests.
 **Description**: Download attachment file with JWT authentication.
 
 **Headers**:
+
 ```
 Authorization: Bearer {jwt-token}
 ```
@@ -884,14 +899,17 @@ Authorization: Bearer {jwt-token}
 **Description**: Download trace file for Playwright Trace Viewer with query-based JWT authentication.
 
 **Query Parameters**:
+
 - `token` (required): JWT authentication token
 
 **Example**:
+
 ```
 GET /api/tests/traces/att_123?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 ```
 
 **Usage**:
+
 ```typescript
 // Frontend constructs URL with token for Playwright Trace Viewer
 const token = getAuthToken()
@@ -986,12 +1004,14 @@ static convertToRelativeUrl(absolutePath: string): string {
 **Symptom**: Browser console shows `404 Not Found` for attachment URLs.
 
 **Possible Causes**:
+
 1. File not copied to permanent storage (check server logs)
 2. Incorrect URL format (missing `/attachments/` prefix)
 3. File deleted but database record remains
 4. Permissions issue accessing file
 
 **Debug Steps**:
+
 ```bash
 # Check if file exists
 ls -la {OUTPUT_DIR}/attachments/{testResultId}/
@@ -1011,12 +1031,14 @@ curl -H "Authorization: Bearer {token}" http://localhost:3001/attachments/{testR
 **Symptom**: Video element visible but playback fails.
 
 **Possible Causes**:
+
 1. Blob URL creation failed
 2. Authentication token expired
 3. MIME type incorrect
 4. File corrupted during copy
 
 **Debug Steps**:
+
 ```javascript
 // Check blob URL creation
 console.log('Blob URL:', blobUrl)
@@ -1038,11 +1060,13 @@ console.log('File size:', response.headers.get('content-length'))
 **Symptom**: "Failed to download attachment" error for trace files.
 
 **Possible Causes**:
+
 1. Trace file not copied (check if exists on disk)
 2. JWT token not included in trace viewer URL
 3. Attachment type not 'trace' in database
 
 **Debug Steps**:
+
 ```bash
 # Check trace file exists
 ls -la {OUTPUT_DIR}/attachments/{testResultId}/*.zip
@@ -1059,11 +1083,13 @@ curl "http://localhost:3001/api/tests/traces/att_123?token={jwt-token}"
 **Symptom**: Old attachment files remain after rerunning test.
 
 **Possible Causes**:
+
 1. deleteTestAttachments() failed silently
 2. File permissions prevent deletion
 3. Files locked by another process
 
 **Debug Steps**:
+
 ```bash
 # Check for error logs
 grep "Failed to delete physical files" server.log
@@ -1087,6 +1113,7 @@ await fs.promises.copyFile(sourceFilePath, targetFilePath)
 ```
 
 **Optimization Tips**:
+
 1. Use fast storage (SSD) for OUTPUT_DIR
 2. Limit video resolution/duration in Playwright config
 3. Enable video compression in Playwright
@@ -1100,6 +1127,7 @@ CREATE INDEX IF NOT EXISTS idx_attachments_test_result_id ON attachments(test_re
 ```
 
 **Query Performance**:
+
 - `getAttachmentsByTestResult()`: O(log n) due to index
 - Bulk operations use transactions for efficiency
 

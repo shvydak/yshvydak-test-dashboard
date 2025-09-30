@@ -1,2 +1,2 @@
-export { default as LoginPage } from './LoginPage'
-export { AuthProviderWrapper } from './AuthProvider'
+export {default as LoginPage} from './LoginPage'
+export {AuthProviderWrapper} from './AuthProvider'

@@ -1,5 +1,5 @@
-import { Response } from 'express'
-import { ApiResponse } from '../types/api.types'
+import {Response} from 'express'
+import {ApiResponse} from '../types/api.types'
 
 export class ResponseHelper {
     static success<T>(res: Response, data: T, message?: string, count?: number): Response {
@@ -8,7 +8,7 @@ export class ResponseHelper {
             data,
             message,
             count,
-            timestamp: new Date().toISOString()
+            timestamp: new Date().toISOString(),
         })
     }
 
@@ -17,7 +17,7 @@ export class ResponseHelper {
             success: false,
             error,
             message,
-            timestamp: new Date().toISOString()
+            timestamp: new Date().toISOString(),
         })
     }
 
@@ -25,7 +25,7 @@ export class ResponseHelper {
         return res.status(404).json({
             success: false,
             error: `${resource} not found`,
-            timestamp: new Date().toISOString()
+            timestamp: new Date().toISOString(),
         })
     }
 
@@ -34,7 +34,7 @@ export class ResponseHelper {
             success: false,
             error: 'Bad request',
             message,
-            timestamp: new Date().toISOString()
+            timestamp: new Date().toISOString(),
         })
     }
 
@@ -43,7 +43,7 @@ export class ResponseHelper {
             success: false,
             error: 'Unauthorized',
             message: message || 'Authentication required',
-            timestamp: new Date().toISOString()
+            timestamp: new Date().toISOString(),
         })
     }
 
@@ -52,7 +52,7 @@ export class ResponseHelper {
             success: false,
             error: 'Forbidden',
             message: message || 'Access denied',
-            timestamp: new Date().toISOString()
+            timestamp: new Date().toISOString(),
         })
     }
 
@@ -61,7 +61,7 @@ export class ResponseHelper {
             success: false,
             error: 'Internal server error',
             message,
-            timestamp: new Date().toISOString()
+            timestamp: new Date().toISOString(),
         })
     }
 
@@ -72,7 +72,7 @@ export class ResponseHelper {
             data,
             message,
             count,
-            timestamp: new Date().toISOString()
+            timestamp: new Date().toISOString(),
         }
     }
 
@@ -81,7 +81,7 @@ export class ResponseHelper {
             success: false,
             error,
             message,
-            timestamp: new Date().toISOString()
+            timestamp: new Date().toISOString(),
         }
     }
 
@@ -90,7 +90,7 @@ export class ResponseHelper {
             success: false,
             error: 'Internal server error',
             message,
-            timestamp: new Date().toISOString()
+            timestamp: new Date().toISOString(),
         }
     }
 }

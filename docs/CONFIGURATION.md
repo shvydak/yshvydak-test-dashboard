@@ -30,7 +30,7 @@ Advanced users can still override any derived variable by setting it explicitly 
 
 - **Vite dotenv**: The web package requires explicit dotenv loading in `vite.config.ts` to access environment variables during configuration
 - **Port Management**: Web dev server uses `VITE_PORT` if set, otherwise derives from `PORT - 1`, with fallback to 4001
-- **Environment Isolation**: Server variables (PORT, BASE_URL) are separate from client variables (VITE_*)
+- **Environment Isolation**: Server variables (PORT, BASE*URL) are separate from client variables (VITE*\*)
 
 ## Technical Details
 
@@ -44,6 +44,7 @@ Advanced users can still override any derived variable by setting it explicitly 
 ### Server Configuration
 
 Environment variables are managed in:
+
 - `packages/server/src/config/environment.config.ts` - Environment variable handling
 - `packages/server/src/config/constants.ts` - Application constants
 
@@ -82,11 +83,13 @@ VITE_PORT=3000                               # Web dev server port (optional)
 ## Environment Modes
 
 ### Development
+
 - Uses localhost URLs
 - All development features enabled
 - Hot reload and fast refresh
 
 ### Production
+
 - Uses production URLs (CloudTunnel domains)
 - Optimized builds
 - Production-ready configuration

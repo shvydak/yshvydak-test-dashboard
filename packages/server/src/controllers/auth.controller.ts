@@ -1,7 +1,7 @@
-import { Request, Response } from 'express'
-import { AuthService, LoginCredentials } from '../services/auth.service'
-import { ResponseHelper } from '../utils/response.helper'
-import { Logger } from '../utils/logger.util'
+import {Request, Response} from 'express'
+import {AuthService, LoginCredentials} from '../services/auth.service'
+import {ResponseHelper} from '../utils/response.helper'
+import {Logger} from '../utils/logger.util'
 
 export class AuthController {
     constructor(private authService: AuthService) {}
@@ -24,7 +24,7 @@ export class AuthController {
                 ResponseHelper.success(res, {
                     token: result.token,
                     user: result.user,
-                    expiresIn: result.expiresIn
+                    expiresIn: result.expiresIn,
                 })
             } else {
                 // Return unauthorized for failed login attempts
@@ -47,7 +47,7 @@ export class AuthController {
 
             if (result.success) {
                 ResponseHelper.success(res, {
-                    message: result.message
+                    message: result.message,
                 })
             } else {
                 ResponseHelper.serverError(res, result.message)
@@ -73,7 +73,7 @@ export class AuthController {
             if (result.valid) {
                 ResponseHelper.success(res, {
                     valid: true,
-                    user: result.user
+                    user: result.user,
                 })
             } else {
                 ResponseHelper.unauthorized(res, result.message || 'Invalid token')
@@ -93,7 +93,7 @@ export class AuthController {
 
             if (user) {
                 ResponseHelper.success(res, {
-                    user: user
+                    user: user,
                 })
             } else {
                 ResponseHelper.unauthorized(res, 'User information not available')

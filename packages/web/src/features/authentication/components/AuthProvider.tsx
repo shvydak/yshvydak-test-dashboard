@@ -1,9 +1,9 @@
 import React from 'react'
 
 interface AuthProviderWrapperProps {
-  children: React.ReactNode
+    children: React.ReactNode
 }
 
-export function AuthProviderWrapper({ children }: AuthProviderWrapperProps) {
-  return <div>{children}</div>
+export function AuthProviderWrapper({children}: AuthProviderWrapperProps) {
+    return <div>{children}</div>
 }

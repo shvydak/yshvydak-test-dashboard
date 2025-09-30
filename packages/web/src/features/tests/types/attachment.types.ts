@@ -1,14 +1,14 @@
 export interface Attachment {
-	id: string
-	testResultId: string
-	type: 'video' | 'screenshot' | 'trace' | 'log'
-	filePath: string
-	fileSize: number
-	url: string
+    id: string
+    testResultId: string
+    type: 'video' | 'screenshot' | 'trace' | 'log'
+    filePath: string
+    fileSize: number
+    url: string
 }
 
 export interface AttachmentWithBlobURL extends Attachment {
-	blobURL?: string
+    blobURL?: string
 }
 
 export type TabKey = 'overview' | 'attachments' | 'steps'

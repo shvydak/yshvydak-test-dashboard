@@ -40,7 +40,7 @@ export class FileUtil {
 
     static mapContentTypeToDbType(
         contentType: string,
-        fileName: string,
+        fileName: string
     ): 'video' | 'screenshot' | 'trace' | 'log' {
         // Video files
         if (

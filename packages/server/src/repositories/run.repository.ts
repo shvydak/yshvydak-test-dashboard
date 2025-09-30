@@ -1,6 +1,6 @@
-import { BaseRepository } from './base.repository'
-import { TestRunData } from '../types/database.types'
-import { IRunRepository } from '../types/service.types'
+import {BaseRepository} from './base.repository'
+import {TestRunData} from '../types/database.types'
+import {IRunRepository} from '../types/service.types'
 
 export class RunRepository extends BaseRepository implements IRunRepository {
     async createTestRun(runData: TestRunData): Promise<string> {
@@ -13,10 +13,7 @@ export class RunRepository extends BaseRepository implements IRunRepository {
     }
 
     async getTestRun(runId: string): Promise<TestRunData | null> {
-        const row = await this.queryOne<any>(
-            'SELECT * FROM test_runs WHERE id = ?',
-            [runId]
-        )
+        const row = await this.queryOne<any>('SELECT * FROM test_runs WHERE id = ?', [runId])
 
         if (!row) return null
 
@@ -28,7 +25,7 @@ export class RunRepository extends BaseRepository implements IRunRepository {
             failedTests: row.failed_tests,
             skippedTests: row.skipped_tests,
             duration: row.duration,
-            metadata: row.metadata ? JSON.parse(row.metadata) : undefined
+            metadata: row.metadata ? JSON.parse(row.metadata) : undefined,
         }
     }
 
@@ -42,7 +39,7 @@ export class RunRepository extends BaseRepository implements IRunRepository {
             [limit]
         )
 
-        return rows.map(row => ({
+        return rows.map((row) => ({
             id: row.id,
             status: row.status,
             totalTests: row.total_tests,
@@ -50,7 +47,7 @@ export class RunRepository extends BaseRepository implements IRunRepository {
             failedTests: row.failed_tests,
             skippedTests: row.skipped_tests,
             duration: row.duration,
-            metadata: row.metadata ? JSON.parse(row.metadata) : undefined
+            metadata: row.metadata ? JSON.parse(row.metadata) : undefined,
         }))
     }
 }

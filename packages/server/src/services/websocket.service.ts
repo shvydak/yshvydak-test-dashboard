@@ -1,6 +1,6 @@
-import { IWebSocketService, WebSocketMessage } from '../types/service.types'
-import { getWebSocketManager } from '../websocket/server'
-import { Logger } from '../utils/logger.util'
+import {IWebSocketService, WebSocketMessage} from '../types/service.types'
+import {getWebSocketManager} from '../websocket/server'
+import {Logger} from '../utils/logger.util'
 
 export class WebSocketService implements IWebSocketService {
     broadcast(message: WebSocketMessage): void {
@@ -22,14 +22,14 @@ export class WebSocketService implements IWebSocketService {
     broadcastRunStarted(runId: string, type: string, filePath?: string): void {
         this.broadcast({
             type: 'run:started',
-            data: { runId, type, filePath }
+            data: {runId, type, filePath},
         })
     }
 
     broadcastRunCompleted(runId: string, exitCode: number, type?: string, filePath?: string): void {
         this.broadcast({
             type: 'run:completed',
-            data: { runId, exitCode, type, filePath }
+            data: {runId, exitCode, type, filePath},
         })
     }
 
@@ -39,8 +39,8 @@ export class WebSocketService implements IWebSocketService {
             data: {
                 total,
                 saved,
-                timestamp: new Date().toISOString()
-            }
+                timestamp: new Date().toISOString(),
+            },
         })
     }
 
@@ -50,8 +50,8 @@ export class WebSocketService implements IWebSocketService {
             data: {
                 reason,
                 timestamp: new Date().toISOString(),
-                ...additionalData
-            }
+                ...additionalData,
+            },
         })
     }
 }

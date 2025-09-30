@@ -1,14 +1,14 @@
-import { Request, Response, NextFunction } from 'express'
-import { DatabaseManager } from '../database/database.manager'
-import { TestRepository } from '../repositories/test.repository'
-import { RunRepository } from '../repositories/run.repository'
-import { AttachmentRepository } from '../repositories/attachment.repository'
-import { TestService } from '../services/test.service'
-import { PlaywrightService } from '../services/playwright.service'
-import { WebSocketService } from '../services/websocket.service'
-import { AttachmentService } from '../services/attachment.service'
-import { AuthService } from '../services/auth.service'
-import { config } from '../config/environment.config'
+import {Request, Response, NextFunction} from 'express'
+import {DatabaseManager} from '../database/database.manager'
+import {TestRepository} from '../repositories/test.repository'
+import {RunRepository} from '../repositories/run.repository'
+import {AttachmentRepository} from '../repositories/attachment.repository'
+import {TestService} from '../services/test.service'
+import {PlaywrightService} from '../services/playwright.service'
+import {WebSocketService} from '../services/websocket.service'
+import {AttachmentService} from '../services/attachment.service'
+import {AuthService} from '../services/auth.service'
+import {config} from '../config/environment.config'
 
 // Dependency container
 export interface ServiceContainer {
@@ -54,7 +54,7 @@ export function createServiceContainer(): ServiceContainer {
         playwrightService,
         websocketService,
         attachmentService,
-        authService
+        authService,
     }
 }
 
@@ -66,7 +66,7 @@ export function injectServices(container: ServiceContainer) {
             testService: container.testService,
             playwrightService: container.playwrightService,
             websocketService: container.websocketService,
-            attachmentService: container.attachmentService
+            attachmentService: container.attachmentService,
         }
 
         next()

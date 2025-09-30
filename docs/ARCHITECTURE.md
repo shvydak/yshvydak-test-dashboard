@@ -98,11 +98,11 @@ The dashboard uses a **dynamic reporter injection** architecture that provides c
 - **Location**: `packages/reporter/` - Standalone npm package
 - **Exports**: CJS/ESM builds with TypeScript declarations
 - **Features**:
-  - Enhanced error reporting with code context and line highlighting
-  - Stable test ID generation using file path + title hash
-  - Real-time API communication with dashboard server
-  - Built-in diagnostics and health checks
-  - Silent mode for programmatic usage
+    - Enhanced error reporting with code context and line highlighting
+    - Stable test ID generation using file path + title hash
+    - Real-time API communication with dashboard server
+    - Built-in diagnostics and health checks
+    - Silent mode for programmatic usage
 
 ### Integration Modes
 
@@ -254,33 +254,40 @@ packages/web/src/
 ### Key Principles
 
 #### 1. Feature-Based Organization
+
 - **Colocation**: All code related to a feature lives within its directory
 - **Independence**: Features are self-contained with their own components, hooks, store, types, utils
 - **Scalability**: Easy to add new features without affecting existing code
 
 #### 2. Atomic Design Pattern
+
 - **Atoms**: Basic building blocks (Button, StatusIcon, LoadingSpinner)
 - **Molecules**: Simple component combinations (Card, ActionButton, StatusBadge)
 - **Organisms**: Complex components composed of molecules and atoms (TestsList, Dashboard)
 
 #### 3. Path Aliases
+
 Clean imports using TypeScript path aliases:
+
 ```typescript
-import { useTestsStore } from '@features/tests/store/testsStore'
-import { Button, Card } from '@shared/components'
-import { config } from '@config/environment.config'
+import {useTestsStore} from '@features/tests/store/testsStore'
+import {Button, Card} from '@shared/components'
+import {config} from '@config/environment.config'
 ```
 
 #### 4. Component Size Best Practice
+
 - **Maximum 200 lines per file**: Large components split into smaller, focused components
 - **Example**: TestDetailModal (577 lines) split into 8 modular components (40-100 lines each)
 
 #### 5. DRY Principle (Don't Repeat Yourself)
+
 - **Centralized utilities**: formatters, helpers in `features/tests/utils/`
 - **Shared constants**: TEST_STATUS_ICONS, FILTER_OPTIONS in `features/tests/constants/`
 - **No duplication**: Single source of truth for all utilities and constants
 
 #### 6. Zustand Store Organization
+
 - **Feature-level stores**: Each feature has its own store inside `features/{feature}/store/`
 - **Example**: `features/tests/store/testsStore.ts` manages all tests state
 - **Benefits**: Clear ownership, easier testing, better code organization
@@ -288,6 +295,7 @@ import { config } from '@config/environment.config'
 ### Features Breakdown
 
 #### Tests Feature (Main)
+
 - **Components**: TestsList, TestDetailModal (8 sub-components), TestsTableView, TestRow, TestGroupHeader
 - **Hooks**: useTestAttachments, useTestFilters, useTestGroups, useTestSort
 - **Store**: testsStore.ts (Zustand) - tests state, actions, API calls
@@ -295,25 +303,29 @@ import { config } from '@config/environment.config'
 - **Utils**: formatters (duration, dates, status), attachmentHelpers (icons, download, trace viewer)
 
 #### Dashboard Feature
+
 - **Components**: Dashboard, DashboardStats, DashboardActions, SystemInfo, RecentTests, ErrorsOverview
 - **Hooks**: useDashboardStats, useDashboardActions
 - **Integration**: Uses tests store for data, displays summary and quick actions
 
 #### Authentication Feature
+
 - **Components**: LoginPage
 - **Utils**: authFetch (JWT-based API calls), authentication helpers
 - **Security**: JWT token management, protected routes, localStorage-based auth
 
 ### Barrel Exports
+
 Each feature exports its public API through `index.ts`:
+
 ```typescript
 // features/tests/index.ts
 export * from './components'
 export * from './hooks'
 export * from './utils'
 export * from './store/testsStore'
-export { FILTER_OPTIONS, TEST_STATUS_COLORS, TEST_STATUS_ICONS } from './constants'
-export type { FilterKey } from './constants'
+export {FILTER_OPTIONS, TEST_STATUS_COLORS, TEST_STATUS_ICONS} from './constants'
+export type {FilterKey} from './constants'
 ```
 
 ### Benefits of This Architecture

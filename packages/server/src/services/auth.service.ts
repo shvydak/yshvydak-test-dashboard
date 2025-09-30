@@ -1,6 +1,6 @@
-import { createSigner, createVerifier } from 'fast-jwt'
-import { config } from '../config/environment.config'
-import { Logger } from '../utils/logger.util'
+import {createSigner, createVerifier} from 'fast-jwt'
+import {config} from '../config/environment.config'
+import {Logger} from '../utils/logger.util'
 
 export interface AuthUser {
     email: string
@@ -35,7 +35,7 @@ export interface VerifyResult {
 export class AuthService {
     private jwtSigner: any
     private jwtVerifier: any
-    private users: Map<string, { password: string; role: string }> = new Map()
+    private users: Map<string, {password: string; role: string}> = new Map()
 
     constructor() {
         this.initializeJWT()
@@ -53,11 +53,11 @@ export class AuthService {
         try {
             this.jwtSigner = createSigner({
                 key: jwtSecret,
-                expiresIn: expiresIn
+                expiresIn: expiresIn,
             })
 
             this.jwtVerifier = createVerifier({
-                key: jwtSecret
+                key: jwtSecret,
             })
 
             Logger.info('JWT authentication initialized successfully')
@@ -78,7 +78,7 @@ export class AuthService {
                 for (const user of adminUsers) {
                     this.users.set(user.email, {
                         password: user.password,
-                        role: user.role || 'admin'
+                        role: user.role || 'admin',
                     })
                 }
                 Logger.info(`Loaded ${adminUsers.length} users from ADMIN_USERS configuration`)
@@ -88,12 +88,14 @@ export class AuthService {
                 const adminPassword = config.auth.adminPassword
 
                 if (!adminEmail || !adminPassword) {
-                    throw new Error('ADMIN_EMAIL and ADMIN_PASSWORD environment variables are required')
+                    throw new Error(
+                        'ADMIN_EMAIL and ADMIN_PASSWORD environment variables are required'
+                    )
                 }
 
                 this.users.set(adminEmail, {
                     password: adminPassword,
-                    role: 'admin'
+                    role: 'admin',
                 })
                 Logger.info('Loaded single user from ADMIN_EMAIL/ADMIN_PASSWORD configuration')
             }
@@ -103,10 +105,9 @@ export class AuthService {
         }
     }
 
-
     async login(credentials: LoginCredentials): Promise<LoginResult> {
         try {
-            const { email, password } = credentials
+            const {email, password} = credentials
 
             // Validate user credentials
             const userConfig = this.users.get(email)
@@ -114,18 +115,18 @@ export class AuthService {
                 Logger.warn(`Failed login attempt for email: ${email}`)
                 return {
                     success: false,
-                    message: 'Invalid email or password'
+                    message: 'Invalid email or password',
                 }
             }
 
             // Create user object
             const user: AuthUser = {
                 email,
-                role: userConfig.role
+                role: userConfig.role,
             }
 
             // Generate JWT token
-            const tokenPayload: AuthTokenData = { user }
+            const tokenPayload: AuthTokenData = {user}
             const token = await this.jwtSigner(tokenPayload)
 
             Logger.info(`Successful login for user: ${email}`)
@@ -134,13 +135,13 @@ export class AuthService {
                 success: true,
                 token,
                 user,
-                expiresIn: config.auth.expiresIn
+                expiresIn: config.auth.expiresIn,
             }
         } catch (error) {
             Logger.error('Login process failed', error)
             return {
                 success: false,
-                message: 'Authentication failed'
+                message: 'Authentication failed',
             }
         }
     }
@@ -150,7 +151,7 @@ export class AuthService {
             if (!token) {
                 return {
                     valid: false,
-                    message: 'No token provided'
+                    message: 'No token provided',
                 }
             }
 
@@ -158,12 +159,12 @@ export class AuthService {
             const cleanToken = token.startsWith('Bearer ') ? token.substring(7) : token
 
             // Verify JWT token
-            const decoded = await this.jwtVerifier(cleanToken) as AuthTokenData
+            const decoded = (await this.jwtVerifier(cleanToken)) as AuthTokenData
 
             if (!decoded || !decoded.user) {
                 return {
                     valid: false,
-                    message: 'Invalid token structure'
+                    message: 'Invalid token structure',
                 }
             }
 
@@ -172,25 +173,24 @@ export class AuthService {
                 Logger.warn(`Token valid but user no longer exists: ${decoded.user.email}`)
                 return {
                     valid: false,
-                    message: 'User no longer exists'
+                    message: 'User no longer exists',
                 }
             }
 
             return {
                 valid: true,
-                user: decoded.user
+                user: decoded.user,
             }
         } catch (error) {
             Logger.warn('JWT verification failed', error)
             return {
                 valid: false,
-                message: 'Invalid or expired token'
+                message: 'Invalid or expired token',
             }
         }
     }
 
-
-    async logout(token?: string): Promise<{ success: boolean; message: string }> {
+    async logout(token?: string): Promise<{success: boolean; message: string}> {
         try {
             // For JWT tokens, we don't need to do anything server-side
             // The client should remove the token from storage
@@ -199,13 +199,13 @@ export class AuthService {
             Logger.info('User logged out')
             return {
                 success: true,
-                message: 'Successfully logged out'
+                message: 'Successfully logged out',
             }
         } catch (error) {
             Logger.error('Logout process failed', error)
             return {
                 success: false,
-                message: 'Logout failed'
+                message: 'Logout failed',
             }
         }
     }
@@ -219,5 +219,4 @@ export class AuthService {
     getConfiguredUsers(): string[] {
         return Array.from(this.users.keys())
     }
-
 }

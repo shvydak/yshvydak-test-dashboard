@@ -16,10 +16,7 @@ export class TestController {
     ) {}
 
     // POST /api/tests/discovery - Discover all available tests
-    discoverTests = async (
-        req: ServiceRequest,
-        res: Response,
-    ): Promise<Response> => {
+    discoverTests = async (req: ServiceRequest, res: Response): Promise<Response> => {
         try {
             const result = await this.testService.discoverTests()
             return ResponseHelper.success(res, result)
@@ -29,7 +26,7 @@ export class TestController {
                 res,
                 error instanceof Error ? error.message : 'Unknown error',
                 'Test discovery failed',
-                500,
+                500
             )
         }
     }
@@ -45,23 +42,17 @@ export class TestController {
                 res,
                 error instanceof Error ? error.message : 'Unknown error',
                 'Failed to run all tests',
-                500,
+                500
             )
         }
     }
 
     // POST /api/tests/run-group - Run tests from a specific file/group
-    runTestGroup = async (
-        req: ServiceRequest,
-        res: Response,
-    ): Promise<Response> => {
+    runTestGroup = async (req: ServiceRequest, res: Response): Promise<Response> => {
         try {
             const {filePath} = req.body
             if (!filePath) {
-                return ResponseHelper.badRequest(
-                    res,
-                    'Missing filePath parameter',
-                )
+                return ResponseHelper.badRequest(res, 'Missing filePath parameter')
             }
 
             const result = await this.testService.runTestGroup(filePath)
@@ -72,7 +63,7 @@ export class TestController {
                 res,
                 error instanceof Error ? error.message : 'Unknown error',
                 'Failed to run group tests',
-                500,
+                500
             )
         }
     }
@@ -96,16 +87,13 @@ export class TestController {
                 res,
                 'Failed to fetch tests',
                 error instanceof Error ? error.message : 'Unknown error',
-                500,
+                500
             )
         }
     }
 
     // GET /api/tests/stats - Get database statistics
-    getTestStats = async (
-        req: ServiceRequest,
-        res: Response,
-    ): Promise<Response> => {
+    getTestStats = async (req: ServiceRequest, res: Response): Promise<Response> => {
         try {
             const stats = await this.testService.getTestStats()
             return ResponseHelper.success(res, stats)
@@ -115,16 +103,13 @@ export class TestController {
                 res,
                 error instanceof Error ? error.message : 'Unknown error',
                 'Failed to fetch stats',
-                500,
+                500
             )
         }
     }
 
     // DELETE /api/tests/all - Clear all test data
-    clearAllTests = async (
-        req: ServiceRequest,
-        res: Response,
-    ): Promise<Response> => {
+    clearAllTests = async (req: ServiceRequest, res: Response): Promise<Response> => {
         try {
             const statsBefore = await this.testService.getTestStats()
             await this.testService.clearAllTests()
@@ -139,29 +124,21 @@ export class TestController {
                 res,
                 error instanceof Error ? error.message : 'Unknown error',
                 'Failed to clear test data',
-                500,
+                500
             )
         }
     }
 
     // POST /api/tests - Create a new test result (compatible with yshvydakReporter.ts)
-    createTestResult = async (
-        req: ServiceRequest,
-        res: Response,
-    ): Promise<Response> => {
+    createTestResult = async (req: ServiceRequest, res: Response): Promise<Response> => {
         try {
             const testData = req.body
 
             // Validate required fields
-            if (
-                !testData.id ||
-                !testData.testId ||
-                !testData.runId ||
-                !testData.name
-            ) {
+            if (!testData.id || !testData.testId || !testData.runId || !testData.name) {
                 return ResponseHelper.badRequest(
                     res,
-                    'Missing required fields: id, testId, runId, name',
+                    'Missing required fields: id, testId, runId, name'
                 )
             }
 
@@ -183,18 +160,14 @@ export class TestController {
 
             await this.testService.saveTestResult(testResultData as any)
 
-            return ResponseHelper.success(
-                res,
-                {id: testData.id},
-                'Test result saved successfully',
-            )
+            return ResponseHelper.success(res, {id: testData.id}, 'Test result saved successfully')
         } catch (error) {
             Logger.error('Error saving test result', error)
             return ResponseHelper.error(
                 res,
                 error instanceof Error ? error.message : 'Unknown error',
                 'Failed to save test result',
-                500,
+                500
             )
         }
     }
@@ -217,7 +190,7 @@ export class TestController {
                 res,
                 error instanceof Error ? error.message : 'Unknown error',
                 'Failed to fetch test',
-                500,
+                500
             )
         }
     }
@@ -240,16 +213,13 @@ export class TestController {
                 res,
                 error instanceof Error ? error.message : 'Unknown error',
                 'Failed to start test rerun',
-                500,
+                500
             )
         }
     }
 
     // GET /api/tests/:id/history - Get test history (all runs of this test)
-    getTestHistory = async (
-        req: ServiceRequest,
-        res: Response,
-    ): Promise<void> => {
+    getTestHistory = async (req: ServiceRequest, res: Response): Promise<void> => {
         try {
             const {id} = req.params
             const {limit = 10} = req.query
@@ -262,7 +232,7 @@ export class TestController {
 
             const history = await this.testService.getTestHistory(
                 test.testId,
-                parseInt(limit as string) || 10,
+                parseInt(limit as string) || 10
             )
 
             ResponseHelper.success(res, history, undefined, history.length)
@@ -273,16 +243,13 @@ export class TestController {
                 res,
                 error instanceof Error ? error.message : 'Unknown error',
                 'Failed to fetch test history',
-                500,
+                500
             )
         }
     }
 
     // GET /api/tests/:id/attachments - Get attachments for a specific test result
-    getTestAttachments = async (
-        req: ServiceRequest,
-        res: Response,
-    ): Promise<void> => {
+    getTestAttachments = async (req: ServiceRequest, res: Response): Promise<void> => {
         try {
             const {id} = req.params
 
@@ -301,16 +268,13 @@ export class TestController {
                 res,
                 error instanceof Error ? error.message : 'Unknown error',
                 'Failed to fetch test attachments',
-                500,
+                500
             )
         }
     }
 
     // GET /api/tests/diagnostics - Get integration diagnostics
-    getDiagnostics = async (
-        _req: ServiceRequest,
-        res: Response,
-    ): Promise<Response> => {
+    getDiagnostics = async (_req: ServiceRequest, res: Response): Promise<Response> => {
         try {
             const diagnostics = await this.testService.getDiagnostics()
             return ResponseHelper.success(res, diagnostics)
@@ -320,25 +284,19 @@ export class TestController {
                 res,
                 error instanceof Error ? error.message : 'Unknown error',
                 'Failed to fetch diagnostics',
-                500,
+                500
             )
         }
     }
 
     // POST /api/tests/process-start - Notification that a process has started
-    processStart = async (
-        req: ServiceRequest,
-        res: Response,
-    ): Promise<void> => {
+    processStart = async (req: ServiceRequest, res: Response): Promise<void> => {
         try {
             const processData: ProcessStartData = req.body
 
             // Validate required fields
             if (!processData.runId || !processData.type) {
-                ResponseHelper.badRequest(
-                    res,
-                    'Missing required fields: runId, type',
-                )
+                ResponseHelper.badRequest(res, 'Missing required fields: runId, type')
                 return
             }
 
@@ -352,14 +310,12 @@ export class TestController {
                 wsManager.broadcastConnectionStatus()
             }
 
-            Logger.info(
-                `Process started: ${processData.runId} (${processData.type})`,
-            )
+            Logger.info(`Process started: ${processData.runId} (${processData.type})`)
 
             ResponseHelper.success(
                 res,
                 {processId: processData.runId},
-                'Process start notification received',
+                'Process start notification received'
             )
             return
         } catch (error) {
@@ -368,7 +324,7 @@ export class TestController {
                 res,
                 error instanceof Error ? error.message : 'Unknown error',
                 'Failed to handle process start notification',
-                500,
+                500
             )
         }
     }
@@ -377,32 +333,18 @@ export class TestController {
     processEnd = async (req: ServiceRequest, res: Response): Promise<void> => {
         try {
             const processData: ProcessEndData = req.body
-            Logger.info(
-                `📥 Received process end notification: ${JSON.stringify(
-                    processData,
-                )}`,
-            )
+            Logger.info(`📥 Received process end notification: ${JSON.stringify(processData)}`)
 
             // Validate required fields
             if (!processData.runId || !processData.status) {
-                Logger.warn(
-                    '❌ Process end notification missing required fields',
-                    {processData},
-                )
-                ResponseHelper.badRequest(
-                    res,
-                    'Missing required fields: runId, status',
-                )
+                Logger.warn('❌ Process end notification missing required fields', {processData})
+                ResponseHelper.badRequest(res, 'Missing required fields: runId, status')
                 return
             }
 
             // Check if process exists before removal
-            const wasProcessRunning = activeProcessesTracker.isProcessRunning(
-                processData.runId,
-            )
-            Logger.info(
-                `🔍 Process ${processData.runId} was running: ${wasProcessRunning}`,
-            )
+            const wasProcessRunning = activeProcessesTracker.isProcessRunning(processData.runId)
+            Logger.info(`🔍 Process ${processData.runId} was running: ${wasProcessRunning}`)
 
             // Remove process from tracker
             activeProcessesTracker.removeProcess(processData.runId)
@@ -416,23 +358,19 @@ export class TestController {
             if (wsManager) {
                 wsManager.broadcastProcessEnd(processData)
                 wsManager.broadcastConnectionStatus()
-                Logger.info(
-                    '📡 Broadcasted process end and connection status via WebSocket',
-                )
+                Logger.info('📡 Broadcasted process end and connection status via WebSocket')
             } else {
-                Logger.warn(
-                    '⚠️ WebSocket manager not available for broadcasting',
-                )
+                Logger.warn('⚠️ WebSocket manager not available for broadcasting')
             }
 
             Logger.info(
-                `✅ Process ended successfully: ${processData.runId} (${processData.status})`,
+                `✅ Process ended successfully: ${processData.runId} (${processData.status})`
             )
 
             ResponseHelper.success(
                 res,
                 {processId: processData.runId, wasRunning: wasProcessRunning},
-                'Process end notification received',
+                'Process end notification received'
             )
             return
         } catch (error) {
@@ -441,7 +379,7 @@ export class TestController {
                 res,
                 error instanceof Error ? error.message : 'Unknown error',
                 'Failed to handle process end notification',
-                500,
+                500
             )
         }
     }
@@ -449,9 +387,7 @@ export class TestController {
     // POST /api/tests/force-reset - Emergency reset of all active processes
     forceReset = async (req: ServiceRequest, res: Response): Promise<void> => {
         try {
-            Logger.warn(
-                '🚨 Force reset requested - clearing all active processes',
-            )
+            Logger.warn('🚨 Force reset requested - clearing all active processes')
 
             // Get state before reset
             const stateBefore = activeProcessesTracker.getConnectionStatus()
@@ -466,9 +402,7 @@ export class TestController {
             const wsManager = getWebSocketManager()
             if (wsManager) {
                 wsManager.broadcastConnectionStatus()
-                Logger.info(
-                    '📡 Broadcasted updated connection status after force reset',
-                )
+                Logger.info('📡 Broadcasted updated connection status after force reset')
             }
 
             Logger.warn('✅ Force reset completed')
@@ -479,7 +413,7 @@ export class TestController {
                     before: stateBefore,
                     after: stateAfter,
                 },
-                'Force reset completed successfully',
+                'Force reset completed successfully'
             )
             return
         } catch (error) {
@@ -488,7 +422,7 @@ export class TestController {
                 res,
                 error instanceof Error ? error.message : 'Unknown error',
                 'Failed to perform force reset',
-                500,
+                500
             )
         }
     }
@@ -496,7 +430,7 @@ export class TestController {
     // GET /api/tests/traces/:attachmentId - Get trace file with JWT query parameter
     getTraceFile = async (req: ServiceRequest, res: Response): Promise<void> => {
         try {
-            const { attachmentId } = req.params
+            const {attachmentId} = req.params
             const token = req.query.token as string
 
             // Validate JWT token from query parameter
@@ -522,7 +456,9 @@ export class TestController {
             }
 
             // Sanitize filename for security
-            const sanitizedFileName = path.basename(traceFile.fileName).replace(/[^a-zA-Z0-9.-]/g, '_')
+            const sanitizedFileName = path
+                .basename(traceFile.fileName)
+                .replace(/[^a-zA-Z0-9.-]/g, '_')
 
             // Set appropriate headers for file download with security
             res.setHeader('Content-Type', 'application/zip')
@@ -541,14 +477,13 @@ export class TestController {
                     }
                 }
             })
-
         } catch (error) {
             Logger.error('Error serving trace file', error)
             ResponseHelper.error(
                 res,
                 error instanceof Error ? error.message : 'Unknown error',
                 'Failed to serve trace file',
-                500,
+                500
             )
         }
     }

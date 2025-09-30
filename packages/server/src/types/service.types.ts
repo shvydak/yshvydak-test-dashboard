@@ -1,5 +1,5 @@
-import { ChildProcess } from 'child_process'
-import { TestResultData, TestRunData, AttachmentData } from './database.types'
+import {ChildProcess} from 'child_process'
+import {TestResultData, TestRunData, AttachmentData} from './database.types'
 
 // Service interfaces
 export interface ITestService {
@@ -10,7 +10,7 @@ export interface ITestService {
     clearAllTests(): Promise<void>
     saveTestResult(testData: TestResultData): Promise<string>
     getTestStats(): Promise<DatabaseStats>
-    getTraceFileById(attachmentId: string): Promise<{ filePath: string; fileName: string } | null>
+    getTraceFileById(attachmentId: string): Promise<{filePath: string; fileName: string} | null>
 }
 
 export interface IPlaywrightService {

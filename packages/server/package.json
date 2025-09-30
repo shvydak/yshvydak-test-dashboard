@@ -1,43 +1,45 @@
 {
-     "name": "@yshvydak/test-dashboard-server",
-     "version": "1.0.0",
-     "description": "Backend server for yshvydak-test-dashboard",
-     "main": "dist/index.js",
-     "scripts": {
-          "build": "tsc",
-          "dev": "tsx watch src/index.ts",
-          "type-check": "tsc --noEmit",
-          "start": "node dist/index.js",
-          "test": "jest"
-     },
-     "keywords": [
-          "playwright",
-          "testing",
-          "server",
-          "api"
-     ],
-     "author": "Yurii Shvydak <y.shvydak@gmail.com>",
-     "license": "MIT",
-     "dependencies": {
-          "cors": "^2.8.5",
-          "dotenv": "^17.2.2",
-          "express": "^4.18.0",
-          "fast-jwt": "^4.0.5",
-          "multer": "^2.0.2",
-          "sqlite3": "^5.1.6",
-          "uuid": "^9.0.0",
-          "ws": "^8.14.0"
-     },
-     "devDependencies": {
-          "@types/cors": "^2.8.0",
-          "@types/express": "^4.17.0",
-          "@types/multer": "^1.4.0",
-          "@types/node": "^20.0.0",
-          "@types/sqlite3": "^3.1.8",
-          "@types/uuid": "^9.0.0",
-          "@types/ws": "^8.5.0",
-          "jest": "^29.0.0",
-          "tsx": "^4.0.0",
-          "typescript": "^5.0.0"
-     }
+    "name": "@yshvydak/test-dashboard-server",
+    "version": "1.0.0",
+    "description": "Backend server for yshvydak-test-dashboard",
+    "main": "dist/index.js",
+    "scripts": {
+        "build": "tsc",
+        "dev": "tsx watch src/index.ts",
+        "type-check": "tsc --noEmit",
+        "start": "node dist/index.js",
+        "test": "jest",
+        "lint": "eslint src --ext .ts",
+        "lint:fix": "eslint src --ext .ts --fix"
+    },
+    "keywords": [
+        "playwright",
+        "testing",
+        "server",
+        "api"
+    ],
+    "author": "Yurii Shvydak <y.shvydak@gmail.com>",
+    "license": "MIT",
+    "dependencies": {
+        "cors": "^2.8.5",
+        "dotenv": "^17.2.2",
+        "express": "^4.18.0",
+        "fast-jwt": "^4.0.5",
+        "multer": "^2.0.2",
+        "sqlite3": "^5.1.6",
+        "uuid": "^9.0.0",
+        "ws": "^8.14.0"
+    },
+    "devDependencies": {
+        "@types/cors": "^2.8.0",
+        "@types/express": "^4.17.0",
+        "@types/multer": "^1.4.0",
+        "@types/node": "^20.0.0",
+        "@types/sqlite3": "^3.1.8",
+        "@types/uuid": "^9.0.0",
+        "@types/ws": "^8.5.0",
+        "jest": "^29.0.0",
+        "tsx": "^4.0.0",
+        "typescript": "^5.0.0"
+    }
 }

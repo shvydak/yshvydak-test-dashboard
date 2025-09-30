@@ -8,6 +8,9 @@
 - `npm run dev` - Run all packages in development mode
 - `npm run type-check` - TypeScript checking across all packages
 - `npm run lint` - Lint all packages
+- `npm run lint:fix` - Auto-fix ESLint issues across all files
+- `npm run format` - Format all files with Prettier
+- `npm run format:check` - Check formatting without making changes
 - `npm run clean` - Clean build artifacts and turbo cache
 - `npm run clear-data` - Interactive CLI to clear all test data
 
@@ -38,6 +41,8 @@ npm run dev          # Start with auto-reload (uses tsx watch)
 npm run build        # Build for production
 npm run type-check   # TypeScript validation
 npm run test         # Run Jest tests
+npm run lint         # ESLint checking
+npm run lint:fix     # Auto-fix ESLint issues
 ```
 
 **Web Package (React app):**
@@ -49,6 +54,7 @@ npm run build        # Build for production
 npm run preview      # Preview production build
 npm run type-check   # TypeScript validation
 npm run lint         # ESLint checking
+npm run lint:fix     # Auto-fix ESLint issues
 ```
 
 ## Adding New Features
@@ -68,16 +74,16 @@ Follow the **Feature-Based Architecture** pattern:
 
 1. **Create feature directory**: `src/features/{feature-name}/`
 2. **Add subdirectories as needed**:
-   ```
-   features/{feature-name}/
-   ├── components/       # Feature-specific components
-   ├── hooks/           # Custom hooks for this feature
-   ├── store/           # Zustand store (if needed)
-   ├── types/           # TypeScript types/interfaces
-   ├── utils/           # Helper functions
-   ├── constants/       # Constants and enums
-   └── index.ts         # Barrel export
-   ```
+    ```
+    features/{feature-name}/
+    ├── components/       # Feature-specific components
+    ├── hooks/           # Custom hooks for this feature
+    ├── store/           # Zustand store (if needed)
+    ├── types/           # TypeScript types/interfaces
+    ├── utils/           # Helper functions
+    ├── constants/       # Constants and enums
+    └── index.ts         # Barrel export
+    ```
 3. **Export public API**: Use `index.ts` for barrel exports
 4. **Use path aliases**: Import with `@features/{feature-name}`
 
@@ -87,11 +93,12 @@ Follow the **Feature-Based Architecture** pattern:
 
 1. **Small components (< 200 lines)**: Create in `features/{feature}/components/`
 2. **Large components (> 200 lines)**: Split into smaller sub-components
-   - Create subdirectory: `components/{component-name}/`
-   - Break into focused pieces (Header, Content, Footer, etc.)
-   - Each sub-component should be under 200 lines
+    - Create subdirectory: `components/{component-name}/`
+    - Break into focused pieces (Header, Content, Footer, etc.)
+    - Each sub-component should be under 200 lines
 
 **Example** (TestDetailModal split):
+
 ```
 components/testDetail/
 ├── TestDetailModal.tsx      (68 lines - orchestrator)
@@ -107,9 +114,9 @@ components/testDetail/
 For components used across multiple features:
 
 1. **Atoms** (basic elements): `src/shared/components/atoms/`
-   - Button, StatusIcon, LoadingSpinner, Badge
+    - Button, StatusIcon, LoadingSpinner, Badge
 2. **Molecules** (simple combinations): `src/shared/components/molecules/`
-   - Card, ActionButton, StatusBadge, SearchInput
+    - Card, ActionButton, StatusBadge, SearchInput
 
 #### Adding Custom Hooks
 
@@ -124,22 +131,23 @@ For components used across multiple features:
 3. **Export from feature**: Add to feature's `index.ts`
 
 **Example**:
+
 ```typescript
 // features/tests/store/testsStore.ts
-import { create } from 'zustand'
-import { devtools } from 'zustand/middleware'
+import {create} from 'zustand'
+import {devtools} from 'zustand/middleware'
 
 interface TestsState {
-  tests: TestResult[]
-  // ... state
-  fetchTests: () => Promise<void>
-  // ... actions
+    tests: TestResult[]
+    // ... state
+    fetchTests: () => Promise<void>
+    // ... actions
 }
 
 export const useTestsStore = create<TestsState>()(
-  devtools((set, get) => ({
-    // ... implementation
-  }))
+    devtools((set, get) => ({
+        // ... implementation
+    }))
 )
 ```
 
@@ -150,6 +158,7 @@ export const useTestsStore = create<TestsState>()(
 3. **Import from shared location**: Use existing utilities before creating new ones
 
 **Example**:
+
 ```typescript
 // features/tests/utils/formatters.ts
 export function formatDuration(ms: number): string { ... }
@@ -176,14 +185,23 @@ import { formatDuration, getStatusIcon } from '@features/tests/utils'
 
 - **Best Practices Reference**: When editing any code, consult Context7 MCP documentation for current best practices and standards for the relevant technology, framework, or language being used.
 - **Code comments**: Use English when writing comments, if needed.
+- **Code Formatting**: Project uses Prettier for consistent code formatting across all files
+    - Configuration: `.prettierrc` (tabWidth: 4, singleQuote: true, semi: false, printWidth: 100)
+    - Auto-format on save is recommended (install Prettier extension in your editor)
+    - Run `npm run format` to format all files manually
+    - Run `npm run format:check` to verify formatting without changes
+- **Linting**: ESLint v9 with Flat Config integrates Prettier for formatting errors
+    - Configuration: `eslint.config.mjs` at root level
+    - Includes TypeScript support and unused imports cleanup
+    - Run `npm run lint:fix` to auto-fix linting issues
 
 ## Documentation Updates
 
 - **IMPORTANT**: Claude Code is authorized to update this CLAUDE.md and README.md file when making significant changes to:
-  - Architecture or system components
-  - API endpoints or functionality
-  - Configuration requirements
-  - Development workflows or commands
+    - Architecture or system components
+    - API endpoints or functionality
+    - Configuration requirements
+    - Development workflows or commands
 - Updates should be concise and maintain the existing structure and style
 
 ## Configuration Management
@@ -215,7 +233,7 @@ When making changes to files, first understand the file's code conventions. Mimi
 
 ### Code Style
 
-- IMPORTANT: DO NOT ADD ***ANY*** COMMENTS unless asked
+- IMPORTANT: DO NOT ADD **_ANY_** COMMENTS unless asked
 - Use TypeScript strict mode across all packages
 - Follow existing patterns and conventions in the codebase
 - Maintain consistency with existing code structure
@@ -223,30 +241,34 @@ When making changes to files, first understand the file's code conventions. Mimi
 ### Frontend-Specific Best Practices
 
 #### Path Aliases
+
 Always use TypeScript path aliases for clean imports:
 
 ```typescript
 // ✅ Good - Clean imports with aliases
-import { useTestsStore } from '@features/tests/store/testsStore'
-import { Button, Card } from '@shared/components'
-import { config } from '@config/environment.config'
+import {useTestsStore} from '@features/tests/store/testsStore'
+import {Button, Card} from '@shared/components'
+import {config} from '@config/environment.config'
 
 // ❌ Bad - Relative paths
-import { useTestsStore } from '../../../features/tests/store/testsStore'
-import { Button } from '../../shared/components/atoms/Button'
+import {useTestsStore} from '../../../features/tests/store/testsStore'
+import {Button} from '../../shared/components/atoms/Button'
 ```
 
 #### Component Organization
+
 - **Keep components focused**: Each component should have a single responsibility
 - **Split large components**: If over 200 lines, break into smaller pieces
 - **Use composition**: Build complex UIs from simpler components
 
 #### DRY Principle
+
 - **Centralize utilities**: Create shared utilities in `features/{feature}/utils/`
 - **Share constants**: Define once in `constants/`, use everywhere
 - **Avoid code duplication**: Check existing utilities before creating new ones
 
 #### State Management
+
 - **Feature-level stores**: Each feature manages its own state
 - **Use Zustand devtools**: Enable for debugging in development
 - **Computed values**: Use functions like `getIsAnyTestRunning()` for derived state
@@ -254,12 +276,14 @@ import { Button } from '../../shared/components/atoms/Button'
 #### Example Refactoring Process
 
 **Before** (monolithic 577-line component):
+
 ```typescript
 // TestDetailModal.tsx (577 lines)
 // Everything in one file: state, tabs, attachments, steps...
 ```
 
 **After** (modular 8-component structure):
+
 ```typescript
 // TestDetailModal.tsx (68 lines - orchestrator)
 export function TestDetailModal({ test, isOpen, onClose }) {
@@ -285,6 +309,7 @@ export function TestDetailModal({ test, isOpen, onClose }) {
 ```
 
 **Benefits**:
+
 - ✅ Each file under 100 lines
 - ✅ Single responsibility per component
 - ✅ Reusable sub-components

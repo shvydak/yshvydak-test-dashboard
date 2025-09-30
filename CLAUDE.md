@@ -23,6 +23,7 @@ packages/
 ## Essential Development Commands
 
 **Root Level Commands (Turborepo):**
+
 - `npm run build` - Build all packages
 - `npm run dev` - Run all packages in development mode
 - `npm run type-check` - TypeScript checking across all packages
@@ -35,6 +36,7 @@ packages/
 ### Backend: Layered Architecture
 
 The server follows **Layered Architecture** with clear separation of concerns:
+
 - **Controllers** (`*.controller.ts`) - HTTP request/response handling only
 - **Services** (`*.service.ts`) - Business logic and orchestration
 - **Repositories** (`*.repository.ts`) - Data access and database operations
@@ -43,6 +45,7 @@ The server follows **Layered Architecture** with clear separation of concerns:
 ### Frontend: Feature-Based Architecture
 
 The web package follows **Feature-Based Architecture** with **Atomic Design**:
+
 - **Features** (`features/{feature}/`) - Self-contained modules (authentication, dashboard, tests)
 - **Colocation** - Components, hooks, store, types, utils all within feature directory
 - **Shared Components** - Atoms (`Button`, `StatusIcon`) and Molecules (`Card`, `ActionButton`)
@@ -63,6 +66,7 @@ The web package follows **Feature-Based Architecture** with **Atomic Design**:
 ### 🚨 ALWAYS Check External Reporter for Code Analysis & Development
 
 **When doing ANY code analysis, development, or debugging - ALWAYS examine the external reporter:**
+
 - Path: `/Users/y.shvydak/QA/probuild-qa/e2e/testUtils/yshvydakReporter.ts`
 - This is the **critical component** that provides ALL data from test execution
 - The reporter is part of this project despite being in external test repository
@@ -72,6 +76,7 @@ The web package follows **Feature-Based Architecture** with **Atomic Design**:
 ### 📚 ALWAYS Use Context7-MCP for Documentation
 
 **MANDATORY for any dependencies or technology research:**
+
 - Adding/changing dependencies → Use Context7-MCP to check latest documentation
 - Need best practices → Use Context7-MCP for current standards
 - Technology questions → Use Context7-MCP for authoritative information
@@ -79,6 +84,7 @@ The web package follows **Feature-Based Architecture** with **Atomic Design**:
 ### ✅ ALWAYS Follow Best Practices
 
 **Every solution must follow modern best practices and approaches:**
+
 - Consult latest documentation and standards
 - Use established patterns and conventions
 - Follow security and performance best practices
@@ -86,6 +92,7 @@ The web package follows **Feature-Based Architecture** with **Atomic Design**:
 ### 🔐 Authentication & Security Guidelines
 
 **Authentication system is production-ready and secure:**
+
 - JWT-based user authentication with localStorage storage
 - Simplified local network integration for reporters
 - Environment-based credential management (never hardcode credentials)
@@ -95,6 +102,7 @@ The web package follows **Feature-Based Architecture** with **Atomic Design**:
 ### 🏗️ Architecture Guidelines
 
 #### Backend (Server)
+
 **New API endpoint:** Controller → Service → Repository
 **New business logic:** Add to relevant Service class
 **New database operations:** Extend Repository classes
@@ -103,6 +111,7 @@ The web package follows **Feature-Based Architecture** with **Atomic Design**:
 **Repositories:** Database operations only
 
 #### Frontend (Web)
+
 **New feature:** Create in `features/{feature-name}/` with subdirectories (components, hooks, store, types, utils, constants)
 **New component:** Keep under 200 lines; split large components into sub-components with dedicated subdirectory
 **Shared components:** Use `shared/components/atoms/` for basic elements, `shared/components/molecules/` for combinations
@@ -113,6 +122,7 @@ The web package follows **Feature-Based Architecture** with **Atomic Design**:
 ### 📎 Attachment Management Guidelines
 
 **Permanent attachment storage implemented to solve Playwright's temporary file cleanup:**
+
 - **ALWAYS use AttachmentService** for attachment operations, never manipulate files directly
 - Attachments are automatically copied from Playwright's `test-results/` to permanent `attachments/` storage
 - Each test result has isolated directory: `{OUTPUT_DIR}/attachments/{testResultId}/`
@@ -127,6 +137,7 @@ The web package follows **Feature-Based Architecture** with **Atomic Design**:
 ## Configuration
 
 **Core Environment Variables:**
+
 - `PORT` - API server port (default: 3001)
 - `NODE_ENV` - Environment mode
 - `PLAYWRIGHT_PROJECT_DIR` - Path to test project (REQUIRED)
@@ -135,6 +146,7 @@ The web package follows **Feature-Based Architecture** with **Atomic Design**:
 - `VITE_BASE_URL` - Same as BASE_URL for web client
 
 **Authentication Variables:**
+
 - `ENABLE_AUTH` - Enable authentication (true/false)
 - `ADMIN_EMAIL` - Admin user email
 - `ADMIN_PASSWORD` - Admin user password
@@ -145,6 +157,7 @@ The web package follows **Feature-Based Architecture** with **Atomic Design**:
 ## Documentation References
 
 **📋 Detailed Documentation:**
+
 - [@docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) - Complete architecture details
 - [@docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) - Development commands and guidelines
 - [@docs/CONFIGURATION.md](docs/CONFIGURATION.md) - Environment configuration details

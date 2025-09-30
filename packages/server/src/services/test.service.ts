@@ -1,13 +1,19 @@
-import { ITestService, TestDiscoveryResult, TestResult, TestFilters, DatabaseStats } from '../types/service.types'
-import { TestResultData } from '../types/database.types'
-import { TestRepository } from '../repositories/test.repository'
-import { RunRepository } from '../repositories/run.repository'
-import { PlaywrightService } from './playwright.service'
-import { WebSocketService } from './websocket.service'
-import { AttachmentService } from './attachment.service'
-import { Logger } from '../utils/logger.util'
-import { FileUtil } from '../utils/file.util'
-import { activeProcessesTracker } from './activeProcesses.service'
+import {
+    ITestService,
+    TestDiscoveryResult,
+    TestResult,
+    TestFilters,
+    DatabaseStats,
+} from '../types/service.types'
+import {TestResultData} from '../types/database.types'
+import {TestRepository} from '../repositories/test.repository'
+import {RunRepository} from '../repositories/run.repository'
+import {PlaywrightService} from './playwright.service'
+import {WebSocketService} from './websocket.service'
+import {AttachmentService} from './attachment.service'
+import {Logger} from '../utils/logger.util'
+import {FileUtil} from '../utils/file.util'
+import {activeProcessesTracker} from './activeProcesses.service'
 
 export class TestService implements ITestService {
     constructor(
@@ -21,7 +27,9 @@ export class TestService implements ITestService {
     async discoverTests(): Promise<TestDiscoveryResult> {
         try {
             // Clear existing pending tests before adding discovered ones
-            await this.testRepository['execute']('DELETE FROM test_results WHERE status = ?', ['pending'])
+            await this.testRepository['execute']('DELETE FROM test_results WHERE status = ?', [
+                'pending',
+            ])
 
             // Discover tests using Playwright
             const discoveredTests = await this.playwrightService.discoverTests()
@@ -45,7 +53,7 @@ export class TestService implements ITestService {
             return {
                 discovered: discoveredTests.length,
                 saved: savedCount,
-                timestamp: new Date().toISOString()
+                timestamp: new Date().toISOString(),
             }
         } catch (error) {
             Logger.error('Test discovery failed', error)
@@ -82,7 +90,7 @@ export class TestService implements ITestService {
         // Save attachments if provided
         if ((testData as any).attachments && Array.isArray((testData as any).attachments)) {
             await this.attachmentService.saveAttachmentsForTestResult(
-                resultId, 
+                resultId,
                 (testData as any).attachments
             )
         }
@@ -96,14 +104,14 @@ export class TestService implements ITestService {
 
     async runAllTests(): Promise<any> {
         const result = await this.playwrightService.runAllTests()
-        
+
         // Add process to tracker
         activeProcessesTracker.addProcess({
             runId: result.runId,
             type: 'run-all',
-            totalTests: undefined // Will be determined during execution
+            totalTests: undefined, // Will be determined during execution
         })
-        
+
         // Create test run record
         await this.runRepository.createTestRun({
             id: result.runId,
@@ -115,8 +123,8 @@ export class TestService implements ITestService {
             duration: 0,
             metadata: {
                 type: 'run-all',
-                triggeredFrom: 'dashboard'
-            }
+                triggeredFrom: 'dashboard',
+            },
         })
 
         // Broadcast run start
@@ -126,10 +134,10 @@ export class TestService implements ITestService {
         if (result.process) {
             result.process.on('close', (code) => {
                 Logger.info(`All tests completed with code: ${code}`)
-                
+
                 // Remove process from tracker
                 activeProcessesTracker.removeProcess(result.runId)
-                
+
                 this.websocketService.broadcastRunCompleted(result.runId, code || 1, 'run-all')
             })
         }
@@ -144,7 +152,7 @@ export class TestService implements ITestService {
         activeProcessesTracker.addProcess({
             runId: result.runId,
             type: 'run-group',
-            filePath: filePath
+            filePath: filePath,
         })
 
         // Create test run record
@@ -159,8 +167,8 @@ export class TestService implements ITestService {
             metadata: {
                 type: 'run-group',
                 filePath,
-                triggeredFrom: 'dashboard'
-            }
+                triggeredFrom: 'dashboard',
+            },
         })
 
         // Broadcast run start
@@ -170,11 +178,16 @@ export class TestService implements ITestService {
         if (result.process) {
             result.process.on('close', (code) => {
                 Logger.info(`Group tests completed with code: ${code}`)
-                
+
                 // Remove process from tracker
                 activeProcessesTracker.removeProcess(result.runId)
-                
-                this.websocketService.broadcastRunCompleted(result.runId, code || 1, 'run-group', filePath)
+
+                this.websocketService.broadcastRunCompleted(
+                    result.runId,
+                    code || 1,
+                    'run-group',
+                    filePath
+                )
             })
         }
 
@@ -196,7 +209,7 @@ export class TestService implements ITestService {
             type: 'rerun',
             testId: testId,
             originalTestId: testId,
-            filePath: test.filePath
+            filePath: test.filePath,
         })
 
         // Create a new run for this rerun
@@ -212,8 +225,8 @@ export class TestService implements ITestService {
                 type: 'rerun',
                 originalTestId: testId,
                 originalTestName: test.name,
-                filePath: test.filePath
-            }
+                filePath: test.filePath,
+            },
         })
 
         // Handle process completion
@@ -232,7 +245,7 @@ export class TestService implements ITestService {
             result.process.on('close', async (code) => {
                 try {
                     const runStatus = code === 0 ? 'completed' : 'failed'
-                    await this.runRepository.updateTestRun(result.runId, { status: runStatus })
+                    await this.runRepository.updateTestRun(result.runId, {status: runStatus})
 
                     Logger.info(`Test rerun completed with code: ${code}`)
 
@@ -249,16 +262,15 @@ export class TestService implements ITestService {
                             testName: test.name,
                             originalTestId: testId,
                             isRerun: true,
-                            type: 'rerun'
-                        }
+                            type: 'rerun',
+                        },
                     })
 
                     this.websocketService.broadcastDashboardRefresh('test_rerun_completed', {
                         testId: test.testId,
                         runId: result.runId,
-                        status: runStatus
+                        status: runStatus,
                     })
-
                 } catch (error) {
                     Logger.error('Error processing rerun results', error)
                 }
@@ -268,7 +280,7 @@ export class TestService implements ITestService {
         return {
             ...result,
             testId,
-            testName: test.name
+            testName: test.name,
         }
     }
 
@@ -302,12 +314,12 @@ export class TestService implements ITestService {
         timestamp: string
     }> {
         Logger.info('Getting diagnostics')
-        
+
         // Get all diagnostics in parallel
         const [playwrightDiagnostics, reporterDiagnostics, dbStats] = await Promise.all([
             this.playwrightService.getDiagnostics(),
             this.playwrightService.getReporterDiagnostics(),
-            this.getTestStats()
+            this.getTestStats(),
         ])
 
         return {
@@ -315,13 +327,15 @@ export class TestService implements ITestService {
             reporter: reporterDiagnostics,
             database: {
                 connected: true, // If we got stats, DB is connected
-                stats: dbStats
+                stats: dbStats,
             },
-            timestamp: new Date().toISOString()
+            timestamp: new Date().toISOString(),
         }
     }
 
-    async getTraceFileById(attachmentId: string): Promise<{ filePath: string; fileName: string } | null> {
+    async getTraceFileById(
+        attachmentId: string
+    ): Promise<{filePath: string; fileName: string} | null> {
         try {
             // Get attachment from database
             const attachment = await this.attachmentService.getAttachmentById(attachmentId)
@@ -333,7 +347,9 @@ export class TestService implements ITestService {
 
             // Check if attachment is a trace file
             if (attachment.type !== 'trace') {
-                Logger.warn(`Attachment ${attachmentId} is not a trace file, type: ${attachment.type}`)
+                Logger.warn(
+                    `Attachment ${attachmentId} is not a trace file, type: ${attachment.type}`
+                )
                 return null
             }
 
@@ -350,7 +366,7 @@ export class TestService implements ITestService {
 
             return {
                 filePath: attachment.filePath,
-                fileName: attachment.fileName || 'trace.zip'
+                fileName: attachment.fileName || 'trace.zip',
             }
         } catch (error) {
             Logger.error('Error getting trace file:', error)

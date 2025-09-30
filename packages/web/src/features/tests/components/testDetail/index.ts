@@ -1,2 +1,2 @@
-export { TestDetailModal } from './TestDetailModal'
-export type { TestDetailModalProps } from './TestDetailModal'
+export {TestDetailModal} from './TestDetailModal'
+export type {TestDetailModalProps} from './TestDetailModal'

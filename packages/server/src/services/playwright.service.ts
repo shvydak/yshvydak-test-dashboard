@@ -1,13 +1,13 @@
-import { spawn, ChildProcess } from 'child_process'
+import {spawn, ChildProcess} from 'child_process'
 import path from 'path'
-import { v4 as uuidv4 } from 'uuid'
-import { IPlaywrightService, TestRunProcess, DiscoveredTest } from '../types/service.types'
-import { config } from '../config/environment.config'
-import { Logger } from '../utils/logger.util'
+import {v4 as uuidv4} from 'uuid'
+import {IPlaywrightService, TestRunProcess, DiscoveredTest} from '../types/service.types'
+import {config} from '../config/environment.config'
+import {Logger} from '../utils/logger.util'
 
 export class PlaywrightService implements IPlaywrightService {
     async discoverTests(): Promise<DiscoveredTest[]> {
-        Logger.info('Discovering tests', { projectDir: config.playwright.projectDir })
+        Logger.info('Discovering tests', {projectDir: config.playwright.projectDir})
 
         // Execute playwright test --list command directly
         let playwrightData: any
@@ -17,7 +17,7 @@ export class PlaywrightService implements IPlaywrightService {
         } catch (error) {
             throw new Error(
                 `Test discovery failed: ${error instanceof Error ? error.message : 'Unknown error'}. ` +
-                `Make sure Playwright is installed in ${config.playwright.projectDir}`
+                    `Make sure Playwright is installed in ${config.playwright.projectDir}`
             )
         }
 
@@ -42,9 +42,9 @@ export class PlaywrightService implements IPlaywrightService {
                     metadata: JSON.stringify({
                         line: spec.line || 0,
                         playwrightId: spec.id || null,
-                        discoveredAt: new Date().toISOString()
+                        discoveredAt: new Date().toISOString(),
                     }),
-                    timestamp: new Date().toISOString()
+                    timestamp: new Date().toISOString(),
                 })
             }
 
@@ -66,9 +66,9 @@ export class PlaywrightService implements IPlaywrightService {
                         metadata: JSON.stringify({
                             line: spec.line || 0,
                             playwrightId: spec.id || null,
-                            discoveredAt: new Date().toISOString()
+                            discoveredAt: new Date().toISOString(),
                         }),
-                        timestamp: new Date().toISOString()
+                        timestamp: new Date().toISOString(),
                     })
                 }
             }
@@ -81,17 +81,16 @@ export class PlaywrightService implements IPlaywrightService {
         const runId = uuidv4()
         Logger.testRun('run-all', runId)
 
-        const process = this.spawnPlaywrightProcess([
-            'playwright',
-            'test',
-            `--reporter=${config.playwright.reporterPath}`
-        ], { runId, type: 'run-all' })
+        const process = this.spawnPlaywrightProcess(
+            ['playwright', 'test', `--reporter=${config.playwright.reporterPath}`],
+            {runId, type: 'run-all'}
+        )
 
         return {
             runId,
             message: 'All tests started',
             timestamp: new Date().toISOString(),
-            process
+            process,
         }
     }
 
@@ -105,18 +104,16 @@ export class PlaywrightService implements IPlaywrightService {
             testFilePath = path.join('e2e/tests', filePath)
         }
 
-        const process = this.spawnPlaywrightProcess([
-            'playwright',
-            'test',
-            testFilePath,
-            `--reporter=${config.playwright.reporterPath}`
-        ], { runId, type: 'run-group', filePath })
+        const process = this.spawnPlaywrightProcess(
+            ['playwright', 'test', testFilePath, `--reporter=${config.playwright.reporterPath}`],
+            {runId, type: 'run-group', filePath}
+        )
 
         return {
             runId,
             message: `Tests started for ${filePath}`,
             timestamp: new Date().toISOString(),
-            process
+            process,
         }
     }
 
@@ -124,33 +121,36 @@ export class PlaywrightService implements IPlaywrightService {
         const runId = uuidv4()
         Logger.testRerun(testName, runId)
 
-        const process = this.spawnPlaywrightProcess([
-            'playwright',
-            'test',
-            testFile,
-            '--grep',
-            testName,
-            `--reporter=json,${config.playwright.reporterPath}`
-        ], { 
-            runId, 
-            type: 'rerun',
-            env: { 
-                RERUN_MODE: 'true', 
-                RERUN_ID: runId 
-            } 
-        })
+        const process = this.spawnPlaywrightProcess(
+            [
+                'playwright',
+                'test',
+                testFile,
+                '--grep',
+                testName,
+                `--reporter=json,${config.playwright.reporterPath}`,
+            ],
+            {
+                runId,
+                type: 'rerun',
+                env: {
+                    RERUN_MODE: 'true',
+                    RERUN_ID: runId,
+                },
+            }
+        )
 
         return {
             runId,
             message: 'Test rerun started',
             timestamp: new Date().toISOString(),
-            process
+            process,
         }
     }
 
     private spawnPlaywrightProcess(
-        args: string[], 
-        options: { runId: string; type: string; filePath?: string; env?: Record<string, string> }
+        args: string[],
+        options: {runId: string; type: string; filePath?: string; env?: Record<string, string>}
     ): ChildProcess {
         return spawn('npx', args, {
             cwd: config.playwright.projectDir,
@@ -158,8 +158,8 @@ export class PlaywrightService implements IPlaywrightService {
             env: {
                 ...process.env,
                 DASHBOARD_API_URL: config.api.baseUrl,
-                ...options.env
-            }
+                ...options.env,
+            },
         })
     }
 
@@ -167,7 +167,7 @@ export class PlaywrightService implements IPlaywrightService {
         return new Promise((resolve, reject) => {
             const process = spawn('npx', ['playwright', 'test', '--list', '--reporter=json'], {
                 cwd: config.playwright.projectDir,
-                stdio: ['ignore', 'pipe', 'pipe']
+                stdio: ['ignore', 'pipe', 'pipe'],
             })
 
             let stdout = ''
@@ -253,7 +253,7 @@ export class PlaywrightService implements IPlaywrightService {
             projectDir,
             reporterPath,
             reporterExists,
-            issuesCount: issues.length
+            issuesCount: issues.length,
         })
 
         return {
@@ -261,7 +261,7 @@ export class PlaywrightService implements IPlaywrightService {
             issues,
             projectDir,
             reporterPath,
-            reporterExists
+            reporterExists,
         }
     }
 
@@ -281,9 +281,9 @@ export class PlaywrightService implements IPlaywrightService {
         }
     }> {
         const validation = await this.validateConfiguration()
-        
-        let healthCheck = { canDiscoverTests: false, error: undefined as string | undefined }
-        
+
+        let healthCheck = {canDiscoverTests: false, error: undefined as string | undefined}
+
         if (validation.isValid) {
             try {
                 await this.executePlaywrightListCommand()
@@ -299,7 +299,7 @@ export class PlaywrightService implements IPlaywrightService {
             version: '1.0.0',
             config: config.playwright,
             validation,
-            healthCheck
+            healthCheck,
         }
     }
 
@@ -311,7 +311,10 @@ export class PlaywrightService implements IPlaywrightService {
         error?: string
     }> {
         const fs = await import('fs')
-        const reporterPath = path.resolve(config.playwright.projectDir, config.playwright.reporterPath)
+        const reporterPath = path.resolve(
+            config.playwright.projectDir,
+            config.playwright.reporterPath
+        )
         const reporterExists = fs.existsSync(reporterPath)
 
         let canImportReporter = false
@@ -323,18 +326,19 @@ export class PlaywrightService implements IPlaywrightService {
                 // Try to import the reporter for diagnostics
                 const reporterModule = await import(reporterPath)
                 const ReporterClass = reporterModule.default || reporterModule.YShvydakReporter
-                
+
                 if (ReporterClass) {
-                    const reporter = new ReporterClass({ silent: true })
+                    const reporter = new ReporterClass({silent: true})
                     canImportReporter = true
-                    
+
                     // If reporter has getDiagnostics method, call it
                     if (typeof reporter.getDiagnostics === 'function') {
                         reporterDiagnostics = await reporter.getDiagnostics()
                     }
                 }
             } catch (importError) {
-                error = importError instanceof Error ? importError.message : 'Failed to import reporter'
+                error =
+                    importError instanceof Error ? importError.message : 'Failed to import reporter'
             }
         }
 
@@ -342,7 +346,7 @@ export class PlaywrightService implements IPlaywrightService {
             reporterPath,
             reporterExists,
             canImportReporter,
-            hasError: !!error
+            hasError: !!error,
         })
 
         return {
@@ -350,7 +354,7 @@ export class PlaywrightService implements IPlaywrightService {
             reporterExists,
             canImportReporter,
             reporterDiagnostics,
-            error
+            error,
         }
     }
 }

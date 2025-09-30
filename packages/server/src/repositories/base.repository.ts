@@ -1,4 +1,4 @@
-import { DatabaseManager } from '../database/database.manager'
+import {DatabaseManager} from '../database/database.manager'
 
 export abstract class BaseRepository {
     protected dbManager: DatabaseManager

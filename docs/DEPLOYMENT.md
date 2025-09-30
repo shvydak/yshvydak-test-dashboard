@@ -7,13 +7,12 @@ For deploying the dashboard over the internet using cloudtunnel and custom domai
 ## Setup Requirements
 
 1. **CloudTunnel Configuration**
-
-   - Configure cloudtunnel for port 3001 (API server) to a subdomain like `api-dashboard.shvydak.com`
-   - Configure cloudtunnel for port 3000 (web) to your main domain like `test-dashboard.shvydak.com`
+    - Configure cloudtunnel for port 3001 (API server) to a subdomain like `api-dashboard.shvydak.com`
+    - Configure cloudtunnel for port 3000 (web) to your main domain like `test-dashboard.shvydak.com`
 
 2. **Environment Configuration**
-   - For **local development**: Use `.env` (localhost URLs)
-   - For **production/internet**: Copy `.env.production` to `.env` and update domains
+    - For **local development**: Use `.env` (localhost URLs)
+    - For **production/internet**: Copy `.env.production` to `.env` and update domains
 
 ## Production Deployment Steps
 

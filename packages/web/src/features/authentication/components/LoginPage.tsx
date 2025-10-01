@@ -1,5 +1,4 @@
 import React, {useState} from 'react'
-import {useNavigate} from 'react-router-dom'
 import {config} from '@config/environment.config'
 
 interface LoginFormData {
@@ -14,8 +13,6 @@ export default function LoginPage() {
     })
     const [isLoading, setIsLoading] = useState(false)
     const [error, setError] = useState<string | null>(null)
-
-    const navigate = useNavigate()
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const {name, value} = e.target

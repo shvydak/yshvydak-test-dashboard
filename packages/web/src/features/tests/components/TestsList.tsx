@@ -4,7 +4,7 @@ import {ViewMode, LoadingSpinner} from '@shared/components'
 import {useTestsStore} from '../store/testsStore'
 import {useTestFilters} from '../hooks'
 import {FilterKey} from '../constants'
-import {TestsListHeader} from './TestsListHeader'
+// import {TestsListHeader} from './TestsListHeader'
 import {TestsListFilters} from './TestsListFilters'
 import {TestsContent} from './TestsContent'
 import {TestDetailModal} from './testDetail'
@@ -88,18 +88,15 @@ export default function TestsList({
 
     return (
         <div className="space-y-6">
-            <TestsListHeader
-                testsCount={filteredTests.length}
-                searchQuery={searchQuery}
-                onSearchChange={setSearchQuery}
-            />
-
+            {/* <TestsListHeader testsCount={filteredTests.length} /> */}
             <TestsListFilters
                 filter={filter}
                 onFilterChange={setFilter}
                 counts={counts}
                 viewMode={viewMode}
                 onViewModeChange={setViewMode}
+                searchQuery={searchQuery}
+                onSearchChange={setSearchQuery}
             />
 
             <TestsContent

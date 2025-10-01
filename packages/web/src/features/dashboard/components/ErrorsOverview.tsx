@@ -63,7 +63,7 @@ export default function ErrorsOverview({tests}: ErrorsOverviewProps) {
             </div>
             <div className="card-content">
                 <div className="space-y-6">
-                    {errorDetails.map((error, index) => (
+                    {errorDetails.map((error, _index) => (
                         <div
                             key={error.test.id}
                             className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 bg-gray-50 dark:bg-gray-800/50">

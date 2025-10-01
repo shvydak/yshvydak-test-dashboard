@@ -7,14 +7,19 @@ export function DashboardActions() {
     const {
         discoverTests,
         runAllTests,
-        fetchTests,
+        // fetchTests,
         isDiscovering,
         isRunningAllTests,
         getIsAnyTestRunning,
-        setRunningAllTests,
+        // setRunningAllTests,
     } = useTestsStore()
 
-    const {clearingData, forceResetting, clearAllData, forceResetProcesses} = useDashboardActions()
+    const {
+        clearingData,
+        // forceResetting,
+        clearAllData,
+        // forceResetProcesses,
+    } = useDashboardActions()
     const isAnyTestRunning = getIsAnyTestRunning()
 
     return (
@@ -42,13 +47,13 @@ export function DashboardActions() {
                     {isRunningAllTests ? 'Running...' : '▶️ Run All Tests'}
                 </Button>
 
-                <Button
+                {/* <Button
                     variant="secondary"
                     fullWidth
                     disabled={isAnyTestRunning}
                     onClick={() => fetchTests()}>
                     🔄 Refresh Tests
-                </Button>
+                </Button> */}
 
                 <Button
                     variant="secondary"
@@ -57,11 +62,11 @@ export function DashboardActions() {
                     🩺 Check API Health
                 </Button>
 
-                <Button variant="secondary" fullWidth onClick={() => window.location.reload()}>
+                {/* <Button variant="secondary" fullWidth onClick={() => window.location.reload()}>
                     ♻️ Reload Dashboard
-                </Button>
+                </Button> */}
 
-                {isRunningAllTests && (
+                {/* {isRunningAllTests && (
                     <>
                         <Button
                             variant="secondary"
@@ -79,7 +84,7 @@ export function DashboardActions() {
                             {forceResetting ? 'Resetting...' : '🚨 Force Reset Server Processes'}
                         </Button>
                     </>
-                )}
+                )} */}
 
                 <Button
                     variant="danger"

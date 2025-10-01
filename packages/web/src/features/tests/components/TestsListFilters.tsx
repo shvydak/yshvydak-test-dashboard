@@ -1,4 +1,4 @@
-import {FilterButtonGroup, ViewModeToggle, ViewMode} from '@shared/components'
+import {FilterButtonGroup, ViewModeToggle, ViewMode, SearchInput} from '@shared/components'
 import {FilterKey, FILTER_OPTIONS} from '../constants'
 
 export interface TestsListFiltersProps {
@@ -13,6 +13,8 @@ export interface TestsListFiltersProps {
     }
     viewMode: ViewMode
     onViewModeChange: (mode: ViewMode) => void
+    searchQuery: string
+    onSearchChange: (query: string) => void
     onExpandAll?: () => void
     onCollapseAll?: () => void
 }
@@ -23,6 +25,8 @@ export function TestsListFilters({
     counts,
     viewMode,
     onViewModeChange,
+    searchQuery,
+    onSearchChange,
     onExpandAll,
     onCollapseAll,
 }: TestsListFiltersProps) {
@@ -50,6 +54,21 @@ export function TestsListFilters({
                         </button>
                     </div>
                 )}
+            </div>
+
+            <div>
+                <h1 className="text-3xl font-bold text-gray-900 dark:text-white ml-4">
+                    {counts.all} test{counts.all !== 1 ? 's' : ''} found
+                </h1>
+            </div>
+
+            <div className="flex-1 flex justify-center px-6">
+                <SearchInput
+                    value={searchQuery}
+                    onChange={(e) => onSearchChange(e.target.value)}
+                    placeholder="Search tests..."
+                    className="w-96"
+                />
             </div>
 
             <FilterButtonGroup

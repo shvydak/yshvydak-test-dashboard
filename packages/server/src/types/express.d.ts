@@ -1,7 +1,7 @@
-import { TestService } from '../services/test.service'
-import { PlaywrightService } from '../services/playwright.service'
-import { WebSocketService } from '../services/websocket.service'
-import { AttachmentService } from '../services/attachment.service'
+import {TestService} from '../services/test.service'
+import {PlaywrightService} from '../services/playwright.service'
+import {WebSocketService} from '../services/websocket.service'
+import {AttachmentService} from '../services/attachment.service'
 
 declare global {
     namespace Express {

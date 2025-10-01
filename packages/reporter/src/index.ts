@@ -9,7 +9,7 @@ import {
 
 import * as path from 'path'
 import * as fs from 'fs'
-import { v4 as uuidv4 } from 'uuid'
+import {v4 as uuidv4} from 'uuid'
 import * as dotenv from 'dotenv'
 dotenv.config()
 
@@ -61,7 +61,7 @@ export class YShvydakReporter implements Reporter {
     private isConfigured: boolean = false
     private readonly version = '1.0.0'
 
-    constructor(private options: { silent?: boolean } = {}) {
+    constructor(private options: {silent?: boolean} = {}) {
         this.initializeReporter()
     }
 
@@ -81,7 +81,9 @@ export class YShvydakReporter implements Reporter {
             console.log(`🎭 YShvydak Dashboard Reporter v${this.version} initialized`)
             console.log(`   Run ID: ${this.runId}`)
             console.log(`   API Base URL: ${this.apiBaseUrl}`)
-            console.log(`   Configuration: ${this.isConfigured ? '✅ From environment' : '⚠️  Using defaults'}`)
+            console.log(
+                `   Configuration: ${this.isConfigured ? '✅ From environment' : '⚠️  Using defaults'}`
+            )
         }
 
         if (!this.apiBaseUrl || this.apiBaseUrl === 'undefined') {
@@ -94,24 +96,28 @@ export class YShvydakReporter implements Reporter {
 
     async getDiagnostics(): Promise<ReporterDiagnostics> {
         const startTime = Date.now()
-        let healthCheck = { success: false, error: undefined as string | undefined, responseTime: undefined as number | undefined }
+        let healthCheck = {
+            success: false,
+            error: undefined as string | undefined,
+            responseTime: undefined as number | undefined,
+        }
 
         try {
             const response = await fetch(`${this.apiBaseUrl}/api/health`, {
                 method: 'GET',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {'Content-Type': 'application/json'},
             })
 
             healthCheck = {
                 success: response.ok,
                 responseTime: Date.now() - startTime,
-                error: response.ok ? undefined : `HTTP ${response.status}: ${response.statusText}`
+                error: response.ok ? undefined : `HTTP ${response.status}: ${response.statusText}`,
             }
         } catch (error) {
             healthCheck = {
                 success: false,
                 error: error instanceof Error ? error.message : 'Unknown error',
-                responseTime: Date.now() - startTime
+                responseTime: Date.now() - startTime,
             }
         }
 
@@ -119,7 +125,7 @@ export class YShvydakReporter implements Reporter {
             version: this.version,
             apiBaseUrl: this.apiBaseUrl,
             isConfigured: this.isConfigured,
-            healthCheck
+            healthCheck,
         }
     }
 

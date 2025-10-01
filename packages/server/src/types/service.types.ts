@@ -1,5 +1,5 @@
-import { ChildProcess } from 'child_process'
-import { TestResultData, TestRunData, AttachmentData } from './database.types'
+import {ChildProcess} from 'child_process'
+import {TestResultData, TestRunData, AttachmentData} from './database.types'
 
 // Service interfaces
 export interface ITestService {
@@ -10,6 +10,7 @@ export interface ITestService {
     clearAllTests(): Promise<void>
     saveTestResult(testData: TestResultData): Promise<string>
     getTestStats(): Promise<DatabaseStats>
+    getTraceFileById(attachmentId: string): Promise<{filePath: string; fileName: string} | null>
 }
 
 export interface IPlaywrightService {
@@ -26,8 +27,9 @@ export interface IWebSocketService {
 
 export interface IAttachmentService {
     mapContentTypeToDbType(contentType: string, fileName: string): string
-    processAttachments(attachments: any[]): Promise<AttachmentData[]>
+    processAttachments(attachments: any[], testResultId: string): Promise<AttachmentData[]>
     getAttachmentsByTestResult(testResultId: string): Promise<AttachmentData[]>
+    getAttachmentById(attachmentId: string): Promise<AttachmentData | null>
 }
 
 // Service result types

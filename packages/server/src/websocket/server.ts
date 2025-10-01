@@ -1,288 +1,324 @@
 import WebSocket from 'ws'
 import {Server} from 'http'
+import {IncomingMessage} from 'http'
 import {v4 as uuidv4} from 'uuid'
 import {activeProcessesTracker} from '../services/activeProcesses.service'
+import {AuthService} from '../services/auth.service'
+import {config} from '../config/environment.config'
 
 export interface WebSocketMessage {
-     type: string
-     data?: any
-     timestamp?: string
-     clientId?: string
+    type: string
+    data?: any
+    timestamp?: string
+    clientId?: string
 }
 
 export interface TestStatusUpdate {
-     testId: string
-     status: 'running' | 'passed' | 'failed' | 'skipped' | 'timeout'
-     progress?: number
-     message?: string
+    testId: string
+    status: 'running' | 'passed' | 'failed' | 'skipped' | 'timeout'
+    progress?: number
+    message?: string
 }
 
 export interface TestProgressUpdate {
-     testId: string
-     currentStep: string
-     progress: number
-     totalSteps?: number
+    testId: string
+    currentStep: string
+    progress: number
+    totalSteps?: number
 }
 
 export class WebSocketManager {
-     private wss: WebSocket.Server
-     private clients: Map<string, WebSocket> = new Map()
+    private wss: WebSocket.Server
+    private clients: Map<string, WebSocket> = new Map()
+    private authService: AuthService
 
-     constructor(server: Server) {
-          this.wss = new WebSocket.Server({
-               server,
-               path: '/ws',
-               perMessageDeflate: false,
-          })
+    constructor(server: Server) {
+        this.authService = new AuthService()
 
-          this.wss.on('connection', (ws: WebSocket, request) => {
-               const clientId = uuidv4()
-               this.clients.set(clientId, ws)
+        this.wss = new WebSocket.Server({
+            server,
+            path: '/ws',
+            perMessageDeflate: false,
+        })
 
-               console.log(`WebSocket client connected: ${clientId}`)
+        this.wss.on('connection', async (ws: WebSocket, request: IncomingMessage) => {
+            const clientId = uuidv4()
 
-               // Send welcome message
-               this.sendToClient(clientId, {
-                    type: 'connection',
-                    data: {
-                         clientId,
-                         message: 'Connected to YShvydak Test Dashboard',
-                    },
-               })
+            // Authenticate WebSocket connection if authentication is enabled
+            if (config.auth.enableAuth) {
+                const authResult = await this.authenticateWebSocketConnection(request)
 
-               // Send connection status with current active processes
-               this.sendToClient(clientId, {
-                    type: 'connection:status',
-                    data: activeProcessesTracker.getConnectionStatus(),
-               })
+                if (!authResult.isAuthenticated) {
+                    console.warn(`WebSocket authentication failed: ${authResult.message}`)
+                    ws.close(1008, authResult.message || 'Authentication required')
+                    return
+                }
 
-               // Handle incoming messages
-               ws.on('message', (data: WebSocket.Data) => {
-                    try {
-                         const message: WebSocketMessage = JSON.parse(
-                              data.toString(),
-                         )
-                         this.handleClientMessage(clientId, message)
-                    } catch (error) {
-                         console.error(
-                              'Error parsing WebSocket message:',
-                              error,
-                         )
-                         this.sendToClient(clientId, {
-                              type: 'error',
-                              data: {message: 'Invalid message format'},
-                         })
-                    }
-               })
+                console.log(
+                    `WebSocket client authenticated and connected: ${clientId} (User: ${authResult.user?.email})`
+                )
+            } else {
+                console.log(`WebSocket client connected: ${clientId} (Authentication disabled)`)
+            }
 
-               // Handle client disconnect
-               ws.on('close', () => {
-                    console.log(`WebSocket client disconnected: ${clientId}`)
-                    this.clients.delete(clientId)
-               })
+            this.clients.set(clientId, ws)
 
-               // Handle errors
-               ws.on('error', (error) => {
-                    console.error(
-                         `WebSocket error for client ${clientId}:`,
-                         error,
-                    )
-                    this.clients.delete(clientId)
-               })
-
-               // Send periodic ping to keep connection alive
-               const pingInterval = setInterval(() => {
-                    if (ws.readyState === WebSocket.OPEN) {
-                         ws.ping()
-                    } else {
-                         clearInterval(pingInterval)
-                    }
-               }, 30000) // Ping every 30 seconds
-          })
-
-          console.log('WebSocket server initialized on /ws')
-     }
-
-     private handleClientMessage(
-          clientId: string,
-          message: WebSocketMessage,
-     ): void {
-          switch (message.type) {
-               case 'ping':
-                    this.sendToClient(clientId, {type: 'pong'})
-                    break
-
-               case 'subscribe':
-                    // Handle subscription to specific events (e.g., specific test updates)
-                    console.log(
-                         `Client ${clientId} subscribed to:`,
-                         message.data,
-                    )
-                    break
-
-               case 'unsubscribe':
-                    // Handle unsubscription
-                    console.log(
-                         `Client ${clientId} unsubscribed from:`,
-                         message.data,
-                    )
-                    break
-
-               default:
-                    console.log(
-                         `Unknown message type from client ${clientId}:`,
-                         message.type,
-                    )
-          }
-     }
-
-     private sendToClient(clientId: string, message: WebSocketMessage): void {
-          const client = this.clients.get(clientId)
-          if (client && client.readyState === WebSocket.OPEN) {
-               const messageWithTimestamp: WebSocketMessage = {
-                    ...message,
-                    timestamp: new Date().toISOString(),
+            // Send welcome message
+            this.sendToClient(clientId, {
+                type: 'connection',
+                data: {
                     clientId,
-               }
+                    message: 'Connected to YShvydak Test Dashboard',
+                },
+            })
 
-               client.send(JSON.stringify(messageWithTimestamp))
-          }
-     }
+            // Send connection status with current active processes
+            this.sendToClient(clientId, {
+                type: 'connection:status',
+                data: activeProcessesTracker.getConnectionStatus(),
+            })
 
-     // Public methods for sending updates
+            // Handle incoming messages
+            ws.on('message', (data: WebSocket.Data) => {
+                try {
+                    const message: WebSocketMessage = JSON.parse(data.toString())
+                    this.handleClientMessage(clientId, message)
+                } catch (error) {
+                    console.error('Error parsing WebSocket message:', error)
+                    this.sendToClient(clientId, {
+                        type: 'error',
+                        data: {message: 'Invalid message format'},
+                    })
+                }
+            })
 
-     // Broadcast to all connected clients
-     public broadcast(message: WebSocketMessage): void {
-          const messageWithTimestamp: WebSocketMessage = {
-               ...message,
-               timestamp: new Date().toISOString(),
-          }
+            // Handle client disconnect
+            ws.on('close', () => {
+                console.log(`WebSocket client disconnected: ${clientId}`)
+                this.clients.delete(clientId)
+            })
 
-          const messageString = JSON.stringify(messageWithTimestamp)
+            // Handle errors
+            ws.on('error', (error) => {
+                console.error(`WebSocket error for client ${clientId}:`, error)
+                this.clients.delete(clientId)
+            })
 
-          this.clients.forEach((client, clientId) => {
-               if (client.readyState === WebSocket.OPEN) {
-                    try {
-                         client.send(messageString)
-                    } catch (error) {
-                         console.error(
-                              `Error sending message to client ${clientId}:`,
-                              error,
-                         )
-                         this.clients.delete(clientId)
-                    }
-               } else {
+            // Send periodic ping to keep connection alive
+            const pingInterval = setInterval(() => {
+                if (ws.readyState === WebSocket.OPEN) {
+                    ws.ping()
+                } else {
+                    clearInterval(pingInterval)
+                }
+            }, 30000) // Ping every 30 seconds
+        })
+
+        console.log('WebSocket server initialized on /ws')
+    }
+
+    private async authenticateWebSocketConnection(request: IncomingMessage): Promise<{
+        isAuthenticated: boolean
+        user?: {email: string; role: string}
+        message?: string
+    }> {
+        try {
+            if (!request.url) {
+                return {isAuthenticated: false, message: 'No URL provided'}
+            }
+
+            // Parse URL to get query parameters
+            const url = new URL(request.url, `http://${request.headers.host}`)
+            const token = url.searchParams.get('token')
+
+            if (!token) {
+                return {isAuthenticated: false, message: 'No authentication token provided'}
+            }
+
+            // Verify JWT token
+            const result = await this.authService.verifyJWT(token)
+
+            if (result.valid && result.user) {
+                return {
+                    isAuthenticated: true,
+                    user: result.user,
+                }
+            } else {
+                return {
+                    isAuthenticated: false,
+                    message: result.message || 'Invalid authentication token',
+                }
+            }
+        } catch (error) {
+            console.error('WebSocket authentication error:', error)
+            return {
+                isAuthenticated: false,
+                message: 'Authentication service error',
+            }
+        }
+    }
+
+    private handleClientMessage(clientId: string, message: WebSocketMessage): void {
+        switch (message.type) {
+            case 'ping':
+                this.sendToClient(clientId, {type: 'pong'})
+                break
+
+            case 'subscribe':
+                // Handle subscription to specific events (e.g., specific test updates)
+                console.log(`Client ${clientId} subscribed to:`, message.data)
+                break
+
+            case 'unsubscribe':
+                // Handle unsubscription
+                console.log(`Client ${clientId} unsubscribed from:`, message.data)
+                break
+
+            default:
+                console.log(`Unknown message type from client ${clientId}:`, message.type)
+        }
+    }
+
+    private sendToClient(clientId: string, message: WebSocketMessage): void {
+        const client = this.clients.get(clientId)
+        if (client && client.readyState === WebSocket.OPEN) {
+            const messageWithTimestamp: WebSocketMessage = {
+                ...message,
+                timestamp: new Date().toISOString(),
+                clientId,
+            }
+
+            client.send(JSON.stringify(messageWithTimestamp))
+        }
+    }
+
+    // Public methods for sending updates
+
+    // Broadcast to all connected clients
+    public broadcast(message: WebSocketMessage): void {
+        const messageWithTimestamp: WebSocketMessage = {
+            ...message,
+            timestamp: new Date().toISOString(),
+        }
+
+        const messageString = JSON.stringify(messageWithTimestamp)
+
+        this.clients.forEach((client, clientId) => {
+            if (client.readyState === WebSocket.OPEN) {
+                try {
+                    client.send(messageString)
+                } catch (error) {
+                    console.error(`Error sending message to client ${clientId}:`, error)
                     this.clients.delete(clientId)
-               }
-          })
-     }
+                }
+            } else {
+                this.clients.delete(clientId)
+            }
+        })
+    }
 
-     // Send test status update
-     public broadcastTestStatus(update: TestStatusUpdate): void {
-          this.broadcast({
-               type: 'test:status',
-               data: update,
-          })
-     }
+    // Send test status update
+    public broadcastTestStatus(update: TestStatusUpdate): void {
+        this.broadcast({
+            type: 'test:status',
+            data: update,
+        })
+    }
 
-     // Send test progress update
-     public broadcastTestProgress(update: TestProgressUpdate): void {
-          this.broadcast({
-               type: 'test:progress',
-               data: update,
-          })
-     }
+    // Send test progress update
+    public broadcastTestProgress(update: TestProgressUpdate): void {
+        this.broadcast({
+            type: 'test:progress',
+            data: update,
+        })
+    }
 
-     // Send test completion
-     public broadcastTestCompleted(testId: string, result: any): void {
-          this.broadcast({
-               type: 'test:completed',
-               data: {testId, result},
-          })
-     }
+    // Send test completion
+    public broadcastTestCompleted(testId: string, result: any): void {
+        this.broadcast({
+            type: 'test:completed',
+            data: {testId, result},
+        })
+    }
 
-     // Send run status update
-     public broadcastRunStatus(
-          runId: string,
-          status: string,
-          data?: any,
-     ): void {
-          this.broadcast({
-               type: 'run:status',
-               data: {runId, status, ...data},
-          })
-     }
+    // Send run status update
+    public broadcastRunStatus(runId: string, status: string, data?: any): void {
+        this.broadcast({
+            type: 'run:status',
+            data: {runId, status, ...data},
+        })
+    }
 
-     // Send dashboard stats update
-     public broadcastStatsUpdate(stats: any): void {
-          this.broadcast({
-               type: 'stats:update',
-               data: stats,
-          })
-     }
+    // Send dashboard stats update
+    public broadcastStatsUpdate(stats: any): void {
+        this.broadcast({
+            type: 'stats:update',
+            data: stats,
+        })
+    }
 
-     // Broadcast process start
-     public broadcastProcessStart(processInfo: any): void {
-          this.broadcast({
-               type: 'process:started',
-               data: processInfo,
-          })
-     }
+    // Broadcast process start
+    public broadcastProcessStart(processInfo: any): void {
+        this.broadcast({
+            type: 'process:started',
+            data: processInfo,
+        })
+    }
 
-     // Broadcast process end
-     public broadcastProcessEnd(processInfo: any): void {
-          this.broadcast({
-               type: 'process:ended',
-               data: processInfo,
-          })
-     }
+    // Broadcast process end
+    public broadcastProcessEnd(processInfo: any): void {
+        this.broadcast({
+            type: 'process:ended',
+            data: processInfo,
+        })
+    }
 
-     // Send connection status to all clients (useful for manual refresh)
-     public broadcastConnectionStatus(): void {
-          this.broadcast({
-               type: 'connection:status',
-               data: activeProcessesTracker.getConnectionStatus(),
-          })
-     }
+    // Send connection status to all clients (useful for manual refresh)
+    public broadcastConnectionStatus(): void {
+        this.broadcast({
+            type: 'connection:status',
+            data: activeProcessesTracker.getConnectionStatus(),
+        })
+    }
 
-     // Get connection info
-     public getConnectionInfo(): {connectedClients: number; clients: string[]} {
-          return {
-               connectedClients: this.clients.size,
-               clients: Array.from(this.clients.keys()),
-          }
-     }
+    // Get connection info
+    public getConnectionInfo(): {connectedClients: number; clients: string[]} {
+        return {
+            connectedClients: this.clients.size,
+            clients: Array.from(this.clients.keys()),
+        }
+    }
 
-     // Close all connections
-     public close(callback?: () => void): void {
-          console.log('Closing WebSocket server...')
+    // Close all connections
+    public close(callback?: () => void): void {
+        console.log('Closing WebSocket server...')
 
-          // Close all client connections
-          this.clients.forEach((client, clientId) => {
-               if (client.readyState === WebSocket.OPEN) {
-                    client.close(1000, 'Server shutting down')
-               }
-          })
+        // Close all client connections
+        this.clients.forEach((client, clientId) => {
+            if (client.readyState === WebSocket.OPEN) {
+                client.close(1000, 'Server shutting down')
+            }
+        })
 
-          this.clients.clear()
+        this.clients.clear()
 
-          // Close the server
-          this.wss.close(callback)
-     }
+        // Close the server
+        this.wss.close(callback)
+    }
 }
 
 // Factory function to create WebSocket server
 export function createWebSocketServer(server: Server): WebSocketManager {
-     return new WebSocketManager(server)
+    return new WebSocketManager(server)
 }
 
 // Export singleton instance for use across the application
 let wsManager: WebSocketManager | null = null
 
 export function getWebSocketManager(): WebSocketManager | null {
-     return wsManager
+    return wsManager
 }
 
 export function setWebSocketManager(manager: WebSocketManager): void {
-     wsManager = manager
+    wsManager = manager
 }

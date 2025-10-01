@@ -1,8 +1,8 @@
-import { Request } from 'express'
-import { TestService } from '../services/test.service'
-import { PlaywrightService } from '../services/playwright.service'
-import { WebSocketService } from '../services/websocket.service'
-import { AttachmentService } from '../services/attachment.service'
+import {Request} from 'express'
+import {TestService} from '../services/test.service'
+import {PlaywrightService} from '../services/playwright.service'
+import {WebSocketService} from '../services/websocket.service'
+import {AttachmentService} from '../services/attachment.service'
 
 // API Response types (compatible with yshvydakReporter.ts)
 export interface ApiResponse<T = any> {

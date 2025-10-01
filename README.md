@@ -12,58 +12,65 @@ A comprehensive testing dashboard that transforms your Playwright test experienc
 
 ### The Problem
 
--    **Lost in Test Results**: Standard Playwright HTML reports get buried and hard to navigate
--    **No Quick Reruns**: Failed tests require manual command-line reruns
--    **Team Visibility**: Hard to share test status with stakeholders
--    **Historical Context**: No easy way to track test trends over time
+- **No Quick Reruns**: Failed tests require manual command-line reruns
+- **Team Visibility**: Hard to share test status with stakeholders
+- **Historical Context**: No easy way to track test trends over time
 
 ### The Solution
 
--    **🚀 One-Click Reruns**: Instantly rerun any failed test directly from the web UI
--    **📊 Real-Time Monitoring**: Watch tests execute live with WebSocket updates
--    **📈 Historical Tracking**: See test trends, failure patterns, and performance over time
--    **👥 Team Friendly**: Beautiful web interface anyone can understand
--    **🎯 Zero Configuration**: Works with existing Playwright projects out-of-the-box
+- **🚀 One-Click Reruns**: Instantly rerun any failed test directly from the web UI
+- **📊 Real-Time Monitoring**: Watch tests execute live with WebSocket updates
+- **📈 Historical Tracking**: See test trends, failure patterns, and performance over time
+- **👥 Team Friendly**: Beautiful web interface anyone can understand
+- **🎯 Zero Configuration**: Works with existing Playwright projects out-of-the-box
 
 ## 🎪 Key Features
 
 ### 🔄 **Smart Test Reruns**
 
--    Rerun individual tests or entire test files
--    Maintain test context and configuration
--    Real-time feedback on rerun progress
+- Rerun individual tests or entire test files
+- Maintain test context and configuration
+- Real-time feedback on rerun progress
 
 ### 📊 **Comprehensive Dashboard**
 
--    Live test execution monitoring
--    Interactive test results with filtering
--    Test history and trend analysis
--    Attachment viewing (screenshots, videos, traces)
+- Live test execution monitoring
+- Interactive test results with filtering
+- Test history and trend analysis
+- Attachment viewing (screenshots, videos, traces) with persistent storage
 
 ### ⚡ **Dynamic Reporter Integration**
 
--    **No config changes needed** in your test projects
--    Dashboard automatically injects reporter when running tests
--    Supports both npm package and local file modes
+- **No config changes needed** in your test projects
+- Dashboard automatically injects reporter when running tests
+- Supports both npm package and local file modes
 
 ### 🔍 **Advanced Diagnostics**
 
--    Built-in health checks and configuration validation
--    Integration troubleshooting with detailed error reporting
--    API endpoint for programmatic monitoring
+- Built-in health checks and configuration validation
+- Integration troubleshooting with detailed error reporting
+- API endpoint for programmatic monitoring
+
+### 🔐 **Secure Authentication**
+
+- JWT-based user authentication with secure login
+- Simplified local network integration for reporters
+- Protected access to test results and attachments
+- Production-ready security implementation
 
 ### 🔒 **Reliable State Management**
 
--    **Process tracking**: Real-time monitoring of active test processes
--    **Page-reload safe**: UI state correctly restores after browser refresh
--    **Auto-recovery**: Automatic cleanup of stuck/orphaned processes
+- **Process tracking**: Real-time monitoring of active test processes
+- **Page-reload safe**: UI state correctly restores after browser refresh
+- **Auto-recovery**: Automatic cleanup of stuck/orphaned processes
+- **Persistent attachments**: Test artifacts stored permanently, surviving Playwright's cleanup cycles
 
 ## 🚀 Quick Start
 
 ### Prerequisites
 
--    Node.js 18+ and npm 10+
--    Existing Playwright project
+- Node.js 18+ and npm 10+
+- Existing Playwright project
 
 ### 1. Install and Setup
 
@@ -116,9 +123,15 @@ NODE_ENV=development
 BASE_URL=http://localhost:3001
 VITE_BASE_URL=http://localhost:3001
 USE_NPM_REPORTER=false
+
+# Authentication Configuration
+ENABLE_AUTH=true
+ADMIN_EMAIL=admin@admin.com
+ADMIN_PASSWORD=qwe123
+JWT_SECRET=dev-jwt-secret-change-in-production-12345
 ```
 
-**Note:** All other variables are automatically derived from these core settings. The project is now fully universal - just clone and configure `.env`!
+**Note:** All other variables are automatically derived from these core settings. For production deployment, use strong passwords and secure JWT secrets. See [Authentication Documentation](docs/features/AUTHENTICATION_IMPLEMENTATION.md) for detailed security setup.
 
 ### 4. Start the Dashboard
 
@@ -129,15 +142,16 @@ npm run dev
 
 The dashboard will be available at:
 
--    **Web UI**: http://localhost:3000 (or your VITE_PORT value)
--    **API**: http://localhost:3001 (or your PORT value)
+- **Web UI**: http://localhost:3000 (or your VITE_PORT value)
+- **API**: http://localhost:3001 (or your PORT value)
 
-### 5. Discover and Run Tests
+### 5. Login and Discover Tests
 
 1. **Open the dashboard** in your browser
-2. **Click "Discover Tests"** to scan your project
-3. **Run tests** directly from the UI or rerun failed ones
-4. **Monitor results** in real-time!
+2. **Login** with your admin credentials (admin@admin.com / qwe123 for development)
+3. **Click "Discover Tests"** to scan your project
+4. **Run tests** directly from the UI or rerun failed ones
+5. **Monitor results** in real-time!
 
 ## 📖 Usage Guide
 
@@ -145,10 +159,10 @@ The dashboard will be available at:
 
 #### From Dashboard (Recommended)
 
--    **Discover Tests**: Scans your Playwright project for all available tests
--    **Run All**: Execute all tests with live monitoring
--    **Run by File**: Run specific test files
--    **Rerun Failed**: One-click rerun of any failed test
+- **Discover Tests**: Scans your Playwright project for all available tests
+- **Run All**: Execute all tests with live monitoring
+- **Run by File**: Run specific test files
+- **Rerun Failed**: One-click rerun of any failed test
 
 #### From Command Line
 
@@ -166,11 +180,11 @@ npx playwright test --reporter=./e2e/testUtils/yshvydakReporter.ts
 
 ### Monitoring and Results
 
--    **Live Updates**: Real-time test status via WebSocket
--    **Rich Results**: Enhanced error messages with code context
--    **Attachments**: View screenshots, videos, and traces inline
--    **History**: Track test performance and failure patterns
--    **Filtering**: Find tests by status, file, or timeframe
+- **Live Updates**: Real-time test status via WebSocket
+- **Rich Results**: Enhanced error messages with code context
+- **Attachments**: View screenshots, videos, and traces inline
+- **History**: Track test performance and failure patterns
+- **Filtering**: Find tests by status, file, or timeframe
 
 ### Troubleshooting
 
@@ -186,14 +200,14 @@ curl http://localhost:3001/api/tests/diagnostics
 
 1. **Tests not appearing**: Check `PLAYWRIGHT_PROJECT_DIR` environment variable
 2. **Reporter not working**:
-     - Verify `DASHBOARD_API_URL` in test project
-     - Ensure reporter file is copied to `e2e/testUtils/yshvydakReporter.ts`
+    - Verify `DASHBOARD_API_URL` in test project
+    - Ensure reporter file is copied to `e2e/testUtils/yshvydakReporter.ts`
 3. **Connection issues**: Ensure dashboard is running on correct port
 4. **File not found errors**: Verify reporter file path matches dashboard configuration
 5. **Test count inconsistency**: If test discovery shows different counts than after test execution:
-     - Discovery finds fewer tests: Check if all test files are being scanned properly
-     - Fewer tests after execution: Usually resolved by API limit parameters (dashboard uses `limit=200`)
-     - See [Test Display Architecture](docs/TEST_DISPLAY.md) for technical details
+    - Discovery finds fewer tests: Check if all test files are being scanned properly
+    - Fewer tests after execution: Usually resolved by API limit parameters (dashboard uses `limit=200`)
+    - See [Test Display Architecture](docs/TEST_DISPLAY.md) for technical details
 
 ## 🏗️ Architecture
 
@@ -221,9 +235,9 @@ The dashboard uses **dynamic reporter injection** - no changes needed to your `p
 
 The dashboard follows clean **Layered Architecture** principles with recent refinements:
 
--    **Pure Service Injection**: Streamlined dependency injection without legacy components
--    **Optimized Routes**: Removed unused endpoints, focused on active functionality
--    **100% Compatibility**: All existing integrations continue to work seamlessly
+- **Pure Service Injection**: Streamlined dependency injection without legacy components
+- **Optimized Routes**: Removed unused endpoints, focused on active functionality
+- **100% Compatibility**: All existing integrations continue to work seamlessly
 
 ## 🛠️ Development
 
@@ -244,19 +258,19 @@ cd packages/reporter && npm run dev # Reporter package
 
 ### Available Scripts
 
--    `npm run build` - Build all packages
--    `npm run dev` - Development mode for all packages
--    `npm run type-check` - TypeScript validation
--    `npm run lint` - Code linting
--    `npm run clean` - Clean build artifacts
--    `npm run clear-data` - Interactive data cleanup
+- `npm run build` - Build all packages
+- `npm run dev` - Development mode for all packages
+- `npm run type-check` - TypeScript validation
+- `npm run lint` - Code linting
+- `npm run clean` - Clean build artifacts
+- `npm run clear-data` - Interactive data cleanup
 
 ### Environment Variables
 
 The dashboard uses a **simplified .env configuration** with automatic derivation of most values:
 
 ```bash
-# Core Configuration (6 variables only)
+# Core Configuration (6 variables + auth)
 PORT=3001                                    # API server port
 NODE_ENV=development                         # Environment mode
 PLAYWRIGHT_PROJECT_DIR=/path/to/your/tests   # Test project location
@@ -264,6 +278,12 @@ USE_NPM_REPORTER=false                       # Use npm package vs local file
 BASE_URL=http://localhost:3001               # Base URL for all services
 VITE_BASE_URL=http://localhost:3001          # Base URL accessible to web client
 VITE_PORT=3000                               # Web dev server port (optional)
+
+# Authentication Configuration
+ENABLE_AUTH=true                             # Enable authentication
+ADMIN_EMAIL=admin@admin.com                  # Admin user email
+ADMIN_PASSWORD=qwe123                        # Admin user password
+JWT_SECRET=dev-jwt-secret-change-in-production-12345    # JWT signing key
 
 # All other variables are derived automatically:
 # - DASHBOARD_API_URL = BASE_URL (for API integration)
@@ -276,54 +296,54 @@ VITE_PORT=3000                               # Web dev server port (optional)
 
 **Port Management:**
 
--    **API Server**: Uses `PORT` (default: 3001)
--    **Web Dev Server**: Uses `VITE_PORT` if set, otherwise `PORT + 1000`, fallback: 4001
--    **Production**: Both services can run on same port with different paths
+- **API Server**: Uses `PORT` (default: 3001)
+- **Web Dev Server**: Uses `VITE_PORT` if set, otherwise `PORT + 1000`, fallback: 4001
+- **Production**: Both services can run on same port with different paths
 
 ## 📊 Technology Stack
 
 ### Frontend
 
--    **React 18** + TypeScript
--    **Vite** for fast development
--    **Tailwind CSS** for styling
--    **Zustand** for state management
--    **React Query** for data fetching
+- **React 18** + TypeScript
+- **Vite** for fast development
+- **Tailwind CSS** for styling
+- **Zustand** for state management
+- **React Query** for data fetching
 
 ### Backend
 
--    **Express.js** + TypeScript
--    **SQLite** for data persistence
--    **WebSocket** for real-time updates
--    **Layered Architecture** with dependency injection
+- **Express.js** + TypeScript
+- **SQLite** for data persistence
+- **WebSocket** for real-time updates
+- **Layered Architecture** with dependency injection
 
 ### DevOps
 
--    **Turborepo** for monorepo management
--    **TypeScript 5** with strict mode
--    **ESLint** for code quality
+- **Turborepo** for monorepo management
+- **TypeScript 5** with strict mode
+- **ESLint** for code quality
 
 ## 🛣️ Roadmap
 
 ### Phase 1: Current (File-based Integration) ✅
 
--    Manual file copy setup
--    Dynamic reporter injection
--    Full dashboard functionality
+- Manual file copy setup
+- Dynamic reporter injection
+- Full dashboard functionality
 
 ### Phase 2: npm Package (Planned) 🚧
 
--    Publish `@yshvydak/playwright-reporter` to npm registry
--    One-command installation: `npm install @yshvydak/playwright-reporter`
--    Automatic version updates and centralized management
--    Environment toggle: `USE_NPM_REPORTER=true`
+- Publish `@yshvydak/playwright-reporter` to npm registry
+- One-command installation: `npm install @yshvydak/playwright-reporter`
+- Automatic version updates and centralized management
+- Environment toggle: `USE_NPM_REPORTER=true`
 
 ### Phase 3: Enterprise Features (Future) 🔮
 
--    Multiple project management
--    Role-based access control
--    Advanced analytics and reporting
--    CI/CD integration templates
+- Multiple project management
+- Role-based access control
+- Advanced analytics and reporting
+- CI/CD integration templates
 
 ## 🤝 Contributing
 
@@ -339,10 +359,10 @@ We welcome contributions! Here's how to get started:
 
 ### Development Guidelines
 
--    Follow existing code patterns and TypeScript strict mode
--    Add tests for new features
--    Update documentation for public API changes
--    Ensure all checks pass before submitting PR
+- Follow existing code patterns and TypeScript strict mode
+- Add tests for new features
+- Update documentation for public API changes
+- Ensure all checks pass before submitting PR
 
 ## 📄 License
 
@@ -350,9 +370,9 @@ MIT License - see [LICENSE](LICENSE) file for details.
 
 ## 🙏 Acknowledgments
 
--    Built with [Playwright](https://playwright.dev/) - the amazing testing framework
--    Inspired by the need for better test visibility and team collaboration
--    Thanks to all contributors who help improve the testing experience
+- Built with [Playwright](https://playwright.dev/) - the amazing testing framework
+- Inspired by the need for better test visibility and team collaboration
+- Thanks to all contributors who help improve the testing experience
 
 ---
 

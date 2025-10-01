@@ -1,7 +1,7 @@
-import { BaseRepository } from './base.repository'
-import { TestResultData, TestResultRow, DatabaseStats } from '../types/database.types'
-import { TestResult, TestFilters, ITestRepository } from '../types/service.types'
-import { DEFAULT_LIMITS } from '../config/constants'
+import {BaseRepository} from './base.repository'
+import {TestResultData, TestResultRow, DatabaseStats} from '../types/database.types'
+import {TestResult, TestFilters, ITestRepository} from '../types/service.types'
+import {DEFAULT_LIMITS} from '../config/constants'
 
 export class TestRepository extends BaseRepository implements ITestRepository {
     async saveTestResult(testData: TestResultData): Promise<string> {
@@ -9,10 +9,9 @@ export class TestRepository extends BaseRepository implements ITestRepository {
     }
 
     async getTestResult(id: string): Promise<TestResult | null> {
-        const row = await this.queryOne<TestResultRow>(
-            `SELECT * FROM test_results WHERE id = ?`,
-            [id]
-        )
+        const row = await this.queryOne<TestResultRow>(`SELECT * FROM test_results WHERE id = ?`, [
+            id,
+        ])
 
         if (!row) return null
 
@@ -33,7 +32,10 @@ export class TestRepository extends BaseRepository implements ITestRepository {
         return this.mapRowsToTestResults(rows)
     }
 
-    async getTestResultsByTestId(testId: string, limit = DEFAULT_LIMITS.TEST_HISTORY): Promise<TestResult[]> {
+    async getTestResultsByTestId(
+        testId: string,
+        limit = DEFAULT_LIMITS.TEST_HISTORY
+    ): Promise<TestResult[]> {
         const rows = await this.queryAll<TestResultRow>(
             `SELECT tr.*, 
                     a.id as attachment_id, a.type as attachment_type, a.url as attachment_url
@@ -113,14 +115,14 @@ export class TestRepository extends BaseRepository implements ITestRepository {
             timestamp: row.created_at,
             createdAt: row.created_at,
             updatedAt: row.updated_at,
-            attachments: []
+            attachments: [],
         }
     }
 
     private mapRowsToTestResults(rows: TestResultRow[]): TestResult[] {
         const testsMap = new Map<string, TestResult>()
 
-        rows.forEach(row => {
+        rows.forEach((row) => {
             if (!testsMap.has(row.id)) {
                 const testResult = this.mapRowToTestResult(row)
                 testsMap.set(row.id, testResult)
@@ -137,7 +139,7 @@ export class TestRepository extends BaseRepository implements ITestRepository {
                     fileName: '',
                     filePath: '',
                     fileSize: 0,
-                    url: row.attachment_url!
+                    url: row.attachment_url!,
                 })
             }
         })

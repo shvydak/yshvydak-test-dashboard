@@ -1,17 +1,19 @@
-import { Router } from 'express'
-import { HealthController } from '../controllers/health.controller'
-import { ServiceContainer } from '../middleware/service-injection.middleware'
-import { createTestRoutes } from './test.routes'
-import { createRunRoutes } from './run.routes'
+import {Router} from 'express'
+import {HealthController} from '../controllers/health.controller'
+import {ServiceContainer} from '../middleware/service-injection.middleware'
+import {createTestRoutes} from './test.routes'
+import {createRunRoutes} from './run.routes'
+import {createAuthRoutes} from './auth.routes'
 
 export function createApiRoutes(container: ServiceContainer): Router {
     const router = Router()
     const healthController = new HealthController()
 
-    // Health check
+    // Public endpoints (no authentication required)
     router.get('/health', healthController.healthCheck)
+    router.use('/auth', createAuthRoutes())
 
-    // API routes with service injection
+    // Public API routes for reporter integration (no authentication)
     router.use('/tests', createTestRoutes(container))
     router.use('/runs', createRunRoutes(container))
     // Note: Attachments are handled via /tests/:id/attachments endpoint

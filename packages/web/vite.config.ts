@@ -15,6 +15,9 @@ export default defineConfig({
     resolve: {
         alias: {
             '@': path.resolve(__dirname, './src'),
+            '@features': path.resolve(__dirname, './src/features'),
+            '@shared': path.resolve(__dirname, './src/shared'),
+            '@config': path.resolve(__dirname, './src/config'),
             '@yshvydak/core': path.resolve(__dirname, '../core/src'),
         },
     },
@@ -22,9 +25,7 @@ export default defineConfig({
         // Derive web port: if VITE_PORT is set, use it; otherwise use PORT + 1000 offset; fallback to 3000
         port: parseInt(
             process.env.VITE_PORT ||
-                (process.env.PORT
-                    ? (parseInt(process.env.PORT) - 1).toString()
-                    : '3000'),
+                (process.env.PORT ? (parseInt(process.env.PORT) - 1).toString() : '3000')
         ),
         host: '0.0.0.0', // Listen on all network interfaces
         allowedHosts: true, // Allow all hosts - more permissive approach

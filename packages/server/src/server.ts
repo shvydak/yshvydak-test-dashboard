@@ -1,11 +1,11 @@
-import { createApp } from './app'
-import { createWebSocketServer, setWebSocketManager } from './websocket/server'
-import { config } from './config/environment.config'
-import { Logger } from './utils/logger.util'
-import { DatabaseManager } from './database/database.manager'
+import {createApp} from './app'
+import {createWebSocketServer, setWebSocketManager} from './websocket/server'
+import {config} from './config/environment.config'
+import {Logger} from './utils/logger.util'
+import {DatabaseManager} from './database/database.manager'
 
 function startServer() {
-    const { app, serviceContainer } = createApp()
+    const {app, serviceContainer} = createApp()
 
     // Create database manager instance for cleanup
     const dbManager = new DatabaseManager(config.storage.outputDir)
@@ -40,7 +40,7 @@ function startServer() {
     process.on('SIGTERM', gracefulShutdown)
     process.on('SIGINT', gracefulShutdown)
 
-    return { server, wsServer, serviceContainer }
+    return {server, wsServer, serviceContainer}
 }
 
 // Start the server if this file is run directly
@@ -48,4 +48,4 @@ if (require.main === module) {
     startServer()
 }
 
-export { startServer, createApp }
+export {startServer, createApp}

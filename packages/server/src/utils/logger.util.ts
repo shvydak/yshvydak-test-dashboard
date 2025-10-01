@@ -7,12 +7,18 @@ export class Logger {
 
     private static getEmoji(level: string): string {
         switch (level.toLowerCase()) {
-            case 'info': return '🔵'
-            case 'warn': return '⚠️'
-            case 'error': return '❌'
-            case 'success': return '✅'
-            case 'debug': return '🐛'
-            default: return 'ℹ️'
+            case 'info':
+                return '🔵'
+            case 'warn':
+                return '⚠️'
+            case 'error':
+                return '❌'
+            case 'success':
+                return '✅'
+            case 'debug':
+                return '🐛'
+            default:
+                return 'ℹ️'
         }
     }
 

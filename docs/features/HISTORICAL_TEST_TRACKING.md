@@ -313,7 +313,8 @@ export function TestDetailModal({test, isOpen, onClose}: TestDetailModalProps) {
 
 - Default shows latest execution (`selectedExecutionId === null`)
 - User can switch to any historical execution
-- All tabs (Overview, Attachments, Steps) show selected execution data
+- All tabs (Overview, Steps) show selected execution data
+- Overview tab includes both attachments and test information sections
 - ExecutionSidebar always visible on the right side
 - Reset to latest on modal close
 
@@ -411,7 +412,7 @@ The implementation uses an **always-visible sidebar panel** on the right side of
     - Modal header updates: "Viewing execution: [date/time]" + "← Back to latest" button
     - All tabs instantly show selected execution data
     - Sidebar updates "Currently viewing" indicator
-    - Attachments and all other tabs show data from selected execution
+    - Overview tab shows attachments and information from selected execution
     - **Sidebar remains visible** for easy switching
 
 4. **User clicks "← Back to latest"**
@@ -427,11 +428,12 @@ The implementation uses an **always-visible sidebar panel** on the right side of
 ┌────────────────────────────────────────────────────────────────────┐
 │  Test Detail Header (name, status, close)                         │
 ├────────────────────────────────────────────────────────────────────┤
-│  Tabs: Overview | Attachments | Steps                             │
+│  Tabs: Overview | Steps                                           │
 ├───────────────────────────────────────┬────────────────────────────┤
 │                                       │  ┌──────────────────────┐  │
 │  Active Tab Content                   │  │ EXECUTION HISTORY    │  │
-│  (Overview/Attachments/Steps)         │  │ 15 executions        │  │
+│  (Overview includes Attachments       │  │ 15 executions        │  │
+│   + Test Information, or Steps)       │  │                      │  │
 │                                       │  ├──────────────────────┤  │
 │                                       │  │ LATEST ✅ Passed     │  │
 │                                       │  │ 11:22:13 05/10       │  │

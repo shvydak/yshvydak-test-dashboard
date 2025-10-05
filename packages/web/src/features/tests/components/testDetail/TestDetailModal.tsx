@@ -7,7 +7,6 @@ import {useTestsStore} from '../../store/testsStore'
 import {TestDetailHeader} from './TestDetailHeader'
 import {TestDetailTabs} from './TestDetailTabs'
 import {TestOverviewTab} from './TestOverviewTab'
-import {TestAttachmentsTab} from './TestAttachmentsTab'
 import {TestStepsTab} from './TestStepsTab'
 import {ExecutionSidebar} from '../history/ExecutionSidebar'
 
@@ -62,11 +61,7 @@ export function TestDetailModal({test, isOpen, onClose}: TestDetailModalProps) {
                     onBackToLatest={() => selectExecution(null)}
                 />
 
-                <TestDetailTabs
-                    activeTab={activeTab}
-                    onTabChange={setActiveTab}
-                    attachmentsCount={attachments.length}
-                />
+                <TestDetailTabs activeTab={activeTab} onTabChange={setActiveTab} />
 
                 {/* Main Content with Sidebar Layout */}
                 <div className="flex flex-1 overflow-hidden">
@@ -75,17 +70,10 @@ export function TestDetailModal({test, isOpen, onClose}: TestDetailModalProps) {
                         {activeTab === 'overview' && (
                             <TestOverviewTab
                                 test={currentExecution!}
-                                attachmentsCount={attachments.length}
-                                loading={loading}
-                            />
-                        )}
-
-                        {activeTab === 'attachments' && (
-                            <TestAttachmentsTab
                                 attachments={attachments}
-                                loading={loading}
-                                error={error}
-                                onError={setError}
+                                attachmentsLoading={loading}
+                                attachmentsError={error}
+                                onAttachmentsError={setError}
                             />
                         )}
 

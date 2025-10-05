@@ -135,9 +135,9 @@ The web package follows **Feature-Based Architecture** with **Atomic Design**:
 **Complete test execution history with independent attachments per run:**
 
 - Every test execution creates a new database record (INSERT strategy, not UPDATE)
-- Full execution history accessible via History tab in test detail modal
+- Full execution history accessible via always-visible sidebar in test detail modal
 - Each execution maintains independent attachments (videos, screenshots, traces)
-- Users can compare different test runs and view historical trends
+- Users can compare different test runs and view historical trends with one-click switching
 - Pending test results automatically filtered from history view
 - See [@docs/features/HISTORICAL_TEST_TRACKING.md](docs/features/HISTORICAL_TEST_TRACKING.md) for complete documentation
 

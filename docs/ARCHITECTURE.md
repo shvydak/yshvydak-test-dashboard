@@ -229,9 +229,9 @@ The dashboard uses an **INSERT-only strategy** for test results:
 
 1. **Always Create New Records**: Every test execution creates a new database record (no UPDATE operations)
 2. **Independent Attachments**: Each execution maintains its own videos, screenshots, and traces
-3. **History Tab UI**: Dedicated interface for viewing and comparing past executions
+3. **Always-Visible Sidebar**: ExecutionSidebar provides instant access to history without tab switching
 4. **Smart Filtering**: Pending results automatically excluded from history view
-5. **Execution Switching**: Users can switch between different test runs in the modal
+5. **Execution Switching**: Users can switch between different test runs with one click from sidebar
 
 ### Architecture Flow
 
@@ -244,7 +244,7 @@ Test Execution → Reporter → DatabaseManager.saveTestResult() → Always INSE
                                                               ↓
                                                     Returns all executions
                                                               ↓
-                                            Frontend History Tab displays list
+                                            Frontend ExecutionSidebar (always visible)
 ```
 
 ### Key Components
@@ -258,9 +258,7 @@ Test Execution → Reporter → DatabaseManager.saveTestResult() → Always INSE
 
 #### Frontend
 
-- **TestHistoryTab**: Main history interface with loading states
-- **ExecutionList**: Renders list of all test executions
-- **ExecutionCard**: Displays individual execution (status, date, duration, attachments)
+- **ExecutionSidebar**: Always-visible sidebar panel with execution history (320px width, right side)
 - **useTestExecutionHistory**: Hook for fetching execution history
 - **testsStore.selectedExecutionId**: Zustand state for tracking selected execution
 
@@ -291,7 +289,7 @@ packages/web/src/
 │   └── tests/                      # Tests feature (main feature)
 │       ├── components/
 │       │   ├── testDetail/         # TestDetailModal sub-components
-│       │   ├── history/            # ExecutionCard, ExecutionList, TestHistoryTab
+│       │   ├── history/            # ExecutionSidebar (always-visible history panel)
 │       │   ├── TestsList.tsx       # Main tests list
 │       │   ├── TestsTableView.tsx
 │       │   └── ...
@@ -355,7 +353,7 @@ import {config} from '@config/environment.config'
 
 #### Tests Feature (Main)
 
-- **Components**: TestsList, TestDetailModal (8 sub-components), TestsTableView, TestRow, TestGroupHeader, History components (ExecutionCard, ExecutionList, TestHistoryTab)
+- **Components**: TestsList, TestDetailModal (8 sub-components), TestsTableView, TestRow, TestGroupHeader, ExecutionSidebar (always-visible history panel)
 - **Hooks**: useTestAttachments, useTestFilters, useTestGroups, useTestSort, useTestExecutionHistory
 - **Store**: testsStore.ts (Zustand) - tests state, actions, API calls, selectedExecutionId state
 - **Types**: attachment.types.ts - Attachment, AttachmentWithBlobURL, TabKey

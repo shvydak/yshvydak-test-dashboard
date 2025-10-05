@@ -101,8 +101,7 @@ The historical test tracking feature spans both backend and frontend layers, fol
 ┌─────────────────────────────────────────────────────────────┐
 │  Frontend (React)                                           │
 │  - TestDetailModal: Switches between executions            │
-│  - TestHistoryTab: Displays execution list                 │
-│  - ExecutionCard: Individual execution display             │
+│  - ExecutionSidebar: Always-visible history panel (right)  │
 │  - Zustand store: Manages selectedExecutionId              │
 └─────────────────────────────────────────────────────────────┘
 ```
@@ -236,9 +235,7 @@ The frontend follows the project's **Feature-Based Architecture** with component
 packages/web/src/features/tests/
 ├── components/
 │   └── history/                    # History feature components
-│       ├── ExecutionCard.tsx       # Individual execution display
-│       ├── ExecutionList.tsx       # List of all executions
-│       ├── TestHistoryTab.tsx      # Main history tab
+│       ├── ExecutionSidebar.tsx    # Always-visible history sidebar
 │       └── index.ts                # Barrel export
 ├── hooks/
 │   └── useTestExecutionHistory.ts  # Hook to fetch execution history
@@ -299,7 +296,7 @@ export function TestDetailModal({test, isOpen, onClose}: TestDetailModalProps) {
 
     const handleSelectExecution = (executionId: string) => {
         selectExecution(executionId)
-        setActiveTab('overview') // Switch to overview on execution change
+        // No tab switching needed - sidebar is always visible
     }
 
     const handleClose = () => {
@@ -316,22 +313,26 @@ export function TestDetailModal({test, isOpen, onClose}: TestDetailModalProps) {
 
 - Default shows latest execution (`selectedExecutionId === null`)
 - User can switch to any historical execution
-- All tabs (Overview, Attachments, Steps, History) show selected execution data
+- All tabs (Overview, Attachments, Steps) show selected execution data
+- ExecutionSidebar always visible on the right side
 - Reset to latest on modal close
 
-#### ExecutionCard Component
+#### ExecutionSidebar Component
 
-**Location**: `packages/web/src/features/tests/components/history/ExecutionCard.tsx`
+**Location**: `packages/web/src/features/tests/components/history/ExecutionSidebar.tsx`
 
-Displays individual execution with:
+Always-visible sidebar panel on the right side of the modal displaying:
 
-- Status badge (passed, failed, skipped, etc.)
-- Date and time of execution
-- Duration
-- Attachments count
+- Sticky header with execution count
+- Scrollable list of all executions
+- Status badges (passed, failed, skipped, etc.)
+- Date and time of each execution
+- Duration and attachments count
 - "Latest" badge for most recent execution
 - "Currently viewing" indicator for selected execution
-- "Switch to this execution" button
+- Hover effects with "Click to view" hint
+- Loading and error states
+- Compact, optimized layout (320px width)
 
 #### useTestExecutionHistory Hook
 
@@ -382,63 +383,92 @@ export function useTestExecutionHistory(testId: string): UseTestExecutionHistory
 
 ## UI/UX Design
 
-### Chosen Solution: History Tab (Variant A)
+### Chosen Solution: Always-Visible History Sidebar
 
-After analyzing multiple approaches, **Variant A - History Tab** was chosen for its:
+The implementation uses an **always-visible sidebar panel** on the right side of the modal for:
 
-✅ **Progressive Disclosure**: History is accessible but not intrusive
-✅ **Consistent Layout**: Matches existing tab structure
-✅ **Clear Context**: User knows they're viewing history
+✅ **Instant Access**: History always visible without tab switching
+✅ **Context Preservation**: Can view history while staying on any tab
+✅ **Efficient Navigation**: One-click switching between executions
+✅ **Clean Separation**: Main content on left, history on right
 ✅ **Scalability**: Easy to add features like filtering, sorting, comparison
 
 ### User Flow
 
 1. **User opens test detail modal**
-    - Modal shows latest execution by default
+    - Modal shows latest execution by default (left side)
     - Header displays: "Viewing execution: [Latest]"
+    - **ExecutionSidebar always visible on the right** showing all executions
     - All tabs show latest execution data
 
-2. **User clicks on "History" tab**
-    - Sees list of all executions (newest first)
+2. **User views history (no navigation needed)**
+    - Sidebar shows list of all executions (newest first)
     - Latest execution marked with "LATEST" badge
     - Currently viewed execution marked with "✓ Currently viewing"
     - Each execution shows: status, date/time, duration, attachments count
 
-3. **User clicks "Switch to this execution" on historical run**
+3. **User clicks on historical execution in sidebar**
     - Modal header updates: "Viewing execution: [date/time]" + "← Back to latest" button
-    - All tabs now show selected execution data
-    - History tab updates "Currently viewing" indicator
-    - Attachments tab shows attachments from selected execution only
+    - All tabs instantly show selected execution data
+    - Sidebar updates "Currently viewing" indicator
+    - Attachments and all other tabs show data from selected execution
+    - **Sidebar remains visible** for easy switching
 
 4. **User clicks "← Back to latest"**
     - Modal returns to showing latest execution
     - Header shows: "Viewing execution: [Latest]"
+    - Sidebar indicator updates
 
 ### Visual Design
 
-**Execution Card States:**
+**Modal Layout with Always-Visible Sidebar:**
 
 ```
-┌─────────────────────────────────────────────────────┐
-│ LATEST  ✅ Passed                    11:22:13 05/10  │
-│ Duration: 7.9s • Attachments: 2                     │
-│                                                      │
-│ ✓ Currently viewing                                 │
-└─────────────────────────────────────────────────────┘
+┌────────────────────────────────────────────────────────────────────┐
+│  Test Detail Header (name, status, close)                         │
+├────────────────────────────────────────────────────────────────────┤
+│  Tabs: Overview | Attachments | Steps                             │
+├───────────────────────────────────────┬────────────────────────────┤
+│                                       │  ┌──────────────────────┐  │
+│  Active Tab Content                   │  │ EXECUTION HISTORY    │  │
+│  (Overview/Attachments/Steps)         │  │ 15 executions        │  │
+│                                       │  ├──────────────────────┤  │
+│                                       │  │ LATEST ✅ Passed     │  │
+│                                       │  │ 11:22:13 05/10       │  │
+│                                       │  │ ⏱ 7.9s • 📎 2       │  │
+│                                       │  │ ✓ Currently viewing  │  │
+│                                       │  ├──────────────────────┤  │
+│                                       │  │ ✅ Passed            │  │
+│                                       │  │ 11:21:39 05/10       │  │
+│                                       │  │ ⏱ 8.0s • 📎 2       │  │
+│                                       │  │ Click to view →      │  │
+│                                       │  ├──────────────────────┤  │
+│                                       │  │ ❌ Failed            │  │
+│                                       │  │ 10:15:22 05/10       │  │
+│                                       │  │ ⏱ 5.3s • 📎 3       │  │
+│                                       │  │ Click to view →      │  │
+│                                       │  └──────────────────────┘  │
+└───────────────────────────────────────┴────────────────────────────┘
+```
 
-┌─────────────────────────────────────────────────────┐
-│ ✅ Passed                             11:21:39 05/10 │
-│ Duration: 8.0s • Attachments: 2                     │
-│                                                      │
-│ Switch to this execution →                          │
-└─────────────────────────────────────────────────────┘
+**Sidebar Execution Card States:**
 
-┌─────────────────────────────────────────────────────┐
-│ ❌ Failed                             10:15:22 05/10 │
-│ Duration: 5.3s • Attachments: 3                     │
-│                                                      │
-│ Switch to this execution →                          │
-└─────────────────────────────────────────────────────┘
+```
+Current Execution (highlighted):
+┌──────────────────────────────┐
+│ LATEST ✅ Passed             │
+│ 11:22:13 05/10               │
+│ ⏱ 7.9s • 📎 2               │
+│ ✓ Currently viewing          │
+└──────────────────────────────┘
+
+Historical Execution (hover effect):
+┌──────────────────────────────┐
+│ ❌ Failed                    │
+│ 10:15:22 05/10               │
+│ ⏱ 5.3s • 📎 3               │
+│ Click to view →              │
+└──────────────────────────────┘
 ```
 
 ## API Reference

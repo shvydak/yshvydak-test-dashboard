@@ -3,16 +3,9 @@ import {TabKey} from '../../types/attachment.types'
 export interface TestDetailTabsProps {
     activeTab: TabKey
     onTabChange: (tab: TabKey) => void
-    attachmentsCount: number
-    executionCount: number
 }
 
-export function TestDetailTabs({
-    activeTab,
-    onTabChange,
-    attachmentsCount,
-    executionCount,
-}: TestDetailTabsProps) {
+export function TestDetailTabs({activeTab, onTabChange}: TestDetailTabsProps) {
     const tabs = [
         {
             key: 'overview' as TabKey,
@@ -20,19 +13,9 @@ export function TestDetailTabs({
             icon: '📋',
         },
         {
-            key: 'attachments' as TabKey,
-            label: `Attachments (${attachmentsCount})`,
-            icon: '📎',
-        },
-        {
             key: 'steps' as TabKey,
             label: 'Test Steps',
             icon: '🔄',
-        },
-        {
-            key: 'history' as TabKey,
-            label: `History (${executionCount})`,
-            icon: '🕐',
         },
     ]
 

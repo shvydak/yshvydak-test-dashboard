@@ -101,12 +101,13 @@ Follow the **Feature-Based Architecture** pattern:
 
 ```
 components/testDetail/
-├── TestDetailModal.tsx      (68 lines - orchestrator)
+├── TestDetailModal.tsx      (95 lines - orchestrator)
 ├── TestDetailHeader.tsx     (42 lines)
-├── TestDetailTabs.tsx       (52 lines)
-├── TestOverviewTab.tsx      (102 lines)
-├── TestAttachmentsTab.tsx   (58 lines)
-└── ...
+├── TestDetailTabs.tsx       (47 lines)
+├── TestOverviewTab.tsx      (162 lines - includes attachments section)
+├── TestStepsTab.tsx         (49 lines)
+├── AttachmentItem.tsx       (component for individual attachments)
+└── AttachmentPreview.tsx    (preview modal for attachments)
 ```
 
 #### Shared Components
@@ -282,29 +283,39 @@ import {Button} from '../../shared/components/atoms/Button'
 // Everything in one file: state, tabs, attachments, steps...
 ```
 
-**After** (modular 8-component structure):
+**After** (modular component structure with 2 tabs):
 
 ```typescript
-// TestDetailModal.tsx (68 lines - orchestrator)
+// TestDetailModal.tsx (95 lines - orchestrator)
 export function TestDetailModal({ test, isOpen, onClose }) {
   const [activeTab, setActiveTab] = useState<TabKey>('overview')
   const { attachments, loading, error } = useTestAttachments(test?.id, isOpen)
+  const { executions } = useTestExecutionHistory(test?.testId)
 
   return (
     <div className="modal">
       <TestDetailHeader testName={test.name} onClose={onClose} />
       <TestDetailTabs activeTab={activeTab} onTabChange={setActiveTab} />
-      <div className="content">
-        {activeTab === 'overview' && <TestOverviewTab test={test} />}
-        {activeTab === 'attachments' && <TestAttachmentsTab attachments={attachments} />}
-        {activeTab === 'steps' && <TestStepsTab test={test} />}
+      <div className="flex">
+        <div className="flex-1">
+          {activeTab === 'overview' && (
+            <TestOverviewTab
+              test={test}
+              attachments={attachments}
+              attachmentsLoading={loading}
+            />
+          )}
+          {activeTab === 'steps' && <TestStepsTab test={test} />}
+        </div>
+        <ExecutionSidebar executions={executions} />
       </div>
     </div>
   )
 }
 
-// + 7 additional focused sub-components
-// + useTestAttachments custom hook
+// Overview tab now includes attachments section + test information
+// + ExecutionSidebar for always-visible history
+// + useTestAttachments and useTestExecutionHistory hooks
 // + attachment types and helpers
 ```
 

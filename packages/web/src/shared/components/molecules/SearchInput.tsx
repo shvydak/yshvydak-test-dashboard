@@ -15,7 +15,7 @@ export function SearchInput({
     className = '',
     ...props
 }: SearchInputProps) {
-    const [isFocused, setIsFocused] = useState(false)
+    const [_isFocused, setIsFocused] = useState(false)
     const hasValue = value && String(value).length > 0
 
     const handleClear = () => {
@@ -41,7 +41,7 @@ export function SearchInput({
         </svg>
     )
 
-    const clearButton = hasValue && showClearButton && (
+    const _clearButton = hasValue && showClearButton && (
         <button
             type="button"
             onClick={handleClear}

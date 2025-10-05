@@ -26,7 +26,7 @@ export function useWebSocket(url: string | null, options?: WebSocketOptions) {
     const maxReconnectAttempts = 5
 
     const handleConnectionStatus = (statusData: any) => {
-        const {activeRuns, activeGroups, isAnyProcessRunning} = statusData
+        const {activeRuns, activeGroups: _activeGroups, isAnyProcessRunning} = statusData
 
         // Clear all current running states first
         setRunningAllTests(false)
@@ -89,7 +89,7 @@ export function useWebSocket(url: string | null, options?: WebSocketOptions) {
                 }
             }
 
-            wsRef.current.onclose = (event) => {
+            wsRef.current.onclose = (_event) => {
                 setIsConnected(false)
 
                 // Attempt to reconnect

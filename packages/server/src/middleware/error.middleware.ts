@@ -2,7 +2,7 @@ import {Request, Response, NextFunction} from 'express'
 import {ResponseHelper} from '../utils/response.helper'
 import {Logger} from '../utils/logger.util'
 
-export function errorHandler(error: any, req: Request, res: Response, next: NextFunction): void {
+export function errorHandler(error: any, req: Request, res: Response, _next: NextFunction): void {
     Logger.error('Server error:', error)
 
     // Handle specific error types

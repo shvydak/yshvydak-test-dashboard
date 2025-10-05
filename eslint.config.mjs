@@ -64,6 +64,7 @@ export default [
             ],
 
             '@typescript-eslint/no-explicit-any': 'off',
+            '@typescript-eslint/no-namespace': ['error', {allowDeclarations: true}],
 
             // Unused imports & exports cleanup
             'unused-imports/no-unused-imports': 'error',

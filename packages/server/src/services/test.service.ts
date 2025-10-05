@@ -241,15 +241,15 @@ export class TestService implements ITestService {
 
         // Handle process completion
         if (result.process) {
-            let stdout = ''
-            let stderr = ''
+            let _stdout = ''
+            let _stderr = ''
 
             result.process.stdout?.on('data', (data) => {
-                stdout += data.toString()
+                _stdout += data.toString()
             })
 
             result.process.stderr?.on('data', (data) => {
-                stderr += data.toString()
+                _stderr += data.toString()
             })
 
             result.process.on('close', async (code) => {

@@ -1,4 +1,3 @@
-import {v4 as uuidv4} from 'uuid'
 import {IAttachmentService} from '../types/service.types'
 import {AttachmentData} from '../types/database.types'
 import {AttachmentRepository} from '../repositories/attachment.repository'

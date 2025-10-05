@@ -1,4 +1,4 @@
-import {ActiveProcessInfo, ProcessStartData, ProcessEndData} from '@yshvydak/core'
+import {ActiveProcessInfo, ProcessStartData} from '@yshvydak/core'
 import {Logger} from '../utils/logger.util'
 
 export class ActiveProcessesTracker {

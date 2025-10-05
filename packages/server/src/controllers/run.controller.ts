@@ -69,7 +69,7 @@ export class RunController {
     // GET /api/runs - Get all test runs
     getAllTestRuns = async (req: Request, res: Response): Promise<Response> => {
         try {
-            const {limit = 50, status} = req.query
+            const {limit = 50, status: _status} = req.query
             const runs = await this.runRepository.getAllTestRuns(parseInt(limit as string))
 
             return res.json(ResponseHelper.successData(runs, `Found ${runs.length} runs`))

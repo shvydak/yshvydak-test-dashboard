@@ -1,5 +1,4 @@
 import cors from 'cors'
-import {config} from '../config/environment.config'
 
 export const corsOptions = {
     origin: true, // Allow all origins for development

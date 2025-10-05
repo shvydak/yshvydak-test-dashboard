@@ -190,7 +190,7 @@ export class AuthService {
         }
     }
 
-    async logout(token?: string): Promise<{success: boolean; message: string}> {
+    async logout(_token?: string): Promise<{success: boolean; message: string}> {
         try {
             // For JWT tokens, we don't need to do anything server-side
             // The client should remove the token from storage

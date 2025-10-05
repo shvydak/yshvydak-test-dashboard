@@ -222,17 +222,17 @@ export class TestController {
     getTestHistory = async (req: ServiceRequest, res: Response): Promise<void> => {
         try {
             const {id} = req.params
-            const {limit = 10} = req.query
+            const {limit = 50} = req.query
 
+            // Try to find test by ID first (for backwards compatibility)
             const test = await this.testService.getTestById(id)
-            if (!test) {
-                ResponseHelper.notFound(res, 'Test')
-                return
-            }
+
+            // If found by ID, use its testId; otherwise treat parameter as testId directly
+            const testId = test ? test.testId : id
 
             const history = await this.testService.getTestHistory(
-                test.testId,
-                parseInt(limit as string) || 10
+                testId,
+                parseInt(limit as string) || 50
             )
 
             ResponseHelper.success(res, history, undefined, history.length)

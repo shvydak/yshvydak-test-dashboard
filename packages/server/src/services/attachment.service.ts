@@ -86,24 +86,12 @@ export class AttachmentService implements IAttachmentService {
     }
 
     /**
-     * Saves attachments for a test result, handling cleanup of old attachments on rerun
-     * @param testResultId - ID of the test result
+     * Saves attachments for a test result
+     * Each test execution maintains independent attachments in permanent storage
+     * @param testResultId - ID of the test result (unique per execution)
      * @param attachments - Raw attachment data from Playwright reporter
      */
     async saveAttachmentsForTestResult(testResultId: string, attachments: any[]): Promise<void> {
-        const existingAttachments =
-            await this.attachmentRepository.getAttachmentsByTestResult(testResultId)
-
-        if (existingAttachments.length > 0) {
-            try {
-                await this.attachmentManager.deleteTestAttachments(testResultId)
-            } catch (error) {
-                console.error(`[AttachmentService] Failed to delete physical files:`, error)
-            }
-        }
-
-        await this.attachmentRepository.deleteAttachmentsByTestResult(testResultId)
-
         const processedAttachments = await this.processAttachments(attachments, testResultId)
 
         for (const attachment of processedAttachments) {

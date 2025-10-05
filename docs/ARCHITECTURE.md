@@ -45,7 +45,7 @@ The server follows a clean **Layered Architecture** with clear separation of con
 
 ### Service Layer
 
-- `TestService` - Test discovery, execution, and rerun logic
+- `TestService` - Test discovery, execution, and rerun logic, test execution history management
 - `PlaywrightService` - Playwright integration and process spawning, automated test discovery via `npx playwright test --list`
 - `WebSocketService` - Real-time event broadcasting
 - `AttachmentService` - Permanent attachment storage with automatic file copying from Playwright's temporary directory
@@ -53,7 +53,7 @@ The server follows a clean **Layered Architecture** with clear separation of con
 
 ### Repository Layer
 
-- `TestRepository` - Test result CRUD operations
+- `TestRepository` - Test result CRUD operations, historical execution queries with filtering
 - `RunRepository` - Test run lifecycle management
 - `AttachmentRepository` - Attachment metadata persistence and URL management
 
@@ -215,6 +215,64 @@ Reporter → AttachmentService → AttachmentManager → Permanent Storage
 
 **For detailed documentation**: See [Attachment Management System](./features/PER_RUN_ATTACHMENTS.md)
 
+## Historical Test Tracking Architecture
+
+The dashboard implements a **complete execution history system** that preserves all test runs with independent attachments, enabling users to track test behavior over time.
+
+### The Problem
+
+Traditional test dashboards overwrite previous test results, losing valuable historical data. Users cannot compare current failures with past runs or track test stability trends.
+
+### The Solution
+
+The dashboard uses an **INSERT-only strategy** for test results:
+
+1. **Always Create New Records**: Every test execution creates a new database record (no UPDATE operations)
+2. **Independent Attachments**: Each execution maintains its own videos, screenshots, and traces
+3. **History Tab UI**: Dedicated interface for viewing and comparing past executions
+4. **Smart Filtering**: Pending results automatically excluded from history view
+5. **Execution Switching**: Users can switch between different test runs in the modal
+
+### Architecture Flow
+
+```
+Test Execution → Reporter → DatabaseManager.saveTestResult() → Always INSERT
+                                                              ↓
+                                                        New test_results row
+                                                              ↓
+                                            TestRepository.getTestResultsByTestId()
+                                                              ↓
+                                                    Returns all executions
+                                                              ↓
+                                            Frontend History Tab displays list
+```
+
+### Key Components
+
+#### Backend
+
+- **DatabaseManager.saveTestResult()**: Modified to always INSERT instead of UPDATE
+- **TestRepository.getTestResultsByTestId()**: Queries all executions for a testId with pending filter
+- **TestService.getTestHistory()**: Loads execution history with attachments
+- **TestController.getTestHistory()**: API endpoint supporting both testId and result ID
+
+#### Frontend
+
+- **TestHistoryTab**: Main history interface with loading states
+- **ExecutionList**: Renders list of all test executions
+- **ExecutionCard**: Displays individual execution (status, date, duration, attachments)
+- **useTestExecutionHistory**: Hook for fetching execution history
+- **testsStore.selectedExecutionId**: Zustand state for tracking selected execution
+
+### Key Benefits
+
+- **Complete History**: Never lose test execution data
+- **Attachment Isolation**: Each run has independent artifacts
+- **Trend Analysis**: Compare multiple executions to identify patterns
+- **User Experience**: Progressive disclosure - history available on demand
+
+**For detailed documentation**: See [Historical Test Tracking](./features/HISTORICAL_TEST_TRACKING.md)
+
 ## Frontend Feature-Based Architecture
 
 The web package (`packages/web/`) follows a **Feature-Based Architecture** combined with **Atomic Design** principles for maximum modularity and maintainability.
@@ -233,10 +291,11 @@ packages/web/src/
 │   └── tests/                      # Tests feature (main feature)
 │       ├── components/
 │       │   ├── testDetail/         # TestDetailModal sub-components
+│       │   ├── history/            # ExecutionCard, ExecutionList, TestHistoryTab
 │       │   ├── TestsList.tsx       # Main tests list
 │       │   ├── TestsTableView.tsx
 │       │   └── ...
-│       ├── hooks/                  # useTestAttachments, useTestFilters, useTestGroups
+│       ├── hooks/                  # useTestAttachments, useTestFilters, useTestGroups, useTestExecutionHistory
 │       ├── store/                  # testsStore.ts (Zustand)
 │       ├── types/                  # attachment.types.ts
 │       ├── utils/                  # formatters, attachmentHelpers
@@ -296,9 +355,9 @@ import {config} from '@config/environment.config'
 
 #### Tests Feature (Main)
 
-- **Components**: TestsList, TestDetailModal (8 sub-components), TestsTableView, TestRow, TestGroupHeader
-- **Hooks**: useTestAttachments, useTestFilters, useTestGroups, useTestSort
-- **Store**: testsStore.ts (Zustand) - tests state, actions, API calls
+- **Components**: TestsList, TestDetailModal (8 sub-components), TestsTableView, TestRow, TestGroupHeader, History components (ExecutionCard, ExecutionList, TestHistoryTab)
+- **Hooks**: useTestAttachments, useTestFilters, useTestGroups, useTestSort, useTestExecutionHistory
+- **Store**: testsStore.ts (Zustand) - tests state, actions, API calls, selectedExecutionId state
 - **Types**: attachment.types.ts - Attachment, AttachmentWithBlobURL, TabKey
 - **Utils**: formatters (duration, dates, status), attachmentHelpers (icons, download, trace viewer)
 
@@ -376,3 +435,4 @@ export type {FilterKey} from './constants'
 - [Timestamp Management](./TIMESTAMP_MANAGEMENT.md)
 - [Test Display Consistency](./TEST_DISPLAY.md)
 - [Attachment Management System](./features/PER_RUN_ATTACHMENTS.md)
+- [Historical Test Tracking](./features/HISTORICAL_TEST_TRACKING.md)

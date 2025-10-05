@@ -76,8 +76,18 @@ export class TestService implements ITestService {
         return test
     }
 
-    async getTestHistory(testId: string, limit: number = 10): Promise<TestResult[]> {
-        return this.testRepository.getTestResultsByTestId(testId, limit)
+    async getTestHistory(testId: string, limit: number = 50): Promise<TestResult[]> {
+        const history = await this.testRepository.getTestResultsByTestId(testId, limit)
+
+        // Load attachments for each execution
+        for (const execution of history) {
+            const attachments = await this.attachmentService.getAttachmentsByTestResult(
+                execution.id
+            )
+            execution.attachments = attachments
+        }
+
+        return history
     }
 
     async clearAllTests(): Promise<void> {

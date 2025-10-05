@@ -14,6 +14,7 @@ interface TestsState {
     runningGroups: Set<string>
     error: string | null
     lastUpdated: Date | null
+    selectedExecutionId: string | null
 
     // Computed function
     getIsAnyTestRunning: () => boolean
@@ -30,6 +31,7 @@ interface TestsState {
     setGroupRunning: (filePath: string, isRunning: boolean) => void
     setRunningAllTests: (isRunning: boolean) => void
     checkAndRestoreActiveStates: () => Promise<void>
+    selectExecution: (executionId: string | null) => void
 }
 
 import {config} from '@config/environment.config'
@@ -49,6 +51,7 @@ export const useTestsStore = create<TestsState>()(
             runningGroups: new Set(),
             error: null,
             lastUpdated: null,
+            selectedExecutionId: null,
 
             // Computed function
             getIsAnyTestRunning: () => {
@@ -297,6 +300,10 @@ export const useTestsStore = create<TestsState>()(
             checkAndRestoreActiveStates: async () => {
                 // This function is now simplified since state restoration
                 // is handled by WebSocket connection:status event
+            },
+
+            selectExecution: (executionId: string | null) => {
+                set({selectedExecutionId: executionId})
             },
         }),
         {

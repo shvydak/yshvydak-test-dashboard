@@ -37,11 +37,11 @@ export class TestRepository extends BaseRepository implements ITestRepository {
         limit = DEFAULT_LIMITS.TEST_HISTORY
     ): Promise<TestResult[]> {
         const rows = await this.queryAll<TestResultRow>(
-            `SELECT tr.*, 
-                    a.id as attachment_id, a.type as attachment_type, a.url as attachment_url
+            `SELECT tr.*,
+                a.id as attachment_id, a.type as attachment_type, a.url as attachment_url
              FROM test_results tr
              LEFT JOIN attachments a ON tr.id = a.test_result_id
-             WHERE tr.test_id = ?
+             WHERE tr.test_id = ? AND tr.status NOT IN ('pending', 'skipped')
              ORDER BY tr.created_at DESC
              LIMIT ?`,
             [testId, limit]

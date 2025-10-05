@@ -254,60 +254,26 @@ export class DatabaseManager {
 
     // Test Results
     async saveTestResult(testData: TestResultData): Promise<string> {
-        let existingResult
-        if (testData.testId) {
-            const existingSql = `SELECT id, updated_at FROM test_results WHERE test_id = ? ORDER BY updated_at DESC LIMIT 1`
-            existingResult = await this.get(existingSql, [testData.testId])
-        } else {
-            const existingSql = `SELECT id, updated_at FROM test_results WHERE name = ? AND file_path = ? AND (test_id IS NULL OR test_id = '') ORDER BY updated_at DESC LIMIT 1`
-            existingResult = await this.get(existingSql, [testData.name, testData.filePath])
-        }
+        const insertSql = `
+            INSERT INTO test_results
+            (id, run_id, test_id, name, file_path, status, duration, error_message, error_stack, retry_count, metadata)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `
+        await this.run(insertSql, [
+            testData.id,
+            testData.runId,
+            testData.testId,
+            testData.name,
+            testData.filePath,
+            testData.status,
+            testData.duration,
+            testData.errorMessage || null,
+            testData.errorStack || null,
+            testData.retryCount || 0,
+            testData.metadata ? JSON.stringify(testData.metadata) : null,
+        ])
 
-        if (existingResult) {
-            const updateSql = `
-                    UPDATE test_results SET
-                         run_id = ?, test_id = ?, name = ?, file_path = ?, status = ?,
-                         duration = ?, error_message = ?, error_stack = ?,
-                         retry_count = ?, metadata = ?, updated_at = CURRENT_TIMESTAMP
-                    WHERE id = ?
-               `
-            await this.run(updateSql, [
-                testData.runId,
-                testData.testId,
-                testData.name,
-                testData.filePath,
-                testData.status,
-                testData.duration,
-                testData.errorMessage || null,
-                testData.errorStack || null,
-                testData.retryCount || 0,
-                testData.metadata ? JSON.stringify(testData.metadata) : null,
-                existingResult.id,
-            ])
-
-            return existingResult.id
-        } else {
-            const insertSql = `
-                    INSERT INTO test_results
-                    (id, run_id, test_id, name, file_path, status, duration, error_message, error_stack, retry_count, metadata)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-               `
-            await this.run(insertSql, [
-                testData.id,
-                testData.runId,
-                testData.testId,
-                testData.name,
-                testData.filePath,
-                testData.status,
-                testData.duration,
-                testData.errorMessage || null,
-                testData.errorStack || null,
-                testData.retryCount || 0,
-                testData.metadata ? JSON.stringify(testData.metadata) : null,
-            ])
-
-            return testData.id
-        }
+        return testData.id
     }
 
     async getTestResult(testResultId: string): Promise<any> {

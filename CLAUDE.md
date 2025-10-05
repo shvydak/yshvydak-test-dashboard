@@ -130,6 +130,17 @@ The web package follows **Feature-Based Architecture** with **Atomic Design**:
 - Files served via `/attachments/` route with JWT authentication
 - See [@docs/features/PER_RUN_ATTACHMENTS.md](docs/features/PER_RUN_ATTACHMENTS.md) for complete documentation
 
+### 📜 Historical Test Tracking
+
+**Complete test execution history with independent attachments per run:**
+
+- Every test execution creates a new database record (INSERT strategy, not UPDATE)
+- Full execution history accessible via History tab in test detail modal
+- Each execution maintains independent attachments (videos, screenshots, traces)
+- Users can compare different test runs and view historical trends
+- Pending test results automatically filtered from history view
+- See [@docs/features/HISTORICAL_TEST_TRACKING.md](docs/features/HISTORICAL_TEST_TRACKING.md) for complete documentation
+
 ## Current Active Reporter
 
 **External Reporter Path:** `/Users/y.shvydak/QA/probuild-qa/e2e/testUtils/yshvydakReporter.ts`
@@ -168,12 +179,14 @@ The web package follows **Feature-Based Architecture** with **Atomic Design**:
 - [@docs/features/AUTHENTICATION_IMPLEMENTATION.md](docs/features/AUTHENTICATION_IMPLEMENTATION.md) - Authentication system details
 - [@docs/features/CODE_OPTIMIZATION.md](docs/features/CODE_OPTIMIZATION.md) - Production-ready code optimization
 - [@docs/features/PER_RUN_ATTACHMENTS.md](docs/features/PER_RUN_ATTACHMENTS.md) - Permanent attachment storage system
+- [@docs/features/HISTORICAL_TEST_TRACKING.md](docs/features/HISTORICAL_TEST_TRACKING.md) - Historical test execution tracking
 
 ## Quick API Reference
 
 **Health & Discovery:** `GET /api/health`, `POST /api/tests/discovery`, `GET /api/tests/diagnostics`
 **Test Management:** `GET /api/tests`, `POST /api/tests`, `DELETE /api/tests/all`
 **Test Execution:** `POST /api/tests/run-all`, `POST /api/tests/:id/rerun`
+**Test History:** `GET /api/tests/:id/history` - Get execution history for a test
 **Process Tracking:** `POST /api/tests/process-start`, `POST /api/tests/process-end`
 
 **WebSocket Events:** `connection:status`, `process:started`, `process:ended`, `test:status`

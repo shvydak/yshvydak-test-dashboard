@@ -187,7 +187,17 @@ Rerun a specific test by ID.
 
 ### GET /api/tests/:id/history
 
-Get execution history for a specific test.
+Get complete execution history for a specific test.
+
+**Description**: Retrieves all historical executions of a test, including independent attachments for each run. Pending test results are automatically filtered out.
+
+**Path Parameters:**
+
+- `id` - Test ID (testId) or test result ID (supports both for backward compatibility)
+
+**Query Parameters:**
+
+- `limit` - Maximum number of historical executions to return (default: 50)
 
 **Response:**
 
@@ -196,13 +206,61 @@ Get execution history for a specific test.
     "status": "success",
     "data": [
         {
-            "timestamp": "2025-09-24 13:44:50",
+            "id": "af679466-96f7-4a00-ad72-c02adc779fd8",
+            "testId": "test-66jqtq",
+            "runId": "run_123",
+            "name": "API - Change Action Status",
+            "filePath": "tests/api/actions.spec.ts",
             "status": "passed",
-            "duration": 1500
+            "duration": 1500,
+            "errorMessage": null,
+            "errorStack": null,
+            "retryCount": 0,
+            "metadata": {},
+            "timestamp": "2025-09-24 13:44:50",
+            "createdAt": "2025-09-24 13:44:50",
+            "updatedAt": "2025-09-24 13:44:50",
+            "attachments": [
+                {
+                    "id": "att_123",
+                    "testResultId": "af679466-96f7-4a00-ad72-c02adc779fd8",
+                    "type": "video",
+                    "fileName": "video-1759177234271-k4bhye.webm",
+                    "url": "/attachments/af679466-96f7-4a00-ad72-c02adc779fd8/video-1759177234271-k4bhye.webm"
+                }
+            ]
+        },
+        {
+            "id": "bf789577-a8e8-5b11-be83-d13bec889fe9",
+            "testId": "test-66jqtq",
+            "runId": "run_456",
+            "name": "API - Change Action Status",
+            "status": "failed",
+            "duration": 2100,
+            "errorMessage": "Expected 200 but got 500",
+            "timestamp": "2025-09-24 12:30:15",
+            "createdAt": "2025-09-24 12:30:15",
+            "updatedAt": "2025-09-24 12:30:15",
+            "attachments": [
+                {
+                    "id": "att_456",
+                    "type": "screenshot",
+                    "fileName": "screenshot-1759174615000-abc123.png",
+                    "url": "/attachments/bf789577-a8e8-5b11-be83-d13bec889fe9/screenshot-1759174615000-abc123.png"
+                }
+            ]
         }
-    ]
+    ],
+    "count": 2
 }
 ```
+
+**Notes**:
+
+- Results ordered by `created_at DESC` (newest first)
+- Each execution maintains independent attachments
+- Pending results automatically excluded from history
+- Parameter `id` supports both testId and result ID for flexibility
 
 ### GET /api/tests/:id/attachments
 
@@ -567,3 +625,4 @@ No rate limiting is currently implemented. All endpoints accept unlimited reques
 - [Configuration Details](./CONFIGURATION.md)
 - [Deployment Guide](./DEPLOYMENT.md)
 - [Attachment Management System](./features/PER_RUN_ATTACHMENTS.md)
+- [Historical Test Tracking](./features/HISTORICAL_TEST_TRACKING.md)

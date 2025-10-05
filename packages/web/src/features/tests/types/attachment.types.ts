@@ -11,4 +11,4 @@ export interface AttachmentWithBlobURL extends Attachment {
     blobURL?: string
 }
 
-export type TabKey = 'overview' | 'attachments' | 'steps'
+export type TabKey = 'overview' | 'attachments' | 'steps' | 'history'

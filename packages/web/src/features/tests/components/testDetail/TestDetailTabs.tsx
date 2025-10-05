@@ -4,9 +4,15 @@ export interface TestDetailTabsProps {
     activeTab: TabKey
     onTabChange: (tab: TabKey) => void
     attachmentsCount: number
+    executionCount: number
 }
 
-export function TestDetailTabs({activeTab, onTabChange, attachmentsCount}: TestDetailTabsProps) {
+export function TestDetailTabs({
+    activeTab,
+    onTabChange,
+    attachmentsCount,
+    executionCount,
+}: TestDetailTabsProps) {
     const tabs = [
         {
             key: 'overview' as TabKey,
@@ -22,6 +28,11 @@ export function TestDetailTabs({activeTab, onTabChange, attachmentsCount}: TestD
             key: 'steps' as TabKey,
             label: 'Test Steps',
             icon: '🔄',
+        },
+        {
+            key: 'history' as TabKey,
+            label: `History (${executionCount})`,
+            icon: '🕐',
         },
     ]
 

@@ -36,7 +36,7 @@ A comprehensive testing dashboard that transforms your Playwright test experienc
 
 - Live test execution monitoring
 - Interactive test results with filtering
-- Test history and trend analysis
+- Complete execution history with independent attachments per run
 - Attachment viewing (screenshots, videos, traces) with persistent storage
 
 ### ⚡ **Dynamic Reporter Integration**
@@ -64,6 +64,15 @@ A comprehensive testing dashboard that transforms your Playwright test experienc
 - **Page-reload safe**: UI state correctly restores after browser refresh
 - **Auto-recovery**: Automatic cleanup of stuck/orphaned processes
 - **Persistent attachments**: Test artifacts stored permanently, surviving Playwright's cleanup cycles
+
+### 📜 **Complete Execution History**
+
+- **Never lose test data**: Every test execution creates a new record (no overwrites)
+- **Independent artifacts**: Each run maintains its own videos, screenshots, and traces
+- **Compare runs**: View and analyze multiple executions side-by-side
+- **History tab**: Dedicated UI for browsing past test executions
+- **Smart filtering**: Pending results automatically excluded from history
+- **Trend analysis**: Track test stability and performance over time
 
 ## 🚀 Quick Start
 
@@ -183,7 +192,7 @@ npx playwright test --reporter=./e2e/testUtils/yshvydakReporter.ts
 - **Live Updates**: Real-time test status via WebSocket
 - **Rich Results**: Enhanced error messages with code context
 - **Attachments**: View screenshots, videos, and traces inline
-- **History**: Track test performance and failure patterns
+- **Execution History**: View all past test runs with independent artifacts for each execution
 - **Filtering**: Find tests by status, file, or timeframe
 
 ### Troubleshooting

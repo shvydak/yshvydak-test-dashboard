@@ -1,5 +1,6 @@
 export interface TestResult {
     id: string
+    testId: string
     name: string
     filePath: string
     status: 'passed' | 'failed' | 'skipped' | 'pending'
@@ -7,10 +8,12 @@ export interface TestResult {
     errorMessage?: string
     timestamp?: string | null
     created_at?: string
+    createdAt?: string
     updated_at?: string
     runId: string
     rerunCount?: number
     steps?: TestStep[]
+    attachments?: Attachment[]
 }
 
 export interface TestStep {

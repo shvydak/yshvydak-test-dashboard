@@ -12,11 +12,11 @@ export function TestDetailTabs({activeTab, onTabChange}: TestDetailTabsProps) {
             label: 'Overview',
             icon: '📋',
         },
-        {
-            key: 'steps' as TabKey,
-            label: 'Test Steps',
-            icon: '🔄',
-        },
+        // {
+        //     key: 'steps' as TabKey,
+        //     label: 'Test Steps',
+        //     icon: '🔄',
+        // },
     ]
 
     return (

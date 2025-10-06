@@ -353,11 +353,12 @@ import {config} from '@config/environment.config'
 
 #### Tests Feature (Main)
 
-- **Components**: TestsList, TestDetailModal (8 sub-components), TestsTableView, TestRow, TestGroupHeader, ExecutionSidebar (always-visible history panel)
-- **Hooks**: useTestAttachments, useTestFilters, useTestGroups, useTestSort, useTestExecutionHistory
-- **Store**: testsStore.ts (Zustand) - tests state, actions, API calls, selectedExecutionId state
+- **Components**: TestsList, TestDetailModal (8 sub-components with rerun functionality), TestsTableView, TestRow, TestGroupHeader, ExecutionSidebar (always-visible history panel with Run button)
+- **Hooks**: useTestAttachments, useTestFilters, useTestGroups, useTestSort, useTestExecutionHistory (with refetch support)
+- **Store**: testsStore.ts (Zustand) - tests state, actions, API calls, selectedExecutionId state, rerunTest method
 - **Types**: attachment.types.ts - Attachment, AttachmentWithBlobURL, TabKey
 - **Utils**: formatters (duration, dates, status), attachmentHelpers (icons, download, trace viewer)
+- **Rerun Feature**: One-click rerun from modal with real-time WebSocket updates and automatic latest execution switching
 
 #### Dashboard Feature
 
@@ -368,8 +369,8 @@ import {config} from '@config/environment.config'
 #### Authentication Feature
 
 - **Components**: LoginPage
-- **Utils**: authFetch (JWT-based API calls), authentication helpers
-- **Security**: JWT token management, protected routes, localStorage-based auth
+- **Utils**: authFetch (JWT-based API calls), getWebSocketUrl (WebSocket connection with JWT), authentication helpers
+- **Security**: JWT token management, protected routes, localStorage-based auth, automatic WebSocket authentication
 
 ### Barrel Exports
 
@@ -434,3 +435,4 @@ export type {FilterKey} from './constants'
 - [Test Display Consistency](./TEST_DISPLAY.md)
 - [Attachment Management System](./features/PER_RUN_ATTACHMENTS.md)
 - [Historical Test Tracking](./features/HISTORICAL_TEST_TRACKING.md)
+- [Rerun from Modal Window](./features/RERUN_FROM_MODAL.md)

@@ -1,11 +1,14 @@
 import {TestResult} from '@yshvydak/core'
-import {StatusBadge} from '@shared/components'
+import {StatusBadge, ActionButton} from '@shared/components'
 import {formatLastRun, formatDuration} from '../../utils/formatters'
+import {useTestsStore} from '../../store/testsStore'
 
 export interface ExecutionSidebarProps {
     executions: TestResult[]
     currentExecutionId: string
     onSelectExecution: (executionId: string) => void
+    testId: string
+    onRerun: (testId: string) => void
     loading?: boolean
     error?: string
 }
@@ -14,19 +17,40 @@ export function ExecutionSidebar({
     executions,
     currentExecutionId,
     onSelectExecution,
+    testId,
+    onRerun,
     loading,
     error,
 }: ExecutionSidebarProps) {
+    const {runningTests, getIsAnyTestRunning} = useTestsStore()
+    const isRunning = runningTests.has(testId)
+    const isAnyTestRunning = getIsAnyTestRunning()
+
     return (
         <div className="w-80 border-l border-gray-200 dark:border-gray-700 flex flex-col bg-gray-50 dark:bg-gray-900/50">
             {/* Sticky Header */}
             <div className="sticky top-0 bg-gray-50 dark:bg-gray-900/50 border-b border-gray-200 dark:border-gray-700 px-4 py-4 z-10">
-                <h3 className="text-sm font-semibold text-gray-900 dark:text-white uppercase tracking-wide">
-                    Execution History
-                </h3>
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                    {executions.length} {executions.length === 1 ? 'execution' : 'executions'}
-                </p>
+                <div className="flex items-center justify-between gap-3">
+                    <div className="flex-1">
+                        <h3 className="text-sm font-semibold text-gray-900 dark:text-white uppercase tracking-wide">
+                            Execution History
+                        </h3>
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                            {executions.length}{' '}
+                            {executions.length === 1 ? 'execution' : 'executions'}
+                        </p>
+                    </div>
+                    <ActionButton
+                        size="sm"
+                        variant="primary"
+                        isRunning={isRunning}
+                        runningText="Running..."
+                        icon="▶️"
+                        disabled={isAnyTestRunning}
+                        onClick={() => onRerun(testId)}>
+                        Run
+                    </ActionButton>
+                </div>
             </div>
 
             {/* Content */}

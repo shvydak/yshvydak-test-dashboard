@@ -1,4 +1,4 @@
-import {useState, useEffect} from 'react'
+import {useState, useEffect, useCallback} from 'react'
 import {TestResult} from '@yshvydak/core'
 import {authGet} from '@features/authentication/utils/authFetch'
 import {config} from '@config/environment.config'
@@ -7,12 +7,18 @@ export interface UseTestExecutionHistoryReturn {
     executions: TestResult[]
     loading: boolean
     error: string | null
+    refetch: () => void
 }
 
 export function useTestExecutionHistory(testId: string): UseTestExecutionHistoryReturn {
     const [executions, setExecutions] = useState<TestResult[]>([])
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState<string | null>(null)
+    const [refreshTrigger, setRefreshTrigger] = useState(0)
+
+    const refetch = useCallback(() => {
+        setRefreshTrigger((prev) => prev + 1)
+    }, [])
 
     useEffect(() => {
         if (!testId) {
@@ -42,7 +48,7 @@ export function useTestExecutionHistory(testId: string): UseTestExecutionHistory
         }
 
         fetchHistory()
-    }, [testId])
+    }, [testId, refreshTrigger])
 
-    return {executions, loading, error}
+    return {executions, loading, error, refetch}
 }

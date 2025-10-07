@@ -3,6 +3,7 @@ import {Routes, Route} from 'react-router-dom'
 import {TestResult} from '@yshvydak/core'
 import {Header} from '@shared/components'
 import {Dashboard} from '@features/dashboard'
+import {SettingsModal} from '@features/dashboard/components/settings'
 import {TestsList} from '@features/tests'
 import {LoginPage, setGlobalLogout} from '@features/authentication'
 import {useTestsStore} from '@features/tests/store/testsStore'
@@ -17,6 +18,7 @@ function App() {
     const [isLoading, setIsLoading] = useState(true)
     const [currentView, setCurrentView] = useState<ViewMode>('dashboard')
     const [selectedTest, setSelectedTest] = useState<TestResult | null>(null)
+    const [isSettingsOpen, setIsSettingsOpen] = useState(false)
     const {
         fetchTests,
         isLoading: testsLoading,
@@ -190,6 +192,7 @@ function App() {
                 currentView={currentView}
                 onViewChange={setCurrentView}
                 wsConnected={isConnected}
+                onOpenSettings={() => setIsSettingsOpen(true)}
                 user={() => {
                     try {
                         const authData = localStorage.getItem('_auth')
@@ -201,6 +204,8 @@ function App() {
                     return null
                 }}
             />
+
+            <SettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
 
             <main className="flex-1 overflow-y-auto container mx-auto px-4 py-8">
                 <Routes>

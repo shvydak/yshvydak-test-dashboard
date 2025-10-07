@@ -284,13 +284,18 @@ packages/web/src/
 │   │   ├── components/             # Login, auth forms
 │   │   └── utils/                  # authFetch, JWT handling
 │   ├── dashboard/                  # Dashboard feature
-│   │   ├── components/             # Dashboard stats, actions, system info
+│   │   ├── components/
+│   │   │   ├── settings/           # Settings modal (theme, actions)
+│   │   │   ├── Dashboard.tsx       # Main dashboard view
+│   │   │   ├── DashboardStats.tsx  # Statistics display
+│   │   │   └── SystemInfo.tsx      # System information
 │   │   └── hooks/                  # useDashboardStats, useDashboardActions
 │   └── tests/                      # Tests feature (main feature)
 │       ├── components/
 │       │   ├── testDetail/         # TestDetailModal sub-components
 │       │   ├── history/            # ExecutionSidebar (always-visible history panel)
 │       │   ├── TestsList.tsx       # Main tests list
+│       │   ├── TestsListFilters.tsx # Filters with "Run All Tests" button
 │       │   ├── TestsTableView.tsx
 │       │   └── ...
 │       ├── hooks/                  # useTestAttachments, useTestFilters, useTestGroups, useTestExecutionHistory
@@ -303,7 +308,7 @@ packages/web/src/
 │       ├── atoms/                  # Button, StatusIcon, LoadingSpinner
 │       └── molecules/              # Card, ActionButton, StatusBadge
 ├── config/                         # Environment configuration
-├── hooks/                          # Global hooks (useWebSocket)
+├── hooks/                          # Global hooks (useWebSocket, useTheme)
 ├── App.tsx                         # Main app component
 └── main.tsx                        # Application entry point
 ```
@@ -362,9 +367,11 @@ import {config} from '@config/environment.config'
 
 #### Dashboard Feature
 
-- **Components**: Dashboard, DashboardStats, DashboardActions, SystemInfo, RecentTests, ErrorsOverview
-- **Hooks**: useDashboardStats, useDashboardActions
-- **Integration**: Uses tests store for data, displays summary and quick actions
+- **Components**: Dashboard, DashboardStats, SystemInfo, RecentTests, ErrorsOverview, Settings Modal (SettingsModal, SettingsThemeSection, SettingsActionsSection)
+- **Hooks**: useDashboardStats, useDashboardActions, useTheme (theme management)
+- **Settings Modal**: Centralized configuration interface with theme toggle (Auto/Light/Dark) and admin actions
+- **Integration**: Uses tests store for data, displays summary and statistics
+- **Theme System**: Manual theme control with localStorage persistence, supports Auto/Light/Dark modes
 
 #### Authentication Feature
 
@@ -436,3 +443,4 @@ export type {FilterKey} from './constants'
 - [Attachment Management System](./features/PER_RUN_ATTACHMENTS.md)
 - [Historical Test Tracking](./features/HISTORICAL_TEST_TRACKING.md)
 - [Rerun from Modal Window](./features/RERUN_FROM_MODAL.md)
+- [Dashboard Settings](./features/DASHBOARD_SETTINGS.md)

@@ -78,13 +78,16 @@ packages/web/src/
 The `useTheme` hook provides centralized theme management with three modes:
 
 ```typescript
-type ThemeMode = 'auto' | 'light' | 'dark'
+export type ThemeMode = 'auto' | 'light' | 'dark'
 
 interface UseThemeReturn {
     themeMode: ThemeMode // Current selected mode
     isDark: boolean // Current computed theme state
     setThemeMode: (mode: ThemeMode) => void
 }
+
+// Shared utility for theme application (exported for reuse)
+export function applyThemeMode(themeMode: ThemeMode): void
 ```
 
 **Features**:
@@ -95,6 +98,7 @@ interface UseThemeReturn {
 - **Persistence**: Saves preference to `localStorage` with key `'theme'`
 - **Reactive**: Automatically updates when system theme changes in Auto mode
 - **DOM Integration**: Manages `dark` class on `<html>` element for Tailwind CSS
+- **DRY Principle**: `applyThemeMode()` utility prevents code duplication (used by both hook and LoginPage)
 
 ### Theme Modes Explained
 
@@ -398,6 +402,39 @@ export default function Header({onOpenSettings, ...props}) {
 5. Next visit → useState reads from localStorage → theme restored
 ```
 
+### Login Page Theme Support
+
+The login page implements **automatic theme detection before authentication** to ensure proper display for users with dark system themes.
+
+**Implementation**: `LoginPage.tsx` uses the shared `applyThemeMode()` utility from `useTheme.ts`:
+
+1. Reads saved theme preference from `localStorage` (if exists)
+2. Calls `applyThemeMode(themeMode)` utility on component mount
+3. The utility handles theme application:
+   - `'dark'`: Adds `dark` class to `<html>` element
+   - `'light'`: Removes `dark` class
+   - `'auto'` (default): Checks system preference via `prefers-color-scheme` media query
+4. Listens for system theme changes when in auto mode
+5. Updates theme dynamically without page reload
+
+**Benefits**:
+- ✅ Dark mode works before login (respects system preference)
+- ✅ Consistent theme experience across entire application
+- ✅ Prevents white-background-with-dark-inputs issue on login page
+- ✅ Saved theme preference persists across logout/login cycles
+- ✅ **DRY principle**: Single source of truth for theme logic in `applyThemeMode()` utility
+
+**Example Scenario**:
+```
+User with dark system theme → Visits login page
+LoginPage calls: applyThemeMode('auto')
+Utility detects: prefers-color-scheme: dark
+Applies: document.documentElement.classList.add('dark')
+Result: Login page displays with dark background and proper contrast
+```
+
+**Technical Note**: The `applyThemeMode()` utility is shared between `useTheme` hook and `LoginPage`, ensuring consistent behavior across authenticated and unauthenticated states without code duplication.
+
 ## Future Enhancements
 
 ### Planned Settings Sections
@@ -490,6 +527,38 @@ All future sections follow the same pattern:
 
 - Ensure `tailwind.config.js` has `darkMode: 'class'`
 - Verify Header uses `useTheme` hook
+
+### Login Page Theme Issues
+
+**Symptom**: Login page shows dark inputs on white background (or vice versa) when system theme is dark
+
+**Cause**: Theme detection not working before authentication
+
+**Solution**: Verify `LoginPage.tsx` uses the `applyThemeMode()` utility:
+
+```typescript
+import {applyThemeMode, type ThemeMode} from '@/hooks/useTheme'
+
+useEffect(() => {
+    const savedTheme = localStorage.getItem('theme') as ThemeMode | null
+    const themeMode = savedTheme || 'auto'
+
+    // Use shared utility - no duplication!
+    applyThemeMode(themeMode)
+
+    if (themeMode === 'auto') {
+        const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
+        const handleChange = () => applyThemeMode('auto')
+        mediaQuery.addEventListener('change', handleChange)
+        return () => mediaQuery.removeEventListener('change', handleChange)
+    }
+}, [])
+```
+
+**Verification**:
+- Check browser DevTools Elements tab - `<html>` element should have `class="dark"` when system is in dark mode
+- Verify `applyThemeMode()` utility is exported from `useTheme.ts`
+- Confirm no code duplication between `LoginPage` and `useTheme` hook
 
 ## Related Documentation
 

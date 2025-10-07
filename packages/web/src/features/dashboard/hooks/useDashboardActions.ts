@@ -5,38 +5,12 @@ import {useTestsStore} from '@features/tests/store/testsStore'
 
 export interface UseDashboardActionsReturn {
     clearingData: boolean
-    forceResetting: boolean
     clearAllData: () => Promise<void>
-    forceResetProcesses: () => Promise<void>
 }
 
 export function useDashboardActions(): UseDashboardActionsReturn {
-    const {fetchTests, setRunningAllTests} = useTestsStore()
+    const {fetchTests} = useTestsStore()
     const [clearingData, setClearingData] = useState(false)
-    const [forceResetting, setForceResetting] = useState(false)
-
-    const forceResetProcesses = async () => {
-        try {
-            setForceResetting(true)
-            const response = await fetch(`${config.api.baseUrl}/tests/force-reset`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-            })
-
-            if (!response.ok) {
-                throw new Error('Failed to force reset processes')
-            }
-
-            fetchTests()
-            setRunningAllTests(false)
-        } catch (error) {
-            alert('Failed to force reset processes: ' + (error as Error).message)
-        } finally {
-            setForceResetting(false)
-        }
-    }
 
     const clearAllData = async () => {
         if (
@@ -80,8 +54,6 @@ export function useDashboardActions(): UseDashboardActionsReturn {
 
     return {
         clearingData,
-        forceResetting,
         clearAllData,
-        forceResetProcesses,
     }
 }

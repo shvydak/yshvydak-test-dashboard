@@ -1,11 +1,29 @@
 import {useState, useEffect} from 'react'
 
-type ThemeMode = 'auto' | 'light' | 'dark'
+export type ThemeMode = 'auto' | 'light' | 'dark'
 
 interface UseThemeReturn {
     themeMode: ThemeMode
     isDark: boolean
     setThemeMode: (mode: ThemeMode) => void
+}
+
+export function applyThemeMode(themeMode: ThemeMode): void {
+    let shouldBeDark = false
+
+    if (themeMode === 'dark') {
+        shouldBeDark = true
+    } else if (themeMode === 'light') {
+        shouldBeDark = false
+    } else {
+        shouldBeDark = window.matchMedia('(prefers-color-scheme: dark)').matches
+    }
+
+    if (shouldBeDark) {
+        document.documentElement.classList.add('dark')
+    } else {
+        document.documentElement.classList.remove('dark')
+    }
 }
 
 export function useTheme(): UseThemeReturn {
@@ -19,36 +37,21 @@ export function useTheme(): UseThemeReturn {
     useEffect(() => {
         const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
 
-        const applyTheme = () => {
-            let shouldBeDark = false
-
-            if (themeMode === 'dark') {
-                shouldBeDark = true
-            } else if (themeMode === 'light') {
-                shouldBeDark = false
-            } else {
-                shouldBeDark = mediaQuery.matches
-            }
-
+        const updateIsDark = () => {
+            const shouldBeDark =
+                themeMode === 'dark' ||
+                (themeMode === 'auto' && mediaQuery.matches) ||
+                (themeMode === 'light' ? false : false)
             setIsDark(shouldBeDark)
-
-            if (shouldBeDark) {
-                document.documentElement.classList.add('dark')
-            } else {
-                document.documentElement.classList.remove('dark')
-            }
         }
 
-        applyTheme()
+        applyThemeMode(themeMode)
+        updateIsDark()
 
         const handler = (e: MediaQueryListEvent) => {
             if (themeMode === 'auto') {
                 setIsDark(e.matches)
-                if (e.matches) {
-                    document.documentElement.classList.add('dark')
-                } else {
-                    document.documentElement.classList.remove('dark')
-                }
+                applyThemeMode(themeMode)
             }
         }
 

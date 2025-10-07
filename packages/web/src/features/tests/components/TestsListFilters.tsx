@@ -69,7 +69,7 @@ export function TestsListFilters({
             </div>
 
             <div>
-                <h1 className="text-3xl font-bold text-gray-900 dark:text-white ml-4">
+                <h1 className="text-2xl font-bold text-gray-900 dark:text-white ml-4">
                     {counts.all} Test{counts.all !== 1 ? 's' : ''} found
                 </h1>
             </div>

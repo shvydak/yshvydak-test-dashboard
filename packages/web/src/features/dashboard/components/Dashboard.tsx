@@ -2,7 +2,6 @@ import {useEffect} from 'react'
 import {useTestsStore} from '@features/tests/store/testsStore'
 import {useDashboardStats} from '../hooks'
 import {DashboardStats} from './DashboardStats'
-import {DashboardActions} from './DashboardActions'
 import {SystemInfo} from './SystemInfo'
 import RecentTests from './RecentTests'
 import ErrorsOverview from './ErrorsOverview'
@@ -59,11 +58,8 @@ export default function Dashboard() {
             {/* Stats Grid */}
             <DashboardStats stats={stats} tests={tests} loading={statsLoading} />
 
-            {/* Recent Tests and Actions */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <RecentTests tests={tests.slice(0, 5)} />
-                <DashboardActions />
-            </div>
+            {/* Recent Tests */}
+            <RecentTests tests={tests.slice(0, 5)} />
 
             {/* Errors Overview */}
             <ErrorsOverview tests={tests} />

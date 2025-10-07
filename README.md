@@ -38,6 +38,8 @@ A comprehensive testing dashboard that transforms your Playwright test experienc
 - Interactive test results with filtering
 - Complete execution history with independent attachments per run
 - Attachment viewing (screenshots, videos, traces) with persistent storage
+- **Settings modal** with centralized configuration (theme, admin actions)
+- **Theme system** with Auto/Light/Dark modes and localStorage persistence
 
 ### ⚡ **Dynamic Reporter Integration**
 

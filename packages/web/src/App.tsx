@@ -16,7 +16,7 @@ type ViewMode = 'dashboard' | 'tests'
 function App() {
     const [isAuthenticated, setIsAuthenticated] = useState(false)
     const [isLoading, setIsLoading] = useState(true)
-    const [currentView, setCurrentView] = useState<ViewMode>('dashboard')
+    const [currentView, setCurrentView] = useState<ViewMode>('tests')
     const [selectedTest, setSelectedTest] = useState<TestResult | null>(null)
     const [isSettingsOpen, setIsSettingsOpen] = useState(false)
     const {

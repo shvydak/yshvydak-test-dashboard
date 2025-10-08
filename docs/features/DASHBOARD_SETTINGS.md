@@ -411,13 +411,14 @@ The login page implements **automatic theme detection before authentication** to
 1. Reads saved theme preference from `localStorage` (if exists)
 2. Calls `applyThemeMode(themeMode)` utility on component mount
 3. The utility handles theme application:
-   - `'dark'`: Adds `dark` class to `<html>` element
-   - `'light'`: Removes `dark` class
-   - `'auto'` (default): Checks system preference via `prefers-color-scheme` media query
+    - `'dark'`: Adds `dark` class to `<html>` element
+    - `'light'`: Removes `dark` class
+    - `'auto'` (default): Checks system preference via `prefers-color-scheme` media query
 4. Listens for system theme changes when in auto mode
 5. Updates theme dynamically without page reload
 
 **Benefits**:
+
 - ✅ Dark mode works before login (respects system preference)
 - ✅ Consistent theme experience across entire application
 - ✅ Prevents white-background-with-dark-inputs issue on login page
@@ -425,6 +426,7 @@ The login page implements **automatic theme detection before authentication** to
 - ✅ **DRY principle**: Single source of truth for theme logic in `applyThemeMode()` utility
 
 **Example Scenario**:
+
 ```
 User with dark system theme → Visits login page
 LoginPage calls: applyThemeMode('auto')
@@ -556,6 +558,7 @@ useEffect(() => {
 ```
 
 **Verification**:
+
 - Check browser DevTools Elements tab - `<html>` element should have `class="dark"` when system is in dark mode
 - Verify `applyThemeMode()` utility is exported from `useTheme.ts`
 - Confirm no code duplication between `LoginPage` and `useTheme` hook

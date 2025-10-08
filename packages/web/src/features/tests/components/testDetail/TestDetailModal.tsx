@@ -6,6 +6,7 @@ import {useTestExecutionHistory} from '../../hooks/useTestExecutionHistory'
 import {useTestsStore} from '../../store/testsStore'
 import {useWebSocket} from '../../../../hooks/useWebSocket'
 import {getWebSocketUrl} from '@features/authentication/utils'
+import {ModalBackdrop} from '@shared/components/molecules'
 import {TestDetailHeader} from './TestDetailHeader'
 import {TestDetailTabs} from './TestDetailTabs'
 import {TestOverviewTab} from './TestOverviewTab'
@@ -84,8 +85,11 @@ export function TestDetailModal({test, isOpen, onClose}: TestDetailModalProps) {
     if (!isOpen || !test) return null
 
     return (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-7xl w-full h-[90vh] flex flex-col overflow-hidden">
+        <div className="fixed inset-0 z-50 overflow-y-auto">
+            <div className="flex min-h-screen items-center justify-center p-4">
+                <ModalBackdrop onClick={handleClose} blur="sm" />
+
+                <div className="relative bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-7xl w-full h-[90vh] flex flex-col overflow-hidden">
                 <TestDetailHeader
                     testName={test.name}
                     testStatus={currentExecution?.status || test.status}
@@ -125,6 +129,7 @@ export function TestDetailModal({test, isOpen, onClose}: TestDetailModalProps) {
                         error={historyError || undefined}
                     />
                 </div>
+            </div>
             </div>
         </div>
     )

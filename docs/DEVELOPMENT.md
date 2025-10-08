@@ -118,6 +118,7 @@ For components used across multiple features:
     - Button, StatusIcon, LoadingSpinner, Badge
 2. **Molecules** (simple combinations): `src/shared/components/molecules/`
     - Card, ActionButton, StatusBadge, SearchInput
+    - **ModalBackdrop** - Reusable backdrop with blur effect for modal windows
 
 #### Adding Custom Hooks
 

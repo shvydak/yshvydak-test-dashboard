@@ -306,7 +306,7 @@ packages/web/src/
 ├── shared/                         # Shared components (Atomic Design)
 │   └── components/
 │       ├── atoms/                  # Button, StatusIcon, LoadingSpinner
-│       └── molecules/              # Card, ActionButton, StatusBadge
+│       └── molecules/              # Card, ActionButton, StatusBadge, ModalBackdrop
 ├── config/                         # Environment configuration
 ├── hooks/                          # Global hooks (useWebSocket, useTheme)
 ├── App.tsx                         # Main app component
@@ -324,7 +324,7 @@ packages/web/src/
 #### 2. Atomic Design Pattern
 
 - **Atoms**: Basic building blocks (Button, StatusIcon, LoadingSpinner)
-- **Molecules**: Simple component combinations (Card, ActionButton, StatusBadge)
+- **Molecules**: Simple component combinations (Card, ActionButton, StatusBadge, ModalBackdrop)
 - **Organisms**: Complex components composed of molecules and atoms (TestsList, Dashboard)
 
 #### 3. Path Aliases

@@ -1,3 +1,4 @@
+import {ModalBackdrop} from '@shared/components/molecules'
 import {SettingsThemeSection} from './SettingsThemeSection'
 import {SettingsActionsSection} from './SettingsActionsSection'
 
@@ -12,7 +13,7 @@ export function SettingsModal({isOpen, onClose}: SettingsModalProps) {
     return (
         <div className="fixed inset-0 z-50 overflow-y-auto">
             <div className="flex min-h-screen items-center justify-center p-4">
-                <div className="fixed inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose}></div>
+                <ModalBackdrop onClick={onClose} blur="sm" />
 
                 <div className="relative w-full max-w-2xl bg-white dark:bg-gray-800 rounded-lg shadow-xl">
                     <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">

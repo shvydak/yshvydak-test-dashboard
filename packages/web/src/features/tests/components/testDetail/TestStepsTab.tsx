@@ -8,8 +8,9 @@ export interface TestStepsTabProps {
 export function TestStepsTab({test}: TestStepsTabProps) {
     if (!test.steps || test.steps.length === 0) {
         return (
-            <div className="text-center py-8">
-                <p className="text-gray-500 dark:text-gray-400">No test steps recorded</p>
+            <div className="flex flex-col items-center justify-center py-8 text-gray-500 dark:text-gray-400">
+                <p>The feature in development...</p>
+                <p>No test steps recorded</p>
             </div>
         )
     }

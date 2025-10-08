@@ -1,5 +1,4 @@
 import sqlite3 from 'sqlite3'
-import {promisify} from 'util'
 import fs from 'fs'
 import path from 'path'
 

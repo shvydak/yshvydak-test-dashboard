@@ -229,9 +229,9 @@ The dashboard uses an **INSERT-only strategy** for test results:
 
 1. **Always Create New Records**: Every test execution creates a new database record (no UPDATE operations)
 2. **Independent Attachments**: Each execution maintains its own videos, screenshots, and traces
-3. **History Tab UI**: Dedicated interface for viewing and comparing past executions
+3. **Always-Visible Sidebar**: ExecutionSidebar provides instant access to history without tab switching
 4. **Smart Filtering**: Pending results automatically excluded from history view
-5. **Execution Switching**: Users can switch between different test runs in the modal
+5. **Execution Switching**: Users can switch between different test runs with one click from sidebar
 
 ### Architecture Flow
 
@@ -244,7 +244,7 @@ Test Execution → Reporter → DatabaseManager.saveTestResult() → Always INSE
                                                               ↓
                                                     Returns all executions
                                                               ↓
-                                            Frontend History Tab displays list
+                                            Frontend ExecutionSidebar (always visible)
 ```
 
 ### Key Components
@@ -258,9 +258,7 @@ Test Execution → Reporter → DatabaseManager.saveTestResult() → Always INSE
 
 #### Frontend
 
-- **TestHistoryTab**: Main history interface with loading states
-- **ExecutionList**: Renders list of all test executions
-- **ExecutionCard**: Displays individual execution (status, date, duration, attachments)
+- **ExecutionSidebar**: Always-visible sidebar panel with execution history (320px width, right side)
 - **useTestExecutionHistory**: Hook for fetching execution history
 - **testsStore.selectedExecutionId**: Zustand state for tracking selected execution
 
@@ -286,13 +284,18 @@ packages/web/src/
 │   │   ├── components/             # Login, auth forms
 │   │   └── utils/                  # authFetch, JWT handling
 │   ├── dashboard/                  # Dashboard feature
-│   │   ├── components/             # Dashboard stats, actions, system info
+│   │   ├── components/
+│   │   │   ├── settings/           # Settings modal (theme, actions)
+│   │   │   ├── Dashboard.tsx       # Main dashboard view
+│   │   │   ├── DashboardStats.tsx  # Statistics display
+│   │   │   └── SystemInfo.tsx      # System information
 │   │   └── hooks/                  # useDashboardStats, useDashboardActions
 │   └── tests/                      # Tests feature (main feature)
 │       ├── components/
 │       │   ├── testDetail/         # TestDetailModal sub-components
-│       │   ├── history/            # ExecutionCard, ExecutionList, TestHistoryTab
+│       │   ├── history/            # ExecutionSidebar (always-visible history panel)
 │       │   ├── TestsList.tsx       # Main tests list
+│       │   ├── TestsListFilters.tsx # Filters with "Run All Tests" button
 │       │   ├── TestsTableView.tsx
 │       │   └── ...
 │       ├── hooks/                  # useTestAttachments, useTestFilters, useTestGroups, useTestExecutionHistory
@@ -303,9 +306,9 @@ packages/web/src/
 ├── shared/                         # Shared components (Atomic Design)
 │   └── components/
 │       ├── atoms/                  # Button, StatusIcon, LoadingSpinner
-│       └── molecules/              # Card, ActionButton, StatusBadge
+│       └── molecules/              # Card, ActionButton, StatusBadge, ModalBackdrop
 ├── config/                         # Environment configuration
-├── hooks/                          # Global hooks (useWebSocket)
+├── hooks/                          # Global hooks (useWebSocket, useTheme)
 ├── App.tsx                         # Main app component
 └── main.tsx                        # Application entry point
 ```
@@ -321,7 +324,7 @@ packages/web/src/
 #### 2. Atomic Design Pattern
 
 - **Atoms**: Basic building blocks (Button, StatusIcon, LoadingSpinner)
-- **Molecules**: Simple component combinations (Card, ActionButton, StatusBadge)
+- **Molecules**: Simple component combinations (Card, ActionButton, StatusBadge, ModalBackdrop)
 - **Organisms**: Complex components composed of molecules and atoms (TestsList, Dashboard)
 
 #### 3. Path Aliases
@@ -355,23 +358,26 @@ import {config} from '@config/environment.config'
 
 #### Tests Feature (Main)
 
-- **Components**: TestsList, TestDetailModal (8 sub-components), TestsTableView, TestRow, TestGroupHeader, History components (ExecutionCard, ExecutionList, TestHistoryTab)
-- **Hooks**: useTestAttachments, useTestFilters, useTestGroups, useTestSort, useTestExecutionHistory
-- **Store**: testsStore.ts (Zustand) - tests state, actions, API calls, selectedExecutionId state
+- **Components**: TestsList, TestDetailModal (8 sub-components with rerun functionality), TestsTableView, TestRow, TestGroupHeader, ExecutionSidebar (always-visible history panel with Run button)
+- **Hooks**: useTestAttachments, useTestFilters, useTestGroups, useTestSort, useTestExecutionHistory (with refetch support)
+- **Store**: testsStore.ts (Zustand) - tests state, actions, API calls, selectedExecutionId state, rerunTest method
 - **Types**: attachment.types.ts - Attachment, AttachmentWithBlobURL, TabKey
 - **Utils**: formatters (duration, dates, status), attachmentHelpers (icons, download, trace viewer)
+- **Rerun Feature**: One-click rerun from modal with real-time WebSocket updates and automatic latest execution switching
 
 #### Dashboard Feature
 
-- **Components**: Dashboard, DashboardStats, DashboardActions, SystemInfo, RecentTests, ErrorsOverview
-- **Hooks**: useDashboardStats, useDashboardActions
-- **Integration**: Uses tests store for data, displays summary and quick actions
+- **Components**: Dashboard, DashboardStats, SystemInfo, RecentTests, ErrorsOverview, Settings Modal (SettingsModal, SettingsThemeSection, SettingsActionsSection)
+- **Hooks**: useDashboardStats, useDashboardActions, useTheme (theme management)
+- **Settings Modal**: Centralized configuration interface with theme toggle (Auto/Light/Dark) and admin actions
+- **Integration**: Uses tests store for data, displays summary and statistics
+- **Theme System**: Manual theme control with localStorage persistence, supports Auto/Light/Dark modes
 
 #### Authentication Feature
 
 - **Components**: LoginPage
-- **Utils**: authFetch (JWT-based API calls), authentication helpers
-- **Security**: JWT token management, protected routes, localStorage-based auth
+- **Utils**: authFetch (JWT-based API calls), getWebSocketUrl (WebSocket connection with JWT), authentication helpers
+- **Security**: JWT token management, protected routes, localStorage-based auth, automatic WebSocket authentication
 
 ### Barrel Exports
 
@@ -436,3 +442,5 @@ export type {FilterKey} from './constants'
 - [Test Display Consistency](./TEST_DISPLAY.md)
 - [Attachment Management System](./features/PER_RUN_ATTACHMENTS.md)
 - [Historical Test Tracking](./features/HISTORICAL_TEST_TRACKING.md)
+- [Rerun from Modal Window](./features/RERUN_FROM_MODAL.md)
+- [Dashboard Settings](./features/DASHBOARD_SETTINGS.md)

@@ -1,10 +1,12 @@
 import {useState, useEffect} from 'react'
+import {useTheme} from '@/hooks/useTheme'
 
 interface HeaderProps {
     currentView: 'dashboard' | 'tests'
     onViewChange: (view: 'dashboard' | 'tests') => void
     wsConnected?: boolean
     user?: (() => {email: string; role?: string}) | {email: string; role?: string}
+    onOpenSettings?: () => void
 }
 
 export default function Header({
@@ -12,23 +14,11 @@ export default function Header({
     onViewChange,
     wsConnected = false,
     user,
+    onOpenSettings,
 }: HeaderProps) {
-    const [isDark, setIsDark] = useState(false)
+    const {isDark} = useTheme()
     const [showUserMenu, setShowUserMenu] = useState(false)
 
-    useEffect(() => {
-        // Check system theme on load
-        const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
-        setIsDark(mediaQuery.matches)
-
-        // Listen for system theme changes
-        const handler = (e: MediaQueryListEvent) => setIsDark(e.matches)
-        mediaQuery.addEventListener('change', handler)
-
-        return () => mediaQuery.removeEventListener('change', handler)
-    }, [])
-
-    // Close user menu when clicking outside
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
             const target = event.target as Element
@@ -86,7 +76,7 @@ export default function Header({
                                     ? 'bg-primary-100 dark:bg-primary-900 text-primary-700 dark:text-primary-300'
                                     : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-700'
                             }`}>
-                            Dashboard
+                            Dashboard (in dev...)
                         </button>
                         <button
                             onClick={() => onViewChange('tests')}
@@ -160,10 +150,20 @@ export default function Header({
                                                     </div>
                                                 )}
                                             </div>
+                                            {onOpenSettings && (
+                                                <button
+                                                    onClick={() => {
+                                                        onOpenSettings()
+                                                        setShowUserMenu(false)
+                                                    }}
+                                                    className="block w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+                                                    ⚙️ Settings
+                                                </button>
+                                            )}
                                             <button
                                                 onClick={handleLogout}
                                                 className="block w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
-                                                Sign out
+                                                🔓 Sign out
                                             </button>
                                         </div>
                                     </div>

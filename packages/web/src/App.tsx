@@ -3,19 +3,22 @@ import {Routes, Route} from 'react-router-dom'
 import {TestResult} from '@yshvydak/core'
 import {Header} from '@shared/components'
 import {Dashboard} from '@features/dashboard'
+import {SettingsModal} from '@features/dashboard/components/settings'
 import {TestsList} from '@features/tests'
-import {LoginPage} from '@features/authentication'
+import {LoginPage, setGlobalLogout} from '@features/authentication'
 import {useTestsStore} from '@features/tests/store/testsStore'
 import {useWebSocket} from './hooks/useWebSocket'
 import {config} from '@config/environment.config'
+import {verifyToken} from '@features/authentication/utils/tokenValidator'
 
 type ViewMode = 'dashboard' | 'tests'
 
 function App() {
     const [isAuthenticated, setIsAuthenticated] = useState(false)
     const [isLoading, setIsLoading] = useState(true)
-    const [currentView, setCurrentView] = useState<ViewMode>('dashboard')
+    const [currentView, setCurrentView] = useState<ViewMode>('tests')
     const [selectedTest, setSelectedTest] = useState<TestResult | null>(null)
+    const [isSettingsOpen, setIsSettingsOpen] = useState(false)
     const {
         fetchTests,
         isLoading: testsLoading,
@@ -23,16 +26,43 @@ function App() {
         checkAndRestoreActiveStates,
     } = useTestsStore()
 
-    // Check authentication status on component mount
+    // Setup global logout function
     useEffect(() => {
-        const checkAuth = () => {
+        const handleLogout = () => {
+            setIsAuthenticated(false)
+            setIsLoading(false)
+        }
+
+        setGlobalLogout(handleLogout)
+    }, [])
+
+    // Check authentication status and verify token validity
+    useEffect(() => {
+        const checkAuth = async () => {
             try {
                 const authData = localStorage.getItem('_auth')
-                if (authData) {
-                    const parsed = JSON.parse(authData)
-                    const hasToken = parsed?.auth?.token || parsed?.token
-                    setIsAuthenticated(!!hasToken)
+                if (!authData) {
+                    setIsAuthenticated(false)
+                    setIsLoading(false)
+                    return
+                }
+
+                const parsed = JSON.parse(authData)
+                const hasToken = parsed?.auth?.token || parsed?.token
+
+                if (!hasToken) {
+                    setIsAuthenticated(false)
+                    setIsLoading(false)
+                    return
+                }
+
+                const result = await verifyToken()
+
+                if (result.valid) {
+                    setIsAuthenticated(true)
                 } else {
+                    localStorage.removeItem('_auth')
+                    sessionStorage.removeItem('_auth')
                     setIsAuthenticated(false)
                 }
             } catch (error) {
@@ -44,6 +74,32 @@ function App() {
 
         checkAuth()
     }, [])
+
+    // Periodic token verification (every 5 minutes)
+    useEffect(() => {
+        if (!isAuthenticated) {
+            return
+        }
+
+        const checkTokenPeriodically = async () => {
+            const result = await verifyToken()
+
+            if (!result.valid) {
+                setIsAuthenticated(false)
+                localStorage.removeItem('_auth')
+                sessionStorage.removeItem('_auth')
+            }
+        }
+
+        const interval = setInterval(
+            () => {
+                checkTokenPeriodically()
+            },
+            5 * 60 * 1000
+        )
+
+        return () => clearInterval(interval)
+    }, [isAuthenticated])
 
     // Get JWT token for WebSocket connection with proper memoization
     const webSocketUrl = useMemo(() => {
@@ -136,6 +192,7 @@ function App() {
                 currentView={currentView}
                 onViewChange={setCurrentView}
                 wsConnected={isConnected}
+                onOpenSettings={() => setIsSettingsOpen(true)}
                 user={() => {
                     try {
                         const authData = localStorage.getItem('_auth')
@@ -147,6 +204,8 @@ function App() {
                     return null
                 }}
             />
+
+            <SettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
 
             <main className="flex-1 overflow-y-auto container mx-auto px-4 py-8">
                 <Routes>

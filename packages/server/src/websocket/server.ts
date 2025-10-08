@@ -294,7 +294,7 @@ export class WebSocketManager {
         console.log('Closing WebSocket server...')
 
         // Close all client connections
-        this.clients.forEach((client, clientId) => {
+        this.clients.forEach((client, _clientId) => {
             if (client.readyState === WebSocket.OPEN) {
                 client.close(1000, 'Server shutting down')
             }

@@ -2,6 +2,8 @@
  * Authenticated fetch utility that automatically includes JWT tokens
  */
 
+import {getGlobalLogout} from '../context/AuthContext'
+
 // Get JWT token from storage (React Auth Kit storage)
 export function getAuthToken(): string | null {
     try {
@@ -59,13 +61,16 @@ export async function authFetch(url: string, options: RequestInit = {}): Promise
 
     // Handle authentication errors
     if (response.status === 401) {
-        // Token might be expired or invalid
-        // Clear auth data and redirect to login
-        localStorage.removeItem('_auth')
-        sessionStorage.removeItem('_auth')
+        const globalLogout = getGlobalLogout()
 
-        // For React Router, we should navigate programmatically rather than using window.location
-        // This will be handled by the calling component
+        if (globalLogout) {
+            globalLogout()
+        } else {
+            localStorage.removeItem('_auth')
+            sessionStorage.removeItem('_auth')
+            window.location.href = '/'
+        }
+
         throw new Error('Authentication required')
     }
 

@@ -94,6 +94,8 @@ The web package follows **Feature-Based Architecture** with **Atomic Design**:
 **Authentication system is production-ready and secure:**
 
 - JWT-based user authentication with localStorage storage
+- **Automatic logout on token expiry** with periodic validation (every 5 minutes)
+- **401 response handling** - immediate logout and redirect to login page
 - Simplified local network integration for reporters
 - Environment-based credential management (never hardcode credentials)
 - Production-ready code optimization completed (debug logs removed)
@@ -135,9 +137,9 @@ The web package follows **Feature-Based Architecture** with **Atomic Design**:
 **Complete test execution history with independent attachments per run:**
 
 - Every test execution creates a new database record (INSERT strategy, not UPDATE)
-- Full execution history accessible via History tab in test detail modal
+- Full execution history accessible via always-visible sidebar in test detail modal
 - Each execution maintains independent attachments (videos, screenshots, traces)
-- Users can compare different test runs and view historical trends
+- Users can compare different test runs and view historical trends with one-click switching
 - Pending test results automatically filtered from history view
 - See [@docs/features/HISTORICAL_TEST_TRACKING.md](docs/features/HISTORICAL_TEST_TRACKING.md) for complete documentation
 
@@ -167,19 +169,26 @@ The web package follows **Feature-Based Architecture** with **Atomic Design**:
 
 ## Documentation References
 
-**📋 Detailed Documentation:**
+**📋 Core Documentation:**
 
 - [@docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) - Complete architecture details
 - [@docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) - Development commands and guidelines
 - [@docs/CONFIGURATION.md](docs/CONFIGURATION.md) - Environment configuration details
 - [@docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) - CloudTunnel and production deployment
 - [@docs/API_REFERENCE.md](docs/API_REFERENCE.md) - Complete API endpoints and WebSocket events
-- [@docs/TIMESTAMP_MANAGEMENT.md](docs/TIMESTAMP_MANAGEMENT.md) - Timestamp architecture implementation
 - [@docs/TESTING_METHODOLOGY.md](docs/TESTING_METHODOLOGY.md) - Adaptive testing and debugging approach
+
+**📋 Features Documentation:**
+
 - [@docs/features/AUTHENTICATION_IMPLEMENTATION.md](docs/features/AUTHENTICATION_IMPLEMENTATION.md) - Authentication system details
 - [@docs/features/CODE_OPTIMIZATION.md](docs/features/CODE_OPTIMIZATION.md) - Production-ready code optimization
+- [@docs/features/DASHBOARD_SETTINGS.md](docs/features/DASHBOARD_SETTINGS.md) - Dashboard settings modal and theme system
 - [@docs/features/PER_RUN_ATTACHMENTS.md](docs/features/PER_RUN_ATTACHMENTS.md) - Permanent attachment storage system
 - [@docs/features/HISTORICAL_TEST_TRACKING.md](docs/features/HISTORICAL_TEST_TRACKING.md) - Historical test execution tracking
+- [@docs/features/RERUN_FROM_MODAL.md](docs/features/RERUN_FROM_MODAL.md) - Rerun test from modal window with real-time updates
+- [@docs/features/SIMPLIFIED_ENV_CONFIGURATION.md](docs/features/SIMPLIFIED_ENV_CONFIGURATION.md) - Simplified environment setup
+- [@docs/features/TEST_DISPLAY.md](docs/features/TEST_DISPLAY.md) - Test display consistency
+- [@docs/features/TIMESTAMP_MANAGEMENT.md](docs/features/TIMESTAMP_MANAGEMENT.md) - Timestamp architecture
 
 ## Quick API Reference
 

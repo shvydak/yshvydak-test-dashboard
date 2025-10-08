@@ -1,5 +1,6 @@
-import {FilterButtonGroup, ViewModeToggle, ViewMode, SearchInput} from '@shared/components'
+import {FilterButtonGroup, ViewModeToggle, ViewMode, SearchInput, Button} from '@shared/components'
 import {FilterKey, FILTER_OPTIONS} from '../constants'
+import {useTestsStore} from '../store/testsStore'
 
 export interface TestsListFiltersProps {
     filter: FilterKey
@@ -30,6 +31,9 @@ export function TestsListFilters({
     onExpandAll,
     onCollapseAll,
 }: TestsListFiltersProps) {
+    const {runAllTests, isRunningAllTests, getIsAnyTestRunning} = useTestsStore()
+    const isAnyTestRunning = getIsAnyTestRunning()
+
     const filterOptions = FILTER_OPTIONS.map((option) => ({
         ...option,
         count: counts[option.key as keyof typeof counts],
@@ -38,6 +42,14 @@ export function TestsListFilters({
     return (
         <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
+                <Button
+                    variant="primary"
+                    loading={isRunningAllTests}
+                    disabled={isAnyTestRunning}
+                    onClick={runAllTests}>
+                    {isRunningAllTests ? 'Running...' : '▶️ Run All Tests'}
+                </Button>
+
                 <ViewModeToggle value={viewMode} onChange={onViewModeChange} />
 
                 {viewMode === 'grouped' && onExpandAll && onCollapseAll && (
@@ -57,8 +69,8 @@ export function TestsListFilters({
             </div>
 
             <div>
-                <h1 className="text-3xl font-bold text-gray-900 dark:text-white ml-4">
-                    {counts.all} test{counts.all !== 1 ? 's' : ''} found
+                <h1 className="text-2xl font-bold text-gray-900 dark:text-white ml-4">
+                    {counts.all} Test{counts.all !== 1 ? 's' : ''} found
                 </h1>
             </div>
 

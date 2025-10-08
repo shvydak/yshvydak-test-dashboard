@@ -43,6 +43,136 @@ This approach prioritizes simplicity and ease of configuration while maintaining
 4. Dashboard users view data → Protected by JWT authentication
 ```
 
+### Token Expiry Handling
+
+The system implements **automatic logout on token expiry** to ensure security and proper user experience:
+
+#### Components
+
+1. **AuthContext** ([packages/web/src/features/authentication/context/AuthContext.tsx](../../packages/web/src/features/authentication/context/AuthContext.tsx))
+    - Global logout function accessible throughout the application
+    - Centralized authentication state management
+    - Clean separation between auth logic and UI components
+
+2. **Token Validator** ([packages/web/src/features/authentication/utils/tokenValidator.ts](../../packages/web/src/features/authentication/utils/tokenValidator.ts))
+    - `verifyToken()`: Validates token via `/api/auth/verify` endpoint
+    - Returns `{valid: boolean, user?: {...}, message?: string}`
+    - Used for periodic checks and initial authentication
+
+3. **Enhanced authFetch** ([packages/web/src/features/authentication/utils/authFetch.ts](../../packages/web/src/features/authentication/utils/authFetch.ts))
+    - Intercepts 401 responses from any API call
+    - Automatically triggers global logout on authentication failures
+    - Ensures no stale token is used for requests
+
+4. **App.tsx Integration** ([packages/web/src/App.tsx](../../packages/web/src/App.tsx))
+    - Initial token verification on application load
+    - Periodic validation every 5 minutes
+    - Automatic logout when token becomes invalid
+
+#### Token Expiry Flow
+
+```
+Scenario 1: Periodic Check Detects Expiry
+┌─────────────────────────────────────────┐
+│ Timer triggers (every 5 minutes)        │
+│         ↓                               │
+│ verifyToken() → GET /api/auth/verify   │
+│         ↓                               │
+│ Server: 401 (FAST_JWT_EXPIRED)         │
+│         ↓                               │
+│ {valid: false} returned                │
+│         ↓                               │
+│ App.tsx: setIsAuthenticated(false)     │
+│         ↓                               │
+│ localStorage.removeItem('_auth')       │
+│         ↓                               │
+│ React Router → Redirect to /login      │
+└─────────────────────────────────────────┘
+
+Scenario 2: User Action with Expired Token
+┌─────────────────────────────────────────┐
+│ User clicks "Run All Tests"             │
+│         ↓                               │
+│ authPost('/api/tests/run-all')         │
+│         ↓                               │
+│ Server: 401 (token expired)            │
+│         ↓                               │
+│ authFetch catches 401                  │
+│         ↓                               │
+│ getGlobalLogout()() → handleLogout()   │
+│         ↓                               │
+│ setIsAuthenticated(false)              │
+│         ↓                               │
+│ localStorage.removeItem('_auth')       │
+│         ↓                               │
+│ React Router → Redirect to /login      │
+└─────────────────────────────────────────┘
+
+Scenario 3: WebSocket Disconnect
+┌─────────────────────────────────────────┐
+│ WebSocket auth fails (expired token)    │
+│         ↓                               │
+│ Connection closes, UI shows "Disconn..."│
+│         ↓                               │
+│ Next periodic check (≤ 5 minutes)      │
+│         ↓                               │
+│ verifyToken() detects invalid token    │
+│         ↓                               │
+│ Automatic logout → Redirect to /login   │
+└─────────────────────────────────────────┘
+```
+
+#### Configuration
+
+Token expiry duration is configured via environment variable:
+
+```bash
+JWT_EXPIRES_IN=24h  # Default: 24 hours
+```
+
+**Supported formats**:
+
+- `"1m"` - 1 minute
+- `"15m"` - 15 minutes
+- `"1h"` - 1 hour
+- `"24h"` - 24 hours (default)
+- `"7d"` - 7 days
+
+#### Testing Token Expiry
+
+To test the automatic logout behavior:
+
+1. **Quick Test (1 minute expiry)**:
+
+    ```bash
+    # In .env
+    JWT_EXPIRES_IN=1m
+    ```
+
+    - Login to dashboard
+    - Wait 1 minute + periodic check (≤ 5 minutes)
+    - Verify automatic redirect to login
+
+2. **API Action Test**:
+
+    ```bash
+    # In .env
+    JWT_EXPIRES_IN=1m
+    ```
+
+    - Login to dashboard
+    - Wait 1+ minute
+    - Click any action (Run All, Rerun Test, etc.)
+    - Verify immediate redirect to login on 401 response
+
+3. **WebSocket Test**:
+    - Set short expiry (e.g., `1m`)
+    - Login and observe "Live Updates: Connected"
+    - Wait for token to expire
+    - Observe "Disconnected" status
+    - Wait up to 5 minutes for periodic check
+    - Verify automatic logout and redirect
+
 ## API Reference
 
 ### Authentication Endpoints

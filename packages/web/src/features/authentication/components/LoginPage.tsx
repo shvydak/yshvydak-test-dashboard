@@ -1,5 +1,6 @@
-import React, {useState} from 'react'
+import {useState, useEffect, type ChangeEvent, type FormEvent} from 'react'
 import {config} from '@config/environment.config'
+import {applyThemeMode, type ThemeMode} from '@/hooks/useTheme'
 
 interface LoginFormData {
     email: string
@@ -14,7 +15,21 @@ export default function LoginPage() {
     const [isLoading, setIsLoading] = useState(false)
     const [error, setError] = useState<string | null>(null)
 
-    const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    useEffect(() => {
+        const savedTheme = localStorage.getItem('theme') as ThemeMode | null
+        const themeMode = savedTheme || 'auto'
+
+        applyThemeMode(themeMode)
+
+        if (themeMode === 'auto') {
+            const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
+            const handleChange = () => applyThemeMode('auto')
+            mediaQuery.addEventListener('change', handleChange)
+            return () => mediaQuery.removeEventListener('change', handleChange)
+        }
+    }, [])
+
+    const handleInputChange = (e: ChangeEvent<HTMLInputElement>) => {
         const {name, value} = e.target
         setFormData((prev) => ({
             ...prev,
@@ -23,7 +38,7 @@ export default function LoginPage() {
         if (error) setError(null)
     }
 
-    const handleSubmit = async (e: React.FormEvent) => {
+    const handleSubmit = async (e: FormEvent) => {
         e.preventDefault()
         setIsLoading(true)
         setError(null)

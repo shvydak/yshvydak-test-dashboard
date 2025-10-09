@@ -1,4 +1,3 @@
-export {Dashboard, SystemInfo, StatsCard, RecentTests, ErrorsOverview} from './components'
-export {DashboardStats} from './components'
-export {useDashboardStats, useDashboardActions} from './hooks'
+export {Dashboard, StatsCard, DashboardStats} from './components'
+export {useDashboardStats, useDashboardActions, useFlakyTests, useTestTimeline} from './hooks'
 export type {DashboardStats as DashboardStatsData, UseDashboardActionsReturn} from './hooks'

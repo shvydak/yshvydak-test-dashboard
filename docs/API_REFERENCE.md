@@ -262,6 +262,106 @@ Get complete execution history for a specific test.
 - Pending results automatically excluded from history
 - Parameter `id` supports both testId and result ID for flexibility
 
+## Dashboard Analytics
+
+### GET /api/tests/flaky
+
+Retrieve flaky tests with configurable filtering.
+
+**Description**: Identifies tests with intermittent failures using stable `testId` grouping across multiple executions. Excludes tests that are 100% failing (always failing, not flaky).
+
+**Query Parameters:**
+
+- `days` (optional) - Time range in days (default: 30)
+- `threshold` (optional) - Minimum failure percentage (default: 10)
+
+**Example Request:**
+
+```http
+GET /api/tests/flaky?days=30&threshold=15
+Authorization: Bearer {jwt-token}
+```
+
+**Response:**
+
+```json
+{
+    "status": "success",
+    "data": [
+        {
+            "testId": "test-xv3dl2",
+            "name": "Change Action status",
+            "filePath": "tests/api/actions.spec.ts",
+            "totalRuns": 8,
+            "failedRuns": 2,
+            "passedRuns": 6,
+            "flakyPercentage": 25,
+            "history": ["passed", "failed", "passed", "passed", "failed", "passed", "passed", "passed"],
+            "lastRun": "2025-10-09 14:32:15"
+        }
+    ],
+    "count": 1
+}
+```
+
+**Notes**:
+
+- Groups by stable `test_id` (hash-based identifier)
+- Calculates failure rate: `failedRuns / totalRuns * 100`
+- Returns up to 50 results, ordered by flakiness percentage DESC
+- Requires at least 2 runs per test
+- Excludes tests with 0% or 100% failure rate
+- History array contains status for each execution (newest last)
+
+### GET /api/tests/timeline
+
+Retrieve daily test execution statistics.
+
+**Description**: Returns aggregated test counts grouped by day, showing passed/failed/skipped distribution over time.
+
+**Query Parameters:**
+
+- `days` (optional) - Time range in days (default: 30)
+
+**Example Request:**
+
+```http
+GET /api/tests/timeline?days=30
+Authorization: Bearer {jwt-token}
+```
+
+**Response:**
+
+```json
+{
+    "status": "success",
+    "data": [
+        {
+            "date": "2025-10-09",
+            "total": 80,
+            "passed": 75,
+            "failed": 3,
+            "skipped": 2
+        },
+        {
+            "date": "2025-10-08",
+            "total": 80,
+            "passed": 78,
+            "failed": 2,
+            "skipped": 0
+        }
+    ],
+    "count": 2
+}
+```
+
+**Notes**:
+
+- Data grouped by `DATE(created_at)` for daily aggregation
+- Excludes pending test results (discovery-generated)
+- Results ordered by date ASC (chronological)
+- Separate counts for passed/failed/skipped/total tests per day
+
 ### GET /api/tests/:id/attachments
 
 Get attachments (screenshots, videos, traces) for a test.

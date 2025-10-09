@@ -182,6 +182,7 @@ The web package follows **Feature-Based Architecture** with **Atomic Design**:
 
 - [@docs/features/AUTHENTICATION_IMPLEMENTATION.md](docs/features/AUTHENTICATION_IMPLEMENTATION.md) - Authentication system details
 - [@docs/features/CODE_OPTIMIZATION.md](docs/features/CODE_OPTIMIZATION.md) - Production-ready code optimization
+- [@docs/features/DASHBOARD_REDESIGN.md](docs/features/DASHBOARD_REDESIGN.md) - Dashboard redesign with flaky tests detection and timeline visualization
 - [@docs/features/DASHBOARD_SETTINGS.md](docs/features/DASHBOARD_SETTINGS.md) - Dashboard settings modal and theme system
 - [@docs/features/PER_RUN_ATTACHMENTS.md](docs/features/PER_RUN_ATTACHMENTS.md) - Permanent attachment storage system
 - [@docs/features/HISTORICAL_TEST_TRACKING.md](docs/features/HISTORICAL_TEST_TRACKING.md) - Historical test execution tracking
@@ -196,8 +197,9 @@ The web package follows **Feature-Based Architecture** with **Atomic Design**:
 **Test Management:** `GET /api/tests`, `POST /api/tests`, `DELETE /api/tests/all`
 **Test Execution:** `POST /api/tests/run-all`, `POST /api/tests/:id/rerun`
 **Test History:** `GET /api/tests/:id/history` - Get execution history for a test
+**Dashboard Analytics:** `GET /api/tests/flaky?days=30&threshold=10`, `GET /api/tests/timeline?days=30`
 **Process Tracking:** `POST /api/tests/process-start`, `POST /api/tests/process-end`
 
-**WebSocket Events:** `connection:status`, `process:started`, `process:ended`, `test:status`
+**WebSocket Events:** `connection:status`, `process:started`, `process:ended`, `test:status`, `run:completed`
 
 All endpoints return `ApiResponse<T>` format

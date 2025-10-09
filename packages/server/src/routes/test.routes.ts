@@ -19,6 +19,8 @@ export function createTestRoutes(container: ServiceContainer): Router {
     // CRUD endpoints
     router.get('/', testController.getAllTests)
     router.get('/stats', testController.getTestStats)
+    router.get('/flaky', testController.getFlakyTests)
+    router.get('/timeline', testController.getTestTimeline)
     router.get('/diagnostics', testController.getDiagnostics)
     router.delete('/all', testController.clearAllTests)
     router.post('/', testController.createTestResult)

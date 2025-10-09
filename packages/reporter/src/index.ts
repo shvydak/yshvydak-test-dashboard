@@ -13,7 +13,7 @@ import {v4 as uuidv4} from 'uuid'
 import * as dotenv from 'dotenv'
 dotenv.config()
 
-export interface YShvydakTestResult {
+interface YShvydakTestResult {
     id: string
     testId: string
     runId: string
@@ -31,7 +31,7 @@ export interface YShvydakTestResult {
     }>
 }
 
-export interface YShvydakTestRun {
+interface YShvydakTestRun {
     id: string
     status: 'running' | 'completed' | 'failed'
     timestamp: string
@@ -42,30 +42,33 @@ export interface YShvydakTestRun {
     duration: number
 }
 
-export interface ReporterDiagnostics {
-    version: string
-    apiBaseUrl: string
-    isConfigured: boolean
-    healthCheck: {
-        success: boolean
-        error?: string
-        responseTime?: number
-    }
+interface ProcessStartData {
+    runId: string
+    type: 'run-all' | 'run-group' | 'rerun'
+    totalTests?: number
+    filePath?: string
+    testId?: string
+    originalTestId?: string
 }
 
-export class YShvydakReporter implements Reporter {
+interface ProcessEndData {
+    runId: string
+    status: 'completed' | 'failed' | 'interrupted'
+    results?: {
+        passed: number
+        failed: number
+        skipped: number
+        duration: number
+    } | null
+}
+
+class YShvydakReporter implements Reporter {
     private runId: string = uuidv4()
     private results: YShvydakTestResult[] = []
     private startTime: number = 0
-    private apiBaseUrl: string = ''
-    private isConfigured: boolean = false
-    private readonly version = '1.0.0'
+    private apiBaseUrl: string
 
-    constructor(private options: {silent?: boolean} = {}) {
-        this.initializeReporter()
-    }
-
-    private initializeReporter(): void {
+    constructor() {
         // Get the base URL from environment variables
         let baseUrl = process.env.DASHBOARD_API_URL || 'http://localhost:3001'
 
@@ -75,16 +78,9 @@ export class YShvydakReporter implements Reporter {
         }
 
         this.apiBaseUrl = baseUrl
-        this.isConfigured = !!process.env.DASHBOARD_API_URL
 
-        if (!this.options.silent) {
-            console.log(`🎭 YShvydak Dashboard Reporter v${this.version} initialized`)
-            console.log(`   Run ID: ${this.runId}`)
-            console.log(`   API Base URL: ${this.apiBaseUrl}`)
-            console.log(
-                `   Configuration: ${this.isConfigured ? '✅ From environment' : '⚠️  Using defaults'}`
-            )
-        }
+        console.log(`🎭 YShvydak Dashboard Reporter initialized (Run ID: ${this.runId})`)
+        console.log(`🌐 API Base URL: ${this.apiBaseUrl}`)
 
         if (!this.apiBaseUrl || this.apiBaseUrl === 'undefined') {
             console.warn(
@@ -92,45 +88,20 @@ export class YShvydakReporter implements Reporter {
             )
             this.apiBaseUrl = 'http://localhost:3001'
         }
-    }
 
-    async getDiagnostics(): Promise<ReporterDiagnostics> {
-        const startTime = Date.now()
-        let healthCheck = {
-            success: false,
-            error: undefined as string | undefined,
-            responseTime: undefined as number | undefined,
-        }
-
-        try {
-            const response = await fetch(`${this.apiBaseUrl}/api/health`, {
-                method: 'GET',
-                headers: {'Content-Type': 'application/json'},
-            })
-
-            healthCheck = {
-                success: response.ok,
-                responseTime: Date.now() - startTime,
-                error: response.ok ? undefined : `HTTP ${response.status}: ${response.statusText}`,
-            }
-        } catch (error) {
-            healthCheck = {
-                success: false,
-                error: error instanceof Error ? error.message : 'Unknown error',
-                responseTime: Date.now() - startTime,
-            }
-        }
-
-        return {
-            version: this.version,
-            apiBaseUrl: this.apiBaseUrl,
-            isConfigured: this.isConfigured,
-            healthCheck,
-        }
+        // Setup cleanup handlers for unexpected termination
+        this.setupCleanupHandlers()
     }
 
     onBegin(_config: FullConfig, suite: Suite) {
         this.startTime = Date.now()
+
+        // Notify dashboard that process is starting
+        this.notifyProcessStart({
+            runId: this.runId,
+            type: 'run-all',
+            totalTests: suite.allTests().length,
+        })
 
         // Create test run
         this.createTestRun({
@@ -144,13 +115,12 @@ export class YShvydakReporter implements Reporter {
             duration: 0,
         })
 
-        if (!this.options.silent) {
-            console.log(`🚀 Starting test run with ${suite.allTests().length} tests`)
-        }
+        console.log(`🚀 Starting test run with ${suite.allTests().length} tests`)
     }
 
     onTestEnd(test: TestCase, result: TestResult) {
         const testId = this.generateStableTestId(test)
+        const filePath = path.relative(process.cwd(), test.location.file)
 
         // Create enhanced error message with code context like in original Playwright report
         let enhancedErrorMessage = result.error?.stack || result.error?.message
@@ -163,7 +133,7 @@ export class YShvydakReporter implements Reporter {
             testId,
             runId: this.runId,
             name: test.title,
-            filePath: path.relative(process.cwd(), test.location.file),
+            filePath: filePath,
             status: this.mapStatus(result.status),
             duration: result.duration,
             timestamp: new Date().toISOString(),
@@ -177,14 +147,12 @@ export class YShvydakReporter implements Reporter {
         // Send result to dashboard API
         this.sendTestResult(testResult)
 
-        if (!this.options.silent) {
-            console.log(
-                `${this.getStatusIcon(testResult.status)} ${testResult.name} (${testResult.duration}ms)`
-            )
-        }
+        console.log(
+            `${this.getStatusIcon(testResult.status)} ${testResult.name} (${testResult.duration}ms)`
+        )
     }
 
-    onEnd(result: FullResult) {
+    async onEnd(result: FullResult) {
         const duration = Date.now() - this.startTime
         const passed = this.results.filter((r) => r.status === 'passed').length
         const failed = this.results.filter((r) => r.status === 'failed').length
@@ -202,14 +170,25 @@ export class YShvydakReporter implements Reporter {
             duration,
         })
 
-        if (!this.options.silent) {
-            console.log(`\n📊 Test run completed:`)
-            console.log(`   ✅ Passed: ${passed}`)
-            console.log(`   ❌ Failed: ${failed}`)
-            console.log(`   ⏭️  Skipped: ${skipped}`)
-            console.log(`   ⏱️  Duration: ${(duration / 1000).toFixed(1)}s`)
-            console.log(`\n🌐 View results: ${this.apiBaseUrl.replace('3001', '3000')}`)
-        }
+        // Notify dashboard that process is ending
+        console.log('🔄 Sending process end notification...')
+        await this.notifyProcessEnd({
+            runId: this.runId,
+            status: result.status === 'passed' ? 'completed' : 'failed',
+            results: {
+                passed,
+                failed,
+                skipped,
+                duration,
+            },
+        })
+
+        console.log(`\n📊 Test run completed:`)
+        console.log(`   ✅ Passed: ${passed}`)
+        console.log(`   ❌ Failed: ${failed}`)
+        console.log(`   ⏭️  Skipped: ${skipped}`)
+        console.log(`   ⏱️  Duration: ${(duration / 1000).toFixed(1)}s`)
+        console.log(`\n🌐 View results: http://localhost:3000`)
     }
 
     private generateStableTestId(test: TestCase): string {
@@ -299,7 +278,7 @@ export class YShvydakReporter implements Reporter {
             const mainErrorLines = originalStack
                 .split('\n')
                 .filter(
-                    (line: string) =>
+                    (line: any) =>
                         !line.trim().startsWith('at ') ||
                         line.includes(path.relative(process.cwd(), filePath))
                 )
@@ -312,7 +291,7 @@ export class YShvydakReporter implements Reporter {
                 mainErrorLines[mainErrorLines.length - 1], // Add back the 'at' line
             ].join('\n')
         } catch (err) {
-            // If we can't read the file, return the original error
+            console.log(err)
             return originalStack
         }
     }
@@ -363,11 +342,11 @@ export class YShvydakReporter implements Reporter {
 
             if (!response.ok) {
                 console.warn(`⚠️  Failed to send test result: ${response.status}`)
+                const responseText = await response.text()
+                console.warn(`⚠️  Response: ${responseText}`)
             }
         } catch (error) {
-            if (!this.options.silent) {
-                console.warn(`⚠️  Dashboard API not available: ${error}`)
-            }
+            console.warn(`⚠️  Dashboard API not available: ${error}`)
         }
     }
 
@@ -383,11 +362,11 @@ export class YShvydakReporter implements Reporter {
 
             if (!response.ok) {
                 console.warn(`⚠️  Failed to create test run: ${response.status}`)
+                const responseText = await response.text()
+                console.warn(`⚠️  Response: ${responseText}`)
             }
         } catch (error) {
-            if (!this.options.silent) {
-                console.warn(`⚠️  Dashboard API not available: ${error}`)
-            }
+            console.warn(`⚠️  Dashboard API not available: ${error}`)
         }
     }
 
@@ -403,11 +382,80 @@ export class YShvydakReporter implements Reporter {
 
             if (!response.ok) {
                 console.warn(`⚠️  Failed to update test run: ${response.status}`)
+                const responseText = await response.text()
+                console.warn(`⚠️  Response: ${responseText}`)
             }
         } catch (error) {
-            if (!this.options.silent) {
-                console.warn(`⚠️  Dashboard API not available: ${error}`)
+            console.warn(`⚠️  Dashboard API not available: ${error}`)
+        }
+    }
+
+    private async notifyProcessStart(data: ProcessStartData) {
+        try {
+            console.log(`📤 Sending process start notification for: ${data.runId}`)
+            const response = await fetch(`${this.apiBaseUrl}/api/tests/process-start`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(data),
+            })
+
+            if (!response.ok) {
+                console.warn(`⚠️  Failed to notify process start: ${response.status}`)
+                const responseText = await response.text()
+                console.warn(`⚠️  Response: ${responseText}`)
+            } else {
+                console.log(`✅ Process start notification sent successfully: ${data.runId}`)
             }
+        } catch (error) {
+            console.warn(`⚠️  Process start notification failed: ${error}`)
+        }
+    }
+
+    private async notifyProcessEnd(data: ProcessEndData) {
+        try {
+            console.log(`📤 Sending process end notification for: ${data.runId} (${data.status})`)
+            const response = await fetch(`${this.apiBaseUrl}/api/tests/process-end`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(data),
+            })
+
+            if (!response.ok) {
+                console.warn(`⚠️  Failed to notify process end: ${response.status}`)
+                const responseText = await response.text()
+                console.warn(`⚠️  Response: ${responseText}`)
+            } else {
+                console.log(
+                    `✅ Process end notification sent successfully: ${data.runId} (${data.status})`
+                )
+            }
+        } catch (error) {
+            console.warn(`⚠️  Process end notification failed: ${error}`)
+        }
+    }
+
+    private setupCleanupHandlers() {
+        // Handle process termination signals
+        process.on('SIGINT', () => this.cleanup('interrupted'))
+        process.on('SIGTERM', () => this.cleanup('interrupted'))
+        process.on('uncaughtException', () => this.cleanup('interrupted'))
+        process.on('unhandledRejection', () => this.cleanup('interrupted'))
+    }
+
+    private async cleanup(status: 'interrupted' = 'interrupted') {
+        console.log('🧹 Cleaning up reporter...')
+        try {
+            await this.notifyProcessEnd({
+                runId: this.runId,
+                status: status,
+                results: null,
+            })
+        } catch (error) {
+            console.warn('⚠️  Cleanup notification failed:', error)
         }
     }
 }

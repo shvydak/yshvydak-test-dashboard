@@ -112,6 +112,14 @@ export class TestService implements ITestService {
         return this.testRepository.getTestStats()
     }
 
+    async getFlakyTests(days: number = 30, thresholdPercent: number = 10): Promise<any[]> {
+        return this.testRepository.getFlakyTests(days, thresholdPercent)
+    }
+
+    async getTestTimeline(days: number = 30): Promise<any[]> {
+        return this.testRepository.getTestTimeline(days)
+    }
+
     async runAllTests(): Promise<any> {
         const result = await this.playwrightService.runAllTests()
 

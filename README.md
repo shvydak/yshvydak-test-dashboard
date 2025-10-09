@@ -4,7 +4,7 @@
 
 A comprehensive testing dashboard that transforms your Playwright test experience with real-time monitoring, instant reruns, and beautiful reporting. Built for teams who value efficiency and visibility in their testing workflows.
 
-> **📋 Current Status**: File-based integration (simple setup). npm package distribution coming in Phase 2 - see [Roadmap](#🛣️-roadmap).
+> **📦 npm Package Available**: [`playwright-dashboard-reporter`](https://www.npmjs.com/package/playwright-dashboard-reporter) - Professional npm package for seamless integration.
 
 ![Dashboard Screenshot](https://via.placeholder.com/800x400/2563eb/ffffff?text=YShvydak+Test+Dashboard)
 
@@ -97,27 +97,38 @@ npm install
 npm run build
 ```
 
-### 2. Configure Your Test Project
-
-#### Copy the Reporter File
-
-First, copy the reporter to your test project:
+### 2. Install Reporter in Your Test Project
 
 ```bash
-# Copy reporter from dashboard to your test project
-cp packages/reporter/src/index.ts /path/to/your/playwright/project/e2e/testUtils/yshvydakReporter.ts
+# Navigate to your Playwright project
+cd /path/to/your/playwright/project
+
+# Install the reporter
+npm install --save-dev playwright-dashboard-reporter
+```
+
+#### Add Reporter to Playwright Config
+
+```typescript
+// playwright.config.ts
+import { defineConfig } from '@playwright/test';
+
+export default defineConfig({
+  reporter: [
+    ['playwright-dashboard-reporter', {
+      apiBaseUrl: process.env.DASHBOARD_API_URL || 'http://localhost:3001'
+    }],
+    ['html'] // Keep your existing reporters
+  ]
+});
 ```
 
 #### Set Environment Variable
-
-In your Playwright project, add:
 
 ```bash
 # .env file in your Playwright project
 DASHBOARD_API_URL=http://localhost:3001
 ```
-
-**That's it!** No changes to `playwright.config.ts` needed - the dashboard will dynamically inject the reporter when running tests.
 
 ### 3. Configure Dashboard for Your Project
 

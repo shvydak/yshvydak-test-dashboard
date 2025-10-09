@@ -13,7 +13,7 @@ YShvydak Test Dashboard is a full-stack Playwright testing dashboard with rerun 
 ```
 packages/
 ├── core/      # Shared TypeScript types & interfaces
-├── reporter/  # @yshvydak/playwright-reporter npm package
+├── reporter/  # playwright-dashboard-reporter npm package
 ├── server/    # Express API + SQLite + WebSocket server (LAYERED ARCHITECTURE)
 └── web/       # React + Vite dashboard UI
 ```
@@ -63,15 +63,18 @@ The web package follows **Feature-Based Architecture** with **Atomic Design**:
 
 ## Critical Development Rules
 
-### 🚨 ALWAYS Check External Reporter for Code Analysis & Development
+### 🚨 Reporter Development & Analysis
 
-**When doing ANY code analysis, development, or debugging - ALWAYS examine the external reporter:**
+**Primary Reporter Location (for analysis & development):**
+- **Dashboard package**: `packages/reporter/src/index.ts` (single source of truth)
+- **External sync copy**: `/Users/y.shvydak/QA/probuild-qa/e2e/testUtils/yshvydakReporter.ts`
+- **npm package**: `playwright-dashboard-reporter@1.0.0` ([npm link](https://www.npmjs.com/package/playwright-dashboard-reporter))
 
-- Path: `/Users/y.shvydak/QA/probuild-qa/e2e/testUtils/yshvydakReporter.ts`
-- This is the **critical component** that provides ALL data from test execution
-- The reporter is part of this project despite being in external test repository
-- Understanding reporter implementation is essential for all development tasks
-- Always analyze reporter code when working with test data, APIs, or dashboard features
+**Development Workflow:**
+- **For analysis**: Always use `packages/reporter/src/index.ts`
+- **For local dev**: `USE_NPM_REPORTER=false` in `.env` (uses local file)
+- **For production**: npm package used by default (USE_NPM_REPORTER=true or omitted)
+- **npm link active**: Test project linked to local reporter for fast iteration
 
 ### 📚 ALWAYS Use Context7-MCP for Documentation
 
@@ -143,9 +146,13 @@ The web package follows **Feature-Based Architecture** with **Atomic Design**:
 - Pending test results automatically filtered from history view
 - See [@docs/features/HISTORICAL_TEST_TRACKING.md](docs/features/HISTORICAL_TEST_TRACKING.md) for complete documentation
 
-## Current Active Reporter
+## Reporter Package
 
-**External Reporter Path:** `/Users/y.shvydak/QA/probuild-qa/e2e/testUtils/yshvydakReporter.ts`
+**npm package**: [`playwright-dashboard-reporter@1.0.0`](https://www.npmjs.com/package/playwright-dashboard-reporter)
+**Source code**: `packages/reporter/src/index.ts` (single source of truth)
+**External copy**: `/Users/y.shvydak/QA/probuild-qa/e2e/testUtils/yshvydakReporter.ts`
+
+**📋 For reporter documentation:** See [@docs/REPORTER.md](docs/REPORTER.md)
 
 ## Configuration
 

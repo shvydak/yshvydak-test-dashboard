@@ -1,7 +1,7 @@
 {
-    "name": "@yshvydak/playwright-reporter",
+    "name": "playwright-dashboard-reporter",
     "version": "1.0.0",
-    "description": "YShvydak Test Dashboard Playwright Reporter",
+    "description": "Real-time Playwright test dashboard with rerun capabilities and comprehensive test reporting",
     "main": "dist/index.js",
     "module": "dist/index.mjs",
     "types": "dist/index.d.ts",
@@ -12,19 +12,42 @@
             "require": "./dist/index.js"
         }
     },
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/shvydak/yshvydak-test-dashboard.git",
+        "directory": "packages/reporter"
+    },
+    "homepage": "https://github.com/shvydak/yshvydak-test-dashboard#readme",
+    "bugs": {
+        "url": "https://github.com/shvydak/yshvydak-test-dashboard/issues"
+    },
     "scripts": {
         "build": "tsup src/index.ts --format cjs,esm --dts --clean",
         "dev": "tsup src/index.ts --format cjs,esm --dts --watch",
-        "type-check": "tsc --noEmit"
+        "type-check": "tsc --noEmit",
+        "prepublishOnly": "npm run build && npm run type-check"
     },
     "keywords": [
         "playwright",
-        "reporter",
+        "playwright-reporter",
+        "test-reporter",
         "testing",
-        "dashboard"
+        "dashboard",
+        "test-automation",
+        "qa",
+        "test-results",
+        "real-time-dashboard",
+        "test-monitoring"
     ],
     "author": "YShvydak",
     "license": "MIT",
+    "engines": {
+        "node": ">=18.0.0",
+        "npm": ">=10.0.0"
+    },
+    "publishConfig": {
+        "access": "public"
+    },
     "dependencies": {
         "uuid": "^11.1.0",
         "dotenv": "^16.3.1"

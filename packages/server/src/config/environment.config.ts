@@ -40,10 +40,10 @@ export const config: EnvironmentConfig = {
             return process.env.PLAYWRIGHT_PROJECT_DIR || process.cwd()
         },
         reporterPath:
-            process.env.USE_NPM_REPORTER === 'true'
-                ? '@yshvydak/playwright-reporter'
-                : './e2e/testUtils/yshvydakReporter.ts',
-        useNpmPackage: process.env.USE_NPM_REPORTER === 'true',
+            process.env.USE_NPM_REPORTER === 'false'
+                ? './e2e/testUtils/yshvydakReporter.ts'
+                : 'playwright-dashboard-reporter',
+        useNpmPackage: process.env.USE_NPM_REPORTER !== 'false',
     },
     storage: {
         // Derive OUTPUT_DIR from current working directory if not specified

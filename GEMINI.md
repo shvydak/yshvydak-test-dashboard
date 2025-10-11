@@ -1,120 +1,212 @@
-# Gemini Context: YShvydak Test Dashboard
+# CLAUDE.md
 
-This document provides instructional context for Gemini when working with the `yshvydak-test-dashboard` repository.
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## 1. Project Overview
+## Project Overview
 
-YShvydak Test Dashboard is a **full-stack Playwright testing dashboard** with one-click rerun capabilities. It provides real-time test monitoring, historical tracking, and a user-friendly web interface to manage and visualize Playwright test results.
+YShvydak Test Dashboard is a full-stack Playwright testing dashboard with rerun capabilities. It's a **monorepo** built with **Turborepo** that provides real-time test monitoring, one-click reruns, and comprehensive test reporting.
 
-The project is a **monorepo** managed with **Turborepo** and **npm workspaces**.
+### Architecture
 
-### Key Problems Solved:
-
-- Replaces hard-to-navigate standard Playwright HTML reports.
-- Enables instant reruns of failed tests without using the command line.
-- Provides team-wide visibility into test status and history.
-
-## 2. Architecture
-
-### 2.1. Monorepo Structure
-
-The project consists of four main packages located in the `packages/` directory:
+**Top-level structure:**
 
 ```
 packages/
-├── core/      # Shared TypeScript types & interfaces for all packages.
-├── reporter/  # The `@yshvydak/playwright-reporter` npm package that sends test data to the server.
-├── server/    # The backend Express.js API, WebSocket server, and SQLite database.
-└── web/       # The frontend React + Vite dashboard UI.
+├── core/      # Shared TypeScript types & interfaces
+├── reporter/  # playwright-dashboard-reporter npm package
+├── server/    # Express API + SQLite + WebSocket server (LAYERED ARCHITECTURE)
+└── web/       # React + Vite dashboard UI
 ```
 
-### 2.2. Backend: Layered Architecture
+**📋 For detailed architecture:** See [@docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
 
-The `server` package follows a strict **Layered Architecture** to ensure separation of concerns:
+## Essential Development Commands
 
-- **Controllers (`*.controller.ts`):** Handle HTTP request and response cycles. They are "thin" and delegate all business logic to services.
-- **Services (`*.service.ts`):** Contain the core business logic. They orchestrate calls between repositories and other services.
-- **Repositories (`*.repository.ts`):** Responsible for all data access and database operations (CRUD on the SQLite database).
-- **Middleware:** Handles cross-cutting concerns like dependency injection, CORS, and error handling.
+**Root Level Commands (Turborepo):**
 
-### 2.3. Dynamic Reporter Injection
+- `npm run build` - Build all packages
+- `npm run dev` - Run all packages in development mode
+- `npm run type-check` - TypeScript checking across all packages
+- `npm run lint` - Lint all packages
 
-A key architectural feature is **dynamic reporter injection**. The dashboard can execute tests in a target Playwright project and inject the custom reporter (`@yshvydak/playwright-reporter`) via command-line arguments. This means the user's `playwright.config.ts` does not need to be modified.
+**📋 For detailed development commands:** See [@docs/DEVELOPMENT.md](docs/DEVELOPMENT.md)
 
-## 3. Technology Stack
+## Architecture Principles
 
-- **Monorepo:** Turborepo, npm workspaces
-- **Backend:** Node.js, Express.js, TypeScript, SQLite (using `better-sqlite3`), WebSockets (`ws`)
-- **Frontend:** React 18, TypeScript, Vite, Tailwind CSS, Zustand (for state management)
-- **Development:** ESLint, Prettier, `tsx` for fast server reloads.
+### Backend: Layered Architecture
 
-## 4. Building and Running
+The server follows **Layered Architecture** with clear separation of concerns:
 
-### 4.1. Root Commands
+- **Controllers** (`*.controller.ts`) - HTTP request/response handling only
+- **Services** (`*.service.ts`) - Business logic and orchestration
+- **Repositories** (`*.repository.ts`) - Data access and database operations
+- **Middleware** - Cross-cutting concerns (DI, CORS, error handling)
 
-These commands should be run from the project root directory.
+### Frontend: Feature-Based Architecture
 
-- `npm install`: Install all dependencies for all packages.
-- `npm run build`: Build all packages in the monorepo.
-- `npm run dev`: Run all packages in development mode (starts backend server and frontend dev server).
-- `npm run type-check`: Run TypeScript compiler checks across the entire project.
-- `npm run lint`: Lint all packages.
+The web package follows **Feature-Based Architecture** with **Atomic Design**:
 
-### 4.2. Individual Package Commands
+- **Features** (`features/{feature}/`) - Self-contained modules (authentication, dashboard, tests)
+- **Colocation** - Components, hooks, store, types, utils all within feature directory
+- **Shared Components** - Atoms (`Button`, `StatusIcon`) and Molecules (`Card`, `ActionButton`)
+- **Path Aliases** - Clean imports: `@features/*`, `@shared/*`, `@config/*`
+- **Component Size** - Maximum 200 lines per file, split large components into sub-components
+- **Store Organization** - Zustand stores inside features: `features/{feature}/store/`
 
-You can also run commands within specific packages:
+**📋 For complete frontend architecture:** See [@docs/ARCHITECTURE.md](docs/ARCHITECTURE.md#frontend-feature-based-architecture)
 
-- `cd packages/server && npm run dev`: Start only the backend server with hot-reloading.
-- `cd packages/web && npm run dev`: Start only the frontend Vite dev server.
+## Technology Stack
 
-## 5. Development Conventions
+**Frontend:** React 18 + TypeScript + Vite + Tailwind CSS + Zustand + React Query + Feature-Based Architecture + Atomic Design
+**Backend:** Express.js + TypeScript + SQLite + WebSocket + Layered Architecture + DI
+**Development:** Turborepo + TypeScript 5 + ESLint
 
-### 5.1. Adding a New API Endpoint
+## Critical Development Rules
 
-Follow the established layered architecture pattern:
+### 🚨 Reporter Development & Analysis
 
-1.  **Route:** Define the new route in `packages/server/src/routes/`.
-2.  **Controller:** Add a new method in the appropriate controller in `packages/server/src/controllers/`.
-3.  **Service:** Implement the business logic in a service method in `packages/server/src/services/`.
-4.  **Repository:** If data access is needed, add a method to the corresponding repository in `packages/server/src/repositories/`.
+**Primary Reporter Location:**
 
-### 5.2. Code Style
+- **Source code**: `packages/reporter/src/index.ts` (single source of truth)
+- **npm package**: `playwright-dashboard-reporter@1.0.0` ([npm registry](https://www.npmjs.com/package/playwright-dashboard-reporter))
 
-- Follow the existing code style, naming conventions, and file structure.
-- Use the provided utilities (e.g., `logger.util.ts`, `response.helper.ts`).
-- Maintain TypeScript strict mode and ensure all new code is strongly typed.
-- Add comments only when necessary to explain _why_ a piece of logic is complex, not _what_ it does.
+**Reporter Integration:**
 
-### 5.3. External Reporter Analysis
+- Dashboard always uses `playwright-dashboard-reporter` from test project's `node_modules`
+- **Development**: Use `npm link` for local development (one-time setup)
+- **Production**: Use regular `npm install` (default)
 
-**CRITICAL:** When analyzing test data flow or debugging reporter-related issues, you **MUST** refer to the external reporter file located at `/Users/y.shvydak/QA/probuild-qa/e2e/testUtils/yshvydakReporter.ts`. This file is the source of all data sent to the dashboard during test execution and is essential for understanding the complete system.
+**📋 For detailed reporter setup and workflows:** See [@docs/REPORTER.md](docs/REPORTER.md)
 
-## 6. Configuration
+### 📚 ALWAYS Use Context7-MCP for Documentation
 
-- The main configuration is handled via a `.env` file in the project root.
-- The project uses a **simplified configuration model** where only a few core variables are needed. Other variables are derived automatically.
+**MANDATORY for any dependencies or technology research:**
 
-### Core `.env` Variables:
+- Adding/changing dependencies → Use Context7-MCP to check latest documentation
+- Need best practices → Use Context7-MCP for current standards
+- Technology questions → Use Context7-MCP for authoritative information
 
-- `PORT`: The port for the backend API server (e.g., `3001`).
-- `PLAYWRIGHT_PROJECT_DIR`: The absolute path to the target Playwright project whose tests will be managed.
-- `BASE_URL`: The base URL for the API server (e.g., `http://localhost:3001`).
-- `VITE_BASE_URL`: The base URL accessible to the web client (usually the same as `BASE_URL` in development).
-- `VITE_PORT`: The port for the frontend Vite dev server (e.g., `3000`).
+### ✅ ALWAYS Follow Best Practices
 
-## 7. API & WebSocket Quick Reference
+**Every solution must follow modern best practices and approaches:**
 
-### Key API Endpoints
+- Consult latest documentation and standards
+- Use established patterns and conventions
+- Follow security and performance best practices
 
-- `GET /api/health`: Health check for the server.
-- `GET /api/tests/diagnostics`: Checks the integration status with the Playwright project.
-- `POST /api/tests/discovery`: Scans the target project and discovers all available tests.
-- `GET /api/tests`: Retrieves the latest test results.
-- `POST /api/tests/run-all`: Starts a new test run for all discovered tests.
-- `POST /api/tests/:id/rerun`: Reruns a single failed test.
+### 🔐 Authentication & Security Guidelines
 
-### Key WebSocket Events
+**Authentication system is production-ready and secure:**
 
-- `connection:status`: Sent on client connect to sync the state of active processes.
-- `process:started` / `process:ended`: Broadcast when a test execution process starts or finishes.
-- `test:status`: Real-time updates on the status of an individual test as it runs.
+- JWT-based user authentication with localStorage storage
+- **Automatic logout on token expiry** with periodic validation (every 5 minutes)
+- **401 response handling** - immediate logout and redirect to login page
+- Simplified local network integration for reporters
+- Environment-based credential management (never hardcode credentials)
+- Production-ready code optimization completed (debug logs removed)
+- See [@docs/features/AUTHENTICATION_IMPLEMENTATION.md](docs/features/AUTHENTICATION_IMPLEMENTATION.md) for details
+
+### 🏗️ Architecture Guidelines
+
+#### Backend (Server)
+
+**New API endpoint:** Controller → Service → Repository
+**New business logic:** Add to relevant Service class
+**New database operations:** Extend Repository classes
+**Controllers:** Thin layer - delegate to Services
+**Services:** Business logic and orchestrate Repository calls
+**Repositories:** Database operations only
+
+#### Frontend (Web)
+
+**New feature:** Create in `features/{feature-name}/` with subdirectories (components, hooks, store, types, utils, constants)
+**New component:** Keep under 200 lines; split large components into sub-components with dedicated subdirectory
+**Shared components:** Use `shared/components/atoms/` for basic elements, `shared/components/molecules/` for combinations
+**State management:** Create Zustand store in `features/{feature}/store/`
+**Path aliases:** Always use `@features/*`, `@shared/*`, `@config/*` for clean imports
+**DRY principle:** Centralize utilities and constants - avoid code duplication
+
+### 📎 Attachment Management Guidelines
+
+**Permanent attachment storage implemented to solve Playwright's temporary file cleanup:**
+
+- **ALWAYS use AttachmentService** for attachment operations, never manipulate files directly
+- Attachments are automatically copied from Playwright's `test-results/` to permanent `attachments/` storage
+- Each test result has isolated directory: `{OUTPUT_DIR}/attachments/{testResultId}/`
+- Re-running tests automatically deletes old physical files before saving new ones
+- Files served via `/attachments/` route with JWT authentication
+- See [@docs/features/PER_RUN_ATTACHMENTS.md](docs/features/PER_RUN_ATTACHMENTS.md) for complete documentation
+
+### 📜 Historical Test Tracking
+
+**Complete test execution history with independent attachments per run:**
+
+- Every test execution creates a new database record (INSERT strategy, not UPDATE)
+- Full execution history accessible via always-visible sidebar in test detail modal
+- Each execution maintains independent attachments (videos, screenshots, traces)
+- Users can compare different test runs and view historical trends with one-click switching
+- Pending test results automatically filtered from history view
+- See [@docs/features/HISTORICAL_TEST_TRACKING.md](docs/features/HISTORICAL_TEST_TRACKING.md) for complete documentation
+
+## Reporter Package
+
+**npm package**: [`playwright-dashboard-reporter@1.0.0`](https://www.npmjs.com/package/playwright-dashboard-reporter)
+**Source code**: `packages/reporter/src/index.ts` (single source of truth)
+**External copy**: `/Users/y.shvydak/QA/probuild-qa/e2e/testUtils/yshvydakReporter.ts`
+
+**📋 For reporter documentation:** See [@docs/REPORTER.md](docs/REPORTER.md)
+
+## Configuration
+
+**Core Environment Variables:**
+
+- `PORT` - API server port (default: 3001)
+- `NODE_ENV` - Environment mode (development/production)
+- `PLAYWRIGHT_PROJECT_DIR` - Path to test project (REQUIRED)
+- `BASE_URL` - Base URL for all services
+- `VITE_BASE_URL` - Same as BASE_URL for web client
+
+**Authentication Variables:**
+
+- `ENABLE_AUTH` - Enable authentication (true/false)
+- `ADMIN_EMAIL` - Admin user email
+- `ADMIN_PASSWORD` - Admin user password
+- `JWT_SECRET` - JWT signing secret (change in production)
+
+**📋 For detailed configuration:** See [@docs/CONFIGURATION.md](docs/CONFIGURATION.md)
+
+## Documentation References
+
+**📋 Core Documentation:**
+
+- [@docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) - Complete architecture details
+- [@docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) - Development commands and guidelines
+- [@docs/CONFIGURATION.md](docs/CONFIGURATION.md) - Environment configuration details
+- [@docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) - CloudTunnel and production deployment
+- [@docs/API_REFERENCE.md](docs/API_REFERENCE.md) - Complete API endpoints and WebSocket events
+
+**📋 Features Documentation:**
+
+- [@docs/features/AUTHENTICATION_IMPLEMENTATION.md](docs/features/AUTHENTICATION_IMPLEMENTATION.md) - Authentication system details
+- [@docs/features/CODE_OPTIMIZATION.md](docs/features/CODE_OPTIMIZATION.md) - Production-ready code optimization
+- [@docs/features/DASHBOARD_REDESIGN.md](docs/features/DASHBOARD_REDESIGN.md) - Dashboard redesign with flaky tests detection and timeline visualization
+- [@docs/features/DASHBOARD_SETTINGS.md](docs/features/DASHBOARD_SETTINGS.md) - Dashboard settings modal and theme system
+- [@docs/features/PER_RUN_ATTACHMENTS.md](docs/features/PER_RUN_ATTACHMENTS.md) - Permanent attachment storage system
+- [@docs/features/HISTORICAL_TEST_TRACKING.md](docs/features/HISTORICAL_TEST_TRACKING.md) - Historical test execution tracking
+- [@docs/features/RERUN_FROM_MODAL.md](docs/features/RERUN_FROM_MODAL.md) - Rerun test from modal window with real-time updates
+- [@docs/features/SIMPLIFIED_ENV_CONFIGURATION.md](docs/features/SIMPLIFIED_ENV_CONFIGURATION.md) - Simplified environment setup
+- [@docs/features/TEST_DISPLAY.md](docs/features/TEST_DISPLAY.md) - Test display consistency
+- [@docs/features/TIMESTAMP_MANAGEMENT.md](docs/features/TIMESTAMP_MANAGEMENT.md) - Timestamp architecture
+
+## Quick API Reference
+
+**Health & Discovery:** `GET /api/health`, `POST /api/tests/discovery`, `GET /api/tests/diagnostics`
+**Test Management:** `GET /api/tests`, `POST /api/tests`, `DELETE /api/tests/all`
+**Test Execution:** `POST /api/tests/run-all`, `POST /api/tests/:id/rerun`
+**Test History:** `GET /api/tests/:id/history` - Get execution history for a test
+**Dashboard Analytics:** `GET /api/tests/flaky?days=30&threshold=10`, `GET /api/tests/timeline?days=30`
+**Process Tracking:** `POST /api/tests/process-start`, `POST /api/tests/process-end`
+
+**WebSocket Events:** `connection:status`, `process:started`, `process:ended`, `test:status`, `run:completed`
+
+All endpoints return `ApiResponse<T>` format

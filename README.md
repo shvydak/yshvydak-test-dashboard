@@ -41,11 +41,12 @@ A comprehensive testing dashboard that transforms your Playwright test experienc
 - **Settings modal** with centralized configuration (theme, admin actions)
 - **Theme system** with Auto/Light/Dark modes and localStorage persistence
 
-### ⚡ **Dynamic Reporter Integration**
+### ⚡ **Simple Reporter Integration**
 
-- **No config changes needed** in your test projects
-- Dashboard automatically injects reporter when running tests
-- Supports both npm package and local file modes
+- **Works with npm package**: Dashboard uses reporter from test project's `node_modules`
+- **No config changes needed** in your test projects when Dashboard runs tests
+- **Development option**: Use `npm link` for local reporter development
+- Easy setup with zero Dashboard configuration
 
 ### 🔍 **Advanced Diagnostics**
 
@@ -111,16 +112,19 @@ npm install --save-dev playwright-dashboard-reporter
 
 ```typescript
 // playwright.config.ts
-import { defineConfig } from '@playwright/test';
+import {defineConfig} from '@playwright/test'
 
 export default defineConfig({
-  reporter: [
-    ['playwright-dashboard-reporter', {
-      apiBaseUrl: process.env.DASHBOARD_API_URL || 'http://localhost:3001'
-    }],
-    ['html'] // Keep your existing reporters
-  ]
-});
+    reporter: [
+        [
+            'playwright-dashboard-reporter',
+            {
+                apiBaseUrl: process.env.DASHBOARD_API_URL || 'http://localhost:3001',
+            },
+        ],
+        ['html'], // Keep your existing reporters
+    ],
+})
 ```
 
 #### Set Environment Variable
@@ -144,7 +148,6 @@ PORT=3001
 NODE_ENV=development
 BASE_URL=http://localhost:3001
 VITE_BASE_URL=http://localhost:3001
-USE_NPM_REPORTER=false
 
 # Authentication Configuration
 ENABLE_AUTH=true
@@ -197,7 +200,7 @@ npx playwright test  # Uses standard reporters
 When the dashboard runs tests, it automatically adds the custom reporter:
 
 ```bash
-npx playwright test --reporter=./e2e/testUtils/yshvydakReporter.ts
+npx playwright test --reporter=playwright-dashboard-reporter
 ```
 
 ### Monitoring and Results
@@ -222,10 +225,11 @@ curl http://localhost:3001/api/tests/diagnostics
 
 1. **Tests not appearing**: Check `PLAYWRIGHT_PROJECT_DIR` environment variable
 2. **Reporter not working**:
-    - Verify `DASHBOARD_API_URL` in test project
-    - Ensure reporter file is copied to `e2e/testUtils/yshvydakReporter.ts`
+    - Verify `playwright-dashboard-reporter` is installed: `npm list playwright-dashboard-reporter`
+    - Check `DASHBOARD_API_URL` in test project `.env`
+    - For local development: Ensure npm link is set up correctly (see [Reporter Documentation](docs/REPORTER.md))
 3. **Connection issues**: Ensure dashboard is running on correct port
-4. **File not found errors**: Verify reporter file path matches dashboard configuration
+4. **Package not found errors**: Run `npm install --save-dev playwright-dashboard-reporter` in your test project
 5. **Test count inconsistency**: If test discovery shows different counts than after test execution:
     - Discovery finds fewer tests: Check if all test files are being scanned properly
     - Fewer tests after execution: Usually resolved by API limit parameters (dashboard uses `limit=200`)
@@ -292,11 +296,10 @@ cd packages/reporter && npm run dev # Reporter package
 The dashboard uses a **simplified .env configuration** with automatic derivation of most values:
 
 ```bash
-# Core Configuration (6 variables + auth)
+# Core Configuration (5 variables + auth)
 PORT=3001                                    # API server port
 NODE_ENV=development                         # Environment mode
 PLAYWRIGHT_PROJECT_DIR=/path/to/your/tests   # Test project location
-USE_NPM_REPORTER=false                       # Use npm package vs local file
 BASE_URL=http://localhost:3001               # Base URL for all services
 VITE_BASE_URL=http://localhost:3001          # Base URL accessible to web client
 VITE_PORT=3000                               # Web dev server port (optional)
@@ -347,25 +350,21 @@ JWT_SECRET=dev-jwt-secret-change-in-production-12345    # JWT signing key
 
 ## 🛣️ Roadmap
 
-### Phase 1: Current (File-based Integration) ✅
+### Phase 1: npm Package Integration ✅
 
-- Manual file copy setup
-- Dynamic reporter injection
+- Published `playwright-dashboard-reporter` to npm registry
+- One-command installation: `npm install --save-dev playwright-dashboard-reporter`
+- Automatic mode switching based on `NODE_ENV`
+- npm link support for local development
 - Full dashboard functionality
 
-### Phase 2: npm Package (Planned) 🚧
-
-- Publish `@yshvydak/playwright-reporter` to npm registry
-- One-command installation: `npm install @yshvydak/playwright-reporter`
-- Automatic version updates and centralized management
-- Environment toggle: `USE_NPM_REPORTER=true`
-
-### Phase 3: Enterprise Features (Future) 🔮
+### Phase 2: Enterprise Features (Future) 🔮
 
 - Multiple project management
 - Role-based access control
 - Advanced analytics and reporting
 - CI/CD integration templates
+- Team collaboration features
 
 ## 🤝 Contributing
 

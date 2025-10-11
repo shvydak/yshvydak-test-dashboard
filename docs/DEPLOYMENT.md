@@ -74,7 +74,6 @@ NODE_ENV=development
 BASE_URL=http://localhost:3001
 VITE_BASE_URL=http://localhost:3001
 PLAYWRIGHT_PROJECT_DIR=/path/to/your/playwright/project
-USE_NPM_REPORTER=false
 ```
 
 ### Production (.env.production → .env)
@@ -85,7 +84,6 @@ NODE_ENV=production
 BASE_URL=https://api-dashboard.shvydak.com
 VITE_BASE_URL=https://api-dashboard.shvydak.com
 PLAYWRIGHT_PROJECT_DIR=/path/to/your/playwright/project
-USE_NPM_REPORTER=false
 ```
 
 ## Security Considerations

@@ -1,10 +1,10 @@
 # Simplified Environment Configuration
 
-> **🎯 Goal**: Reduce .env complexity from 10+ variables to just 6 core variables with automatic derivation of all other values.
+> **🎯 Goal**: Reduce .env complexity from 10+ variables to just 5 core variables with automatic derivation of all other values.
 
 ## Overview
 
-The YShvydak Test Dashboard uses a **simplified environment configuration system** that eliminates duplication and reduces setup complexity. Users only need to configure 6 core variables, while all other configuration values are automatically derived.
+The YShvydak Test Dashboard uses a **simplified environment configuration system** that eliminates duplication and reduces setup complexity. Users only need to configure 5 core variables, while all other configuration values are automatically derived.
 
 ## Core Concept
 
@@ -14,24 +14,23 @@ The YShvydak Test Dashboard uses a **simplified environment configuration system
 PORT=3001
 NODE_ENV=development
 PLAYWRIGHT_PROJECT_DIR=/path/to/tests
-USE_NPM_REPORTER=false
+USE_NPM_REPORTER=false                       # Removed - now automatic based on NODE_ENV
 BASE_URL=http://localhost:3001
-DASHBOARD_API_URL=http://localhost:3001    # Duplicate of BASE_URL
+DASHBOARD_API_URL=http://localhost:3001      # Duplicate of BASE_URL
 OUTPUT_DIR=test-results
-VITE_API_BASE_URL=http://localhost:3001/api # Derived from BASE_URL
-VITE_WEBSOCKET_URL=ws://localhost:3001/ws   # Derived from BASE_URL
-VITE_SERVER_URL=http://localhost:3001       # Duplicate of BASE_URL
+VITE_API_BASE_URL=http://localhost:3001/api  # Derived from BASE_URL
+VITE_WEBSOCKET_URL=ws://localhost:3001/ws    # Derived from BASE_URL
+VITE_SERVER_URL=http://localhost:3001        # Duplicate of BASE_URL
 VITE_PORT=3000
 ```
 
-### After (6 Variables)
+### After (5 Variables)
 
 ```bash
-# Core Configuration - Only these 6 variables needed
+# Core Configuration - Only these 5 variables needed
 PORT=3001
-NODE_ENV=development
+NODE_ENV=development  # Also controls reporter mode
 PLAYWRIGHT_PROJECT_DIR=/path/to/tests
-USE_NPM_REPORTER=false
 BASE_URL=http://localhost:3001
 VITE_BASE_URL=http://localhost:3001
 VITE_PORT=3000  # Optional - will derive from PORT if not set
@@ -46,7 +45,6 @@ VITE_PORT=3000  # Optional - will derive from PORT if not set
 | `PORT`                   | API server port         | `3001`                  | `3001`                  |
 | `NODE_ENV`               | Environment mode        | `development`           | `development`           |
 | `PLAYWRIGHT_PROJECT_DIR` | Test project path       | `/path/to/tests`        | `process.cwd()`         |
-| `USE_NPM_REPORTER`       | Reporter source         | `false`                 | `false`                 |
 | `BASE_URL`               | Base URL for services   | `http://localhost:3001` | `http://localhost:3001` |
 | `VITE_BASE_URL`          | Base URL for web client | `http://localhost:3001` | Same as BASE_URL        |
 
@@ -267,7 +265,6 @@ console.log('Vite Config ENV Debug:', {
     PORT=3001
     NODE_ENV=development
     PLAYWRIGHT_PROJECT_DIR=/your/test/path
-    USE_NPM_REPORTER=false
     BASE_URL=http://localhost:3001
     VITE_BASE_URL=http://localhost:3001
     VITE_PORT=3000

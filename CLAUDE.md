@@ -65,16 +65,18 @@ The web package follows **Feature-Based Architecture** with **Atomic Design**:
 
 ### 🚨 Reporter Development & Analysis
 
-**Primary Reporter Location (for analysis & development):**
-- **Dashboard package**: `packages/reporter/src/index.ts` (single source of truth)
-- **External sync copy**: `/Users/y.shvydak/QA/probuild-qa/e2e/testUtils/yshvydakReporter.ts`
-- **npm package**: `playwright-dashboard-reporter@1.0.0` ([npm link](https://www.npmjs.com/package/playwright-dashboard-reporter))
+**Primary Reporter Location:**
 
-**Development Workflow:**
-- **For analysis**: Always use `packages/reporter/src/index.ts`
-- **For local dev**: `USE_NPM_REPORTER=false` in `.env` (uses local file)
-- **For production**: npm package used by default (USE_NPM_REPORTER=true or omitted)
-- **npm link active**: Test project linked to local reporter for fast iteration
+- **Source code**: `packages/reporter/src/index.ts` (single source of truth)
+- **npm package**: `playwright-dashboard-reporter@1.0.0` ([npm registry](https://www.npmjs.com/package/playwright-dashboard-reporter))
+
+**Reporter Integration:**
+
+- Dashboard always uses `playwright-dashboard-reporter` from test project's `node_modules`
+- **Development**: Use `npm link` for local development (one-time setup)
+- **Production**: Use regular `npm install` (default)
+
+**📋 For detailed reporter setup and workflows:** See [@docs/REPORTER.md](docs/REPORTER.md)
 
 ### 📚 ALWAYS Use Context7-MCP for Documentation
 
@@ -159,9 +161,8 @@ The web package follows **Feature-Based Architecture** with **Atomic Design**:
 **Core Environment Variables:**
 
 - `PORT` - API server port (default: 3001)
-- `NODE_ENV` - Environment mode
+- `NODE_ENV` - Environment mode (development/production)
 - `PLAYWRIGHT_PROJECT_DIR` - Path to test project (REQUIRED)
-- `USE_NPM_REPORTER` - npm package vs local file (true/false)
 - `BASE_URL` - Base URL for all services
 - `VITE_BASE_URL` - Same as BASE_URL for web client
 
@@ -183,7 +184,6 @@ The web package follows **Feature-Based Architecture** with **Atomic Design**:
 - [@docs/CONFIGURATION.md](docs/CONFIGURATION.md) - Environment configuration details
 - [@docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) - CloudTunnel and production deployment
 - [@docs/API_REFERENCE.md](docs/API_REFERENCE.md) - Complete API endpoints and WebSocket events
-- [@docs/TESTING_METHODOLOGY.md](docs/TESTING_METHODOLOGY.md) - Adaptive testing and debugging approach
 
 **📋 Features Documentation:**
 

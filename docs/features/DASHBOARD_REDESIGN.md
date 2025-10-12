@@ -146,10 +146,10 @@ async getFlakyTests(days: number = 30, thresholdPercent: number = 10): Promise<a
 - **Failure Rate Calculation**: `failedRuns / totalRuns * 100`
 - **History Tracking**: `GROUP_CONCAT` creates comma-separated status history
 - **Configurable Filtering**:
-  - `days` parameter for time range
-  - `thresholdPercent` for minimum failure rate
-  - Excludes tests with 100% failure (always failing, not flaky)
-  - Requires multiple runs (`totalRuns > 1`)
+    - `days` parameter for time range
+    - `thresholdPercent` for minimum failure rate
+    - Excludes tests with 100% failure (always failing, not flaky)
+    - Requires multiple runs (`totalRuns > 1`)
 
 #### Test Timeline
 
@@ -215,12 +215,7 @@ getFlakyTests = async (req: ServiceRequest, res: Response): Promise<Response> =>
         return ResponseHelper.success(res, flakyTests, undefined, flakyTests.length)
     } catch (error) {
         Logger.error('Error fetching flaky tests', error)
-        return ResponseHelper.error(
-            res,
-            error.message,
-            'Failed to fetch flaky tests',
-            500
-        )
+        return ResponseHelper.error(res, error.message, 'Failed to fetch flaky tests', 500)
     }
 }
 
@@ -228,9 +223,7 @@ getTestTimeline = async (req: ServiceRequest, res: Response): Promise<Response> 
     try {
         const {days = 30} = req.query
 
-        const timeline = await this.testService.getTestTimeline(
-            parseInt(days as string) || 30
-        )
+        const timeline = await this.testService.getTestTimeline(parseInt(days as string) || 30)
 
         return ResponseHelper.success(res, timeline, undefined, timeline.length)
     } catch (error) {
@@ -430,14 +423,14 @@ useEffect(() => {
 **UI Features**:
 
 - **Configurable Controls**:
-  - Period dropdown (7/14/30/60 days)
-  - Threshold input (1-99%)
+    - Period dropdown (7/14/30/60 days)
+    - Threshold input (1-99%)
 - **Empty State**: 🎉 emoji with "No flaky tests detected!"
 - **Flaky Test Cards**:
-  - Test name and file path
-  - Flaky percentage (orange color)
-  - Failed/total runs ratio
-  - **History Dots**: Last 15 runs displayed as ✅ (passed) or ❌ (failed)
+    - Test name and file path
+    - Flaky percentage (orange color)
+    - Failed/total runs ratio
+    - **History Dots**: Last 15 runs displayed as ✅ (passed) or ❌ (failed)
 - **Scrollable**: Max height with overflow-y-auto
 
 **Example Card**:
@@ -512,9 +505,9 @@ useEffect(() => {
 
 - **Stacked Areas**: Shows cumulative test counts per day
 - **Tailwind CSS Colors**: RGB values for automatic dark mode support
-  - Passed: `rgb(34 197 94)` (green-500)
-  - Failed: `rgb(239 68 68)` (red-500)
-  - Skipped: `rgb(156 163 175)` (gray-400)
+    - Passed: `rgb(34 197 94)` (green-500)
+    - Failed: `rgb(239 68 68)` (red-500)
+    - Skipped: `rgb(156 163 175)` (gray-400)
 - **Responsive**: Adapts to container width
 - **Custom Tooltip**: Dark background with proper contrast
 - **Date Formatting**: Shows as `MM/DD` format
@@ -593,10 +586,10 @@ As part of the redesign, the following unused components were removed:
 // BEFORE
 export {default as Dashboard} from './Dashboard'
 export {DashboardStats} from './DashboardStats'
-export {ErrorsOverview} from './ErrorsOverview'  // ❌ Removed
-export {RecentTests} from './RecentTests'        // ❌ Removed
+export {ErrorsOverview} from './ErrorsOverview' // ❌ Removed
+export {RecentTests} from './RecentTests' // ❌ Removed
 export {default as StatsCard} from './StatsCard'
-export {SystemInfo} from './SystemInfo'          // ❌ Removed
+export {SystemInfo} from './SystemInfo' // ❌ Removed
 export * from './settings'
 
 // AFTER
@@ -614,9 +607,9 @@ export * from './settings'
 
 ```json
 {
-  "dependencies": {
-    "recharts": "^2.12.7"
-  }
+    "dependencies": {
+        "recharts": "^2.12.7"
+    }
 }
 ```
 
@@ -660,7 +653,16 @@ Authorization: Bearer {jwt-token}
             "failedRuns": 2,
             "passedRuns": 6,
             "flakyPercentage": 25,
-            "history": ["passed", "failed", "passed", "passed", "failed", "passed", "passed", "passed"],
+            "history": [
+                "passed",
+                "failed",
+                "passed",
+                "passed",
+                "failed",
+                "passed",
+                "passed",
+                "passed"
+            ],
             "lastRun": "2025-10-09 14:32:15"
         }
     ],
@@ -739,44 +741,44 @@ Authorization: Bearer {jwt-token}
 ### User Interactions
 
 1. **View Flaky Tests**:
-   - Adjust period (7/14/30/60 days) via dropdown
-   - Adjust threshold (1-99%) via number input
-   - Settings automatically saved to localStorage
-   - Data refetches when settings change
+    - Adjust period (7/14/30/60 days) via dropdown
+    - Adjust threshold (1-99%) via number input
+    - Settings automatically saved to localStorage
+    - Data refetches when settings change
 
 2. **Analyze Test Stability**:
-   - Hover over history dots to see run number and status
-   - View flaky percentage and failed/total ratio
-   - Click test name to view details (future enhancement)
+    - Hover over history dots to see run number and status
+    - View flaky percentage and failed/total ratio
+    - Click test name to view details (future enhancement)
 
 3. **Monitor Trends**:
-   - View stacked area chart showing daily test distribution
-   - Hover over chart to see exact counts per day
-   - Identify patterns in test failures over time
+    - View stacked area chart showing daily test distribution
+    - Hover over chart to see exact counts per day
+    - Identify patterns in test failures over time
 
 4. **Real-time Updates**:
-   - Dashboard updates automatically when tests complete
-   - No manual refresh needed
-   - Live Updates indicator in Header shows connection status
+    - Dashboard updates automatically when tests complete
+    - No manual refresh needed
+    - Live Updates indicator in Header shows connection status
 
 ## Technical Considerations
 
 ### Performance Optimizations
 
 1. **React Query Caching**:
-   - 60-second stale time prevents excessive API requests
-   - Query keys include all parameters for accurate cache invalidation
-   - Manual invalidation via WebSocket ensures fresh data
+    - 60-second stale time prevents excessive API requests
+    - Query keys include all parameters for accurate cache invalidation
+    - Manual invalidation via WebSocket ensures fresh data
 
 2. **Database Indexing**:
-   - Existing indexes on `test_id`, `created_at`, `status` optimize queries
-   - `GROUP BY` operations use indexed columns
-   - `LIMIT 50` prevents excessive data transfer for flaky tests
+    - Existing indexes on `test_id`, `created_at`, `status` optimize queries
+    - `GROUP BY` operations use indexed columns
+    - `LIMIT 50` prevents excessive data transfer for flaky tests
 
 3. **Component Optimization**:
-   - Loading states prevent layout shifts
-   - Empty states reduce unnecessary rendering
-   - Scrollable containers with max-height prevent performance issues
+    - Loading states prevent layout shifts
+    - Empty states reduce unnecessary rendering
+    - Scrollable containers with max-height prevent performance issues
 
 ### localStorage Schema
 

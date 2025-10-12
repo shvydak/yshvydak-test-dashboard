@@ -24,16 +24,19 @@ npm install --save-dev playwright-dashboard-reporter
 
 ```typescript
 // playwright.config.ts
-import { defineConfig } from '@playwright/test';
+import {defineConfig} from '@playwright/test'
 
 export default defineConfig({
-  reporter: [
-    ['playwright-dashboard-reporter', {
-      apiBaseUrl: process.env.DASHBOARD_API_URL || 'http://localhost:3001'
-    }],
-    ['html'] // Keep your existing reporters
-  ]
-});
+    reporter: [
+        [
+            'playwright-dashboard-reporter',
+            {
+                apiBaseUrl: process.env.DASHBOARD_API_URL || 'http://localhost:3001',
+            },
+        ],
+        ['html'], // Keep your existing reporters
+    ],
+})
 ```
 
 ### 2. Set Environment Variable
@@ -56,6 +59,7 @@ npm run dev
 ```
 
 The dashboard will be available at:
+
 - 🌐 Web UI: http://localhost:3000
 - 🔌 API: http://localhost:3001
 
@@ -71,9 +75,9 @@ Results will appear in your Dashboard automatically! 🎉
 
 ```typescript
 interface ReporterOptions {
-  apiBaseUrl?: string;      // Dashboard API URL (default: http://localhost:3001)
-  silent?: boolean;         // Suppress console output (default: false)
-  timeout?: number;         // API request timeout in ms (default: 30000)
+    apiBaseUrl?: string // Dashboard API URL (default: http://localhost:3001)
+    silent?: boolean // Suppress console output (default: false)
+    timeout?: number // API request timeout in ms (default: 30000)
 }
 ```
 
@@ -82,14 +86,17 @@ interface ReporterOptions {
 ```typescript
 // playwright.config.ts
 export default defineConfig({
-  reporter: [
-    ['playwright-dashboard-reporter', {
-      apiBaseUrl: 'https://dashboard.mycompany.com',
-      silent: true,
-      timeout: 60000
-    }]
-  ]
-});
+    reporter: [
+        [
+            'playwright-dashboard-reporter',
+            {
+                apiBaseUrl: 'https://dashboard.mycompany.com',
+                silent: true,
+                timeout: 60000,
+            },
+        ],
+    ],
+})
 ```
 
 ## Environment Variables
@@ -125,7 +132,7 @@ npx playwright test
 # GitHub Actions example
 - name: Run Playwright Tests
   env:
-    DASHBOARD_API_URL: ${{ secrets.DASHBOARD_URL }}
+      DASHBOARD_API_URL: ${{ secrets.DASHBOARD_URL }}
   run: npx playwright test
 ```
 
@@ -167,18 +174,19 @@ When using this reporter, you get access to:
 **Symptom:** Tests run but no data appears in Dashboard
 
 **Solution:**
+
 1. Verify Dashboard server is running:
-   ```bash
-   curl http://localhost:3001/api/health
-   ```
+    ```bash
+    curl http://localhost:3001/api/health
+    ```
 2. Check `DASHBOARD_API_URL` environment variable:
-   ```bash
-   echo $DASHBOARD_API_URL
-   ```
+    ```bash
+    echo $DASHBOARD_API_URL
+    ```
 3. Run diagnostics:
-   ```bash
-   curl http://localhost:3001/api/tests/diagnostics
-   ```
+    ```bash
+    curl http://localhost:3001/api/tests/diagnostics
+    ```
 
 ### Connection Timeout
 
@@ -188,9 +196,12 @@ When using this reporter, you get access to:
 
 ```typescript
 reporter: [
-  ['playwright-dashboard-reporter', {
-    timeout: 60000 // 60 seconds
-  }]
+    [
+        'playwright-dashboard-reporter',
+        {
+            timeout: 60000, // 60 seconds
+        },
+    ],
 ]
 ```
 
@@ -208,6 +219,7 @@ npx playwright test
 ## API Compatibility
 
 This reporter is compatible with:
+
 - Dashboard API version: **1.x and above**
 - Playwright version: **1.40.0 and above**
 - Node.js version: **18.0.0 and above**

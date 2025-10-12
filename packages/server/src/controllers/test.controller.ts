@@ -132,9 +132,7 @@ export class TestController {
     getTestTimeline = async (req: ServiceRequest, res: Response): Promise<Response> => {
         try {
             const {days = 30} = req.query
-            const timeline = await this.testService.getTestTimeline(
-                parseInt(days as string) || 30
-            )
+            const timeline = await this.testService.getTestTimeline(parseInt(days as string) || 30)
             return ResponseHelper.success(res, timeline, undefined, timeline.length)
         } catch (error) {
             Logger.error('Error fetching test timeline', error)

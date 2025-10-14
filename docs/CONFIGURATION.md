@@ -2,14 +2,13 @@
 
 ## Simplified Environment Configuration
 
-The project uses a **minimal .env configuration** where users only need to set 6 core variables. All other configuration values are automatically derived to eliminate duplication and reduce setup complexity.
+The project uses a **minimal .env configuration** where users only need to set 5 core variables. All other configuration values are automatically derived to eliminate duplication and reduce setup complexity.
 
-## Required User Configuration (6 core variables only)
+## Required User Configuration (5 core variables only)
 
 - `PORT` - API server port (default: 3001)
 - `NODE_ENV` - Environment mode (development/production)
 - `PLAYWRIGHT_PROJECT_DIR` - Path to your Playwright project directory (REQUIRED)
-- `USE_NPM_REPORTER` - Use npm package vs local reporter file (true/false)
 - `BASE_URL` - Base URL for all services (e.g., http://localhost:3001)
 - `VITE_BASE_URL` - Same as BASE_URL but accessible to web client
 - `VITE_PORT` - Web development server port (optional, defaults to derived value)
@@ -56,11 +55,10 @@ Environment variables are managed in:
 ## Example .env Configuration
 
 ```bash
-# Core Configuration (6 variables only)
+# Core Configuration (5 variables only)
 PORT=3001                                    # API server port
 NODE_ENV=development                         # Environment mode
 PLAYWRIGHT_PROJECT_DIR=/path/to/your/tests   # Test project location
-USE_NPM_REPORTER=false                       # Use npm package vs local file
 BASE_URL=http://localhost:3001               # Base URL for all services
 VITE_BASE_URL=http://localhost:3001          # Base URL accessible to web client
 VITE_PORT=3000                               # Web dev server port (optional)

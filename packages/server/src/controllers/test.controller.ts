@@ -108,6 +108,43 @@ export class TestController {
         }
     }
 
+    // GET /api/tests/flaky - Get flaky tests
+    getFlakyTests = async (req: ServiceRequest, res: Response): Promise<Response> => {
+        try {
+            const {days = 30, threshold = 10} = req.query
+            const flakyTests = await this.testService.getFlakyTests(
+                parseInt(days as string) || 30,
+                parseInt(threshold as string) || 10
+            )
+            return ResponseHelper.success(res, flakyTests, undefined, flakyTests.length)
+        } catch (error) {
+            Logger.error('Error fetching flaky tests', error)
+            return ResponseHelper.error(
+                res,
+                error instanceof Error ? error.message : 'Unknown error',
+                'Failed to fetch flaky tests',
+                500
+            )
+        }
+    }
+
+    // GET /api/tests/timeline - Get test execution timeline
+    getTestTimeline = async (req: ServiceRequest, res: Response): Promise<Response> => {
+        try {
+            const {days = 30} = req.query
+            const timeline = await this.testService.getTestTimeline(parseInt(days as string) || 30)
+            return ResponseHelper.success(res, timeline, undefined, timeline.length)
+        } catch (error) {
+            Logger.error('Error fetching test timeline', error)
+            return ResponseHelper.error(
+                res,
+                error instanceof Error ? error.message : 'Unknown error',
+                'Failed to fetch test timeline',
+                500
+            )
+        }
+    }
+
     // DELETE /api/tests/all - Clear all test data
     clearAllTests = async (req: ServiceRequest, res: Response): Promise<Response> => {
         try {

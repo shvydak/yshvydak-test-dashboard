@@ -1,8 +1,3 @@
----
-description: general-rules
-alwaysApply: false
----
-
 # CLAUDE.md
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
@@ -18,7 +13,7 @@ YShvydak Test Dashboard is a full-stack Playwright testing dashboard with rerun 
 ```
 packages/
 ├── core/      # Shared TypeScript types & interfaces
-├── reporter/  # @yshvydak/playwright-reporter npm package
+├── reporter/  # playwright-dashboard-reporter npm package
 ├── server/    # Express API + SQLite + WebSocket server (LAYERED ARCHITECTURE)
 └── web/       # React + Vite dashboard UI
 ```
@@ -68,15 +63,20 @@ The web package follows **Feature-Based Architecture** with **Atomic Design**:
 
 ## Critical Development Rules
 
-### 🚨 ALWAYS Check External Reporter for Code Analysis & Development
+### 🚨 Reporter Development & Analysis
 
-**When doing ANY code analysis, development, or debugging - ALWAYS examine the external reporter:**
+**Primary Reporter Location (for analysis & development):**
 
-- Path: `/Users/y.shvydak/QA/probuild-qa/e2e/testUtils/yshvydakReporter.ts`
-- This is the **critical component** that provides ALL data from test execution
-- The reporter is part of this project despite being in external test repository
-- Understanding reporter implementation is essential for all development tasks
-- Always analyze reporter code when working with test data, APIs, or dashboard features
+- **Dashboard package**: `packages/reporter/src/index.ts` (single source of truth)
+- **External sync copy**: `/Users/y.shvydak/QA/probuild-qa/e2e/testUtils/yshvydakReporter.ts`
+- **npm package**: `playwright-dashboard-reporter@1.0.0` ([npm link](https://www.npmjs.com/package/playwright-dashboard-reporter))
+
+**Development Workflow:**
+
+- **For analysis**: Always use `packages/reporter/src/index.ts`
+- **For local dev**: `USE_NPM_REPORTER=false` in `.env` (uses local file)
+- **For production**: npm package used by default (USE_NPM_REPORTER=true or omitted)
+- **npm link active**: Test project linked to local reporter for fast iteration
 
 ### 📚 ALWAYS Use Context7-MCP for Documentation
 
@@ -99,6 +99,8 @@ The web package follows **Feature-Based Architecture** with **Atomic Design**:
 **Authentication system is production-ready and secure:**
 
 - JWT-based user authentication with localStorage storage
+- **Automatic logout on token expiry** with periodic validation (every 5 minutes)
+- **401 response handling** - immediate logout and redirect to login page
 - Simplified local network integration for reporters
 - Environment-based credential management (never hardcode credentials)
 - Production-ready code optimization completed (debug logs removed)
@@ -140,15 +142,19 @@ The web package follows **Feature-Based Architecture** with **Atomic Design**:
 **Complete test execution history with independent attachments per run:**
 
 - Every test execution creates a new database record (INSERT strategy, not UPDATE)
-- Full execution history accessible via History tab in test detail modal
+- Full execution history accessible via always-visible sidebar in test detail modal
 - Each execution maintains independent attachments (videos, screenshots, traces)
-- Users can compare different test runs and view historical trends
+- Users can compare different test runs and view historical trends with one-click switching
 - Pending test results automatically filtered from history view
 - See [@docs/features/HISTORICAL_TEST_TRACKING.md](docs/features/HISTORICAL_TEST_TRACKING.md) for complete documentation
 
-## Current Active Reporter
+## Reporter Package
 
-**External Reporter Path:** `/Users/y.shvydak/QA/probuild-qa/e2e/testUtils/yshvydakReporter.ts`
+**npm package**: [`playwright-dashboard-reporter@1.0.0`](https://www.npmjs.com/package/playwright-dashboard-reporter)
+**Source code**: `packages/reporter/src/index.ts` (single source of truth)
+**External copy**: `/Users/y.shvydak/QA/probuild-qa/e2e/testUtils/yshvydakReporter.ts`
+
+**📋 For reporter documentation:** See [@docs/REPORTER.md](docs/REPORTER.md)
 
 ## Configuration
 
@@ -172,19 +178,26 @@ The web package follows **Feature-Based Architecture** with **Atomic Design**:
 
 ## Documentation References
 
-**📋 Detailed Documentation:**
+**📋 Core Documentation:**
 
 - [@docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) - Complete architecture details
 - [@docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) - Development commands and guidelines
 - [@docs/CONFIGURATION.md](docs/CONFIGURATION.md) - Environment configuration details
 - [@docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) - CloudTunnel and production deployment
 - [@docs/API_REFERENCE.md](docs/API_REFERENCE.md) - Complete API endpoints and WebSocket events
-- [@docs/TIMESTAMP_MANAGEMENT.md](docs/TIMESTAMP_MANAGEMENT.md) - Timestamp architecture implementation
-- [@docs/TESTING_METHODOLOGY.md](docs/TESTING_METHODOLOGY.md) - Adaptive testing and debugging approach
+
+**📋 Features Documentation:**
+
 - [@docs/features/AUTHENTICATION_IMPLEMENTATION.md](docs/features/AUTHENTICATION_IMPLEMENTATION.md) - Authentication system details
 - [@docs/features/CODE_OPTIMIZATION.md](docs/features/CODE_OPTIMIZATION.md) - Production-ready code optimization
+- [@docs/features/DASHBOARD_REDESIGN.md](docs/features/DASHBOARD_REDESIGN.md) - Dashboard redesign with flaky tests detection and timeline visualization
+- [@docs/features/DASHBOARD_SETTINGS.md](docs/features/DASHBOARD_SETTINGS.md) - Dashboard settings modal and theme system
 - [@docs/features/PER_RUN_ATTACHMENTS.md](docs/features/PER_RUN_ATTACHMENTS.md) - Permanent attachment storage system
 - [@docs/features/HISTORICAL_TEST_TRACKING.md](docs/features/HISTORICAL_TEST_TRACKING.md) - Historical test execution tracking
+- [@docs/features/RERUN_FROM_MODAL.md](docs/features/RERUN_FROM_MODAL.md) - Rerun test from modal window with real-time updates
+- [@docs/features/SIMPLIFIED_ENV_CONFIGURATION.md](docs/features/SIMPLIFIED_ENV_CONFIGURATION.md) - Simplified environment setup
+- [@docs/features/TEST_DISPLAY.md](docs/features/TEST_DISPLAY.md) - Test display consistency
+- [@docs/features/TIMESTAMP_MANAGEMENT.md](docs/features/TIMESTAMP_MANAGEMENT.md) - Timestamp architecture
 
 ## Quick API Reference
 
@@ -192,8 +205,9 @@ The web package follows **Feature-Based Architecture** with **Atomic Design**:
 **Test Management:** `GET /api/tests`, `POST /api/tests`, `DELETE /api/tests/all`
 **Test Execution:** `POST /api/tests/run-all`, `POST /api/tests/:id/rerun`
 **Test History:** `GET /api/tests/:id/history` - Get execution history for a test
+**Dashboard Analytics:** `GET /api/tests/flaky?days=30&threshold=10`, `GET /api/tests/timeline?days=30`
 **Process Tracking:** `POST /api/tests/process-start`, `POST /api/tests/process-end`
 
-**WebSocket Events:** `connection:status`, `process:started`, `process:ended`, `test:status`
+**WebSocket Events:** `connection:status`, `process:started`, `process:ended`, `test:status`, `run:completed`
 
 All endpoints return `ApiResponse<T>` format

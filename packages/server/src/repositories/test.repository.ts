@@ -99,6 +99,78 @@ export class TestRepository extends BaseRepository implements ITestRepository {
         return this.dbManager.getDataStats()
     }
 
+    async getFlakyTests(days: number = 30, thresholdPercent: number = 10): Promise<any[]> {
+        const sql = `
+            SELECT
+                tr.test_id as testId,
+                tr.name,
+                tr.file_path as filePath,
+                COUNT(*) as totalRuns,
+                SUM(CASE WHEN tr.status = 'failed' THEN 1 ELSE 0 END) as failedRuns,
+                SUM(CASE WHEN tr.status = 'passed' THEN 1 ELSE 0 END) as passedRuns,
+                CAST(SUM(CASE WHEN tr.status = 'failed' THEN 1 ELSE 0 END) * 100.0 / COUNT(*) AS INTEGER) as flakyPercentage,
+                GROUP_CONCAT(
+                    CASE
+                        WHEN tr.status = 'passed' THEN 'passed'
+                        WHEN tr.status = 'failed' THEN 'failed'
+                        ELSE 'other'
+                    END
+                ) as history,
+                MAX(tr.updated_at) as lastRun
+            FROM test_results tr
+            WHERE tr.created_at >= datetime('now', '-' || ? || ' days')
+                AND tr.status IN ('passed', 'failed')
+            GROUP BY tr.test_id, tr.name, tr.file_path
+            HAVING totalRuns > 1
+                AND flakyPercentage >= ?
+                AND flakyPercentage < 100
+            ORDER BY flakyPercentage DESC, totalRuns DESC
+            LIMIT 50
+        `
+
+        const rows = await this.queryAll<any>(sql, [days, thresholdPercent])
+
+        return rows.map((row) => ({
+            testId: row.testId,
+            name: row.name,
+            filePath: row.filePath,
+            totalRuns: row.totalRuns,
+            failedRuns: row.failedRuns,
+            passedRuns: row.passedRuns,
+            flakyPercentage: row.flakyPercentage,
+            history: row.history ? row.history.split(',') : [],
+            lastRun: row.lastRun,
+        }))
+    }
+
+    async getTestTimeline(days: number = 30): Promise<any[]> {
+        const sql = `
+            SELECT
+                DATE(tr.created_at) as date,
+                COUNT(*) as total,
+                SUM(CASE WHEN tr.status = 'passed' THEN 1 ELSE 0 END) as passed,
+                SUM(CASE WHEN tr.status = 'failed' THEN 1 ELSE 0 END) as failed,
+                SUM(CASE WHEN tr.status = 'skipped' THEN 1 ELSE 0 END) as skipped,
+                SUM(CASE WHEN tr.status = 'timedOut' THEN 1 ELSE 0 END) as timedOut
+            FROM test_results tr
+            WHERE tr.created_at >= datetime('now', '-' || ? || ' days')
+                AND tr.status IN ('passed', 'failed', 'skipped', 'timedOut')
+            GROUP BY DATE(tr.created_at)
+            ORDER BY date ASC
+        `
+
+        const rows = await this.queryAll<any>(sql, [days])
+
+        return rows.map((row) => ({
+            date: row.date,
+            total: row.total,
+            passed: row.passed,
+            failed: row.failed,
+            skipped: row.skipped,
+            timedOut: row.timedOut,
+        }))
+    }
+
     private mapRowToTestResult(row: TestResultRow): TestResult {
         return {
             id: row.id,

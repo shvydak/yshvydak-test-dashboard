@@ -222,7 +222,7 @@ export class PlaywrightService implements IPlaywrightService {
     }> {
         const issues: string[] = []
         const projectDir = config.playwright.projectDir
-        const reporterPath = path.resolve(projectDir, config.playwright.reporterPath)
+        const configReporterPath = config.playwright.reporterPath
 
         // Check if project directory exists
         const fs = await import('fs')
@@ -237,10 +237,30 @@ export class PlaywrightService implements IPlaywrightService {
             issues.push(`Playwright config not found in: ${projectDir}`)
         }
 
-        // Check if reporter file exists
-        const reporterExists = fs.existsSync(reporterPath)
+        // Check if reporter npm package exists in node_modules
+        const packagePath = path.join(projectDir, 'node_modules', configReporterPath)
+        const reporterPath = packagePath
+        let reporterExists = fs.existsSync(packagePath)
+
         if (!reporterExists) {
-            issues.push(`Reporter file not found: ${reporterPath}`)
+            issues.push(`Reporter npm package not found: ${configReporterPath}`)
+        } else {
+            // Verify package has valid entry point
+            const packageJsonPath = path.join(packagePath, 'package.json')
+            if (fs.existsSync(packageJsonPath)) {
+                try {
+                    const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf-8'))
+                    const mainFile = packageJson.main || 'index.js'
+                    const mainFilePath = path.join(packagePath, mainFile)
+                    if (!fs.existsSync(mainFilePath)) {
+                        issues.push(`Reporter package main file not found: ${mainFile}`)
+                        reporterExists = false
+                    }
+                } catch (error) {
+                    issues.push(`Invalid package.json in reporter package`)
+                    reporterExists = false
+                }
+            }
         }
 
         // Check if @playwright/test is installed
@@ -253,6 +273,7 @@ export class PlaywrightService implements IPlaywrightService {
             projectDir,
             reporterPath,
             reporterExists,
+            nodeEnv: config.server.environment,
             issuesCount: issues.length,
         })
 

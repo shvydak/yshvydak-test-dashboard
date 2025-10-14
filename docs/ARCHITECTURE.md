@@ -108,7 +108,7 @@ The dashboard uses a **dynamic reporter injection** architecture that provides c
 
 - **Dynamic Mode** (Recommended): Dashboard injects reporter automatically
 - **Legacy Mode**: Manual reporter configuration in `playwright.config.ts`
-- **Environment Control**: `USE_NPM_REPORTER=true` switches to npm package
+- **Simple Integration**: Reporter resolved from test project's `node_modules/playwright-dashboard-reporter`
 
 ### Diagnostics & Health Checks
 

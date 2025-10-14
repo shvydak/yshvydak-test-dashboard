@@ -13,7 +13,7 @@ YShvydak Test Dashboard is a full-stack Playwright testing dashboard with rerun 
 ```
 packages/
 ├── core/      # Shared TypeScript types & interfaces
-├── reporter/  # @yshvydak/playwright-reporter npm package
+├── reporter/  # playwright-dashboard-reporter npm package
 ├── server/    # Express API + SQLite + WebSocket server (LAYERED ARCHITECTURE)
 └── web/       # React + Vite dashboard UI
 ```
@@ -63,15 +63,20 @@ The web package follows **Feature-Based Architecture** with **Atomic Design**:
 
 ## Critical Development Rules
 
-### 🚨 ALWAYS Check External Reporter for Code Analysis & Development
+### 🚨 Reporter Development & Analysis
 
-**When doing ANY code analysis, development, or debugging - ALWAYS examine the external reporter:**
+**Primary Reporter Location:**
 
-- Path: `/Users/y.shvydak/QA/probuild-qa/e2e/testUtils/yshvydakReporter.ts`
-- This is the **critical component** that provides ALL data from test execution
-- The reporter is part of this project despite being in external test repository
-- Understanding reporter implementation is essential for all development tasks
-- Always analyze reporter code when working with test data, APIs, or dashboard features
+- **Source code**: `packages/reporter/src/index.ts` (single source of truth)
+- **npm package**: `playwright-dashboard-reporter@1.0.0` ([npm registry](https://www.npmjs.com/package/playwright-dashboard-reporter))
+
+**Reporter Integration:**
+
+- Dashboard always uses `playwright-dashboard-reporter` from test project's `node_modules`
+- **Development**: Use `npm link` for local development (one-time setup)
+- **Production**: Use regular `npm install` (default)
+
+**📋 For detailed reporter setup and workflows:** See [@docs/REPORTER.md](docs/REPORTER.md)
 
 ### 📚 ALWAYS Use Context7-MCP for Documentation
 
@@ -143,18 +148,21 @@ The web package follows **Feature-Based Architecture** with **Atomic Design**:
 - Pending test results automatically filtered from history view
 - See [@docs/features/HISTORICAL_TEST_TRACKING.md](docs/features/HISTORICAL_TEST_TRACKING.md) for complete documentation
 
-## Current Active Reporter
+## Reporter Package
 
-**External Reporter Path:** `/Users/y.shvydak/QA/probuild-qa/e2e/testUtils/yshvydakReporter.ts`
+**npm package**: [`playwright-dashboard-reporter@1.0.0`](https://www.npmjs.com/package/playwright-dashboard-reporter)
+**Source code**: `packages/reporter/src/index.ts` (single source of truth)
+**External copy**: `/Users/y.shvydak/QA/probuild-qa/e2e/testUtils/yshvydakReporter.ts`
+
+**📋 For reporter documentation:** See [@docs/REPORTER.md](docs/REPORTER.md)
 
 ## Configuration
 
 **Core Environment Variables:**
 
 - `PORT` - API server port (default: 3001)
-- `NODE_ENV` - Environment mode
+- `NODE_ENV` - Environment mode (development/production)
 - `PLAYWRIGHT_PROJECT_DIR` - Path to test project (REQUIRED)
-- `USE_NPM_REPORTER` - npm package vs local file (true/false)
 - `BASE_URL` - Base URL for all services
 - `VITE_BASE_URL` - Same as BASE_URL for web client
 
@@ -176,7 +184,6 @@ The web package follows **Feature-Based Architecture** with **Atomic Design**:
 - [@docs/CONFIGURATION.md](docs/CONFIGURATION.md) - Environment configuration details
 - [@docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) - CloudTunnel and production deployment
 - [@docs/API_REFERENCE.md](docs/API_REFERENCE.md) - Complete API endpoints and WebSocket events
-- [@docs/TESTING_METHODOLOGY.md](docs/TESTING_METHODOLOGY.md) - Adaptive testing and debugging approach
 
 **📋 Features Documentation:**
 

@@ -296,7 +296,16 @@ Authorization: Bearer {jwt-token}
             "failedRuns": 2,
             "passedRuns": 6,
             "flakyPercentage": 25,
-            "history": ["passed", "failed", "passed", "passed", "failed", "passed", "passed", "passed"],
+            "history": [
+                "passed",
+                "failed",
+                "passed",
+                "passed",
+                "failed",
+                "passed",
+                "passed",
+                "passed"
+            ],
             "lastRun": "2025-10-09 14:32:15"
         }
     ],

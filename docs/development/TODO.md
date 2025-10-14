@@ -7,7 +7,6 @@
 - `[ ]` Abbility to set workers in the settings modal window
 - `[ ]` Failed group tests: run only failed tests (not all tests in the group)
 - `[ ]` Add progress bar
-- `[ ]` Dashboard???
 - `[ ]` Run All Tests loading only on run all tests or show what test executes now
 
 ### Completed Issues ✅

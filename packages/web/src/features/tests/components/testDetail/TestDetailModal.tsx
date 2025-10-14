@@ -90,46 +90,46 @@ export function TestDetailModal({test, isOpen, onClose}: TestDetailModalProps) {
                 <ModalBackdrop onClick={handleClose} blur="sm" />
 
                 <div className="relative bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-7xl w-full h-[90vh] flex flex-col overflow-hidden">
-                <TestDetailHeader
-                    testName={test.name}
-                    testStatus={currentExecution?.status || test.status}
-                    executionDate={currentExecution?.createdAt}
-                    isLatest={!selectedExecutionId}
-                    onClose={handleClose}
-                    onBackToLatest={() => selectExecution(null)}
-                />
-
-                <TestDetailTabs activeTab={activeTab} onTabChange={setActiveTab} />
-
-                {/* Main Content with Sidebar Layout */}
-                <div className="flex flex-1 overflow-hidden">
-                    {/* Tab Content Area */}
-                    <div className="flex-1 p-6 overflow-y-auto">
-                        {activeTab === 'overview' && (
-                            <TestOverviewTab
-                                test={currentExecution!}
-                                attachments={attachments}
-                                attachmentsLoading={loading}
-                                attachmentsError={error}
-                                onAttachmentsError={setError}
-                            />
-                        )}
-
-                        {activeTab === 'steps' && <TestStepsTab test={currentExecution!} />}
-                    </div>
-
-                    {/* History Sidebar */}
-                    <ExecutionSidebar
-                        executions={executions}
-                        currentExecutionId={currentExecution?.id || test.id}
-                        onSelectExecution={handleSelectExecution}
-                        testId={currentExecution?.id || test.id}
-                        onRerun={handleRerun}
-                        loading={historyLoading}
-                        error={historyError || undefined}
+                    <TestDetailHeader
+                        testName={test.name}
+                        testStatus={currentExecution?.status || test.status}
+                        executionDate={currentExecution?.createdAt}
+                        isLatest={!selectedExecutionId}
+                        onClose={handleClose}
+                        onBackToLatest={() => selectExecution(null)}
                     />
+
+                    <TestDetailTabs activeTab={activeTab} onTabChange={setActiveTab} />
+
+                    {/* Main Content with Sidebar Layout */}
+                    <div className="flex flex-1 overflow-hidden">
+                        {/* Tab Content Area */}
+                        <div className="flex-1 p-6 overflow-y-auto">
+                            {activeTab === 'overview' && (
+                                <TestOverviewTab
+                                    test={currentExecution!}
+                                    attachments={attachments}
+                                    attachmentsLoading={loading}
+                                    attachmentsError={error}
+                                    onAttachmentsError={setError}
+                                />
+                            )}
+
+                            {activeTab === 'steps' && <TestStepsTab test={currentExecution!} />}
+                        </div>
+
+                        {/* History Sidebar */}
+                        <ExecutionSidebar
+                            executions={executions}
+                            currentExecutionId={currentExecution?.id || test.id}
+                            onSelectExecution={handleSelectExecution}
+                            testId={currentExecution?.id || test.id}
+                            onRerun={handleRerun}
+                            loading={historyLoading}
+                            error={historyError || undefined}
+                        />
+                    </div>
                 </div>
-            </div>
             </div>
         </div>
     )

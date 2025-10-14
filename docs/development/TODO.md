@@ -4,6 +4,8 @@
 
 ### Active Issues
 
+- `[ ]` Test to dashboard
+- `[ ]` Remove from documentation [reporter] - we use cli command!
 - `[ ]` Abbility to set workers in the settings modal window
 - `[ ]` Failed group tests: run only failed tests (not all tests in the group)
 - `[ ]` Add progress bar

@@ -32,6 +32,11 @@ export default defineConfig({
         // Alternative specific approach:
         // allowedHosts: ['test-dashboard.shvydak.com', 'localhost', '127.0.0.1', '.shvydak.com'],
     },
+    preview: {
+        // Use the same port configuration for production preview mode
+        port: parseInt(process.env.VITE_PORT || '3000'),
+        host: '0.0.0.0',
+    },
     build: {
         outDir: 'dist',
         sourcemap: true,

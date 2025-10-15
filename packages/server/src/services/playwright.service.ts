@@ -286,20 +286,17 @@ export class PlaywrightService implements IPlaywrightService {
      * Spawns a Playwright process with the given arguments and options
      */
     private spawnPlaywrightProcess(args: string[], options: PlaywrightSpawnOptions): ChildProcess {
-        const playwrightTimeoutEnv = process.env.PLAYWRIGHT_TIMEOUT_ENV || config.server.environment
-
         const env = {
             ...process.env,
             DASHBOARD_API_URL: config.api.baseUrl,
             ...options.env,
-            NODE_ENV: playwrightTimeoutEnv,
+            NODE_ENV: config.server.environment,
         }
 
         Logger.info('Spawning Playwright process', {
             args: args.join(' '),
             type: options.type,
             NODE_ENV: env.NODE_ENV,
-            PLAYWRIGHT_TIMEOUT_ENV: playwrightTimeoutEnv,
         })
 
         return spawn('npx', args, {

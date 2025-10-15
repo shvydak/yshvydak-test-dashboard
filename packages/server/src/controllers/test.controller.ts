@@ -381,6 +381,9 @@ export class TestController {
                 return
             }
 
+            Logger.info(`⏳ Adding 1 second delay to ensure all test results are processed...`)
+            await new Promise((resolve) => setTimeout(resolve, 1000))
+
             // Check if process exists before removal
             const wasProcessRunning = activeProcessesTracker.isProcessRunning(processData.runId)
             Logger.info(`🔍 Process ${processData.runId} was running: ${wasProcessRunning}`)

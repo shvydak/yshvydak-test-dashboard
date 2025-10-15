@@ -158,8 +158,14 @@ class YShvydakReporter implements Reporter {
         const failed = this.results.filter((r) => r.status === 'failed').length
         const skipped = this.results.filter((r) => r.status === 'skipped').length
 
+        console.log(`\n⏳ Waiting for all test results to be sent to dashboard...`)
+
+        await new Promise((resolve) => setTimeout(resolve, 1000))
+
+        console.log(`✅ All test results should be processed by dashboard now`)
+
         // Update test run
-        this.updateTestRun({
+        await this.updateTestRun({
             id: this.runId,
             status: result.status === 'passed' ? 'completed' : 'failed',
             timestamp: new Date().toISOString(),
@@ -331,6 +337,7 @@ class YShvydakReporter implements Reporter {
     }
 
     private async sendTestResult(result: YShvydakTestResult) {
+        const startTime = Date.now()
         try {
             const response = await fetch(`${this.apiBaseUrl}/api/tests`, {
                 method: 'POST',
@@ -340,13 +347,16 @@ class YShvydakReporter implements Reporter {
                 body: JSON.stringify(result),
             })
 
+            const duration = Date.now() - startTime
+
             if (!response.ok) {
-                console.warn(`⚠️  Failed to send test result: ${response.status}`)
+                console.warn(`⚠️  Failed to send test result (${duration}ms): ${response.status}`)
                 const responseText = await response.text()
                 console.warn(`⚠️  Response: ${responseText}`)
             }
         } catch (error) {
-            console.warn(`⚠️  Dashboard API not available: ${error}`)
+            const duration = Date.now() - startTime
+            console.warn(`⚠️  Dashboard API not available (${duration}ms): ${error}`)
         }
     }
 

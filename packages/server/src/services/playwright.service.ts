@@ -61,7 +61,13 @@ export class PlaywrightService implements IPlaywrightService {
         }
         args.push(`--reporter=${config.playwright.reporterPath}`)
 
-        const process = this.spawnPlaywrightProcess(args, {runId, type: 'run-all'})
+        const process = this.spawnPlaywrightProcess(args, {
+            runId,
+            type: 'run-all',
+            env: {
+                RUN_ID: runId,
+            },
+        })
 
         return {
             runId,
@@ -83,7 +89,14 @@ export class PlaywrightService implements IPlaywrightService {
         }
         args.push(`--reporter=${config.playwright.reporterPath}`)
 
-        const process = this.spawnPlaywrightProcess(args, {runId, type: 'run-group', filePath})
+        const process = this.spawnPlaywrightProcess(args, {
+            runId,
+            type: 'run-group',
+            filePath,
+            env: {
+                RUN_ID: runId,
+            },
+        })
 
         return {
             runId,

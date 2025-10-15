@@ -63,7 +63,7 @@ interface ProcessEndData {
 }
 
 class YShvydakReporter implements Reporter {
-    private runId: string = uuidv4()
+    private runId: string
     private results: YShvydakTestResult[] = []
     private startTime: number = 0
     private apiBaseUrl: string
@@ -78,6 +78,9 @@ class YShvydakReporter implements Reporter {
         }
 
         this.apiBaseUrl = baseUrl
+
+        // Use RUN_ID from environment if provided by dashboard, otherwise generate new one
+        this.runId = process.env.RUN_ID || process.env.RERUN_ID || uuidv4()
 
         console.log(`🎭 YShvydak Dashboard Reporter initialized (Run ID: ${this.runId})`)
         console.log(`🌐 API Base URL: ${this.apiBaseUrl}`)
@@ -101,18 +104,6 @@ class YShvydakReporter implements Reporter {
             runId: this.runId,
             type: 'run-all',
             totalTests: suite.allTests().length,
-        })
-
-        // Create test run
-        this.createTestRun({
-            id: this.runId,
-            status: 'running',
-            timestamp: new Date().toISOString(),
-            totalTests: suite.allTests().length,
-            passedTests: 0,
-            failedTests: 0,
-            skippedTests: 0,
-            duration: 0,
         })
 
         console.log(`🚀 Starting test run with ${suite.allTests().length} tests`)
@@ -357,26 +348,6 @@ class YShvydakReporter implements Reporter {
         } catch (error) {
             const duration = Date.now() - startTime
             console.warn(`⚠️  Dashboard API not available (${duration}ms): ${error}`)
-        }
-    }
-
-    private async createTestRun(run: YShvydakTestRun) {
-        try {
-            const response = await fetch(`${this.apiBaseUrl}/api/runs`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(run),
-            })
-
-            if (!response.ok) {
-                console.warn(`⚠️  Failed to create test run: ${response.status}`)
-                const responseText = await response.text()
-                console.warn(`⚠️  Response: ${responseText}`)
-            }
-        } catch (error) {
-            console.warn(`⚠️  Dashboard API not available: ${error}`)
         }
     }
 

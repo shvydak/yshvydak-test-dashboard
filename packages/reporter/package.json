@@ -1,6 +1,6 @@
 {
     "name": "playwright-dashboard-reporter",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "description": "Real-time Playwright test dashboard with rerun capabilities and comprehensive test reporting",
     "main": "dist/index.js",
     "module": "dist/index.mjs",

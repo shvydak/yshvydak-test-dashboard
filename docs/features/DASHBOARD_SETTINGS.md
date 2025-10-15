@@ -37,16 +37,17 @@ The Settings feature follows the project's **Feature-Based Architecture** with m
 │  - Organized sections                                       │
 └────────────────┬────────────────────────────────────────────┘
                  │
-                 ├──────────────────┬─────────────────────────┐
-                 ▼                  ▼                         ▼
-┌──────────────────────┐  ┌──────────────────┐  ┌──────────────────────┐
-│ SettingsTheme        │  │ SettingsActions  │  │ Future Sections      │
-│ Section              │  │ Section          │  │ (Extensible)         │
-│                      │  │                  │  │                      │
-│ - Auto/Light/Dark    │  │ - Discover Tests │  │ - Notifications      │
-│ - localStorage       │  │ - Health Check   │  │ - Display prefs      │
-│ - useTheme hook      │  │ - Clear Data     │  │ - Export/Import      │
-└──────────────────────┘  └──────────────────┘  └──────────────────────┘
+                 ├──────────────────┬───────────────────┬─────────────────────────┐
+                 ▼                  ▼                   ▼                         ▼
+┌──────────────────────┐  ┌──────────────────┐  ┌──────────────────┐  ┌──────────────────────┐
+│ SettingsTheme        │  │ SettingsTest     │  │ SettingsActions  │  │ Future Sections      │
+│ Section              │  │ Execution        │  │ Section          │  │ (Extensible)         │
+│                      │  │ Section          │  │                  │  │                      │
+│ - Auto/Light/Dark    │  │ - Max Workers    │  │ - Discover Tests │  │ - Notifications      │
+│ - localStorage       │  │ - localStorage   │  │ - Health Check   │  │ - Display prefs      │
+│ - useTheme hook      │  │ - usePlaywright  │  │ - Clear Data     │  │ - Export/Import      │
+│                      │  │   Workers hook   │  │                  │  │                      │
+└──────────────────────┘  └──────────────────┘  └──────────────────┘  └──────────────────────┘
 ```
 
 ### File Structure
@@ -54,19 +55,21 @@ The Settings feature follows the project's **Feature-Based Architecture** with m
 ```
 packages/web/src/
 ├── hooks/
-│   └── useTheme.ts                           # Theme management hook
+│   ├── useTheme.ts                                    # Theme management hook
+│   └── usePlaywrightWorkers.ts                        # Playwright workers configuration hook
 ├── features/
 │   └── dashboard/
 │       └── components/
 │           └── settings/
-│               ├── SettingsModal.tsx          # Main modal container
-│               ├── SettingsSection.tsx        # Reusable section wrapper
-│               ├── SettingsThemeSection.tsx   # Theme selector (Auto/Light/Dark)
-│               ├── SettingsActionsSection.tsx # Admin actions
-│               └── index.ts                   # Barrel export
+│               ├── SettingsModal.tsx                  # Main modal container
+│               ├── SettingsSection.tsx                # Reusable section wrapper
+│               ├── SettingsThemeSection.tsx           # Theme selector (Auto/Light/Dark)
+│               ├── SettingsTestExecutionSection.tsx   # Test execution settings (max workers)
+│               ├── SettingsActionsSection.tsx         # Admin actions
+│               └── index.ts                           # Barrel export
 └── shared/
     └── components/
-        └── Header.tsx                         # Settings button integration
+        └── Header.tsx                                 # Settings button integration
 ```
 
 ## Theme System
@@ -230,6 +233,55 @@ Theme selector with three visual buttons.
 
 - **Selected**: Blue border, blue background, highlighted
 - **Unselected**: Gray background, transparent border, hover effect
+
+### SettingsTestExecutionSection
+
+**Location**: `packages/web/src/features/dashboard/components/settings/SettingsTestExecutionSection.tsx`
+
+Test execution configuration with Playwright workers control.
+
+**UI Design**:
+
+```
+┌─────────────────────────────────────────────────────────┐
+│ Test Execution                                           │
+│ Configure test execution behavior                        │
+│                                                          │
+│ Maximum Workers: [2]  [Reset to default (2)]           │
+│ Limit concurrent test execution (1-16 workers)          │
+└─────────────────────────────────────────────────────────┘
+```
+
+**Features**:
+
+- **Number Input**: Range 1-16 workers (default: 2)
+- **Reset Button**: Restore default value (2 workers)
+- **localStorage Persistence**: Saved with key `'playwright_workers'`
+- **Real-time Updates**: Changes apply immediately to next test run
+- **Validation**: Only accepts integer values within range
+
+**Hook Integration**:
+
+Uses `usePlaywrightWorkers()` hook that provides:
+
+- `workers`: Current workers count (number)
+- `setWorkers(count)`: Update workers count with validation
+- `resetToDefault()`: Reset to default (2 workers)
+- `isValid(count)`: Validate workers count (1-16 range)
+
+**Backend Integration**:
+
+Workers count is sent with all test execution API calls:
+
+- `POST /api/tests/run-all` - Body: `{maxWorkers: 2}`
+- `POST /api/tests/run-group` - Body: `{filePath: "...", maxWorkers: 2}`
+- `POST /api/tests/:id/rerun` - Body: `{maxWorkers: 2}`
+
+Backend adds `--workers=N` flag to Playwright CLI commands:
+
+```bash
+npx playwright test --workers=2 --reporter=...
+```
 
 ### SettingsActionsSection
 

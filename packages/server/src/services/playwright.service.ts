@@ -2,15 +2,25 @@ import {spawn, ChildProcess} from 'child_process'
 import path from 'path'
 import {v4 as uuidv4} from 'uuid'
 import {IPlaywrightService, TestRunProcess, DiscoveredTest} from '../types/service.types'
+import {
+    PlaywrightListOutput,
+    PlaywrightSpec,
+    PlaywrightSpawnOptions,
+    ValidationResult,
+} from '../types/playwright.types'
 import {config} from '../config/environment.config'
+import {PLAYWRIGHT_CONSTANTS} from '../config/constants'
 import {Logger} from '../utils/logger.util'
 
 export class PlaywrightService implements IPlaywrightService {
+    // ============================================================================
+    // TEST DISCOVERY & EXECUTION
+    // ============================================================================
+
     async discoverTests(): Promise<DiscoveredTest[]> {
         Logger.info('Discovering tests', {projectDir: config.playwright.projectDir})
 
-        // Execute playwright test --list command directly
-        let playwrightData: any
+        let playwrightData: PlaywrightListOutput
 
         try {
             playwrightData = await this.executePlaywrightListCommand()
@@ -27,49 +37,13 @@ export class PlaywrightService implements IPlaywrightService {
         for (const suite of playwrightData.suites || []) {
             // Handle top-level specs directly under the suite
             for (const spec of suite.specs || []) {
-                // Generate stable test ID (same as in reporter)
-                const fullFilePath = `e2e/tests/${spec.file}`
-                const stableTestId = this.generateStableTestId(fullFilePath, spec.title)
-
-                discoveredTests.push({
-                    id: uuidv4(),
-                    testId: stableTestId,
-                    runId: null,
-                    name: spec.title,
-                    filePath: fullFilePath,
-                    status: 'pending',
-                    duration: 0,
-                    metadata: JSON.stringify({
-                        line: spec.line || 0,
-                        playwrightId: spec.id || null,
-                        discoveredAt: new Date().toISOString(),
-                    }),
-                    timestamp: new Date().toISOString(),
-                })
+                discoveredTests.push(this.createDiscoveredTest(spec))
             }
 
             // Handle nested specs within sub-suites
             for (const subSuite of suite.suites || []) {
                 for (const spec of subSuite.specs || []) {
-                    // Generate stable test ID (same as in reporter)
-                    const fullFilePath = `e2e/tests/${spec.file}`
-                    const stableTestId = this.generateStableTestId(fullFilePath, spec.title)
-
-                    discoveredTests.push({
-                        id: uuidv4(),
-                        testId: stableTestId,
-                        runId: null,
-                        name: spec.title,
-                        filePath: fullFilePath,
-                        status: 'pending',
-                        duration: 0,
-                        metadata: JSON.stringify({
-                            line: spec.line || 0,
-                            playwrightId: spec.id || null,
-                            discoveredAt: new Date().toISOString(),
-                        }),
-                        timestamp: new Date().toISOString(),
-                    })
+                    discoveredTests.push(this.createDiscoveredTest(spec))
                 }
             }
         }
@@ -77,14 +51,17 @@ export class PlaywrightService implements IPlaywrightService {
         return discoveredTests
     }
 
-    async runAllTests(): Promise<TestRunProcess> {
+    async runAllTests(maxWorkers?: number): Promise<TestRunProcess> {
         const runId = uuidv4()
         Logger.testRun('run-all', runId)
 
-        const process = this.spawnPlaywrightProcess(
-            ['playwright', 'test', `--reporter=${config.playwright.reporterPath}`],
-            {runId, type: 'run-all'}
-        )
+        const args = ['playwright', 'test']
+        if (maxWorkers) {
+            args.push(`--workers=${maxWorkers}`)
+        }
+        args.push(`--reporter=${config.playwright.reporterPath}`)
+
+        const process = this.spawnPlaywrightProcess(args, {runId, type: 'run-all'})
 
         return {
             runId,
@@ -94,20 +71,19 @@ export class PlaywrightService implements IPlaywrightService {
         }
     }
 
-    async runTestGroup(filePath: string): Promise<TestRunProcess> {
+    async runTestGroup(filePath: string, maxWorkers?: number): Promise<TestRunProcess> {
         const runId = uuidv4()
         Logger.testRun('run-group', runId)
 
-        // Handle both cases: filePath with or without 'e2e/tests/' prefix
-        let testFilePath = filePath
-        if (!filePath.startsWith('e2e/tests/')) {
-            testFilePath = path.join('e2e/tests', filePath)
-        }
+        const normalizedPath = this.normalizeFilePath(filePath)
 
-        const process = this.spawnPlaywrightProcess(
-            ['playwright', 'test', testFilePath, `--reporter=${config.playwright.reporterPath}`],
-            {runId, type: 'run-group', filePath}
-        )
+        const args = ['playwright', 'test', normalizedPath]
+        if (maxWorkers) {
+            args.push(`--workers=${maxWorkers}`)
+        }
+        args.push(`--reporter=${config.playwright.reporterPath}`)
+
+        const process = this.spawnPlaywrightProcess(args, {runId, type: 'run-group', filePath})
 
         return {
             runId,
@@ -117,28 +93,28 @@ export class PlaywrightService implements IPlaywrightService {
         }
     }
 
-    async rerunSingleTest(testFile: string, testName: string): Promise<TestRunProcess> {
+    async rerunSingleTest(
+        testFile: string,
+        testName: string,
+        maxWorkers?: number
+    ): Promise<TestRunProcess> {
         const runId = uuidv4()
         Logger.testRerun(testName, runId)
 
-        const process = this.spawnPlaywrightProcess(
-            [
-                'playwright',
-                'test',
-                testFile,
-                '--grep',
-                testName,
-                `--reporter=json,${config.playwright.reporterPath}`,
-            ],
-            {
-                runId,
-                type: 'rerun',
-                env: {
-                    RERUN_MODE: 'true',
-                    RERUN_ID: runId,
-                },
-            }
-        )
+        const args = ['playwright', 'test', testFile, '--grep', testName]
+        if (maxWorkers) {
+            args.push(`--workers=${maxWorkers}`)
+        }
+        args.push(`--reporter=json,${config.playwright.reporterPath}`)
+
+        const process = this.spawnPlaywrightProcess(args, {
+            runId,
+            type: 'rerun',
+            env: {
+                RERUN_MODE: 'true',
+                RERUN_ID: runId,
+            },
+        })
 
         return {
             runId,
@@ -148,131 +124,26 @@ export class PlaywrightService implements IPlaywrightService {
         }
     }
 
-    private spawnPlaywrightProcess(
-        args: string[],
-        options: {runId: string; type: string; filePath?: string; env?: Record<string, string>}
-    ): ChildProcess {
-        return spawn('npx', args, {
-            cwd: config.playwright.projectDir,
-            stdio: options.type === 'rerun' ? ['ignore', 'pipe', 'pipe'] : 'inherit',
-            env: {
-                ...process.env,
-                DASHBOARD_API_URL: config.api.baseUrl,
-                ...options.env,
-            },
-        })
-    }
+    // ============================================================================
+    // VALIDATION & DIAGNOSTICS
+    // ============================================================================
 
-    private async executePlaywrightListCommand(): Promise<any> {
-        return new Promise((resolve, reject) => {
-            const process = spawn('npx', ['playwright', 'test', '--list', '--reporter=json'], {
-                cwd: config.playwright.projectDir,
-                stdio: ['ignore', 'pipe', 'pipe'],
-            })
-
-            let stdout = ''
-            let stderr = ''
-
-            process.stdout?.on('data', (data) => {
-                stdout += data.toString()
-            })
-
-            process.stderr?.on('data', (data) => {
-                stderr += data.toString()
-            })
-
-            process.on('close', (code) => {
-                if (code !== 0) {
-                    reject(new Error(`Playwright command failed with code ${code}: ${stderr}`))
-                    return
-                }
-
-                try {
-                    const jsonData = JSON.parse(stdout)
-                    resolve(jsonData)
-                } catch (parseError) {
-                    reject(new Error(`Failed to parse Playwright output: ${parseError}`))
-                }
-            })
-
-            process.on('error', (error) => {
-                reject(new Error(`Failed to execute Playwright command: ${error.message}`))
-            })
-        })
-    }
-
-    private generateStableTestId(filePath: string, title: string): string {
-        const content = `${filePath}:${title}`
-        let hash = 0
-        for (let i = 0; i < content.length; i++) {
-            const char = content.charCodeAt(i)
-            hash = (hash << 5) - hash + char
-            hash = hash & hash // Convert to 32-bit integer
-        }
-        return `test-${Math.abs(hash).toString(36)}`
-    }
-
-    // New validation and diagnostics methods
-    async validateConfiguration(): Promise<{
-        isValid: boolean
-        issues: string[]
-        projectDir: string
-        reporterPath: string
-        reporterExists: boolean
-    }> {
+    async validateConfiguration(): Promise<ValidationResult> {
         const issues: string[] = []
         const projectDir = config.playwright.projectDir
-        const configReporterPath = config.playwright.reporterPath
 
-        // Check if project directory exists
-        const fs = await import('fs')
-        if (!fs.existsSync(projectDir)) {
-            issues.push(`Project directory does not exist: ${projectDir}`)
-        }
+        // Run all validation checks
+        issues.push(...(await this.validateProjectDirectory()))
+        issues.push(...(await this.validatePlaywrightConfig()))
+        issues.push(...(await this.validatePlaywrightInstallation()))
 
-        // Check if playwright.config.ts exists
-        const playwrightConfig = path.join(projectDir, 'playwright.config.ts')
-        const playwrightConfigJs = path.join(projectDir, 'playwright.config.js')
-        if (!fs.existsSync(playwrightConfig) && !fs.existsSync(playwrightConfigJs)) {
-            issues.push(`Playwright config not found in: ${projectDir}`)
-        }
-
-        // Check if reporter npm package exists in node_modules
-        const packagePath = path.join(projectDir, 'node_modules', configReporterPath)
-        const reporterPath = packagePath
-        let reporterExists = fs.existsSync(packagePath)
-
-        if (!reporterExists) {
-            issues.push(`Reporter npm package not found: ${configReporterPath}`)
-        } else {
-            // Verify package has valid entry point
-            const packageJsonPath = path.join(packagePath, 'package.json')
-            if (fs.existsSync(packageJsonPath)) {
-                try {
-                    const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf-8'))
-                    const mainFile = packageJson.main || 'index.js'
-                    const mainFilePath = path.join(packagePath, mainFile)
-                    if (!fs.existsSync(mainFilePath)) {
-                        issues.push(`Reporter package main file not found: ${mainFile}`)
-                        reporterExists = false
-                    }
-                } catch (error) {
-                    issues.push(`Invalid package.json in reporter package`)
-                    reporterExists = false
-                }
-            }
-        }
-
-        // Check if @playwright/test is installed
-        const nodeModulesPath = path.join(projectDir, 'node_modules', '@playwright', 'test')
-        if (!fs.existsSync(nodeModulesPath)) {
-            issues.push(`@playwright/test not installed in: ${projectDir}`)
-        }
+        const reporterValidation = await this.validateReporterPackage()
+        issues.push(...reporterValidation.issues)
 
         Logger.info('Configuration validation completed', {
             projectDir,
-            reporterPath,
-            reporterExists,
+            reporterPath: reporterValidation.reporterPath,
+            reporterExists: reporterValidation.reporterExists,
             nodeEnv: config.server.environment,
             issuesCount: issues.length,
         })
@@ -281,21 +152,15 @@ export class PlaywrightService implements IPlaywrightService {
             isValid: issues.length === 0,
             issues,
             projectDir,
-            reporterPath,
-            reporterExists,
+            reporterPath: reporterValidation.reporterPath,
+            reporterExists: reporterValidation.reporterExists,
         }
     }
 
     async getDiagnostics(): Promise<{
         version: string
         config: typeof config.playwright
-        validation: {
-            isValid: boolean
-            issues: string[]
-            projectDir: string
-            reporterPath: string
-            reporterExists: boolean
-        }
+        validation: ValidationResult
         healthCheck: {
             canDiscoverTests: boolean
             error?: string
@@ -377,5 +242,239 @@ export class PlaywrightService implements IPlaywrightService {
             reporterDiagnostics,
             error,
         }
+    }
+
+    // ============================================================================
+    // PRIVATE HELPER METHODS
+    // ============================================================================
+
+    /**
+     * Creates a DiscoveredTest object from a Playwright spec
+     */
+    private createDiscoveredTest(spec: PlaywrightSpec): DiscoveredTest {
+        const fullFilePath = `${PLAYWRIGHT_CONSTANTS.E2E_TESTS_PATH}${spec.file}`
+        const stableTestId = this.generateStableTestId(fullFilePath, spec.title)
+
+        return {
+            id: uuidv4(),
+            testId: stableTestId,
+            runId: null,
+            name: spec.title,
+            filePath: fullFilePath,
+            status: 'pending',
+            duration: 0,
+            metadata: JSON.stringify({
+                line: spec.line || 0,
+                playwrightId: spec.id || null,
+                discoveredAt: new Date().toISOString(),
+            }),
+            timestamp: new Date().toISOString(),
+        }
+    }
+
+    /**
+     * Normalizes file path by ensuring it has the correct e2e/tests/ prefix
+     */
+    private normalizeFilePath(filePath: string): string {
+        if (!filePath.startsWith(PLAYWRIGHT_CONSTANTS.E2E_TESTS_PATH)) {
+            return path.join(PLAYWRIGHT_CONSTANTS.E2E_TESTS_PATH, filePath)
+        }
+        return filePath
+    }
+
+    /**
+     * Spawns a Playwright process with the given arguments and options
+     */
+    private spawnPlaywrightProcess(args: string[], options: PlaywrightSpawnOptions): ChildProcess {
+        const playwrightTimeoutEnv = process.env.PLAYWRIGHT_TIMEOUT_ENV || config.server.environment
+
+        const env = {
+            ...process.env,
+            DASHBOARD_API_URL: config.api.baseUrl,
+            ...options.env,
+            NODE_ENV: playwrightTimeoutEnv,
+        }
+
+        Logger.info('Spawning Playwright process', {
+            args: args.join(' '),
+            type: options.type,
+            NODE_ENV: env.NODE_ENV,
+            PLAYWRIGHT_TIMEOUT_ENV: playwrightTimeoutEnv,
+        })
+
+        return spawn('npx', args, {
+            cwd: config.playwright.projectDir,
+            stdio: options.type === 'rerun' ? ['ignore', 'pipe', 'pipe'] : 'inherit',
+            env,
+        })
+    }
+
+    /**
+     * Executes the playwright test --list command and returns parsed JSON output
+     */
+    private async executePlaywrightListCommand(): Promise<PlaywrightListOutput> {
+        return new Promise((resolve, reject) => {
+            const process = spawn(
+                'npx',
+                [
+                    'playwright',
+                    'test',
+                    '--list',
+                    `--reporter=${PLAYWRIGHT_CONSTANTS.LIST_REPORTER}`,
+                ],
+                {
+                    cwd: config.playwright.projectDir,
+                    stdio: ['ignore', 'pipe', 'pipe'],
+                }
+            )
+
+            let stdout = ''
+            let stderr = ''
+
+            process.stdout?.on('data', (data) => {
+                stdout += data.toString()
+            })
+
+            process.stderr?.on('data', (data) => {
+                stderr += data.toString()
+            })
+
+            process.on('close', (code) => {
+                if (code !== 0) {
+                    reject(new Error(`Playwright command failed with code ${code}: ${stderr}`))
+                    return
+                }
+
+                try {
+                    const jsonData = JSON.parse(stdout)
+                    resolve(jsonData)
+                } catch (parseError) {
+                    reject(new Error(`Failed to parse Playwright output: ${parseError}`))
+                }
+            })
+
+            process.on('error', (error) => {
+                reject(new Error(`Failed to execute Playwright command: ${error.message}`))
+            })
+        })
+    }
+
+    /**
+     * Generates a stable test ID using a hash of file path and title
+     * This ensures the same test always gets the same ID across discovery and execution
+     */
+    private generateStableTestId(filePath: string, title: string): string {
+        const content = `${filePath}:${title}`
+        let hash = 0
+        for (let i = 0; i < content.length; i++) {
+            const char = content.charCodeAt(i)
+            hash = (hash << 5) - hash + char
+            hash = hash | 0
+        }
+        return `${PLAYWRIGHT_CONSTANTS.STABLE_TEST_ID_PREFIX}${Math.abs(hash).toString(36)}`
+    }
+
+    // ============================================================================
+    // PRIVATE VALIDATION METHODS
+    // ============================================================================
+
+    /**
+     * Validates that the project directory exists
+     */
+    private async validateProjectDirectory(): Promise<string[]> {
+        const issues: string[] = []
+        const fs = await import('fs')
+        const projectDir = config.playwright.projectDir
+
+        if (!fs.existsSync(projectDir)) {
+            issues.push(`Project directory does not exist: ${projectDir}`)
+        }
+
+        return issues
+    }
+
+    /**
+     * Validates that Playwright configuration file exists
+     */
+    private async validatePlaywrightConfig(): Promise<string[]> {
+        const issues: string[] = []
+        const fs = await import('fs')
+        const projectDir = config.playwright.projectDir
+
+        const configExists = PLAYWRIGHT_CONSTANTS.CONFIG_FILES.some((configFile) =>
+            fs.existsSync(path.join(projectDir, configFile))
+        )
+
+        if (!configExists) {
+            issues.push(`Playwright config not found in: ${projectDir}`)
+        }
+
+        return issues
+    }
+
+    /**
+     * Validates that the reporter npm package exists and is properly configured
+     */
+    private async validateReporterPackage(): Promise<{
+        issues: string[]
+        reporterPath: string
+        reporterExists: boolean
+    }> {
+        const issues: string[] = []
+        const fs = await import('fs')
+        const projectDir = config.playwright.projectDir
+        const configReporterPath = config.playwright.reporterPath
+
+        // Check if reporter npm package exists in node_modules
+        const packagePath = path.join(projectDir, 'node_modules', configReporterPath)
+        let reporterExists = fs.existsSync(packagePath)
+
+        if (!reporterExists) {
+            issues.push(`Reporter npm package not found: ${configReporterPath}`)
+        } else {
+            // Verify package has valid entry point
+            const packageJsonPath = path.join(packagePath, 'package.json')
+            if (fs.existsSync(packageJsonPath)) {
+                try {
+                    const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf-8'))
+                    const mainFile = packageJson.main || 'index.js'
+                    const mainFilePath = path.join(packagePath, mainFile)
+                    if (!fs.existsSync(mainFilePath)) {
+                        issues.push(`Reporter package main file not found: ${mainFile}`)
+                        reporterExists = false
+                    }
+                } catch (error) {
+                    issues.push(`Invalid package.json in reporter package`)
+                    reporterExists = false
+                }
+            }
+        }
+
+        return {
+            issues,
+            reporterPath: packagePath,
+            reporterExists,
+        }
+    }
+
+    /**
+     * Validates that @playwright/test is installed
+     */
+    private async validatePlaywrightInstallation(): Promise<string[]> {
+        const issues: string[] = []
+        const fs = await import('fs')
+        const projectDir = config.playwright.projectDir
+
+        const nodeModulesPath = path.join(
+            projectDir,
+            'node_modules',
+            PLAYWRIGHT_CONSTANTS.PACKAGE_NAME
+        )
+
+        if (!fs.existsSync(nodeModulesPath)) {
+            issues.push(`${PLAYWRIGHT_CONSTANTS.PACKAGE_NAME} not installed in: ${projectDir}`)
+        }
+
+        return issues
     }
 }

@@ -1,4 +1,5 @@
 export {SettingsModal} from './SettingsModal'
 export {SettingsSection} from './SettingsSection'
 export {SettingsThemeSection} from './SettingsThemeSection'
+export {SettingsTestExecutionSection} from './SettingsTestExecutionSection'
 export {SettingsActionsSection} from './SettingsActionsSection'

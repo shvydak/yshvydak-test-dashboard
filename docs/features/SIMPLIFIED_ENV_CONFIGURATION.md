@@ -14,7 +14,6 @@ The YShvydak Test Dashboard uses a **simplified environment configuration system
 PORT=3001
 NODE_ENV=development
 PLAYWRIGHT_PROJECT_DIR=/path/to/tests
-USE_NPM_REPORTER=false                       # Removed - now automatic based on NODE_ENV
 BASE_URL=http://localhost:3001
 DASHBOARD_API_URL=http://localhost:3001      # Duplicate of BASE_URL
 OUTPUT_DIR=test-results

@@ -74,8 +74,6 @@ The web package follows **Feature-Based Architecture** with **Atomic Design**:
 **Development Workflow:**
 
 - **For analysis**: Always use `packages/reporter/src/index.ts`
-- **For local dev**: `USE_NPM_REPORTER=false` in `.env` (uses local file)
-- **For production**: npm package used by default (USE_NPM_REPORTER=true or omitted)
 - **npm link active**: Test project linked to local reporter for fast iteration
 
 ### 📚 ALWAYS Use Context7-MCP for Documentation
@@ -163,7 +161,6 @@ The web package follows **Feature-Based Architecture** with **Atomic Design**:
 - `PORT` - API server port (default: 3001)
 - `NODE_ENV` - Environment mode
 - `PLAYWRIGHT_PROJECT_DIR` - Path to test project (REQUIRED)
-- `USE_NPM_REPORTER` - npm package vs local file (true/false)
 - `BASE_URL` - Base URL for all services
 - `VITE_BASE_URL` - Same as BASE_URL for web client
 

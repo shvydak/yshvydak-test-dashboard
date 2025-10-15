@@ -120,8 +120,8 @@ export class TestService implements ITestService {
         return this.testRepository.getTestTimeline(days)
     }
 
-    async runAllTests(): Promise<any> {
-        const result = await this.playwrightService.runAllTests()
+    async runAllTests(maxWorkers?: number): Promise<any> {
+        const result = await this.playwrightService.runAllTests(maxWorkers)
 
         // Add process to tracker
         activeProcessesTracker.addProcess({
@@ -163,8 +163,8 @@ export class TestService implements ITestService {
         return result
     }
 
-    async runTestGroup(filePath: string): Promise<any> {
-        const result = await this.playwrightService.runTestGroup(filePath)
+    async runTestGroup(filePath: string, maxWorkers?: number): Promise<any> {
+        const result = await this.playwrightService.runTestGroup(filePath, maxWorkers)
 
         // Add process to tracker
         activeProcessesTracker.addProcess({
@@ -212,14 +212,18 @@ export class TestService implements ITestService {
         return result
     }
 
-    async rerunTest(testId: string): Promise<any> {
+    async rerunTest(testId: string, maxWorkers?: number): Promise<any> {
         // Get the test to rerun
         const test = await this.testRepository.getTestResult(testId)
         if (!test) {
             throw new Error('Test not found')
         }
 
-        const result = await this.playwrightService.rerunSingleTest(test.filePath, test.name)
+        const result = await this.playwrightService.rerunSingleTest(
+            test.filePath,
+            test.name,
+            maxWorkers
+        )
 
         // Add process to tracker
         activeProcessesTracker.addProcess({

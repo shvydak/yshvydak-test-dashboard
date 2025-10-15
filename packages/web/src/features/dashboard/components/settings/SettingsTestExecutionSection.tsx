@@ -12,9 +12,7 @@ export function SettingsTestExecutionSection() {
     }
 
     return (
-        <SettingsSection
-            title="Test Execution"
-            description="Configure test execution behavior">
+        <SettingsSection title="Test Execution" description="Configure test execution behavior">
             <div>
                 <label
                     htmlFor="max-workers"

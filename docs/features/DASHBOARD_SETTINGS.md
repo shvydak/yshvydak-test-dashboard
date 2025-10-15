@@ -263,6 +263,7 @@ Test execution configuration with Playwright workers control.
 **Hook Integration**:
 
 Uses `usePlaywrightWorkers()` hook that provides:
+
 - `workers`: Current workers count (number)
 - `setWorkers(count)`: Update workers count with validation
 - `resetToDefault()`: Reset to default (2 workers)
@@ -271,11 +272,13 @@ Uses `usePlaywrightWorkers()` hook that provides:
 **Backend Integration**:
 
 Workers count is sent with all test execution API calls:
+
 - `POST /api/tests/run-all` - Body: `{maxWorkers: 2}`
 - `POST /api/tests/run-group` - Body: `{filePath: "...", maxWorkers: 2}`
 - `POST /api/tests/:id/rerun` - Body: `{maxWorkers: 2}`
 
 Backend adds `--workers=N` flag to Playwright CLI commands:
+
 ```bash
 npx playwright test --workers=2 --reporter=...
 ```

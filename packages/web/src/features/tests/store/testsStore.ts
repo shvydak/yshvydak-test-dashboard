@@ -2,6 +2,7 @@ import {create} from 'zustand'
 import {devtools} from 'zustand/middleware'
 import {TestResult, TestRun} from '@yshvydak/core'
 import {authGet, authPost} from '@features/authentication/utils/authFetch'
+import {getMaxWorkersFromStorage} from '@/hooks/usePlaywrightWorkers'
 
 interface TestsState {
     tests: TestResult[]
@@ -141,7 +142,10 @@ export const useTestsStore = create<TestsState>()(
                     get().setTestRunning(testId, true)
                     set({error: null})
 
-                    const response = await authPost(`${API_BASE_URL}/tests/${testId}/rerun`)
+                    const maxWorkers = getMaxWorkersFromStorage()
+                    const response = await authPost(`${API_BASE_URL}/tests/${testId}/rerun`, {
+                        maxWorkers,
+                    })
 
                     if (!response.ok) {
                         throw new Error(`HTTP error! status: ${response.status}`)
@@ -199,7 +203,10 @@ export const useTestsStore = create<TestsState>()(
                 try {
                     set({isRunningAllTests: true, error: null})
 
-                    const response = await authPost(`${API_BASE_URL}/tests/run-all`)
+                    const maxWorkers = getMaxWorkersFromStorage()
+                    const response = await authPost(`${API_BASE_URL}/tests/run-all`, {
+                        maxWorkers,
+                    })
 
                     if (!response.ok) {
                         throw new Error(`HTTP error! status: ${response.status}`)
@@ -237,7 +244,11 @@ export const useTestsStore = create<TestsState>()(
                     get().setGroupRunning(filePath, true)
                     set({error: null})
 
-                    const response = await authPost(`${API_BASE_URL}/tests/run-group`, {filePath})
+                    const maxWorkers = getMaxWorkersFromStorage()
+                    const response = await authPost(`${API_BASE_URL}/tests/run-group`, {
+                        filePath,
+                        maxWorkers,
+                    })
 
                     if (!response.ok) {
                         throw new Error(`HTTP error! status: ${response.status}`)

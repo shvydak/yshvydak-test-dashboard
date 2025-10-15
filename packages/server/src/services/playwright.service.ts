@@ -51,14 +51,17 @@ export class PlaywrightService implements IPlaywrightService {
         return discoveredTests
     }
 
-    async runAllTests(): Promise<TestRunProcess> {
+    async runAllTests(maxWorkers?: number): Promise<TestRunProcess> {
         const runId = uuidv4()
         Logger.testRun('run-all', runId)
 
-        const process = this.spawnPlaywrightProcess(
-            ['playwright', 'test', `--reporter=${config.playwright.reporterPath}`],
-            {runId, type: 'run-all'}
-        )
+        const args = ['playwright', 'test']
+        if (maxWorkers) {
+            args.push(`--workers=${maxWorkers}`)
+        }
+        args.push(`--reporter=${config.playwright.reporterPath}`)
+
+        const process = this.spawnPlaywrightProcess(args, {runId, type: 'run-all'})
 
         return {
             runId,
@@ -68,16 +71,19 @@ export class PlaywrightService implements IPlaywrightService {
         }
     }
 
-    async runTestGroup(filePath: string): Promise<TestRunProcess> {
+    async runTestGroup(filePath: string, maxWorkers?: number): Promise<TestRunProcess> {
         const runId = uuidv4()
         Logger.testRun('run-group', runId)
 
         const normalizedPath = this.normalizeFilePath(filePath)
 
-        const process = this.spawnPlaywrightProcess(
-            ['playwright', 'test', normalizedPath, `--reporter=${config.playwright.reporterPath}`],
-            {runId, type: 'run-group', filePath}
-        )
+        const args = ['playwright', 'test', normalizedPath]
+        if (maxWorkers) {
+            args.push(`--workers=${maxWorkers}`)
+        }
+        args.push(`--reporter=${config.playwright.reporterPath}`)
+
+        const process = this.spawnPlaywrightProcess(args, {runId, type: 'run-group', filePath})
 
         return {
             runId,
@@ -87,28 +93,28 @@ export class PlaywrightService implements IPlaywrightService {
         }
     }
 
-    async rerunSingleTest(testFile: string, testName: string): Promise<TestRunProcess> {
+    async rerunSingleTest(
+        testFile: string,
+        testName: string,
+        maxWorkers?: number
+    ): Promise<TestRunProcess> {
         const runId = uuidv4()
         Logger.testRerun(testName, runId)
 
-        const process = this.spawnPlaywrightProcess(
-            [
-                'playwright',
-                'test',
-                testFile,
-                '--grep',
-                testName,
-                `--reporter=json,${config.playwright.reporterPath}`,
-            ],
-            {
-                runId,
-                type: 'rerun',
-                env: {
-                    RERUN_MODE: 'true',
-                    RERUN_ID: runId,
-                },
-            }
-        )
+        const args = ['playwright', 'test', testFile, '--grep', testName]
+        if (maxWorkers) {
+            args.push(`--workers=${maxWorkers}`)
+        }
+        args.push(`--reporter=json,${config.playwright.reporterPath}`)
+
+        const process = this.spawnPlaywrightProcess(args, {
+            runId,
+            type: 'rerun',
+            env: {
+                RERUN_MODE: 'true',
+                RERUN_ID: runId,
+            },
+        })
 
         return {
             runId,

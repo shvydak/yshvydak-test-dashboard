@@ -34,7 +34,8 @@ export class TestController {
     // POST /api/tests/run-all - Run all tests
     runAllTests = async (req: ServiceRequest, res: Response): Promise<void> => {
         try {
-            const result = await this.testService.runAllTests()
+            const {maxWorkers} = req.body
+            const result = await this.testService.runAllTests(maxWorkers)
             ResponseHelper.success(res, result)
         } catch (error) {
             Logger.error('Error running all tests', error)
@@ -50,12 +51,12 @@ export class TestController {
     // POST /api/tests/run-group - Run tests from a specific file/group
     runTestGroup = async (req: ServiceRequest, res: Response): Promise<Response> => {
         try {
-            const {filePath} = req.body
+            const {filePath, maxWorkers} = req.body
             if (!filePath) {
                 return ResponseHelper.badRequest(res, 'Missing filePath parameter')
             }
 
-            const result = await this.testService.runTestGroup(filePath)
+            const result = await this.testService.runTestGroup(filePath, maxWorkers)
             return ResponseHelper.success(res, result)
         } catch (error) {
             Logger.error('Error running group tests', error)
@@ -236,7 +237,8 @@ export class TestController {
     rerunTest = async (req: ServiceRequest, res: Response): Promise<void> => {
         try {
             const {id} = req.params
-            const result = await this.testService.rerunTest(id)
+            const {maxWorkers} = req.body
+            const result = await this.testService.rerunTest(id, maxWorkers)
 
             ResponseHelper.success(res, result, 'Test rerun started')
         } catch (error) {

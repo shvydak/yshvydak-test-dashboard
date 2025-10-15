@@ -17,27 +17,6 @@ The YShvydak Test Dashboard uses **[`playwright-dashboard-reporter`](https://www
 npm install --save-dev playwright-dashboard-reporter
 ```
 
-### Configuration
-
-Add reporter to your `playwright.config.ts`:
-
-```typescript
-// playwright.config.ts
-import {defineConfig} from '@playwright/test'
-
-export default defineConfig({
-    reporter: [
-        [
-            'playwright-dashboard-reporter',
-            {
-                apiBaseUrl: process.env.DASHBOARD_API_URL || 'http://localhost:3001',
-            },
-        ],
-        ['html'], // Keep your existing reporters
-    ],
-})
-```
-
 ### Environment Variables
 
 ```bash

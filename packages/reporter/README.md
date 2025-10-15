@@ -20,33 +20,14 @@ npm install --save-dev playwright-dashboard-reporter
 
 ## Quick Start
 
-### 1. Add Reporter to Playwright Config
-
-```typescript
-// playwright.config.ts
-import {defineConfig} from '@playwright/test'
-
-export default defineConfig({
-    reporter: [
-        [
-            'playwright-dashboard-reporter',
-            {
-                apiBaseUrl: process.env.DASHBOARD_API_URL || 'http://localhost:3001',
-            },
-        ],
-        ['html'], // Keep your existing reporters
-    ],
-})
-```
-
-### 2. Set Environment Variable
+### 1. Set Environment Variable
 
 ```bash
 # .env
 DASHBOARD_API_URL=http://localhost:3001
 ```
 
-### 3. Start Dashboard Server
+### 2. Start Dashboard Server
 
 ```bash
 # Clone dashboard repository
@@ -63,12 +44,6 @@ The dashboard will be available at:
 - 🌐 Web UI: http://localhost:3000
 - 🔌 API: http://localhost:3001
 
-### 4. Run Your Tests
-
-```bash
-npx playwright test
-```
-
 Results will appear in your Dashboard automatically! 🎉
 
 ## Configuration Options
@@ -81,78 +56,13 @@ interface ReporterOptions {
 }
 ```
 
-### Example with Custom Options
-
-```typescript
-// playwright.config.ts
-export default defineConfig({
-    reporter: [
-        [
-            'playwright-dashboard-reporter',
-            {
-                apiBaseUrl: 'https://dashboard.mycompany.com',
-                silent: true,
-                timeout: 60000,
-            },
-        ],
-    ],
-})
-```
-
 ## Environment Variables
 
 The reporter supports the following environment variables:
 
-```bash
+````bash
 # Required: Dashboard API endpoint
 DASHBOARD_API_URL=http://localhost:3001
-
-# Optional: Silent mode (suppresses console output)
-YSHVYDAK_REPORTER_SILENT=true
-
-# Optional: Custom timeout in milliseconds
-YSHVYDAK_REPORTER_TIMEOUT=60000
-```
-
-## Usage Scenarios
-
-### Production Deployment
-
-```bash
-# Set production Dashboard URL
-export DASHBOARD_API_URL=https://dashboard.mycompany.com
-
-# Run tests
-npx playwright test
-```
-
-### CI/CD Integration
-
-```yaml
-# GitHub Actions example
-- name: Run Playwright Tests
-  env:
-      DASHBOARD_API_URL: ${{ secrets.DASHBOARD_URL }}
-  run: npx playwright test
-```
-
-### Multiple Projects
-
-The reporter works seamlessly across multiple Playwright projects:
-
-```bash
-# Project 1
-cd /path/to/project1
-npm install --save-dev playwright-dashboard-reporter
-npx playwright test
-
-# Project 2
-cd /path/to/project2
-npm install --save-dev playwright-dashboard-reporter
-npx playwright test
-
-# All results appear in the same Dashboard!
-```
 
 ## Dashboard Features
 
@@ -187,34 +97,6 @@ When using this reporter, you get access to:
     ```bash
     curl http://localhost:3001/api/tests/diagnostics
     ```
-
-### Connection Timeout
-
-**Symptom:** Reporter shows timeout errors
-
-**Solution:** Increase timeout in reporter configuration:
-
-```typescript
-reporter: [
-    [
-        'playwright-dashboard-reporter',
-        {
-            timeout: 60000, // 60 seconds
-        },
-    ],
-]
-```
-
-### Silent Mode Not Working
-
-**Symptom:** Reporter still outputs to console
-
-**Solution:** Set environment variable explicitly:
-
-```bash
-export YSHVYDAK_REPORTER_SILENT=true
-npx playwright test
-```
 
 ## API Compatibility
 
@@ -258,10 +140,6 @@ npm run type-check # TypeScript validation
 - 🐛 [Report Issues](https://github.com/shvydak/yshvydak-test-dashboard/issues)
 - 💬 [Discussions](https://github.com/shvydak/yshvydak-test-dashboard/discussions)
 
-## Contributing
-
-Contributions are welcome! See [CONTRIBUTING.md](https://github.com/shvydak/yshvydak-test-dashboard/blob/main/CONTRIBUTING.md) for guidelines.
-
 ## License
 
 MIT © YShvydak
@@ -269,3 +147,4 @@ MIT © YShvydak
 ---
 
 **Made with ❤️ for the Playwright community**
+````

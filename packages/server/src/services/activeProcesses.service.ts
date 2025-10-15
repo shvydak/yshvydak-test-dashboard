@@ -108,7 +108,7 @@ export class ActiveProcessesTracker {
      */
     getConnectionStatus() {
         // Perform cleanup of old processes before returning status
-        this.cleanupOldProcesses(5) // Clean up processes older than 5 minutes
+        this.cleanupOldProcesses(30) // Clean up processes older than 30 minutes
 
         const status = {
             activeRuns: this.getActiveProcesses(),

@@ -108,29 +108,12 @@ This reporter is compatible with:
 
 ## Development
 
-### Local Development Setup
-
-If you're developing the Dashboard and want to test reporter changes:
-
-```bash
-# 1. Link reporter locally
-cd /path/to/yshvydak-test-dashboard/packages/reporter
-npm link
-
-# 2. Use linked reporter in test project
-cd /path/to/your-test-project
-npm link playwright-dashboard-reporter
-
-# 3. Watch for changes (auto-rebuild)
-cd /path/to/yshvydak-test-dashboard/packages/reporter
-npm run dev
-```
-
-### Building from Source
+For Dashboard developers working on the reporter package:
 
 ```bash
 cd packages/reporter
 npm run build      # Build distribution
+npm run dev        # Watch mode (auto-rebuild)
 npm run type-check # TypeScript validation
 ```
 

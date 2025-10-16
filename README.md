@@ -43,10 +43,10 @@ A comprehensive testing dashboard that transforms your Playwright test experienc
 
 ### ⚡ **Simple Reporter Integration**
 
-- **Works with npm package**: Dashboard uses reporter from test project's `node_modules`
-- **No config changes needed** in your test projects when Dashboard runs tests
-- **Development option**: Use `npm link` for local reporter development
-- Easy setup with zero Dashboard configuration
+- **Works with npm package**: Install `playwright-dashboard-reporter` in your test project
+- **Zero configuration**: No changes to `playwright.config.ts` needed
+- **Automatic injection**: Dashboard adds reporter via CLI flag when running tests
+- **Clean separation**: Your existing reporters continue to work unchanged
 
 ### 🔍 **Advanced Diagnostics**
 
@@ -108,30 +108,20 @@ cd /path/to/your/playwright/project
 npm install --save-dev playwright-dashboard-reporter
 ```
 
-#### Add Reporter to Playwright Config
+**Important:** No changes to `playwright.config.ts` are needed. The Dashboard automatically adds the reporter when running tests via CLI flag `--reporter=playwright-dashboard-reporter`.
+
+Your `playwright.config.ts` remains unchanged and can keep existing reporters:
 
 ```typescript
-// playwright.config.ts
+// playwright.config.ts - NO CHANGES NEEDED
 import {defineConfig} from '@playwright/test'
 
 export default defineConfig({
     reporter: [
-        [
-            'playwright-dashboard-reporter',
-            {
-                apiBaseUrl: process.env.DASHBOARD_API_URL || 'http://localhost:3001',
-            },
-        ],
-        ['html'], // Keep your existing reporters
+        ['html'], // Your existing reporters continue to work
+        ['list'],
     ],
 })
-```
-
-#### Set Environment Variable
-
-```bash
-# .env file in your Playwright project
-DASHBOARD_API_URL=http://localhost:3001
 ```
 
 ### 3. Configure Dashboard for Your Project
@@ -226,8 +216,8 @@ curl http://localhost:3001/api/tests/diagnostics
 1. **Tests not appearing**: Check `PLAYWRIGHT_PROJECT_DIR` environment variable
 2. **Reporter not working**:
     - Verify `playwright-dashboard-reporter` is installed: `npm list playwright-dashboard-reporter`
-    - Check `DASHBOARD_API_URL` in test project `.env`
-    - For local development: Ensure npm link is set up correctly (see [Reporter Documentation](docs/REPORTER.md))
+    - Check Dashboard is running and `PLAYWRIGHT_PROJECT_DIR` points to correct test project
+    - Dashboard passes `DASHBOARD_API_URL` to reporter automatically via environment
 3. **Connection issues**: Ensure dashboard is running on correct port
 4. **Package not found errors**: Run `npm install --save-dev playwright-dashboard-reporter` in your test project
 5. **Test count inconsistency**: If test discovery shows different counts than after test execution:
@@ -251,11 +241,11 @@ packages/
 
 The dashboard uses **dynamic reporter injection** - no changes needed to your `playwright.config.ts`:
 
-1. **File Copy**: Reporter file copied to your test project once during setup
+1. **npm Package**: Dashboard uses `playwright-dashboard-reporter` from your test project's `node_modules`
 2. **Test Discovery**: Dashboard scans your project with `playwright test --list`
-3. **Dynamic Injection**: When running tests, adds `--reporter=./e2e/testUtils/yshvydakReporter.ts`
-4. **Environment Detection**: Reporter activates when `DASHBOARD_API_URL` is set
-5. **Clean Separation**: Your `playwright.config.ts` stays unchanged
+3. **Dynamic Injection**: When running tests, adds `--reporter=playwright-dashboard-reporter` CLI flag
+4. **Clean Separation**: Your `playwright.config.ts` stays unchanged
+5. **Automatic Mode**: Reporter reads configuration from Dashboard environment variables
 
 ### Architecture Improvements
 

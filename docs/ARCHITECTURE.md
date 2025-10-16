@@ -100,6 +100,7 @@ The dashboard uses a **dynamic reporter injection** architecture that provides c
 - **Features**:
     - Enhanced error reporting with code context and line highlighting
     - Stable test ID generation using file path + title hash
+    - **RunId Synchronization**: Reporter reads RUN_ID from environment (passed by dashboard via Playwright service)
     - Real-time API communication with dashboard server
     - Built-in diagnostics and health checks
     - Silent mode for programmatic usage
@@ -125,9 +126,10 @@ The dashboard implements a **WebSocket-based process tracking** system that ensu
 
 1. **Process Registration**: When tests start, the reporter notifies the server via `POST /api/tests/process-start`
 2. **Memory Tracking**: Server maintains active processes in `ActiveProcessesTracker` (in-memory store)
-3. **WebSocket Synchronization**: On connection, server sends `connection:status` with current active processes
-4. **Process Cleanup**: When tests complete, reporter notifies via `POST /api/tests/process-end`
-5. **Automatic Failsafe**: Old processes (>5 minutes) are automatically cleaned up
+3. **RunId Synchronization**: Dashboard generates runId and passes it to reporter via RUN_ID environment variable
+4. **WebSocket Synchronization**: On connection, server sends `connection:status` with current active processes
+5. **Process Cleanup**: When tests complete, reporter notifies via `POST /api/tests/process-end`
+6. **Automatic Failsafe**: Old processes (>30 minutes) are automatically cleaned up
 
 ### Key Benefits
 

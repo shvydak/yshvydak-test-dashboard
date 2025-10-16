@@ -2,6 +2,20 @@
 
 Welcome to the YShvydak Test Dashboard documentation. This guide helps you find the right documentation based on your role and needs.
 
+## ⚡ 30-Second Context Checklist
+
+Before diving into docs, know these 5 things:
+
+1. **Backend**: Layered Architecture (Controller → Service → Repository → Database)
+2. **Frontend**: Feature-Based + Atomic Design (`features/{name}/components/`)
+3. **Reporter**: npm package `playwright-dashboard-reporter`, CLI injection, no config changes
+4. **Database**: INSERT-only for test results (never UPDATE, preserves history)
+5. **Attachments**: Permanent storage in `{OUTPUT_DIR}/attachments/` (survives Playwright cleanup)
+
+✅ Now you're ready to navigate docs efficiently!
+
+---
+
 ## 🚀 Quick Navigation
 
 ### For First-Time Users
@@ -46,6 +60,19 @@ Feature-specific documentation for deep dives into individual capabilities:
 | **Settings Modal** | [DASHBOARD_SETTINGS.md](features/DASHBOARD_SETTINGS.md) | Theme management (Auto/Light/Dark), centralized configuration |
 | **Rerun from Modal** | [RERUN_FROM_MODAL.md](features/RERUN_FROM_MODAL.md) | One-click rerun with WebSocket updates, automatic execution switching |
 | **Authentication** | [AUTHENTICATION_IMPLEMENTATION.md](features/AUTHENTICATION_IMPLEMENTATION.md) | JWT-based security, automatic token expiry handling |
+
+### AI-Assisted Development Documentation
+
+Optimized documentation for Claude Code and AI assistants in vibe coding mode:
+
+| Document | Description | When to Read |
+|----------|-------------|--------------|
+| **[ai/README.md](ai/README.md)** | AI documentation index and usage guide | Overview of AI docs |
+| **[ai/ANTI_PATTERNS.md](ai/ANTI_PATTERNS.md)** | Common mistakes with code examples (wrong vs. right) | When coding |
+| **[ai/FILE_LOCATIONS.md](ai/FILE_LOCATIONS.md)** | Complete file structure with quick find examples | When searching |
+| **[ai/CONCEPT_MAP.md](ai/CONCEPT_MAP.md)** | Visual flows and dependency relationships | Understanding system |
+
+**Total:** ~1,200 lines of AI-specific context | **Token efficient:** Modular loading on demand
 
 ---
 

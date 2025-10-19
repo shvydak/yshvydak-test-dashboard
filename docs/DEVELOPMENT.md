@@ -218,9 +218,8 @@ import { formatDuration, getStatusIcon } from '@features/tests/utils'
 
 1. Install `@yshvydak/core` package
 2. Copy the reporter file to project's test utilities
-3. Add reporter to `playwright.config.ts`
-4. Set `DASHBOARD_API_URL` environment variable if needed
-5. Start dashboard server before running tests
+3. Set `DASHBOARD_API_URL` environment variable if needed
+4. Start dashboard server before running tests
 
 ## Development Best Practices
 

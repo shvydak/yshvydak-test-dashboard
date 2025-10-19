@@ -1,212 +1,176 @@
-# CLAUDE.md
+# CLAUDE.md - Quick Reference for AI Development
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+## 🔥 CRITICAL CONTEXT (30 seconds to read)
 
-## Project Overview
+### 1️⃣ Repository Pattern - NEVER Bypass
+**Controller → Service → Repository → Database**
+- ❌ NEVER: Direct DatabaseManager calls
+- ✅ ALWAYS: Full chain for all operations
+- 📂 Location: `packages/server/src/{controllers,services,repositories}/`
 
-YShvydak Test Dashboard is a full-stack Playwright testing dashboard with rerun capabilities. It's a **monorepo** built with **Turborepo** that provides real-time test monitoring, one-click reruns, and comprehensive test reporting.
+### 2️⃣ Reporter Integration - npm package + npm link
+**Production:** `playwright-dashboard-reporter` from node_modules
+**Development:** `npm link` for live changes
+- NO config changes to `playwright.config.ts`
+- CLI injection: `--reporter=playwright-dashboard-reporter`
 
-### Architecture
+### 3️⃣ Test ID Generation - IDENTICAL algorithm
+- Discovery & Reporter use SAME hash function
+- Ensures historical tracking works
+- 📂 `packages/reporter/src/index.ts` + `playwright.service.ts`
 
-**Top-level structure:**
+### 4️⃣ INSERT-only Strategy - NEVER UPDATE
+- Each execution = NEW database row (unique ID)
+- `testId` same, `id` changes → history
+- 📂 `database.manager.ts` - `saveTestResult()`
+
+### 5️⃣ Attachment Storage - Permanent
+- Files copied from Playwright temp → permanent storage
+- Survives Playwright's cleanup cycles
+- 📂 `packages/server/src/storage/attachmentManager.ts`
+
+---
+
+## 🗺️ Concept Flow (30 seconds)
 
 ```
-packages/
-├── core/      # Shared TypeScript types & interfaces
-├── reporter/  # playwright-dashboard-reporter npm package
-├── server/    # Express API + SQLite + WebSocket server (LAYERED ARCHITECTURE)
-└── web/       # React + Vite dashboard UI
+User clicks "Run All"
+  ↓ PlaywrightService
+  ↓ CLI: --reporter=playwright-dashboard-reporter
+  ↓ Reporter: testId (hash) + execution id (UUID)
+  ↓ POST /api/tests → Controller → Service → Repository
+  ↓ INSERT (never UPDATE)
+  ↓ AttachmentService → Permanent storage
+  ↓ WebSocket → Frontend updates
+  ↓ TestDetailModal → ExecutionSidebar (history)
 ```
 
-**📋 For detailed architecture:** See [@docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
+**Key Dependencies:**
+- Historical Tracking ← Test ID Generation
+- Attachment Storage ← INSERT-only Strategy
+- Rerun from Modal ← WebSocket + History
+- Dashboard Redesign ← History + Flaky Detection
 
-## Essential Development Commands
+---
 
-**Root Level Commands (Turborepo):**
+## 📂 Quick File Finder
 
-- `npm run build` - Build all packages
-- `npm run dev` - Run all packages in development mode
-- `npm run type-check` - TypeScript checking across all packages
-- `npm run lint` - Lint all packages
+**Need to:**
+- Generate testId? → `packages/reporter/src/index.ts`
+- WebSocket URL? → `web/src/features/authentication/utils/webSocketUrl.ts`
+- Apply theme? → `web/src/hooks/useTheme.ts`
+- Rerun button? → `web/src/features/tests/components/history/ExecutionSidebar.tsx`
+- Copy attachments? → `server/src/storage/attachmentManager.ts`
+- Flaky detection? → `server/src/repositories/test.repository.ts`
 
-**📋 For detailed development commands:** See [@docs/DEVELOPMENT.md](docs/DEVELOPMENT.md)
+**Full structure:** See [docs/ai/FILE_LOCATIONS.md](docs/ai/FILE_LOCATIONS.md)
 
-## Architecture Principles
+---
 
-### Backend: Layered Architecture
+## ⚠️ Top 3 Anti-Patterns
 
-The server follows **Layered Architecture** with clear separation of concerns:
+### ❌ Bypassing Repository
+```typescript
+// WRONG
+await this.dbManager.run("UPDATE...")
+// RIGHT
+await this.testService.updateTest(...)
+```
 
-- **Controllers** (`*.controller.ts`) - HTTP request/response handling only
-- **Services** (`*.service.ts`) - Business logic and orchestration
-- **Repositories** (`*.repository.ts`) - Data access and database operations
-- **Middleware** - Cross-cutting concerns (DI, CORS, error handling)
+### ❌ UPDATE-ing Test Results
+```typescript
+// WRONG
+UPDATE test_results SET status = ? WHERE testId = ?
+// RIGHT
+INSERT INTO test_results (id, testId, ...) VALUES (?, ?, ...)
+```
 
-### Frontend: Feature-Based Architecture
+### ❌ Duplicating Utilities
+```typescript
+// WRONG - 45 lines of WebSocket URL logic
+const token = localStorage.getItem('_auth')...
+// RIGHT
+import {getWebSocketUrl} from '@/utils/webSocketUrl'
+const url = getWebSocketUrl(true)
+```
 
-The web package follows **Feature-Based Architecture** with **Atomic Design**:
+**More examples:** [docs/ai/ANTI_PATTERNS.md](docs/ai/ANTI_PATTERNS.md)
 
-- **Features** (`features/{feature}/`) - Self-contained modules (authentication, dashboard, tests)
-- **Colocation** - Components, hooks, store, types, utils all within feature directory
-- **Shared Components** - Atoms (`Button`, `StatusIcon`) and Molecules (`Card`, `ActionButton`)
-- **Path Aliases** - Clean imports: `@features/*`, `@shared/*`, `@config/*`
-- **Component Size** - Maximum 200 lines per file, split large components into sub-components
-- **Store Organization** - Zustand stores inside features: `features/{feature}/store/`
+---
 
-**📋 For complete frontend architecture:** See [@docs/ARCHITECTURE.md](docs/ARCHITECTURE.md#frontend-feature-based-architecture)
+## 🎯 Architecture Quick Ref
 
-## Technology Stack
+**Backend:** Controller → Service → Repository → Database
+**Frontend:** Feature-Based (`features/{name}/`) + Atomic Design
+**Reporter:** npm package, CLI injection, environment config
+**Database:** INSERT-only, testId grouping, execution history
+**Attachments:** Permanent storage, unique filenames, isolated dirs
 
-**Frontend:** React 18 + TypeScript + Vite + Tailwind CSS + Zustand + React Query + Feature-Based Architecture + Atomic Design
-**Backend:** Express.js + TypeScript + SQLite + WebSocket + Layered Architecture + DI
-**Development:** Turborepo + TypeScript 5 + ESLint
+**Deep dive:** [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
 
-## Critical Development Rules
+---
 
-### 🚨 Reporter Development & Analysis
+## 🚀 Essential Commands
 
-**Primary Reporter Location:**
+```bash
+npm run dev              # All packages
+npm run type-check       # TypeScript validation
+npm run lint:fix         # Auto-fix issues
+```
 
-- **Source code**: `packages/reporter/src/index.ts` (single source of truth)
-- **npm package**: `playwright-dashboard-reporter@1.0.0` ([npm registry](https://www.npmjs.com/package/playwright-dashboard-reporter))
+**Package-specific:**
+```bash
+cd packages/server && npm run dev     # API only
+cd packages/web && npm run dev        # React only
+cd packages/reporter && npm run dev   # Reporter watch
+```
 
-**Reporter Integration:**
+---
 
-- Dashboard always uses `playwright-dashboard-reporter` from test project's `node_modules`
-- **Development**: Use `npm link` for local development (one-time setup)
-- **Production**: Use regular `npm install` (default)
+## 📖 Navigation (by role)
 
-**📋 For detailed reporter setup and workflows:** See [@docs/REPORTER.md](docs/REPORTER.md)
+### First-Time Setup
+- [QUICKSTART.md](docs/QUICKSTART.md) - 5 minutes
+- [REPORTER.md](docs/REPORTER.md) - npm package setup
+- [CONFIGURATION.md](docs/CONFIGURATION.md) - 5 core variables
 
-### 📚 ALWAYS Use Context7-MCP for Documentation
+### Development
+- [ARCHITECTURE.md](docs/ARCHITECTURE.md) - Complete system design
+- [DEVELOPMENT.md](docs/DEVELOPMENT.md) - Best practices
+- [API_REFERENCE.md](docs/API_REFERENCE.md) - Endpoints
 
-**MANDATORY for any dependencies or technology research:**
+### AI Deep Dive
+- [docs/ai/ANTI_PATTERNS.md](docs/ai/ANTI_PATTERNS.md) - Code examples
+- [docs/ai/FILE_LOCATIONS.md](docs/ai/FILE_LOCATIONS.md) - Full structure
+- [docs/ai/CONCEPT_MAP.md](docs/ai/CONCEPT_MAP.md) - Detailed flows
 
-- Adding/changing dependencies → Use Context7-MCP to check latest documentation
-- Need best practices → Use Context7-MCP for current standards
-- Technology questions → Use Context7-MCP for authoritative information
+### Features
+- [HISTORICAL_TRACKING](docs/features/HISTORICAL_TEST_TRACKING.md)
+- [ATTACHMENTS](docs/features/PER_RUN_ATTACHMENTS.md)
+- [AUTHENTICATION](docs/features/AUTHENTICATION_IMPLEMENTATION.md)
 
-### ✅ ALWAYS Follow Best Practices
+---
 
-**Every solution must follow modern best practices and approaches:**
+## 📦 Version Info
 
-- Consult latest documentation and standards
-- Use established patterns and conventions
-- Follow security and performance best practices
+**Current:** 1.0.1 (October 2025)
+**Reporter:** `playwright-dashboard-reporter@1.0.1`
+**Dev workflow:** `npm link` for local changes
+**Breaking changes:** v0.x → v1.0.0 (npm package migration)
 
-### 🔐 Authentication & Security Guidelines
+---
 
-**Authentication system is production-ready and secure:**
+## 🐛 Quick Fixes
 
-- JWT-based user authentication with localStorage storage
-- **Automatic logout on token expiry** with periodic validation (every 5 minutes)
-- **401 response handling** - immediate logout and redirect to login page
-- Simplified local network integration for reporters
-- Environment-based credential management (never hardcode credentials)
-- Production-ready code optimization completed (debug logs removed)
-- See [@docs/features/AUTHENTICATION_IMPLEMENTATION.md](docs/features/AUTHENTICATION_IMPLEMENTATION.md) for details
+| Issue | Solution |
+|-------|----------|
+| Reporter not found | `npm install --save-dev playwright-dashboard-reporter` |
+| WebSocket fails | Check JWT token in URL params |
+| Tests not appearing | Verify `PLAYWRIGHT_PROJECT_DIR` in `.env` |
+| Attachments 404 | Check permanent storage permissions |
 
-### 🏗️ Architecture Guidelines
+---
 
-#### Backend (Server)
-
-**New API endpoint:** Controller → Service → Repository
-**New business logic:** Add to relevant Service class
-**New database operations:** Extend Repository classes
-**Controllers:** Thin layer - delegate to Services
-**Services:** Business logic and orchestrate Repository calls
-**Repositories:** Database operations only
-
-#### Frontend (Web)
-
-**New feature:** Create in `features/{feature-name}/` with subdirectories (components, hooks, store, types, utils, constants)
-**New component:** Keep under 200 lines; split large components into sub-components with dedicated subdirectory
-**Shared components:** Use `shared/components/atoms/` for basic elements, `shared/components/molecules/` for combinations
-**State management:** Create Zustand store in `features/{feature}/store/`
-**Path aliases:** Always use `@features/*`, `@shared/*`, `@config/*` for clean imports
-**DRY principle:** Centralize utilities and constants - avoid code duplication
-
-### 📎 Attachment Management Guidelines
-
-**Permanent attachment storage implemented to solve Playwright's temporary file cleanup:**
-
-- **ALWAYS use AttachmentService** for attachment operations, never manipulate files directly
-- Attachments are automatically copied from Playwright's `test-results/` to permanent `attachments/` storage
-- Each test result has isolated directory: `{OUTPUT_DIR}/attachments/{testResultId}/`
-- Re-running tests automatically deletes old physical files before saving new ones
-- Files served via `/attachments/` route with JWT authentication
-- See [@docs/features/PER_RUN_ATTACHMENTS.md](docs/features/PER_RUN_ATTACHMENTS.md) for complete documentation
-
-### 📜 Historical Test Tracking
-
-**Complete test execution history with independent attachments per run:**
-
-- Every test execution creates a new database record (INSERT strategy, not UPDATE)
-- Full execution history accessible via always-visible sidebar in test detail modal
-- Each execution maintains independent attachments (videos, screenshots, traces)
-- Users can compare different test runs and view historical trends with one-click switching
-- Pending test results automatically filtered from history view
-- See [@docs/features/HISTORICAL_TEST_TRACKING.md](docs/features/HISTORICAL_TEST_TRACKING.md) for complete documentation
-
-## Reporter Package
-
-**npm package**: [`playwright-dashboard-reporter@1.0.0`](https://www.npmjs.com/package/playwright-dashboard-reporter)
-**Source code**: `packages/reporter/src/index.ts` (single source of truth)
-**External copy**: `/Users/y.shvydak/QA/probuild-qa/e2e/testUtils/yshvydakReporter.ts`
-
-**📋 For reporter documentation:** See [@docs/REPORTER.md](docs/REPORTER.md)
-
-## Configuration
-
-**Core Environment Variables:**
-
-- `PORT` - API server port (default: 3001)
-- `NODE_ENV` - Environment mode (development/production)
-- `PLAYWRIGHT_PROJECT_DIR` - Path to test project (REQUIRED)
-- `BASE_URL` - Base URL for all services
-- `VITE_BASE_URL` - Same as BASE_URL for web client
-
-**Authentication Variables:**
-
-- `ENABLE_AUTH` - Enable authentication (true/false)
-- `ADMIN_EMAIL` - Admin user email
-- `ADMIN_PASSWORD` - Admin user password
-- `JWT_SECRET` - JWT signing secret (change in production)
-
-**📋 For detailed configuration:** See [@docs/CONFIGURATION.md](docs/CONFIGURATION.md)
-
-## Documentation References
-
-**📋 Core Documentation:**
-
-- [@docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) - Complete architecture details
-- [@docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) - Development commands and guidelines
-- [@docs/CONFIGURATION.md](docs/CONFIGURATION.md) - Environment configuration details
-- [@docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) - CloudTunnel and production deployment
-- [@docs/API_REFERENCE.md](docs/API_REFERENCE.md) - Complete API endpoints and WebSocket events
-
-**📋 Features Documentation:**
-
-- [@docs/features/AUTHENTICATION_IMPLEMENTATION.md](docs/features/AUTHENTICATION_IMPLEMENTATION.md) - Authentication system details
-- [@docs/features/CODE_OPTIMIZATION.md](docs/features/CODE_OPTIMIZATION.md) - Production-ready code optimization
-- [@docs/features/DASHBOARD_REDESIGN.md](docs/features/DASHBOARD_REDESIGN.md) - Dashboard redesign with flaky tests detection and timeline visualization
-- [@docs/features/DASHBOARD_SETTINGS.md](docs/features/DASHBOARD_SETTINGS.md) - Dashboard settings modal with theme system and test execution configuration
-- [@docs/features/PER_RUN_ATTACHMENTS.md](docs/features/PER_RUN_ATTACHMENTS.md) - Permanent attachment storage system
-- [@docs/features/HISTORICAL_TEST_TRACKING.md](docs/features/HISTORICAL_TEST_TRACKING.md) - Historical test execution tracking
-- [@docs/features/RERUN_FROM_MODAL.md](docs/features/RERUN_FROM_MODAL.md) - Rerun test from modal window with real-time updates
-- [@docs/features/SIMPLIFIED_ENV_CONFIGURATION.md](docs/features/SIMPLIFIED_ENV_CONFIGURATION.md) - Simplified environment setup
-- [@docs/features/TEST_DISPLAY.md](docs/features/TEST_DISPLAY.md) - Test display consistency
-- [@docs/features/TIMESTAMP_MANAGEMENT.md](docs/features/TIMESTAMP_MANAGEMENT.md) - Timestamp architecture
-
-## Quick API Reference
-
-**Health & Discovery:** `GET /api/health`, `POST /api/tests/discovery`, `GET /api/tests/diagnostics`
-**Test Management:** `GET /api/tests`, `POST /api/tests`, `DELETE /api/tests/all`
-**Test Execution:** `POST /api/tests/run-all`, `POST /api/tests/:id/rerun`
-**Test History:** `GET /api/tests/:id/history` - Get execution history for a test
-**Dashboard Analytics:** `GET /api/tests/flaky?days=30&threshold=10`, `GET /api/tests/timeline?days=30`
-**Process Tracking:** `POST /api/tests/process-start`, `POST /api/tests/process-end`
-
-**WebSocket Events:** `connection:status`, `process:started`, `process:ended`, `test:status`, `run:completed`
-
-All endpoints return `ApiResponse<T>` format
+**Total:** ~150 lines | **Read time:** 2-3 minutes
+**For detailed examples:** See [docs/ai/](docs/ai/)
+**Last Updated:** October 2025 | **Maintained by:** Yurii Shvydak

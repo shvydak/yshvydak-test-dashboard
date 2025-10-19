@@ -4,7 +4,6 @@
 
 ### Active Issues
 
-- `[ ]` Abbility to set workers in the settings modal window
 - `[ ]` Test to dashboard
 - `[ ]` Remove from documentation [reporter] - we use cli command!
 - `[ ]` Failed group tests: run only failed tests (not all tests in the group)
@@ -13,6 +12,7 @@
 
 ### Completed Issues ✅
 
+- `[X]` Abbility to set workers in the settings modal window
 - `[X]` Test modal window with blur - **FIXED**: ModalBackdrop component with blur effect and click-outside closing (see ARCHITECTURE.md and DEVELOPMENT.md)
 - `[X]` Dashboard Settings popup with buttons
 - `[X]` RUN button in the tests modal window (and immediatly data update) - **FIXED**: Rerun from modal with real-time updates (see [@docs/features/RERUN_FROM_MODAL.md](../features/RERUN_FROM_MODAL.md))

@@ -63,7 +63,7 @@ interface ProcessEndData {
 }
 
 class YShvydakReporter implements Reporter {
-    private runId: string = uuidv4()
+    private runId: string
     private results: YShvydakTestResult[] = []
     private startTime: number = 0
     private apiBaseUrl: string
@@ -78,6 +78,9 @@ class YShvydakReporter implements Reporter {
         }
 
         this.apiBaseUrl = baseUrl
+
+        // Use RUN_ID from environment if provided by dashboard, otherwise generate new one
+        this.runId = process.env.RUN_ID || process.env.RERUN_ID || uuidv4()
 
         console.log(`🎭 YShvydak Dashboard Reporter initialized (Run ID: ${this.runId})`)
         console.log(`🌐 API Base URL: ${this.apiBaseUrl}`)
@@ -101,18 +104,6 @@ class YShvydakReporter implements Reporter {
             runId: this.runId,
             type: 'run-all',
             totalTests: suite.allTests().length,
-        })
-
-        // Create test run
-        this.createTestRun({
-            id: this.runId,
-            status: 'running',
-            timestamp: new Date().toISOString(),
-            totalTests: suite.allTests().length,
-            passedTests: 0,
-            failedTests: 0,
-            skippedTests: 0,
-            duration: 0,
         })
 
         console.log(`🚀 Starting test run with ${suite.allTests().length} tests`)
@@ -158,8 +149,14 @@ class YShvydakReporter implements Reporter {
         const failed = this.results.filter((r) => r.status === 'failed').length
         const skipped = this.results.filter((r) => r.status === 'skipped').length
 
+        console.log(`\n⏳ Waiting for all test results to be sent to dashboard...`)
+
+        await new Promise((resolve) => setTimeout(resolve, 1000))
+
+        console.log(`✅ All test results should be processed by dashboard now`)
+
         // Update test run
-        this.updateTestRun({
+        await this.updateTestRun({
             id: this.runId,
             status: result.status === 'passed' ? 'completed' : 'failed',
             timestamp: new Date().toISOString(),
@@ -331,6 +328,7 @@ class YShvydakReporter implements Reporter {
     }
 
     private async sendTestResult(result: YShvydakTestResult) {
+        const startTime = Date.now()
         try {
             const response = await fetch(`${this.apiBaseUrl}/api/tests`, {
                 method: 'POST',
@@ -340,33 +338,16 @@ class YShvydakReporter implements Reporter {
                 body: JSON.stringify(result),
             })
 
+            const duration = Date.now() - startTime
+
             if (!response.ok) {
-                console.warn(`⚠️  Failed to send test result: ${response.status}`)
+                console.warn(`⚠️  Failed to send test result (${duration}ms): ${response.status}`)
                 const responseText = await response.text()
                 console.warn(`⚠️  Response: ${responseText}`)
             }
         } catch (error) {
-            console.warn(`⚠️  Dashboard API not available: ${error}`)
-        }
-    }
-
-    private async createTestRun(run: YShvydakTestRun) {
-        try {
-            const response = await fetch(`${this.apiBaseUrl}/api/runs`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(run),
-            })
-
-            if (!response.ok) {
-                console.warn(`⚠️  Failed to create test run: ${response.status}`)
-                const responseText = await response.text()
-                console.warn(`⚠️  Response: ${responseText}`)
-            }
-        } catch (error) {
-            console.warn(`⚠️  Dashboard API not available: ${error}`)
+            const duration = Date.now() - startTime
+            console.warn(`⚠️  Dashboard API not available (${duration}ms): ${error}`)
         }
     }
 

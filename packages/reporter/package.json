@@ -49,8 +49,8 @@
         "access": "public"
     },
     "dependencies": {
-        "uuid": "^11.1.0",
-        "dotenv": "^16.3.1"
+        "dotenv": "^17.2.3",
+        "uuid": "^13.0.0"
     },
     "peerDependencies": {
         "@playwright/test": "^1.40.0"
@@ -60,7 +60,7 @@
         "@types/node": "^22.5.4",
         "@types/uuid": "^10.0.0",
         "tsup": "^8.3.5",
-        "typescript": "^5.9.2"
+        "typescript": "^5.9.3"
     },
     "files": [
         "dist"

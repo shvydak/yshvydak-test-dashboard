@@ -3,28 +3,35 @@
 ## 🔥 CRITICAL CONTEXT (30 seconds to read)
 
 ### 1️⃣ Repository Pattern - NEVER Bypass
+
 **Controller → Service → Repository → Database**
+
 - ❌ NEVER: Direct DatabaseManager calls
 - ✅ ALWAYS: Full chain for all operations
 - 📂 Location: `packages/server/src/{controllers,services,repositories}/`
 
 ### 2️⃣ Reporter Integration - npm package + npm link
+
 **Production:** `playwright-dashboard-reporter` from node_modules
 **Development:** `npm link` for live changes
+
 - NO config changes to `playwright.config.ts`
 - CLI injection: `--reporter=playwright-dashboard-reporter`
 
 ### 3️⃣ Test ID Generation - IDENTICAL algorithm
+
 - Discovery & Reporter use SAME hash function
 - Ensures historical tracking works
 - 📂 `packages/reporter/src/index.ts` + `playwright.service.ts`
 
 ### 4️⃣ INSERT-only Strategy - NEVER UPDATE
+
 - Each execution = NEW database row (unique ID)
 - `testId` same, `id` changes → history
 - 📂 `database.manager.ts` - `saveTestResult()`
 
 ### 5️⃣ Attachment Storage - Permanent
+
 - Files copied from Playwright temp → permanent storage
 - Survives Playwright's cleanup cycles
 - 📂 `packages/server/src/storage/attachmentManager.ts`
@@ -46,6 +53,7 @@ User clicks "Run All"
 ```
 
 **Key Dependencies:**
+
 - Historical Tracking ← Test ID Generation
 - Attachment Storage ← INSERT-only Strategy
 - Rerun from Modal ← WebSocket + History
@@ -56,6 +64,7 @@ User clicks "Run All"
 ## 📂 Quick File Finder
 
 **Need to:**
+
 - Generate testId? → `packages/reporter/src/index.ts`
 - WebSocket URL? → `web/src/features/authentication/utils/webSocketUrl.ts`
 - Apply theme? → `web/src/hooks/useTheme.ts`
@@ -70,6 +79,7 @@ User clicks "Run All"
 ## ⚠️ Top 3 Anti-Patterns
 
 ### ❌ Bypassing Repository
+
 ```typescript
 // WRONG
 await this.dbManager.run("UPDATE...")
@@ -78,6 +88,7 @@ await this.testService.updateTest(...)
 ```
 
 ### ❌ UPDATE-ing Test Results
+
 ```typescript
 // WRONG
 UPDATE test_results SET status = ? WHERE testId = ?
@@ -86,6 +97,7 @@ INSERT INTO test_results (id, testId, ...) VALUES (?, ?, ...)
 ```
 
 ### ❌ Duplicating Utilities
+
 ```typescript
 // WRONG - 45 lines of WebSocket URL logic
 const token = localStorage.getItem('_auth')...
@@ -119,6 +131,7 @@ npm run lint:fix         # Auto-fix issues
 ```
 
 **Package-specific:**
+
 ```bash
 cd packages/server && npm run dev     # API only
 cd packages/web && npm run dev        # React only
@@ -127,24 +140,40 @@ cd packages/reporter && npm run dev   # Reporter watch
 
 ---
 
+## 🔧 Development Rules
+
+### ✅ DO:
+
+**Use Context7-MCP** for all dependency documentation lookup
+
+- ALWAYS check before adding/updating dependencies
+- ALWAYS check before changing dependency configuration
+- Get latest docs, breaking changes, migration guides
+
+---
+
 ## 📖 Navigation (by role)
 
 ### First-Time Setup
+
 - [QUICKSTART.md](docs/QUICKSTART.md) - 5 minutes
 - [REPORTER.md](docs/REPORTER.md) - npm package setup
 - [CONFIGURATION.md](docs/CONFIGURATION.md) - 5 core variables
 
 ### Development
+
 - [ARCHITECTURE.md](docs/ARCHITECTURE.md) - Complete system design
 - [DEVELOPMENT.md](docs/DEVELOPMENT.md) - Best practices
 - [API_REFERENCE.md](docs/API_REFERENCE.md) - Endpoints
 
 ### AI Deep Dive
+
 - [docs/ai/ANTI_PATTERNS.md](docs/ai/ANTI_PATTERNS.md) - Code examples
 - [docs/ai/FILE_LOCATIONS.md](docs/ai/FILE_LOCATIONS.md) - Full structure
 - [docs/ai/CONCEPT_MAP.md](docs/ai/CONCEPT_MAP.md) - Detailed flows
 
 ### Features
+
 - [HISTORICAL_TRACKING](docs/features/HISTORICAL_TEST_TRACKING.md)
 - [ATTACHMENTS](docs/features/PER_RUN_ATTACHMENTS.md)
 - [AUTHENTICATION](docs/features/AUTHENTICATION_IMPLEMENTATION.md)
@@ -162,12 +191,12 @@ cd packages/reporter && npm run dev   # Reporter watch
 
 ## 🐛 Quick Fixes
 
-| Issue | Solution |
-|-------|----------|
-| Reporter not found | `npm install --save-dev playwright-dashboard-reporter` |
-| WebSocket fails | Check JWT token in URL params |
-| Tests not appearing | Verify `PLAYWRIGHT_PROJECT_DIR` in `.env` |
-| Attachments 404 | Check permanent storage permissions |
+| Issue               | Solution                                               |
+| ------------------- | ------------------------------------------------------ |
+| Reporter not found  | `npm install --save-dev playwright-dashboard-reporter` |
+| WebSocket fails     | Check JWT token in URL params                          |
+| Tests not appearing | Verify `PLAYWRIGHT_PROJECT_DIR` in `.env`              |
+| Attachments 404     | Check permanent storage permissions                    |
 
 ---
 

@@ -111,13 +111,53 @@ features: {
 ```
 → **Suggest:** Consider creating docs/features/EXPORT_TO_CSV.md
 
+### Dependency Changes Detection
+```bash
+# Pattern: npm install, package.json changes, dependency updates
+npm install react-query
+npm update @tanstack/react-query
+```
+```json
+// package.json changes
+"dependencies": {
++   "zod": "^3.22.0"
+}
+```
+→ **ACTION (MANDATORY):** Check Context7-MCP BEFORE proceeding
+
+**Response template:**
+```
+⚠️ Dependency change detected!
+
+📚 Checking Context7-MCP for latest documentation...
+   Package: <package-name>
+
+   [AI fetches docs from Context7-MCP]
+
+   ✅ Context7-MCP checked:
+   - Latest version: X.Y.Z
+   - Breaking changes: [summary]
+   - Best practices: [key points]
+
+   Ready to proceed with installation.
+```
+
+**When to trigger:**
+- `npm install` command
+- `npm update` command
+- `package.json` modifications (dependencies, devDependencies)
+- Config file changes (tsconfig.json, vite.config.ts, etc.)
+- Using new dependency APIs in code
+
+**Priority:** P0 (Critical) - ALWAYS check before proceeding
+
 ---
 
 ## 🎯 Priority Levels
 
-**P0 (Critical):** Breaking changes
-- Suggest immediately
-- Insist on update before commit
+**P0 (Critical):** Breaking changes, Dependency changes
+- Dependency changes: Check Context7-MCP BEFORE proceeding (mandatory)
+- Breaking changes: Suggest immediately, insist on update before commit
 
 **P1 (High):** Public API changes
 - Suggest immediately

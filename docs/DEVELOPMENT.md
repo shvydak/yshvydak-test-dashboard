@@ -183,9 +183,51 @@ import { formatDuration, getStatusIcon } from '@features/tests/utils'
 - Repositories handle only database operations
 - Use dependency injection for testing and modularity
 
+## Dependency Management
+
+### ⚠️ CRITICAL: Always Use Context7-MCP
+
+**Before adding or modifying ANY dependency:**
+
+1. **Check Context7-MCP documentation** for the latest information:
+
+    ```bash
+    # Example: Adding React Query
+    # First: Look up in Context7-MCP for latest best practices
+    ```
+
+2. **What to check:**
+    - ✅ Latest stable version and compatibility
+    - ✅ Breaking changes in recent versions
+    - ✅ Migration guides if upgrading
+    - ✅ Best practices and recommended configuration
+    - ✅ Security vulnerabilities and updates
+    - ✅ Peer dependency requirements
+
+3. **When to use Context7-MCP:**
+    - Adding new dependency: `npm install <package>`
+    - Upgrading existing dependency: `npm update <package>`
+    - Changing configuration (tsconfig, vite.config, etc.)
+    - Using new APIs or features from dependencies
+    - Troubleshooting dependency-related issues
+
+4. **Examples:**
+    - Adding UI library? Check Context7-MCP for current best practices
+    - Upgrading React? Check Context7-MCP for breaking changes and migration steps
+    - Using new React Query features? Check Context7-MCP for latest API patterns
+    - Adding validation library? Check Context7-MCP for recommended options
+
+**Why this matters:**
+
+- Dependencies change frequently (breaking changes, deprecations)
+- Documentation in npm/GitHub may be outdated
+- Context7-MCP provides curated, current best practices
+- Prevents using deprecated patterns or APIs
+- Ensures security and compatibility
+
 ## Code Quality Standards
 
-- **Best Practices Reference**: When editing any code, consult Context7 MCP documentation for current best practices and standards for the relevant technology, framework, or language being used.
+- **Best Practices Reference**: Always consult Context7-MCP for dependencies documentation
 - **Code comments**: Use English when writing comments, if needed.
 - **Code Formatting**: Project uses Prettier for consistent code formatting across all files
     - Configuration: `.prettierrc` (tabWidth: 4, singleQuote: true, semi: false, printWidth: 100)

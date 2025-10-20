@@ -749,7 +749,7 @@ Authorization: Bearer {jwt-token}
 2. **Analyze Test Stability**:
     - Hover over history dots to see run number and status
     - View flaky percentage and failed/total ratio
-    - Click test name to view details (future enhancement)
+    - Click on any flaky test to open full test details modal
 
 3. **Monitor Trends**:
     - View stacked area chart showing daily test distribution
@@ -900,7 +900,7 @@ Potential improvements for this feature:
 3. **Automated Alerts**: Notify when test crosses flakiness threshold
 4. **Export Data**: Download flaky tests report as CSV/PDF
 5. **Historical Snapshots**: Save dashboard state for specific dates
-6. **Drill-down**: Click test to see detailed execution history
+6. ~~**Drill-down**: Click test to see detailed execution history~~ ✅ Implemented
 7. **Filters**: Filter flaky tests by file path, tags, or duration
 8. **Charts**: Additional visualizations (pie charts, bar charts, etc.)
 

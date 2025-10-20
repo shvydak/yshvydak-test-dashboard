@@ -4,14 +4,14 @@
 
 ### Active Issues
 
-- `[ ]` Test to dashboard
-- `[ ]` Remove from documentation [reporter] - we use cli command!
+- `[ ]` Test (jest) to dashboard
 - `[ ]` Failed group tests: run only failed tests (not all tests in the group)
 - `[ ]` Add progress bar
 - `[ ]` Run All Tests loading only on run all tests or show what test executes now
 
 ### Completed Issues ✅
 
+- `[X]` Remove from documentation [reporter] - we use cli command!
 - `[X]` Abbility to set workers in the settings modal window
 - `[X]` Test modal window with blur - **FIXED**: ModalBackdrop component with blur effect and click-outside closing (see ARCHITECTURE.md and DEVELOPMENT.md)
 - `[X]` Dashboard Settings popup with buttons

@@ -13,6 +13,22 @@ These documents provide **detailed technical context** that complements the quic
 
 ## 📚 Documentation Index
 
+### [DOCUMENTATION_UPDATE_RULES.md](DOCUMENTATION_UPDATE_RULES.md)
+**When to read:** For AI assistants - when to suggest doc updates
+
+**Contents:**
+- Proactive suggestion triggers
+- Detection patterns for changes
+- Priority levels for updates
+- Suggestion templates
+- Workflow examples
+
+**Size:** ~150 lines | **Purpose:** Guide AI to be helpful but not annoying
+
+**For AI:** Use this to know when to proactively suggest documentation updates during vibe coding sessions.
+
+---
+
 ### [ANTI_PATTERNS.md](ANTI_PATTERNS.md)
 **When to read:** When implementing features or fixing bugs
 

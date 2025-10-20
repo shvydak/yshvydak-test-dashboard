@@ -6,6 +6,7 @@ import {AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContain
 import {useQueryClient} from '@tanstack/react-query'
 import {useWebSocket} from '@/hooks/useWebSocket'
 import {getWebSocketUrl} from '@features/authentication/utils/webSocketUrl'
+import {TestDetailModal} from '@features/tests/components/testDetail'
 
 export default function Dashboard() {
     const {tests, fetchTests, lastUpdated} = useTestsStore()
@@ -23,6 +24,8 @@ export default function Dashboard() {
     const {data: timelineData, isLoading: timelineLoading} = useTestTimeline(30)
 
     const [webSocketUrl, setWebSocketUrl] = useState<string | null>(null)
+    const [detailModalOpen, setDetailModalOpen] = useState(false)
+    const [selectedTestId, setSelectedTestId] = useState<string | null>(null)
 
     useEffect(() => {
         const url = getWebSocketUrl(true)
@@ -45,6 +48,18 @@ export default function Dashboard() {
             fetchTests()
         }
     }, [tests.length, fetchTests])
+
+    const handleFlakyTestClick = (testId: string) => {
+        setSelectedTestId(testId)
+        setDetailModalOpen(true)
+    }
+
+    const handleCloseModal = () => {
+        setDetailModalOpen(false)
+        setSelectedTestId(null)
+    }
+
+    const selectedTest = selectedTestId ? tests.find((t) => t.testId === selectedTestId) : null
 
     if (statsError) {
         return (
@@ -152,7 +167,8 @@ export default function Dashboard() {
                             {flakyTests.map((test) => (
                                 <div
                                     key={test.testId}
-                                    className="p-3 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
+                                    onClick={() => handleFlakyTestClick(test.testId)}
+                                    className="p-3 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors cursor-pointer">
                                     <div className="flex items-start justify-between gap-3">
                                         <div className="flex-1 min-w-0">
                                             <p className="font-medium text-sm text-gray-900 dark:text-white truncate">
@@ -273,6 +289,12 @@ export default function Dashboard() {
                     )}
                 </div>
             </div>
+
+            <TestDetailModal
+                test={selectedTest || null}
+                isOpen={detailModalOpen}
+                onClose={handleCloseModal}
+            />
         </div>
     )
 }

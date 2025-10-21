@@ -294,7 +294,7 @@ Per-package:
 - Web: `npm test --workspace=@yshvydak/web`
 - Reporter: `npm test --workspace=playwright-dashboard-reporter`
 
-More details: [TESTING.md](TESTING.md)
+More details: [TESTING.md](docs/TESTING.md)
 
 ### Environment Variables
 

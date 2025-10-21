@@ -12,35 +12,35 @@ import {sharedConfig} from '../../vitest.shared'
  * - Database tests: SQLite in-memory database
  */
 export default mergeConfig(
-	sharedConfig,
-	defineConfig({
-		test: {
-			name: 'server',
-			environment: 'node',
+    sharedConfig,
+    defineConfig({
+        test: {
+            name: 'server',
+            environment: 'node',
 
-			// Include test files
-			include: ['src/**/__tests__/**/*.test.ts', 'src/**/*.test.ts'],
+            // Include test files
+            include: ['src/**/__tests__/**/*.test.ts', 'src/**/*.test.ts'],
 
-			// Setup files
-			setupFiles: ['./vitest.setup.ts'],
+            // Setup files
+            setupFiles: ['./vitest.setup.ts'],
 
-			// Coverage thresholds (aspirational)
-			coverage: {
-				thresholds: {
-					lines: 80,
-					functions: 80,
-					branches: 75,
-					statements: 80,
-				},
-				include: ['src/**/*.ts'],
-				exclude: [
-					'src/**/__tests__/**',
-					'src/types/**',
-					'src/index.ts',
-					'src/server.ts',
-					'src/app.ts',
-				],
-			},
-		},
-	})
+            // Coverage thresholds (aspirational)
+            coverage: {
+                thresholds: {
+                    lines: 80,
+                    functions: 80,
+                    branches: 75,
+                    statements: 80,
+                },
+                include: ['src/**/*.ts'],
+                exclude: [
+                    'src/**/__tests__/**',
+                    'src/types/**',
+                    'src/index.ts',
+                    'src/server.ts',
+                    'src/app.ts',
+                ],
+            },
+        },
+    })
 )

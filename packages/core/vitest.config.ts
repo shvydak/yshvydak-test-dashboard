@@ -8,20 +8,20 @@ import {sharedConfig} from '../../vitest.shared'
  * This package mainly contains TypeScript types, so tests are minimal.
  */
 export default mergeConfig(
-	sharedConfig,
-	defineConfig({
-		test: {
-			name: 'core',
-			environment: 'node',
+    sharedConfig,
+    defineConfig({
+        test: {
+            name: 'core',
+            environment: 'node',
 
-			// Include test files
-			include: ['src/**/__tests__/**/*.test.ts', 'src/**/*.test.ts'],
+            // Include test files
+            include: ['src/**/__tests__/**/*.test.ts', 'src/**/*.test.ts'],
 
-			// Coverage configuration
-			coverage: {
-				include: ['src/**/*.ts'],
-				exclude: ['src/**/__tests__/**', 'src/**/*.d.ts', 'src/types/**'],
-			},
-		},
-	})
+            // Coverage configuration
+            coverage: {
+                include: ['src/**/*.ts'],
+                exclude: ['src/**/__tests__/**', 'src/**/*.d.ts', 'src/types/**'],
+            },
+        },
+    })
 )

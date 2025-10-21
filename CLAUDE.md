@@ -150,17 +150,19 @@ cd packages/reporter && npm run dev   # Reporter watch
 **Framework:** Vitest 3.2 (TypeScript-first, 10-20x faster than Jest)
 
 **Coverage Targets:**
+
 - Reporter: 90%+ (Test ID generation - CRITICAL)
 - Server: 80%+ (Services, repositories)
 - Web: 70%+ (Hooks, utilities)
 - **Overall: 75-80%**
 
 **Key Test Locations:**
+
 - Test ID generation: `packages/reporter/src/__tests__/testIdGeneration.test.ts`
 - JWT Authentication: `packages/server/src/services/__tests__/auth.service.test.ts`
 - Flaky detection: `packages/server/src/repositories/__tests__/test.repository.flaky.test.ts`
 
-**Full testing guide:** [TESTING.md](TESTING.md)
+**Full testing guide:** [TESTING.md](docs/TESTING.md)
 
 ---
 
@@ -189,7 +191,7 @@ cd packages/reporter && npm run dev   # Reporter watch
 - [ARCHITECTURE.md](docs/ARCHITECTURE.md) - Complete system design
 - [DEVELOPMENT.md](docs/DEVELOPMENT.md) - Best practices
 - [API_REFERENCE.md](docs/API_REFERENCE.md) - Endpoints
-- [TESTING.md](TESTING.md) - Testing infrastructure & guide
+- [TESTING.md](docs/TESTING.md) - Testing infrastructure & guide
 
 ### AI Deep Dive
 

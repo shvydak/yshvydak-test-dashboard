@@ -12,26 +12,26 @@ import {sharedConfig} from '../../vitest.shared'
  * - Error handling and reporting
  */
 export default mergeConfig(
-	sharedConfig,
-	defineConfig({
-		test: {
-			name: 'reporter',
-			environment: 'node',
+    sharedConfig,
+    defineConfig({
+        test: {
+            name: 'reporter',
+            environment: 'node',
 
-			// Include test files
-			include: ['src/**/__tests__/**/*.test.ts', 'src/**/*.test.ts'],
+            // Include test files
+            include: ['src/**/__tests__/**/*.test.ts', 'src/**/*.test.ts'],
 
-			// Coverage thresholds (high for critical logic)
-			coverage: {
-				thresholds: {
-					lines: 90,
-					functions: 90,
-					branches: 85,
-					statements: 90,
-				},
-				include: ['src/**/*.ts'],
-				exclude: ['src/**/__tests__/**', 'src/**/*.d.ts'],
-			},
-		},
-	})
+            // Coverage thresholds (high for critical logic)
+            coverage: {
+                thresholds: {
+                    lines: 90,
+                    functions: 90,
+                    branches: 85,
+                    statements: 90,
+                },
+                include: ['src/**/*.ts'],
+                exclude: ['src/**/__tests__/**', 'src/**/*.d.ts'],
+            },
+        },
+    })
 )

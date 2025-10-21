@@ -385,6 +385,7 @@ export function TestDetailModal({ test, isOpen, onClose }) {
 The project uses **Vitest** for all testing across the monorepo. Vitest is a modern, fast testing framework with first-class TypeScript support.
 
 **Why Vitest?**
+
 - 🚀 10-20x faster than Jest
 - ✅ Perfect for Vite-based projects (web package)
 - 📦 Excellent monorepo support
@@ -393,6 +394,7 @@ The project uses **Vitest** for all testing across the monorepo. Vitest is a mod
 ### Running Tests
 
 **All packages:**
+
 ```bash
 npm test                 # Run all tests
 npm run test:watch       # Watch mode (auto-rerun on changes)
@@ -401,6 +403,7 @@ npm run test:coverage    # Generate coverage report
 ```
 
 **Specific package:**
+
 ```bash
 npm test --workspace=@yshvydak/test-dashboard-server   # Server
 npm test --workspace=@yshvydak/web                     # Web
@@ -420,125 +423,133 @@ packages/server/src/
 ```
 
 **Test file naming:**
+
 - `*.test.ts` - Unit tests
 - `*.test.tsx` - React component tests
 - `*.integration.test.ts` - Integration tests
 
 ### Test Coverage Targets
 
-| Package  | Target | Focus                          |
-|----------|--------|--------------------------------|
-| Reporter | 90%+   | Test ID generation (CRITICAL)  |
-| Server   | 80%+   | Services, repositories         |
-| Web      | 70%+   | Hooks, utilities               |
-| **Overall** | **75-80%** | **Critical business logic** |
+| Package     | Target     | Focus                         |
+| ----------- | ---------- | ----------------------------- |
+| Reporter    | 90%+       | Test ID generation (CRITICAL) |
+| Server      | 80%+       | Services, repositories        |
+| Web         | 70%+       | Hooks, utilities              |
+| **Overall** | **75-80%** | **Critical business logic**   |
 
 ### Testing Best Practices
 
 1. **Test behavior, not implementation**
-   - Focus on what the code does, not how it does it
-   - Test public APIs, not internal details
+    - Focus on what the code does, not how it does it
+    - Test public APIs, not internal details
 
 2. **Use descriptive test names**
-   ```typescript
-   // ✅ Good
-   it('should generate identical IDs for same file path and title', () => {})
 
-   // ❌ Bad
-   it('test 1', () => {})
-   ```
+    ```typescript
+    // ✅ Good
+    it('should generate identical IDs for same file path and title', () => {})
+
+    // ❌ Bad
+    it('test 1', () => {})
+    ```
 
 3. **Arrange-Act-Assert pattern**
-   ```typescript
-   it('should login successfully with valid credentials', async () => {
-     // Arrange
-     const credentials = { email: 'test@example.com', password: 'pass123' }
 
-     // Act
-     const result = await authService.login(credentials)
+    ```typescript
+    it('should login successfully with valid credentials', async () => {
+        // Arrange
+        const credentials = {email: 'test@example.com', password: 'pass123'}
 
-     // Assert
-     expect(result.success).toBe(true)
-     expect(result.token).toBeDefined()
-   })
-   ```
+        // Act
+        const result = await authService.login(credentials)
+
+        // Assert
+        expect(result.success).toBe(true)
+        expect(result.token).toBeDefined()
+    })
+    ```
 
 4. **Test edge cases**
-   - Empty inputs, null values
-   - Very large inputs
-   - Special characters, Unicode
-   - Error conditions
+    - Empty inputs, null values
+    - Very large inputs
+    - Special characters, Unicode
+    - Error conditions
 
 5. **Use test utilities**
-   - Server: In-memory SQLite for repository tests
-   - Web: React Testing Library for components
-   - Mocking: Vitest's built-in mocking
+    - Server: In-memory SQLite for repository tests
+    - Web: React Testing Library for components
+    - Mocking: Vitest's built-in mocking
 
 ### Example Tests
 
 **Backend (Service):**
+
 ```typescript
 // packages/server/src/services/__tests__/auth.service.test.ts
-import { describe, it, expect, beforeEach } from 'vitest'
-import { AuthService } from '../auth.service'
+import {describe, it, expect, beforeEach} from 'vitest'
+import {AuthService} from '../auth.service'
 
 describe('AuthService', () => {
-  let authService: AuthService
+    let authService: AuthService
 
-  beforeEach(() => {
-    process.env.JWT_SECRET = 'test-secret'
-    authService = new AuthService()
-  })
-
-  it('should successfully login with valid credentials', async () => {
-    const result = await authService.login({
-      email: 'admin@example.com',
-      password: 'admin123'
+    beforeEach(() => {
+        process.env.JWT_SECRET = 'test-secret'
+        authService = new AuthService()
     })
 
-    expect(result.success).toBe(true)
-    expect(result.token).toMatch(/^[\w-]+\.[\w-]+\.[\w-]+$/) // JWT format
-  })
+    it('should successfully login with valid credentials', async () => {
+        const result = await authService.login({
+            email: 'admin@example.com',
+            password: 'admin123',
+        })
+
+        expect(result.success).toBe(true)
+        expect(result.token).toMatch(/^[\w-]+\.[\w-]+\.[\w-]+$/) // JWT format
+    })
 })
 ```
 
 **Frontend (Hook):**
+
 ```typescript
 // packages/web/src/features/tests/hooks/__tests__/useTestFilters.test.ts
-import { renderHook, act } from '@testing-library/react'
-import { describe, it, expect } from 'vitest'
-import { useTestFilters } from '../useTestFilters'
+import {renderHook, act} from '@testing-library/react'
+import {describe, it, expect} from 'vitest'
+import {useTestFilters} from '../useTestFilters'
 
 describe('useTestFilters', () => {
-  it('should filter tests by status', () => {
-    const { result } = renderHook(() => useTestFilters())
+    it('should filter tests by status', () => {
+        const {result} = renderHook(() => useTestFilters())
 
-    act(() => {
-      result.current.setStatusFilter('failed')
+        act(() => {
+            result.current.setStatusFilter('failed')
+        })
+
+        expect(result.current.statusFilter).toBe('failed')
     })
-
-    expect(result.current.statusFilter).toBe('failed')
-  })
 })
 ```
 
 ### Critical Tests (Already Implemented)
 
 ✅ **Reporter - Test ID Generation** (~35 tests)
+
 - Determinism, uniqueness, edge cases
 - File: `packages/reporter/src/__tests__/testIdGeneration.test.ts`
 
 ✅ **Server - JWT Authentication** (~30 tests)
+
 - Login/logout, token verification, security
 - File: `packages/server/src/services/__tests__/auth.service.test.ts`
 
 ✅ **Server - Flaky Detection** (~25 tests)
+
 - SQL algorithm, thresholds, ranking
 - File: `packages/server/src/repositories/__tests__/test.repository.flaky.test.ts`
 
 ### Testing Documentation
 
-For comprehensive testing documentation, see [TESTING.md](../TESTING.md).
+For comprehensive testing documentation, see [TESTING.md](docs/TESTING.md).
 
 ---
 
@@ -548,5 +559,5 @@ For comprehensive testing documentation, see [TESTING.md](../TESTING.md).
 - [Configuration Details](./CONFIGURATION.md)
 - [Deployment Guide](./DEPLOYMENT.md)
 - [API Reference](./API_REFERENCE.md)
-- [Testing Infrastructure](../TESTING.md)
+- [Testing Infrastructure](docs/TESTING.md)
 - [Attachment Management System](./features/PER_RUN_ATTACHMENTS.md)

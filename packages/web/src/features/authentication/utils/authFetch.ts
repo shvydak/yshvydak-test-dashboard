@@ -30,7 +30,7 @@ export function getAuthToken(): string | null {
         }
 
         return null
-    } catch (error) {
+    } catch {
         return null
     }
 }

@@ -17,8 +17,8 @@ import {defineWorkspace} from 'vitest/config'
  * - npm run test:coverage # Generate coverage report
  */
 export default defineWorkspace([
-	'packages/core',
-	'packages/reporter',
-	'packages/server',
-	'packages/web',
+    'packages/core',
+    'packages/reporter',
+    'packages/server',
+    'packages/web',
 ])

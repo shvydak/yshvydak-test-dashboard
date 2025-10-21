@@ -14,48 +14,48 @@ import path from 'path'
  * - Integration tests: User flows with MSW for API mocking
  */
 export default mergeConfig(
-	sharedConfig,
-	defineConfig({
-		plugins: [react()],
+    sharedConfig,
+    defineConfig({
+        plugins: [react()],
 
-		test: {
-			name: 'web',
-			environment: 'jsdom',
+        test: {
+            name: 'web',
+            environment: 'jsdom',
 
-			// Include test files
-			include: ['src/**/__tests__/**/*.test.{ts,tsx}', 'src/**/*.test.{ts,tsx}'],
+            // Include test files
+            include: ['src/**/__tests__/**/*.test.{ts,tsx}', 'src/**/*.test.{ts,tsx}'],
 
-			// Setup files
-			setupFiles: ['./vitest.setup.ts'],
+            // Setup files
+            setupFiles: ['./vitest.setup.ts'],
 
-			// Coverage thresholds (aspirational)
-			coverage: {
-				thresholds: {
-					lines: 70,
-					functions: 70,
-					branches: 65,
-					statements: 70,
-				},
-				include: ['src/**/*.{ts,tsx}'],
-				exclude: [
-					'src/**/__tests__/**',
-					'src/types/**',
-					'src/main.tsx',
-					'src/App.tsx',
-					'src/**/*.d.ts',
-				],
-			},
-		},
+            // Coverage thresholds (aspirational)
+            coverage: {
+                thresholds: {
+                    lines: 70,
+                    functions: 70,
+                    branches: 65,
+                    statements: 70,
+                },
+                include: ['src/**/*.{ts,tsx}'],
+                exclude: [
+                    'src/**/__tests__/**',
+                    'src/types/**',
+                    'src/main.tsx',
+                    'src/App.tsx',
+                    'src/**/*.d.ts',
+                ],
+            },
+        },
 
-		// Resolve path aliases (matching tsconfig.json)
-		resolve: {
-			alias: {
-				'@': path.resolve(__dirname, './src'),
-				'@features': path.resolve(__dirname, './src/features'),
-				'@shared': path.resolve(__dirname, './src/shared'),
-				'@config': path.resolve(__dirname, './src/config'),
-				'@hooks': path.resolve(__dirname, './src/hooks'),
-			},
-		},
-	})
+        // Resolve path aliases (matching tsconfig.json)
+        resolve: {
+            alias: {
+                '@': path.resolve(__dirname, './src'),
+                '@features': path.resolve(__dirname, './src/features'),
+                '@shared': path.resolve(__dirname, './src/shared'),
+                '@config': path.resolve(__dirname, './src/config'),
+                '@hooks': path.resolve(__dirname, './src/hooks'),
+            },
+        },
+    })
 )

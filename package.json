@@ -39,7 +39,8 @@
         "format": "prettier --write .",
         "format:check": "prettier --check .",
         "clean": "turbo clean && rm -rf node_modules/.turbo",
-        "clear-data": "node scripts/clear-data.js"
+        "clear-data": "node scripts/clear-data.js",
+        "prepare": "husky"
     },
     "keywords": [
         "playwright",
@@ -74,6 +75,7 @@
         "eslint-plugin-prettier": "^5.5.4",
         "eslint-plugin-unused-imports": "^4.2.0",
         "globals": "^16.4.0",
+        "husky": "^9.1.7",
         "prettier": "^3.6.2",
         "turbo": "^2.5.8",
         "typescript": "^5.9.3",

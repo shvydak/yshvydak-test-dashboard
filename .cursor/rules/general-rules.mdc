@@ -166,7 +166,7 @@ cd packages/reporter && npm run dev   # Reporter watch
 - JWT Authentication: `packages/server/src/services/__tests__/auth.service.test.ts`
 - Flaky detection: `packages/server/src/repositories/__tests__/test.repository.flaky.test.ts`
 
-**Full testing guide:** [TESTING.md](TESTING.md)
+**Full testing guide:** [TESTING.md](docs/TESTING.md)
 
 ---
 
@@ -195,7 +195,7 @@ cd packages/reporter && npm run dev   # Reporter watch
 - [ARCHITECTURE.md](docs/ARCHITECTURE.md) - Complete system design
 - [DEVELOPMENT.md](docs/DEVELOPMENT.md) - Best practices
 - [API_REFERENCE.md](docs/API_REFERENCE.md) - Endpoints
-- [TESTING.md](TESTING.md) - Testing infrastructure & guide
+- [TESTING.md](docs/TESTING.md) - Testing infrastructure & guide
 
 ### AI Deep Dive
 

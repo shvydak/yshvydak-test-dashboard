@@ -11,34 +11,34 @@ import '@testing-library/jest-dom/vitest'
 
 // Setup before all tests
 beforeAll(() => {
-	// Mock window.matchMedia (for theme detection, responsive components)
-	Object.defineProperty(window, 'matchMedia', {
-		writable: true,
-		value: (query: string) => ({
-			matches: false,
-			media: query,
-			onchange: null,
-			addListener: () => {}, // Deprecated
-			removeListener: () => {}, // Deprecated
-			addEventListener: () => {},
-			removeEventListener: () => {},
-			dispatchEvent: () => true,
-		}),
-	})
+    // Mock window.matchMedia (for theme detection, responsive components)
+    Object.defineProperty(window, 'matchMedia', {
+        writable: true,
+        value: (query: string) => ({
+            matches: false,
+            media: query,
+            onchange: null,
+            addListener: () => {}, // Deprecated
+            removeListener: () => {}, // Deprecated
+            addEventListener: () => {},
+            removeEventListener: () => {},
+            dispatchEvent: () => true,
+        }),
+    })
 
-	// Mock IntersectionObserver (if needed for lazy loading, etc.)
-	global.IntersectionObserver = class IntersectionObserver {
-		constructor() {}
-		disconnect() {}
-		observe() {}
-		takeRecords() {
-			return []
-		}
-		unobserve() {}
-	} as any
+    // Mock IntersectionObserver (if needed for lazy loading, etc.)
+    global.IntersectionObserver = class IntersectionObserver {
+        constructor() {}
+        disconnect() {}
+        observe() {}
+        takeRecords() {
+            return []
+        }
+        unobserve() {}
+    } as any
 })
 
 // Cleanup after each test (React Testing Library)
 afterEach(() => {
-	cleanup()
+    cleanup()
 })

@@ -5,7 +5,7 @@ import React from 'react'
  */
 export function stripAnsiCodes(text: string): string {
     // Регулярное выражение для удаления ANSI escape codes
-    // eslint-disable-next-line no-control-regex
+
     return text.replace(/\u001b\[[0-9;]*m/g, '')
 }
 

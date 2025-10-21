@@ -71,6 +71,8 @@ User clicks "Run All"
 - Rerun button? → `web/src/features/tests/components/history/ExecutionSidebar.tsx`
 - Copy attachments? → `server/src/storage/attachmentManager.ts`
 - Flaky detection? → `server/src/repositories/test.repository.ts`
+- **Test configurations?** → `vitest.workspace.ts`, `vitest.shared.ts`
+- **Write tests?** → `packages/{package}/src/__tests__/`
 
 **Full structure:** See [docs/ai/FILE_LOCATIONS.md](docs/ai/FILE_LOCATIONS.md)
 
@@ -128,6 +130,9 @@ const url = getWebSocketUrl(true)
 npm run dev              # All packages
 npm run type-check       # TypeScript validation
 npm run lint:fix         # Auto-fix issues
+npm test                 # Run all tests
+npm run test:watch       # Test watch mode
+npm run test:coverage    # Coverage report
 ```
 
 **Package-specific:**
@@ -137,6 +142,27 @@ cd packages/server && npm run dev     # API only
 cd packages/web && npm run dev        # React only
 cd packages/reporter && npm run dev   # Reporter watch
 ```
+
+---
+
+## 🧪 Testing Infrastructure
+
+**Framework:** Vitest 3.2 (TypeScript-first, 10-20x faster than Jest)
+
+**Coverage Targets:**
+
+- Reporter: 90%+ (Test ID generation - CRITICAL)
+- Server: 80%+ (Services, repositories)
+- Web: 70%+ (Hooks, utilities)
+- **Overall: 75-80%**
+
+**Key Test Locations:**
+
+- Test ID generation: `packages/reporter/src/__tests__/testIdGeneration.test.ts`
+- JWT Authentication: `packages/server/src/services/__tests__/auth.service.test.ts`
+- Flaky detection: `packages/server/src/repositories/__tests__/test.repository.flaky.test.ts`
+
+**Full testing guide:** [TESTING.md](docs/TESTING.md)
 
 ---
 
@@ -165,6 +191,7 @@ cd packages/reporter && npm run dev   # Reporter watch
 - [ARCHITECTURE.md](docs/ARCHITECTURE.md) - Complete system design
 - [DEVELOPMENT.md](docs/DEVELOPMENT.md) - Best practices
 - [API_REFERENCE.md](docs/API_REFERENCE.md) - Endpoints
+- [TESTING.md](docs/TESTING.md) - Testing infrastructure & guide
 
 ### AI Deep Dive
 

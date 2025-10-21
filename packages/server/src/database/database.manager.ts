@@ -250,7 +250,7 @@ export class DatabaseManager {
         if (row && row.metadata) {
             try {
                 row.metadata = JSON.parse(row.metadata)
-            } catch (e) {
+            } catch {
                 row.metadata = null
             }
         }
@@ -266,7 +266,7 @@ export class DatabaseManager {
             if (row.metadata) {
                 try {
                     row.metadata = JSON.parse(row.metadata)
-                } catch (e) {
+                } catch {
                     row.metadata = null
                 }
             }
@@ -305,7 +305,7 @@ export class DatabaseManager {
         if (row && row.metadata) {
             try {
                 row.metadata = JSON.parse(row.metadata)
-            } catch (e) {
+            } catch {
                 row.metadata = null
             }
         }
@@ -321,7 +321,7 @@ export class DatabaseManager {
             if (row.metadata) {
                 try {
                     row.metadata = JSON.parse(row.metadata)
-                } catch (e) {
+                } catch {
                     row.metadata = null
                 }
             }
@@ -337,7 +337,7 @@ export class DatabaseManager {
             if (row.metadata) {
                 try {
                     row.metadata = JSON.parse(row.metadata)
-                } catch (e) {
+                } catch {
                     row.metadata = null
                 }
             }

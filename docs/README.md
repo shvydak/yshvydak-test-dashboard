@@ -29,7 +29,7 @@ Before diving into docs, know these 5 things:
 1. **[Architecture Overview](ARCHITECTURE.md)** - System design and patterns
 2. **[Development Guide](DEVELOPMENT.md)** - Local development workflow
 3. **[API Reference](API_REFERENCE.md)** - Complete API documentation
-4. **[Testing Guide](../TESTING.md)** - Vitest commands, structure, coverage
+4. **[Testing Guide](docs/TESTING.md)** - Vitest commands, structure, coverage
 
 ### For DevOps / Deployment
 

@@ -330,12 +330,14 @@ packages/core/
 ### "Where is testId generated?"
 
 **Reporter:**
+
 ```
 packages/reporter/src/index.ts
   → generateStableTestId(filePath, title)
 ```
 
 **Discovery:**
+
 ```
 packages/server/src/services/playwright.service.ts
   → generateStableTestId(filePath, title)
@@ -348,12 +350,14 @@ packages/server/src/services/playwright.service.ts
 ### "Where is WebSocket URL constructed?"
 
 **Centralized utility (DRY):**
+
 ```
 packages/web/src/features/authentication/utils/webSocketUrl.ts
   → getWebSocketUrl(includeAuth: boolean)
 ```
 
 **Usage:**
+
 - `App.tsx` - Global WebSocket connection
 - `TestDetailModal.tsx` - Modal-specific connection
 - `Dashboard.tsx` - Dashboard live updates
@@ -363,6 +367,7 @@ packages/web/src/features/authentication/utils/webSocketUrl.ts
 ### "Where is theme applied?"
 
 **Theme management:**
+
 ```
 packages/web/src/hooks/useTheme.ts
   → useTheme() hook
@@ -371,6 +376,7 @@ packages/web/src/hooks/useTheme.ts
 ```
 
 **Usage:**
+
 - `App.tsx` - Read theme from hook
 - `Header.tsx` - Read isDark state
 - `LoginPage.tsx` - Apply theme before auth (uses applyThemeMode utility)
@@ -381,6 +387,7 @@ packages/web/src/hooks/useTheme.ts
 ### "Where is the rerun button?"
 
 **Location:**
+
 ```
 packages/web/src/features/tests/components/history/ExecutionSidebar.tsx
   → Line ~30: ActionButton with "Run" text
@@ -388,6 +395,7 @@ packages/web/src/features/tests/components/history/ExecutionSidebar.tsx
 ```
 
 **Flow:**
+
 ```
 ExecutionSidebar → onRerun prop → TestDetailModal → testsStore.rerunTest()
   → POST /api/tests/:id/rerun → WebSocket event → Auto-update UI
@@ -398,12 +406,14 @@ ExecutionSidebar → onRerun prop → TestDetailModal → testsStore.rerunTest()
 ### "Where are attachments copied?"
 
 **Storage manager:**
+
 ```
 packages/server/src/storage/attachmentManager.ts
   → copyPlaywrightAttachment(sourceFilePath, testResultId, type)
 ```
 
 **Service orchestration:**
+
 ```
 packages/server/src/services/attachment.service.ts
   → processAttachments(attachments, testResultId)
@@ -411,6 +421,7 @@ packages/server/src/services/attachment.service.ts
 ```
 
 **Flow:**
+
 ```
 Reporter sends temp path → AttachmentService → AttachmentManager
   → Copy to: {OUTPUT_DIR}/attachments/{testResultId}/{fileName}
@@ -422,6 +433,7 @@ Reporter sends temp path → AttachmentService → AttachmentManager
 ### "Where is flaky test detection?"
 
 **SQL query:**
+
 ```
 packages/server/src/repositories/test.repository.ts
   → getFlakyTests(days, thresholdPercent)
@@ -429,6 +441,7 @@ packages/server/src/repositories/test.repository.ts
 ```
 
 **Frontend:**
+
 ```
 packages/web/src/features/dashboard/hooks/useFlakyTests.ts
   → React Query integration
@@ -436,6 +449,7 @@ packages/web/src/features/dashboard/hooks/useFlakyTests.ts
 ```
 
 **Display:**
+
 ```
 packages/web/src/features/dashboard/components/Dashboard.tsx
   → Flaky Tests Panel (left side)
@@ -447,6 +461,7 @@ packages/web/src/features/dashboard/components/Dashboard.tsx
 ### "Where is the Run All Tests button?"
 
 **Location:**
+
 ```
 packages/web/src/features/tests/components/TestsListFilters.tsx
   → ActionButton with "Run All Tests" text
@@ -454,6 +469,7 @@ packages/web/src/features/tests/components/TestsListFilters.tsx
 ```
 
 **Why moved here:**
+
 - Better context (see tests you're about to run)
 - Proximity to results
 - Dashboard focuses on overview/stats
@@ -463,6 +479,7 @@ packages/web/src/features/tests/components/TestsListFilters.tsx
 ### "Where is authentication validated?"
 
 **Backend:**
+
 ```
 packages/server/src/middleware/auth.middleware.ts
   → validateJWT(token)
@@ -470,6 +487,7 @@ packages/server/src/middleware/auth.middleware.ts
 ```
 
 **Frontend:**
+
 ```
 packages/web/src/App.tsx
   → Initial token verification on mount
@@ -488,6 +506,7 @@ packages/web/src/features/authentication/utils/authFetch.ts
 ### Backend: Controller → Service → Repository → Database
 
 **Example: Rerun test**
+
 ```
 1. test.controller.ts: rerunTest()
    ↓ Extract testId from request
@@ -506,6 +525,7 @@ packages/web/src/features/authentication/utils/authFetch.ts
 ### Frontend: Feature → Component → Hook → Store
 
 **Example: View test history**
+
 ```
 1. TestDetailModal.tsx (component)
    ↓ Uses hook for data
@@ -524,6 +544,7 @@ packages/web/src/features/authentication/utils/authFetch.ts
 ## Configuration Files
 
 ### Root Level
+
 ```
 .
 ├── .env                        # Environment variables (gitignored)
@@ -534,10 +555,11 @@ packages/web/src/features/authentication/utils/authFetch.ts
 ├── tsconfig.json               # TypeScript base config
 ├── vitest.workspace.ts         # Vitest workspace configuration
 ├── vitest.shared.ts            # Shared Vitest config for all packages
-└── TESTING.md                  # Testing infrastructure documentation
+└── ../TESTING.md                  # Testing infrastructure documentation
 ```
 
 ### Backend Config
+
 ```
 packages/server/
 ├── .env                        # Server environment (gitignored)
@@ -548,6 +570,7 @@ packages/server/
 ```
 
 ### Frontend Config
+
 ```
 packages/web/
 ├── vite.config.ts              # Vite configuration with dotenv

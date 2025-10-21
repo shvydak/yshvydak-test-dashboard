@@ -178,12 +178,19 @@ cd packages/reporter && npm run dev   # Reporter watch
 
 **Complete Development Checklist** (MANDATORY after ANY code changes):
 
-1. 🔍 `npm run type-check` - Verify TypeScript
-2. 🎨 `npm run lint:fix` - Fix linting issues
-3. ✅ `npm test` - Run all tests
-4. 📦 `npm run build` - Ensure build succeeds
+1. ✨ `npm run format` - Format all files with Prettier
+2. 🔍 `npm run type-check` - Verify TypeScript
+3. 🎨 `npm run lint:fix` - Fix linting issues
+4. ✅ `npm test` - Run all tests
+5. 📦 `npm run build` - Ensure build succeeds
 
 **IMPORTANT**: Never skip this checklist during vibe coding sessions!
+
+### ❌ DON'T:
+
+**Git Operations:**
+
+- ❌ NEVER commit changes unless explicitly requested by the user
 
 ---
 

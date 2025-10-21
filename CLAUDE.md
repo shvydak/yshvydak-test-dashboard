@@ -186,6 +186,12 @@ cd packages/reporter && npm run dev   # Reporter watch
 
 **IMPORTANT**: Never skip this checklist during vibe coding sessions!
 
+### ❌ DON'T:
+
+**Git Operations:**
+
+- ❌ NEVER commit changes unless explicitly requested by the user
+
 ---
 
 ## 📖 Navigation (by role)

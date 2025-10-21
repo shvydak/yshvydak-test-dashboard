@@ -32,10 +32,10 @@ export function useDashboardActions(): UseDashboardActionsReturn {
             }
 
             const result = await response.json()
-            const statsBefore = result.statsBefore || {}
-            const totalRuns = statsBefore.total_runs || 0
-            const totalResults = statsBefore.total_results || 0
-            const totalAttachments = statsBefore.total_attachments || 0
+            const statsBefore = result.data?.statsBefore || {}
+            const totalRuns = statsBefore.totalRuns || 0
+            const totalResults = statsBefore.totalTests || 0
+            const totalAttachments = statsBefore.totalAttachments || 0
 
             alert(
                 `✅ Success! Cleared ${totalRuns} runs, ${totalResults} results, ${totalAttachments} attachments`

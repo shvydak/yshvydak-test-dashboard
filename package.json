@@ -29,7 +29,10 @@
         "restart:prod": "pm2 restart ecosystem.config.js",
         "logs:prod": "pm2 logs",
         "status:prod": "pm2 status",
-        "test": "turbo test",
+        "test": "npx vitest run",
+        "test:watch": "npx vitest",
+        "test:ui": "npx vitest --ui",
+        "test:coverage": "npx vitest run --coverage",
         "type-check": "turbo type-check",
         "lint": "turbo lint",
         "lint:fix": "eslint . --fix",
@@ -64,6 +67,8 @@
     "devDependencies": {
         "@eslint/js": "^9.38.0",
         "@types/node": "^20.0.0",
+        "@vitest/coverage-v8": "^3.2.4",
+        "@vitest/ui": "^3.2.4",
         "eslint": "^9.38.0",
         "eslint-config-prettier": "^10.1.8",
         "eslint-plugin-prettier": "^5.5.4",
@@ -71,7 +76,8 @@
         "globals": "^16.4.0",
         "prettier": "^3.6.2",
         "turbo": "^2.5.8",
-        "typescript": "^5.9.3"
+        "typescript": "^5.9.3",
+        "vitest": "^3.2.4"
     },
     "workspaces": [
         "packages/*"

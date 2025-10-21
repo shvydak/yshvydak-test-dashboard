@@ -11,6 +11,9 @@ packages/server/src/
 ├── app.ts                       # Express app setup, middleware, routes
 ├── server.ts                    # HTTP server startup, port binding
 │
+├── vitest.config.ts             # Vitest test configuration (Node environment)
+├── vitest.setup.ts              # Test setup file (env vars, global mocks)
+│
 ├── config/                      # Configuration management
 │   ├── environment.config.ts    # Environment variables with auto-derivation
 │   └── constants.ts             # Application constants
@@ -54,6 +57,13 @@ packages/server/src/
 │   │   ├── getFlakyTests()             # Flaky test detection
 │   │   ├── getTestTimeline()           # Daily aggregated stats
 │   │   └── rerunTest()                 # Rerun specific test
+│   │
+│   ├── __tests__/              # Service layer tests
+│   │   └── auth.service.test.ts        # JWT authentication tests (SECURITY)
+│   │       ├── Login/logout functionality
+│   │       ├── Token generation & verification
+│   │       ├── Multi-user support
+│   │       └── Security edge cases (SQL injection, XSS)
 │   ├── playwright.service.ts   # Playwright integration
 │   │   ├── discoverTests()             # Scan for tests with --list
 │   │   ├── runAllTests()               # Execute all tests
@@ -73,6 +83,14 @@ packages/server/src/
 │   │   ├── getTestResultsByTestId()    # Get execution history
 │   │   ├── getFlakyTests()             # SQL: GROUP BY testId, calculate failure rate
 │   │   └── getTestTimeline()           # SQL: DATE grouping for daily stats
+│   │
+│   ├── __tests__/              # Repository layer tests
+│   │   └── test.repository.flaky.test.ts  # Flaky detection algorithm tests
+│   │       ├── Basic flaky detection (50%, 25% failure rates)
+│   │       ├── Threshold filtering
+│   │       ├── Time range & status filtering
+│   │       └── Multi-test ranking
+│   │
 │   ├── run.repository.ts       # Test run CRUD
 │   └── attachment.repository.ts # Attachment database operations
 │       ├── saveAttachment()            # Insert attachment record
@@ -115,6 +133,9 @@ packages/web/src/
 │   ├── Authentication flow      # Check token, periodic validation
 │   ├── WebSocket setup         # getWebSocketUrl() after auth ready
 │   └── Route protection        # LoginPage vs. AuthenticatedApp
+│
+├── vitest.config.ts             # Vitest test configuration (jsdom environment)
+├── vitest.setup.ts              # React Testing Library setup
 │
 ├── config/                      # Configuration
 │   └── environment.config.ts   # Import.meta.env with Vite prefix
@@ -257,17 +278,27 @@ packages/web/src/
 ```
 packages/reporter/
 ├── src/
-│   └── index.ts                        # Main reporter implementation
-│       ├── generateStableTestId()      # ⚠️ MUST match PlaywrightService
-│       ├── onTestBegin()               # Test start event
-│       ├── onTestEnd()                 # Test completion
-│       ├── processAttachments()        # Extract attachment metadata
-│       ├── sendTestResult()            # POST to dashboard API
-│       └── Environment config:
-│           ├── DASHBOARD_API_URL (from dashboard)
-│           ├── RUN_ID (from dashboard)
-│           └── NODE_ENV (from dashboard)
+│   ├── index.ts                        # Main reporter implementation
+│   │   ├── generateStableTestId()      # ⚠️ MUST match PlaywrightService
+│   │   ├── onTestBegin()               # Test start event
+│   │   ├── onTestEnd()                 # Test completion
+│   │   ├── processAttachments()        # Extract attachment metadata
+│   │   ├── sendTestResult()            # POST to dashboard API
+│   │   └── Environment config:
+│   │       ├── DASHBOARD_API_URL (from dashboard)
+│   │       ├── RUN_ID (from dashboard)
+│   │       └── NODE_ENV (from dashboard)
+│   │
+│   └── __tests__/                      # Reporter tests (CRITICAL)
+│       └── testIdGeneration.test.ts    # Test ID generation tests
+│           ├── Determinism (same input = same output)
+│           ├── Uniqueness (different input = different output)
+│           ├── Edge cases (empty, long paths, Unicode)
+│           ├── Format validation
+│           ├── Collision resistance
+│           └── Performance benchmarks
 │
+├── vitest.config.ts                    # Vitest test configuration
 ├── package.json                        # npm package configuration
 │   ├── name: "playwright-dashboard-reporter"
 │   ├── version: "1.0.1"
@@ -282,12 +313,14 @@ packages/reporter/
 
 ```
 packages/core/
-└── src/
-    ├── types/
-    │   ├── test.types.ts              # Test result types
-    │   ├── attachment.types.ts        # Attachment types
-    │   └── run.types.ts               # Test run types
-    └── index.ts                        # Export all types
+├── src/
+│   ├── types/
+│   │   ├── test.types.ts              # Test result types
+│   │   ├── attachment.types.ts        # Attachment types
+│   │   └── run.types.ts               # Test run types
+│   └── index.ts                        # Export all types
+│
+└── vitest.config.ts                    # Vitest test configuration
 ```
 
 ---
@@ -498,7 +531,10 @@ packages/web/src/features/authentication/utils/authFetch.ts
 ├── .env.production             # Production config template
 ├── package.json                # Workspace configuration
 ├── turbo.json                  # Turborepo configuration
-└── tsconfig.json               # TypeScript base config
+├── tsconfig.json               # TypeScript base config
+├── vitest.workspace.ts         # Vitest workspace configuration
+├── vitest.shared.ts            # Shared Vitest config for all packages
+└── TESTING.md                  # Testing infrastructure documentation
 ```
 
 ### Backend Config

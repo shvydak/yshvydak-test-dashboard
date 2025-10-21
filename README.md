@@ -281,6 +281,21 @@ cd packages/reporter && npm run dev # Reporter package
 - `npm run clean` - Clean build artifacts
 - `npm run clear-data` - Interactive data cleanup
 
+## 🧪 Testing (Vitest)
+
+- Run all packages: `npm test`
+- Watch mode: `npm run test:watch`
+- Interactive UI: `npm run test:ui`
+- Coverage: `npm run test:coverage` (open `coverage/index.html`)
+
+Per-package:
+
+- Server: `npm test --workspace=@yshvydak/test-dashboard-server`
+- Web: `npm test --workspace=@yshvydak/web`
+- Reporter: `npm test --workspace=playwright-dashboard-reporter`
+
+More details: [TESTING.md](TESTING.md)
+
 ### Environment Variables
 
 The dashboard uses a **simplified .env configuration** with automatic derivation of most values:
@@ -380,15 +395,18 @@ We welcome contributions! Here's how to get started:
 Comprehensive documentation for users, developers, and contributors:
 
 ### Quick Start
+
 - **[Quick Start Guide](docs/QUICKSTART.md)** - Get running in 5 minutes
 - **[CLAUDE.md](CLAUDE.md)** - AI development quick reference with critical context
 
 ### For Developers
+
 - **[Architecture](docs/ARCHITECTURE.md)** - Complete system design and patterns
 - **[Development Guide](docs/DEVELOPMENT.md)** - Best practices and workflow
 - **[API Reference](docs/API_REFERENCE.md)** - REST + WebSocket endpoints
 
 ### Documentation Hub
+
 - **[docs/README.md](docs/README.md)** - Complete documentation navigation with role-based guidance
 
 **Documentation Quality**: 9.5/10 - Optimized for AI-assisted development (vibe coding)

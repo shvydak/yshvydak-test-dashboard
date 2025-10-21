@@ -7,6 +7,8 @@
     "scripts": {
         "build": "tsc",
         "dev": "tsc --watch",
+        "test": "npx vitest run",
+        "test:watch": "npx vitest",
         "type-check": "tsc --noEmit"
     },
     "keywords": [

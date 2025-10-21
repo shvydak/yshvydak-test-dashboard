@@ -48,12 +48,6 @@ export default defineConfig({
 
         // Projects replace deprecated workspace files
         // Each package can have its own vitest.config.ts for specific overrides
-        projects: [
-            'packages/core',
-            'packages/reporter',
-            'packages/server',
-            'packages/web',
-        ],
+        projects: ['packages/core', 'packages/reporter', 'packages/server', 'packages/web'],
     },
 })
-

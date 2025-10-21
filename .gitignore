@@ -26,6 +26,7 @@ packages/*/.turbo/
 test-results/
 packages/*/test-results/
 coverage/
+html/
 *.lcov
 
 # Environment files

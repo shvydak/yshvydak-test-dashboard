@@ -1,6 +1,6 @@
 import {defineConfig, mergeConfig} from 'vitest/config'
 import react from '@vitejs/plugin-react'
-import {sharedConfig} from '../../vitest.shared'
+import rootConfig from '../../vitest.config'
 import path from 'path'
 
 /**
@@ -14,7 +14,7 @@ import path from 'path'
  * - Integration tests: User flows with MSW for API mocking
  */
 export default mergeConfig(
-    sharedConfig,
+    rootConfig,
     defineConfig({
         plugins: [react()],
 

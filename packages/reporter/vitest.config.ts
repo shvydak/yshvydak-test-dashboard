@@ -1,5 +1,5 @@
 import {defineConfig, mergeConfig} from 'vitest/config'
-import {sharedConfig} from '../../vitest.shared'
+import rootConfig from '../../vitest.config'
 
 /**
  * Vitest Configuration for Reporter Package
@@ -12,7 +12,7 @@ import {sharedConfig} from '../../vitest.shared'
  * - Error handling and reporting
  */
 export default mergeConfig(
-    sharedConfig,
+    rootConfig,
     defineConfig({
         test: {
             name: 'reporter',

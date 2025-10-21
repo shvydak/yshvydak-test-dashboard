@@ -51,7 +51,7 @@ export function formatLastRun(test: any): string {
             second: '2-digit',
         })
         return `${formattedTime} ${formattedDate}`
-    } catch (error) {
+    } catch {
         return 'N/A'
     }
 }

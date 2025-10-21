@@ -72,7 +72,7 @@ export default function LoginPage() {
             } else {
                 setError(data.message || 'Login failed. Please check your credentials.')
             }
-        } catch (err) {
+        } catch {
             setError('Network error. Please check your connection and try again.')
         } finally {
             setIsLoading(false)

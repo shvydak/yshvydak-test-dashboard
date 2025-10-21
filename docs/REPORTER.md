@@ -101,11 +101,11 @@ The Dashboard looks for the reporter in this order:
 
 When Dashboard runs tests, it automatically sets:
 
-| Variable             | Description            | Default                 | Set By   |
-| -------------------- | ---------------------- | ----------------------- | -------- |
-| `DASHBOARD_API_URL`  | Dashboard API endpoint | `http://localhost:3001` | Dashboard|
-| `RUN_ID`             | Unique run identifier  | Auto-generated UUID     | Dashboard|
-| `NODE_ENV`           | Environment mode       | From Dashboard config   | Dashboard|
+| Variable            | Description            | Default                 | Set By    |
+| ------------------- | ---------------------- | ----------------------- | --------- |
+| `DASHBOARD_API_URL` | Dashboard API endpoint | `http://localhost:3001` | Dashboard |
+| `RUN_ID`            | Unique run identifier  | Auto-generated UUID     | Dashboard |
+| `NODE_ENV`          | Environment mode       | From Dashboard config   | Dashboard |
 
 ### Reporter Options (Advanced)
 
@@ -132,17 +132,20 @@ interface ReporterOptions {
 **Solutions**:
 
 1. Verify reporter is installed in test project:
+
     ```bash
     cd /path/to/your/test/project
     npm list playwright-dashboard-reporter
     ```
 
 2. Verify Dashboard server is running:
+
     ```bash
     curl http://localhost:3001/api/health
     ```
 
 3. Check Dashboard configuration in `.env`:
+
     ```bash
     PLAYWRIGHT_PROJECT_DIR=/path/to/your/test/project
     PORT=3001
@@ -264,6 +267,7 @@ function generateStableTestId(filePath: string, title: string): string {
 ```
 
 This ensures:
+
 - Same test has same ID across discovery and execution
 - Historical tracking works correctly
 - Reruns update correct test records

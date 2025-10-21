@@ -11,6 +11,9 @@ packages/server/src/
 ├── app.ts                       # Express app setup, middleware, routes
 ├── server.ts                    # HTTP server startup, port binding
 │
+├── vitest.config.ts             # Vitest test configuration (Node environment)
+├── vitest.setup.ts              # Test setup file (env vars, global mocks)
+│
 ├── config/                      # Configuration management
 │   ├── environment.config.ts    # Environment variables with auto-derivation
 │   └── constants.ts             # Application constants
@@ -54,6 +57,13 @@ packages/server/src/
 │   │   ├── getFlakyTests()             # Flaky test detection
 │   │   ├── getTestTimeline()           # Daily aggregated stats
 │   │   └── rerunTest()                 # Rerun specific test
+│   │
+│   ├── __tests__/              # Service layer tests
+│   │   └── auth.service.test.ts        # JWT authentication tests (SECURITY)
+│   │       ├── Login/logout functionality
+│   │       ├── Token generation & verification
+│   │       ├── Multi-user support
+│   │       └── Security edge cases (SQL injection, XSS)
 │   ├── playwright.service.ts   # Playwright integration
 │   │   ├── discoverTests()             # Scan for tests with --list
 │   │   ├── runAllTests()               # Execute all tests
@@ -73,6 +83,14 @@ packages/server/src/
 │   │   ├── getTestResultsByTestId()    # Get execution history
 │   │   ├── getFlakyTests()             # SQL: GROUP BY testId, calculate failure rate
 │   │   └── getTestTimeline()           # SQL: DATE grouping for daily stats
+│   │
+│   ├── __tests__/              # Repository layer tests
+│   │   └── test.repository.flaky.test.ts  # Flaky detection algorithm tests
+│   │       ├── Basic flaky detection (50%, 25% failure rates)
+│   │       ├── Threshold filtering
+│   │       ├── Time range & status filtering
+│   │       └── Multi-test ranking
+│   │
 │   ├── run.repository.ts       # Test run CRUD
 │   └── attachment.repository.ts # Attachment database operations
 │       ├── saveAttachment()            # Insert attachment record
@@ -115,6 +133,9 @@ packages/web/src/
 │   ├── Authentication flow      # Check token, periodic validation
 │   ├── WebSocket setup         # getWebSocketUrl() after auth ready
 │   └── Route protection        # LoginPage vs. AuthenticatedApp
+│
+├── vitest.config.ts             # Vitest test configuration (jsdom environment)
+├── vitest.setup.ts              # React Testing Library setup
 │
 ├── config/                      # Configuration
 │   └── environment.config.ts   # Import.meta.env with Vite prefix
@@ -257,17 +278,27 @@ packages/web/src/
 ```
 packages/reporter/
 ├── src/
-│   └── index.ts                        # Main reporter implementation
-│       ├── generateStableTestId()      # ⚠️ MUST match PlaywrightService
-│       ├── onTestBegin()               # Test start event
-│       ├── onTestEnd()                 # Test completion
-│       ├── processAttachments()        # Extract attachment metadata
-│       ├── sendTestResult()            # POST to dashboard API
-│       └── Environment config:
-│           ├── DASHBOARD_API_URL (from dashboard)
-│           ├── RUN_ID (from dashboard)
-│           └── NODE_ENV (from dashboard)
+│   ├── index.ts                        # Main reporter implementation
+│   │   ├── generateStableTestId()      # ⚠️ MUST match PlaywrightService
+│   │   ├── onTestBegin()               # Test start event
+│   │   ├── onTestEnd()                 # Test completion
+│   │   ├── processAttachments()        # Extract attachment metadata
+│   │   ├── sendTestResult()            # POST to dashboard API
+│   │   └── Environment config:
+│   │       ├── DASHBOARD_API_URL (from dashboard)
+│   │       ├── RUN_ID (from dashboard)
+│   │       └── NODE_ENV (from dashboard)
+│   │
+│   └── __tests__/                      # Reporter tests (CRITICAL)
+│       └── testIdGeneration.test.ts    # Test ID generation tests
+│           ├── Determinism (same input = same output)
+│           ├── Uniqueness (different input = different output)
+│           ├── Edge cases (empty, long paths, Unicode)
+│           ├── Format validation
+│           ├── Collision resistance
+│           └── Performance benchmarks
 │
+├── vitest.config.ts                    # Vitest test configuration
 ├── package.json                        # npm package configuration
 │   ├── name: "playwright-dashboard-reporter"
 │   ├── version: "1.0.1"
@@ -282,12 +313,14 @@ packages/reporter/
 
 ```
 packages/core/
-└── src/
-    ├── types/
-    │   ├── test.types.ts              # Test result types
-    │   ├── attachment.types.ts        # Attachment types
-    │   └── run.types.ts               # Test run types
-    └── index.ts                        # Export all types
+├── src/
+│   ├── types/
+│   │   ├── test.types.ts              # Test result types
+│   │   ├── attachment.types.ts        # Attachment types
+│   │   └── run.types.ts               # Test run types
+│   └── index.ts                        # Export all types
+│
+└── vitest.config.ts                    # Vitest test configuration
 ```
 
 ---
@@ -297,12 +330,14 @@ packages/core/
 ### "Where is testId generated?"
 
 **Reporter:**
+
 ```
 packages/reporter/src/index.ts
   → generateStableTestId(filePath, title)
 ```
 
 **Discovery:**
+
 ```
 packages/server/src/services/playwright.service.ts
   → generateStableTestId(filePath, title)
@@ -315,12 +350,14 @@ packages/server/src/services/playwright.service.ts
 ### "Where is WebSocket URL constructed?"
 
 **Centralized utility (DRY):**
+
 ```
 packages/web/src/features/authentication/utils/webSocketUrl.ts
   → getWebSocketUrl(includeAuth: boolean)
 ```
 
 **Usage:**
+
 - `App.tsx` - Global WebSocket connection
 - `TestDetailModal.tsx` - Modal-specific connection
 - `Dashboard.tsx` - Dashboard live updates
@@ -330,6 +367,7 @@ packages/web/src/features/authentication/utils/webSocketUrl.ts
 ### "Where is theme applied?"
 
 **Theme management:**
+
 ```
 packages/web/src/hooks/useTheme.ts
   → useTheme() hook
@@ -338,6 +376,7 @@ packages/web/src/hooks/useTheme.ts
 ```
 
 **Usage:**
+
 - `App.tsx` - Read theme from hook
 - `Header.tsx` - Read isDark state
 - `LoginPage.tsx` - Apply theme before auth (uses applyThemeMode utility)
@@ -348,6 +387,7 @@ packages/web/src/hooks/useTheme.ts
 ### "Where is the rerun button?"
 
 **Location:**
+
 ```
 packages/web/src/features/tests/components/history/ExecutionSidebar.tsx
   → Line ~30: ActionButton with "Run" text
@@ -355,6 +395,7 @@ packages/web/src/features/tests/components/history/ExecutionSidebar.tsx
 ```
 
 **Flow:**
+
 ```
 ExecutionSidebar → onRerun prop → TestDetailModal → testsStore.rerunTest()
   → POST /api/tests/:id/rerun → WebSocket event → Auto-update UI
@@ -365,12 +406,14 @@ ExecutionSidebar → onRerun prop → TestDetailModal → testsStore.rerunTest()
 ### "Where are attachments copied?"
 
 **Storage manager:**
+
 ```
 packages/server/src/storage/attachmentManager.ts
   → copyPlaywrightAttachment(sourceFilePath, testResultId, type)
 ```
 
 **Service orchestration:**
+
 ```
 packages/server/src/services/attachment.service.ts
   → processAttachments(attachments, testResultId)
@@ -378,6 +421,7 @@ packages/server/src/services/attachment.service.ts
 ```
 
 **Flow:**
+
 ```
 Reporter sends temp path → AttachmentService → AttachmentManager
   → Copy to: {OUTPUT_DIR}/attachments/{testResultId}/{fileName}
@@ -389,6 +433,7 @@ Reporter sends temp path → AttachmentService → AttachmentManager
 ### "Where is flaky test detection?"
 
 **SQL query:**
+
 ```
 packages/server/src/repositories/test.repository.ts
   → getFlakyTests(days, thresholdPercent)
@@ -396,6 +441,7 @@ packages/server/src/repositories/test.repository.ts
 ```
 
 **Frontend:**
+
 ```
 packages/web/src/features/dashboard/hooks/useFlakyTests.ts
   → React Query integration
@@ -403,6 +449,7 @@ packages/web/src/features/dashboard/hooks/useFlakyTests.ts
 ```
 
 **Display:**
+
 ```
 packages/web/src/features/dashboard/components/Dashboard.tsx
   → Flaky Tests Panel (left side)
@@ -414,6 +461,7 @@ packages/web/src/features/dashboard/components/Dashboard.tsx
 ### "Where is the Run All Tests button?"
 
 **Location:**
+
 ```
 packages/web/src/features/tests/components/TestsListFilters.tsx
   → ActionButton with "Run All Tests" text
@@ -421,6 +469,7 @@ packages/web/src/features/tests/components/TestsListFilters.tsx
 ```
 
 **Why moved here:**
+
 - Better context (see tests you're about to run)
 - Proximity to results
 - Dashboard focuses on overview/stats
@@ -430,6 +479,7 @@ packages/web/src/features/tests/components/TestsListFilters.tsx
 ### "Where is authentication validated?"
 
 **Backend:**
+
 ```
 packages/server/src/middleware/auth.middleware.ts
   → validateJWT(token)
@@ -437,6 +487,7 @@ packages/server/src/middleware/auth.middleware.ts
 ```
 
 **Frontend:**
+
 ```
 packages/web/src/App.tsx
   → Initial token verification on mount
@@ -455,6 +506,7 @@ packages/web/src/features/authentication/utils/authFetch.ts
 ### Backend: Controller → Service → Repository → Database
 
 **Example: Rerun test**
+
 ```
 1. test.controller.ts: rerunTest()
    ↓ Extract testId from request
@@ -473,6 +525,7 @@ packages/web/src/features/authentication/utils/authFetch.ts
 ### Frontend: Feature → Component → Hook → Store
 
 **Example: View test history**
+
 ```
 1. TestDetailModal.tsx (component)
    ↓ Uses hook for data
@@ -491,6 +544,7 @@ packages/web/src/features/authentication/utils/authFetch.ts
 ## Configuration Files
 
 ### Root Level
+
 ```
 .
 ├── .env                        # Environment variables (gitignored)
@@ -498,10 +552,14 @@ packages/web/src/features/authentication/utils/authFetch.ts
 ├── .env.production             # Production config template
 ├── package.json                # Workspace configuration
 ├── turbo.json                  # Turborepo configuration
-└── tsconfig.json               # TypeScript base config
+├── tsconfig.json               # TypeScript base config
+├── vitest.workspace.ts         # Vitest workspace configuration
+├── vitest.shared.ts            # Shared Vitest config for all packages
+└── ../TESTING.md                  # Testing infrastructure documentation
 ```
 
 ### Backend Config
+
 ```
 packages/server/
 ├── .env                        # Server environment (gitignored)
@@ -512,6 +570,7 @@ packages/server/
 ```
 
 ### Frontend Config
+
 ```
 packages/web/
 ├── vite.config.ts              # Vite configuration with dotenv

@@ -453,7 +453,7 @@ export class PlaywrightService implements IPlaywrightService {
                         issues.push(`Reporter package main file not found: ${mainFile}`)
                         reporterExists = false
                     }
-                } catch (error) {
+                } catch {
                     issues.push(`Invalid package.json in reporter package`)
                     reporterExists = false
                 }

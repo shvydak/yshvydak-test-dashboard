@@ -65,7 +65,7 @@ function App() {
                     sessionStorage.removeItem('_auth')
                     setIsAuthenticated(false)
                 }
-            } catch (error) {
+            } catch {
                 setIsAuthenticated(false)
             } finally {
                 setIsLoading(false)
@@ -122,7 +122,7 @@ function App() {
                         return `${config.websocket.url}?token=${encodeURIComponent(token)}`
                     }
                 }
-            } catch (error) {
+            } catch {
                 // Silent error handling
             }
         }
@@ -200,7 +200,7 @@ function App() {
                             const parsed = JSON.parse(authData)
                             return parsed?.user || parsed?.auth?.user || null
                         }
-                    } catch (error) {}
+                    } catch {}
                     return null
                 }}
             />
@@ -257,7 +257,7 @@ function App() {
                                             const user = parsed?.user || parsed?.auth?.user
                                             return user?.email || 'User'
                                         }
-                                    } catch (error) {}
+                                    } catch {}
                                     return 'User'
                                 })()}
                             </span>

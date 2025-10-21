@@ -39,55 +39,75 @@ export interface AttachmentData {
 }
 
 export class DatabaseManager {
-    private db: sqlite3.Database
+    private db!: sqlite3.Database
     private dbPath: string
+    private initializationPromise: Promise<void>
 
     constructor(outputDir: string) {
-        // Ensure output directory exists
-        if (!fs.existsSync(outputDir)) {
-            fs.mkdirSync(outputDir, {recursive: true})
-            // Set directory permissions to be writable
-            fs.chmodSync(outputDir, 0o755)
-        }
+        // Handle in-memory database
+        if (outputDir === ':memory:') {
+            this.dbPath = ':memory:'
+        } else {
+            // Ensure output directory exists
+            if (!fs.existsSync(outputDir)) {
+                fs.mkdirSync(outputDir, {recursive: true})
+                // Set directory permissions to be writable
+                fs.chmodSync(outputDir, 0o755)
+            }
 
-        this.dbPath = path.join(outputDir, 'test-results.db')
+            this.dbPath = path.join(outputDir, 'test-results.db')
+        }
 
         // Enable verbose mode for debugging
         const sqlite = sqlite3.verbose()
 
-        // Open database with explicit read-write mode
-        this.db = new sqlite.Database(
-            this.dbPath,
-            sqlite3.OPEN_READWRITE | sqlite3.OPEN_CREATE,
-            (err) => {
-                if (err) {
-                    console.error('Database connection error:', err.message)
-                } else {
-                    console.log('✅ Database connected successfully:', this.dbPath)
+        // Create initialization promise
+        this.initializationPromise = new Promise<void>((resolve, reject) => {
+            // Open database with explicit read-write mode
+            this.db = new sqlite.Database(
+                this.dbPath,
+                sqlite3.OPEN_READWRITE | sqlite3.OPEN_CREATE,
+                (err) => {
+                    if (err) {
+                        console.error('Database connection error:', err.message)
+                        reject(err)
+                    } else {
+                        console.log('✅ Database connected successfully:', this.dbPath)
 
-                    // Set file permissions after database is created
-                    try {
-                        fs.chmodSync(this.dbPath, 0o644)
-                        console.log('✅ Database file permissions set to 644')
-                    } catch (error) {
-                        console.warn('⚠️ Could not set database file permissions:', error)
+                        // Set file permissions after database is created (skip for in-memory)
+                        if (this.dbPath !== ':memory:') {
+                            try {
+                                fs.chmodSync(this.dbPath, 0o644)
+                                console.log('✅ Database file permissions set to 644')
+                            } catch (error) {
+                                console.warn('⚠️ Could not set database file permissions:', error)
+                            }
+                        }
+
+                        // Enable foreign keys and configure database
+                        this.db.run('PRAGMA foreign_keys = ON')
+                        this.db.run('PRAGMA journal_mode = WAL') // Write-Ahead Logging for better concurrency
+                        this.db.run('PRAGMA synchronous = NORMAL') // Balance between safety and performance
+                        this.db.run('PRAGMA cache_size = 1000') // Increase cache size
+                        this.db.run('PRAGMA temp_store = MEMORY') // Store temp tables in memory
+
+                        // Initialize schema and resolve after schema is created
+                        this.initSchema(resolve, reject)
                     }
                 }
-            }
-        )
-
-        // Enable foreign keys and configure database
-        this.db.run('PRAGMA foreign_keys = ON')
-        this.db.run('PRAGMA journal_mode = WAL') // Write-Ahead Logging for better concurrency
-        this.db.run('PRAGMA synchronous = NORMAL') // Balance between safety and performance
-        this.db.run('PRAGMA cache_size = 1000') // Increase cache size
-        this.db.run('PRAGMA temp_store = MEMORY') // Store temp tables in memory
-
-        // Initialize schema
-        this.initSchema()
+            )
+        })
     }
 
-    private initSchema(): void {
+    /**
+     * Wait for database initialization to complete.
+     * This is useful in tests and scenarios where you need to ensure the database is ready.
+     */
+    async initialize(): Promise<void> {
+        await this.initializationPromise
+    }
+
+    private initSchema(resolve: () => void, reject: (err: Error) => void): void {
         const schemaPath = path.join(__dirname, 'schema.sql')
         console.log('Loading schema from:', schemaPath)
 
@@ -101,14 +121,16 @@ export class DatabaseManager {
                 this.db.exec(schema, (error) => {
                     if (error) {
                         console.error('Failed to initialize database schema:', error)
-                        throw error
+                        reject(error)
                     } else {
                         console.log('Database schema initialized successfully')
+                        resolve()
                     }
                 })
                 return
             }
-            throw new Error(`Schema file not found: ${schemaPath}`)
+            reject(new Error(`Schema file not found: ${schemaPath}`))
+            return
         }
 
         const schema = fs.readFileSync(schemaPath, 'utf-8')
@@ -116,9 +138,10 @@ export class DatabaseManager {
         this.db.exec(schema, (error) => {
             if (error) {
                 console.error('Failed to initialize database schema:', error)
-                throw error
+                reject(error)
             } else {
                 console.log('Database schema initialized successfully')
+                resolve()
             }
         })
     }
@@ -227,7 +250,7 @@ export class DatabaseManager {
         if (row && row.metadata) {
             try {
                 row.metadata = JSON.parse(row.metadata)
-            } catch (e) {
+            } catch {
                 row.metadata = null
             }
         }
@@ -243,7 +266,7 @@ export class DatabaseManager {
             if (row.metadata) {
                 try {
                     row.metadata = JSON.parse(row.metadata)
-                } catch (e) {
+                } catch {
                     row.metadata = null
                 }
             }
@@ -282,7 +305,7 @@ export class DatabaseManager {
         if (row && row.metadata) {
             try {
                 row.metadata = JSON.parse(row.metadata)
-            } catch (e) {
+            } catch {
                 row.metadata = null
             }
         }
@@ -298,7 +321,7 @@ export class DatabaseManager {
             if (row.metadata) {
                 try {
                     row.metadata = JSON.parse(row.metadata)
-                } catch (e) {
+                } catch {
                     row.metadata = null
                 }
             }
@@ -314,7 +337,7 @@ export class DatabaseManager {
             if (row.metadata) {
                 try {
                     row.metadata = JSON.parse(row.metadata)
-                } catch (e) {
+                } catch {
                     row.metadata = null
                 }
             }

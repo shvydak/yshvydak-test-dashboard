@@ -214,16 +214,19 @@ Visual diagrams and detailed explanations of how different parts of the system w
 ### 1. Historical Tracking ← Test ID Generation
 
 **Dependency:**
+
 ```
 Historical Tracking REQUIRES stable testId across all executions
 ```
 
 **Why:**
+
 - Multiple executions of same test must have same `testId`
 - Different `id` (execution ID) per run
 - Database query: `SELECT * FROM test_results WHERE test_id = ? ORDER BY created_at DESC`
 
 **Diagram:**
+
 ```
 Test Run 1:
   id: "abc-123"
@@ -237,6 +240,7 @@ Test Run 2:               │
 ```
 
 **Implementation:**
+
 - `generateStableTestId()` in reporter
 - `generateStableTestId()` in PlaywrightService
 - ⚠️ **MUST BE IDENTICAL**
@@ -246,16 +250,19 @@ Test Run 2:               │
 ### 2. Attachment Storage ← INSERT-only Strategy
 
 **Dependency:**
+
 ```
 Permanent Attachment Storage REQUIRES unique execution IDs
 ```
 
 **Why:**
+
 - Each execution ID gets own directory
 - Multiple executions = multiple attachment sets
 - No file collision between runs
 
 **Diagram:**
+
 ```
 attachments/
 ├── abc-123-def/              ← Execution 1 (id: abc-123)
@@ -279,16 +286,19 @@ If we used UPDATE:
 ### 3. Rerun from Modal ← WebSocket + Historical Tracking
 
 **Dependency:**
+
 ```
 Rerun Feature REQUIRES both WebSocket events AND historical tracking
 ```
 
 **Why:**
+
 - WebSocket: Real-time updates when rerun completes
 - Historical tracking: View previous executions
 - Combined: Auto-switch to latest execution after rerun
 
 **Flow:**
+
 ```
 User clicks "Run" in ExecutionSidebar
   ↓
@@ -316,11 +326,13 @@ Modal displays new execution data
 ### 4. Dashboard Redesign ← Historical Tracking + Flaky Detection
 
 **Dependency:**
+
 ```
 Flaky Test Detection REQUIRES multiple executions grouped by testId
 ```
 
 **SQL Query:**
+
 ```sql
 SELECT
   tr.test_id as testId,
@@ -338,6 +350,7 @@ HAVING totalRuns > 1
 ```
 
 **Example:**
+
 ```
 testId: "test-66jqtq"
 Executions:
@@ -355,16 +368,19 @@ Flaky percentage: 2/5 = 40%
 ### 5. Flaky Test Detection ← Test ID Grouping
 
 **Dependency:**
+
 ```
 Flaky Detection REQUIRES consistent testId across multiple runs
 ```
 
 **Why:**
+
 - Groups executions: `GROUP BY test_id`
 - Calculates failure rate per test (not per execution)
 - Tracks history: `history: ['passed', 'failed', 'passed', ...]`
 
 **Diagram:**
+
 ```
 Without stable testId:
   Test Run 1: testId = "test-abc-123"  ← Different ID

@@ -12,7 +12,7 @@ export class FileUtil {
         try {
             const stats = fs.statSync(filePath)
             return stats.size
-        } catch (error) {
+        } catch {
             return 0
         }
     }
@@ -25,7 +25,7 @@ export class FileUtil {
         try {
             const content = fs.readFileSync(filePath, 'utf-8')
             return JSON.parse(content)
-        } catch (error) {
+        } catch {
             throw new Error(`Failed to read JSON file: ${filePath}`)
         }
     }

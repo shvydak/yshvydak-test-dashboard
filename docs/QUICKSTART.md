@@ -69,6 +69,7 @@ npm run dev
 ```
 
 Dashboard opens at:
+
 - **Web UI**: http://localhost:3000
 - **API**: http://localhost:3001
 
@@ -76,8 +77,8 @@ Dashboard opens at:
 
 1. Open http://localhost:3000 in your browser
 2. Login with credentials from `.env`:
-   - Email: `admin@admin.com`
-   - Password: `qwe123`
+    - Email: `admin@admin.com`
+    - Password: `qwe123`
 3. Click **"Discover Tests"** button
 4. Your tests appear in the dashboard!
 
@@ -105,6 +106,7 @@ npx playwright test
 ## 🎉 You're Done!
 
 Your dashboard is now:
+
 - ✅ Monitoring test execution in real-time
 - ✅ Tracking test history with attachments
 - ✅ Ready for one-click reruns
@@ -115,6 +117,7 @@ Your dashboard is now:
 ### Customize Settings
 
 Click your avatar → **Settings** to configure:
+
 - **Theme**: Auto / Light / Dark modes
 - **Test Execution**: Configure max workers
 - **Admin Actions**: Discover tests, clear data, health check
@@ -138,6 +141,7 @@ For production deployment with CloudTunnel:
 ### Dashboard won't start
 
 **Check port availability:**
+
 ```bash
 # Check if port 3001 is already in use
 lsof -i :3001
@@ -149,12 +153,14 @@ lsof -i :3001
 ### Reporter not found
 
 **Verify installation:**
+
 ```bash
 cd /path/to/your/test/project
 npm list playwright-dashboard-reporter
 ```
 
 **If not found, install it:**
+
 ```bash
 npm install --save-dev playwright-dashboard-reporter
 ```
@@ -162,6 +168,7 @@ npm install --save-dev playwright-dashboard-reporter
 ### Tests not appearing
 
 **Check `PLAYWRIGHT_PROJECT_DIR` path:**
+
 ```bash
 # In dashboard directory
 cat .env | grep PLAYWRIGHT_PROJECT_DIR
@@ -171,6 +178,7 @@ ls -la /path/from/env
 ```
 
 **Run diagnostics:**
+
 ```bash
 curl http://localhost:3001/api/tests/diagnostics
 ```
@@ -178,6 +186,7 @@ curl http://localhost:3001/api/tests/diagnostics
 ### Can't login
 
 **Check authentication config in `.env`:**
+
 ```bash
 ENABLE_AUTH=true
 ADMIN_EMAIL=admin@admin.com
@@ -185,6 +194,7 @@ ADMIN_PASSWORD=qwe123
 ```
 
 **Reset if needed:**
+
 1. Stop dashboard (`Ctrl+C`)
 2. Edit `.env` with correct credentials
 3. Restart: `npm run dev`

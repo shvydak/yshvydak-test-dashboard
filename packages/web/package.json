@@ -8,6 +8,10 @@
         "dev": "vite",
         "build": "vite build",
         "preview": "vite preview",
+        "test": "npx vitest run",
+        "test:watch": "npx vitest",
+        "test:ui": "npx vitest --ui",
+        "test:coverage": "npx vitest run --coverage",
         "type-check": "tsc --noEmit",
         "lint": "eslint src",
         "lint:fix": "eslint src --fix"
@@ -31,6 +35,9 @@
         "zustand": "^4.4.7"
     },
     "devDependencies": {
+        "@testing-library/jest-dom": "^6.9.1",
+        "@testing-library/react": "^16.3.0",
+        "@testing-library/user-event": "^14.6.1",
         "@types/react": "^18.2.0",
         "@types/react-dom": "^18.2.0",
         "@typescript-eslint/eslint-plugin": "^8.46.2",
@@ -40,9 +47,12 @@
         "eslint": "^9.38.0",
         "eslint-plugin-react": "^7.33.0",
         "eslint-plugin-react-hooks": "^5.2.0",
+        "jsdom": "^26.1.0",
+        "msw": "^2.11.6",
         "postcss": "^8.4.31",
         "tailwindcss": "^3.3.0",
         "typescript": "^5.9.3",
-        "vite": "^6.3.6"
+        "vite": "^6.3.6",
+        "vitest": "^3.2.4"
     }
 }

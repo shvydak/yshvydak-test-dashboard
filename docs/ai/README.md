@@ -14,9 +14,11 @@ These documents provide **detailed technical context** that complements the quic
 ## 📚 Documentation Index
 
 ### [DOCUMENTATION_UPDATE_RULES.md](DOCUMENTATION_UPDATE_RULES.md)
+
 **When to read:** For AI assistants - when to suggest doc updates
 
 **Contents:**
+
 - Proactive suggestion triggers
 - Detection patterns for changes
 - Priority levels for updates
@@ -30,9 +32,11 @@ These documents provide **detailed technical context** that complements the quic
 ---
 
 ### [ANTI_PATTERNS.md](ANTI_PATTERNS.md)
+
 **When to read:** When implementing features or fixing bugs
 
 **Contents:**
+
 - 8 common anti-patterns with code examples
 - Backend anti-patterns (repository bypass, UPDATE-ing results, etc.)
 - Frontend anti-patterns (hardcoded credentials, duplicating logic, etc.)
@@ -42,6 +46,7 @@ These documents provide **detailed technical context** that complements the quic
 **Size:** ~300 lines | **Read time:** 10-15 minutes
 
 **Quick preview:**
+
 ```
 ❌ Bypassing Repository Layer
 ❌ UPDATE-ing Test Results
@@ -54,9 +59,11 @@ These documents provide **detailed technical context** that complements the quic
 ---
 
 ### [FILE_LOCATIONS.md](FILE_LOCATIONS.md)
+
 **When to read:** When searching for specific components or files
 
 **Contents:**
+
 - Complete backend file structure (Layered Architecture)
 - Complete frontend file structure (Feature-Based)
 - Reporter package structure
@@ -66,6 +73,7 @@ These documents provide **detailed technical context** that complements the quic
 **Size:** ~400 lines | **Read time:** 15-20 minutes
 
 **Quick preview:**
+
 ```
 "Where is testId generated?"
 "Where is WebSocket URL constructed?"
@@ -78,9 +86,11 @@ These documents provide **detailed technical context** that complements the quic
 ---
 
 ### [CONCEPT_MAP.md](CONCEPT_MAP.md)
+
 **When to read:** When understanding system flows and dependencies
 
 **Contents:**
+
 - Complete test execution flow (60+ steps)
 - Key dependency relationships
 - Visual diagrams with detailed explanations
@@ -90,6 +100,7 @@ These documents provide **detailed technical context** that complements the quic
 **Size:** ~350 lines | **Read time:** 15-20 minutes
 
 **Quick preview:**
+
 ```
 Test Execution: User → PlaywrightService → Reporter
   → API → Service → Repository → Database
@@ -104,9 +115,11 @@ Dependencies:
 ---
 
 ### [RECOMMENDATION.md](RECOMMENDATION.md)
+
 **When to read:** Understanding documentation strategy
 
 **Contents:**
+
 - Analysis of documentation approaches
 - Token usage comparisons
 - Context acquisition time metrics
@@ -120,18 +133,21 @@ Dependencies:
 ## 🚀 Quick Start for New Chats
 
 ### Step 1: Read CLAUDE.md (2 minutes)
+
 ```
 Located at: ../../CLAUDE.md
 Contains: 5 critical concepts + quick navigation
 ```
 
 ### Step 2: Use Quick File Finder (30 seconds)
+
 ```
 CLAUDE.md has "Quick Find Examples" section
 Links to specific files and line numbers
 ```
 
 ### Step 3: Deep Dive When Needed
+
 ```
 Need anti-patterns? → Read ANTI_PATTERNS.md
 Need file location? → Read FILE_LOCATIONS.md
@@ -142,12 +158,12 @@ Need flow diagram? → Read CONCEPT_MAP.md
 
 ## 📊 Token Usage
 
-| Document | Lines | Tokens (approx) | When to Read |
-|----------|-------|-----------------|--------------|
-| **CLAUDE.md** | 150 | 1,200 | ✅ **Always (startup)** |
-| **ANTI_PATTERNS.md** | 300 | 2,500 | When coding |
-| **FILE_LOCATIONS.md** | 400 | 3,000 | When searching |
-| **CONCEPT_MAP.md** | 350 | 2,800 | When understanding flows |
+| Document              | Lines | Tokens (approx) | When to Read             |
+| --------------------- | ----- | --------------- | ------------------------ |
+| **CLAUDE.md**         | 150   | 1,200           | ✅ **Always (startup)**  |
+| **ANTI_PATTERNS.md**  | 300   | 2,500           | When coding              |
+| **FILE_LOCATIONS.md** | 400   | 3,000           | When searching           |
+| **CONCEPT_MAP.md**    | 350   | 2,800           | When understanding flows |
 
 **Total:** 1,200 lines, ~9,500 tokens (split across 4 files)
 
@@ -199,21 +215,25 @@ Need flow diagram? → Read CONCEPT_MAP.md
 ### When to Update
 
 **ANTI_PATTERNS.md:**
+
 - After finding new anti-patterns in code reviews
 - After fixing major bugs
 - When refactoring reveals better approaches
 
 **FILE_LOCATIONS.md:**
+
 - When moving files
 - When adding new key components
 - When restructuring features
 
 **CONCEPT_MAP.md:**
+
 - When changing execution flow
 - When adding feature dependencies
 - When architectural patterns change
 
 **RECOMMENDATION.md:**
+
 - When documentation strategy changes
 - When metrics are measured
 - Rarely (stable reference)
@@ -221,6 +241,7 @@ Need flow diagram? → Read CONCEPT_MAP.md
 ### Update Checklist
 
 Before committing updates:
+
 - [ ] Code examples tested and accurate
 - [ ] File paths verified
 - [ ] Cross-references valid
@@ -233,12 +254,14 @@ Before committing updates:
 ## 📖 Related Documentation
 
 ### Main Documentation
+
 - [CLAUDE.md](../../CLAUDE.md) - Quick reference for AI development
 - [docs/README.md](../README.md) - Documentation navigation hub
 - [docs/ARCHITECTURE.md](../ARCHITECTURE.md) - Complete architecture
 - [docs/DEVELOPMENT.md](../DEVELOPMENT.md) - Development guidelines
 
 ### Feature Documentation
+
 - [docs/features/](../features/) - Feature-specific deep dives
 - [Historical Tracking](../features/HISTORICAL_TEST_TRACKING.md)
 - [Attachments](../features/PER_RUN_ATTACHMENTS.md)
@@ -276,12 +299,12 @@ A: Yes. They're maintained alongside code and reflect actual architecture.
 
 ### Improvement Over Original Approach
 
-| Metric | Before (Single File) | After (Modular) | Improvement |
-|--------|---------------------|-----------------|-------------|
-| **Initial context load** | 4,500 tokens | 1,200 tokens | **73% ↓** |
-| **Time to start** | 5 minutes | 2 minutes | **60% ↓** |
-| **Maintenance** | Hard (one file) | Easy (separate concerns) | **+200%** |
-| **Discoverability** | Medium | High | **+50%** |
+| Metric                   | Before (Single File) | After (Modular)          | Improvement |
+| ------------------------ | -------------------- | ------------------------ | ----------- |
+| **Initial context load** | 4,500 tokens         | 1,200 tokens             | **73% ↓**   |
+| **Time to start**        | 5 minutes            | 2 minutes                | **60% ↓**   |
+| **Maintenance**          | Hard (one file)      | Easy (separate concerns) | **+200%**   |
+| **Discoverability**      | Medium               | High                     | **+50%**    |
 
 ### Context Acquisition Time
 
@@ -299,19 +322,14 @@ A: Yes. They're maintained alongside code and reflect actual architecture.
 ### For New Contributors
 
 **Day 1:**
+
 1. Read CLAUDE.md (understand critical concepts)
 2. Skim ANTI_PATTERNS.md (know what to avoid)
 3. Bookmark FILE_LOCATIONS.md (for quick reference)
 
-**Day 2-3:**
-4. Read CONCEPT_MAP.md (understand system flows)
-5. Read main docs (ARCHITECTURE.md, DEVELOPMENT.md)
-6. Explore feature docs as needed
+**Day 2-3:** 4. Read CONCEPT_MAP.md (understand system flows) 5. Read main docs (ARCHITECTURE.md, DEVELOPMENT.md) 6. Explore feature docs as needed
 
-**Week 1+:**
-7. Reference AI docs during development
-8. Update docs when finding inconsistencies
-9. Add new anti-patterns when discovered
+**Week 1+:** 7. Reference AI docs during development 8. Update docs when finding inconsistencies 9. Add new anti-patterns when discovered
 
 ---
 

@@ -79,7 +79,7 @@ export function useTestAttachments(
             } else {
                 setError('Failed to fetch attachments')
             }
-        } catch (err) {
+        } catch {
             setError('Error fetching attachments')
         } finally {
             setLoading(false)

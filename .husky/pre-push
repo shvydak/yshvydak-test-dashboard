@@ -1,0 +1,23 @@
+#!/usr/bin/env sh
+
+# Husky Git pre-push hook
+# Set SKIP_PREPUSH=1 to bypass (e.g., CI or emergency)
+[ "" = "1" ] && echo 'Skipping pre-push via SKIP_PREPUSH' && exit 0
+
+# Ensure we run from repo root for workspace scripts
+cd -- "/Users/y.shvydak/Projects/yshvydak-test-dashboard" || exit 1
+
+# Run lint, type-check, and tests
+echo 'Running lint...'
+npm run lint || exit 1
+
+echo 'Running type-check...'
+npm run type-check || exit 1
+
+# Run tests unless skipped via SKIP_TESTS=1
+if [ "" != "1" ]; then
+  echo 'Running tests...'
+  npm test || exit 1
+else
+  echo 'Skipping tests via SKIP_TESTS'
+fi

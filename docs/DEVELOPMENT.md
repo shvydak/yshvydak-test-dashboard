@@ -6,6 +6,10 @@
 
 - `npm run build` - Build all packages
 - `npm run dev` - Run all packages in development mode
+- `npm test` - Run all tests across packages (Vitest)
+- `npm run test:watch` - Run tests in watch mode
+- `npm run test:ui` - Open Vitest UI for interactive testing
+- `npm run test:coverage` - Generate test coverage report
 - `npm run type-check` - TypeScript checking across all packages
 - `npm run lint` - Lint all packages
 - `npm run lint:fix` - Auto-fix ESLint issues across all files
@@ -40,7 +44,9 @@ cd packages/server
 npm run dev          # Start with auto-reload (uses tsx watch)
 npm run build        # Build for production
 npm run type-check   # TypeScript validation
-npm run test         # Run Jest tests
+npm test             # Run Vitest tests
+npm run test:watch   # Test watch mode
+npm run test:coverage # Coverage report
 npm run lint         # ESLint checking
 npm run lint:fix     # Auto-fix ESLint issues
 ```
@@ -53,6 +59,9 @@ npm run dev          # Start Vite dev server
 npm run build        # Build for production
 npm run preview      # Preview production build
 npm run type-check   # TypeScript validation
+npm test             # Run Vitest tests
+npm run test:watch   # Test watch mode
+npm run test:coverage # Coverage report
 npm run lint         # ESLint checking
 npm run lint:fix     # Auto-fix ESLint issues
 ```
@@ -183,9 +192,51 @@ import { formatDuration, getStatusIcon } from '@features/tests/utils'
 - Repositories handle only database operations
 - Use dependency injection for testing and modularity
 
+## Dependency Management
+
+### ⚠️ CRITICAL: Always Use Context7-MCP
+
+**Before adding or modifying ANY dependency:**
+
+1. **Check Context7-MCP documentation** for the latest information:
+
+    ```bash
+    # Example: Adding React Query
+    # First: Look up in Context7-MCP for latest best practices
+    ```
+
+2. **What to check:**
+    - ✅ Latest stable version and compatibility
+    - ✅ Breaking changes in recent versions
+    - ✅ Migration guides if upgrading
+    - ✅ Best practices and recommended configuration
+    - ✅ Security vulnerabilities and updates
+    - ✅ Peer dependency requirements
+
+3. **When to use Context7-MCP:**
+    - Adding new dependency: `npm install <package>`
+    - Upgrading existing dependency: `npm update <package>`
+    - Changing configuration (tsconfig, vite.config, etc.)
+    - Using new APIs or features from dependencies
+    - Troubleshooting dependency-related issues
+
+4. **Examples:**
+    - Adding UI library? Check Context7-MCP for current best practices
+    - Upgrading React? Check Context7-MCP for breaking changes and migration steps
+    - Using new React Query features? Check Context7-MCP for latest API patterns
+    - Adding validation library? Check Context7-MCP for recommended options
+
+**Why this matters:**
+
+- Dependencies change frequently (breaking changes, deprecations)
+- Documentation in npm/GitHub may be outdated
+- Context7-MCP provides curated, current best practices
+- Prevents using deprecated patterns or APIs
+- Ensures security and compatibility
+
 ## Code Quality Standards
 
-- **Best Practices Reference**: When editing any code, consult Context7 MCP documentation for current best practices and standards for the relevant technology, framework, or language being used.
+- **Best Practices Reference**: Always consult Context7-MCP for dependencies documentation
 - **Code comments**: Use English when writing comments, if needed.
 - **Code Formatting**: Project uses Prettier for consistent code formatting across all files
     - Configuration: `.prettierrc` (tabWidth: 4, singleQuote: true, semi: false, printWidth: 100)
@@ -327,10 +378,186 @@ export function TestDetailModal({ test, isOpen, onClose }) {
 - ✅ Easier to test and maintain
 - ✅ Better code organization
 
+## Testing Guidelines
+
+### Testing Framework: Vitest 3.2
+
+The project uses **Vitest** for all testing across the monorepo. Vitest is a modern, fast testing framework with first-class TypeScript support.
+
+**Why Vitest?**
+
+- 🚀 10-20x faster than Jest
+- ✅ Perfect for Vite-based projects (web package)
+- 📦 Excellent monorepo support
+- 🎯 TypeScript-first design
+
+### Running Tests
+
+**All packages:**
+
+```bash
+npm test                 # Run all tests
+npm run test:watch       # Watch mode (auto-rerun on changes)
+npm run test:ui          # Visual test UI
+npm run test:coverage    # Generate coverage report
+```
+
+**Specific package:**
+
+```bash
+npm test --workspace=@yshvydak/test-dashboard-server   # Server
+npm test --workspace=@yshvydak/web                     # Web
+npm test --workspace=playwright-dashboard-reporter     # Reporter
+```
+
+### Writing Tests
+
+Tests follow **colocation pattern** - they live next to the code they test:
+
+```
+packages/server/src/
+├── services/
+│   ├── auth.service.ts
+│   └── __tests__/
+│       └── auth.service.test.ts
+```
+
+**Test file naming:**
+
+- `*.test.ts` - Unit tests
+- `*.test.tsx` - React component tests
+- `*.integration.test.ts` - Integration tests
+
+### Test Coverage Targets
+
+| Package     | Target     | Focus                         |
+| ----------- | ---------- | ----------------------------- |
+| Reporter    | 90%+       | Test ID generation (CRITICAL) |
+| Server      | 80%+       | Services, repositories        |
+| Web         | 70%+       | Hooks, utilities              |
+| **Overall** | **75-80%** | **Critical business logic**   |
+
+### Testing Best Practices
+
+1. **Test behavior, not implementation**
+    - Focus on what the code does, not how it does it
+    - Test public APIs, not internal details
+
+2. **Use descriptive test names**
+
+    ```typescript
+    // ✅ Good
+    it('should generate identical IDs for same file path and title', () => {})
+
+    // ❌ Bad
+    it('test 1', () => {})
+    ```
+
+3. **Arrange-Act-Assert pattern**
+
+    ```typescript
+    it('should login successfully with valid credentials', async () => {
+        // Arrange
+        const credentials = {email: 'test@example.com', password: 'pass123'}
+
+        // Act
+        const result = await authService.login(credentials)
+
+        // Assert
+        expect(result.success).toBe(true)
+        expect(result.token).toBeDefined()
+    })
+    ```
+
+4. **Test edge cases**
+    - Empty inputs, null values
+    - Very large inputs
+    - Special characters, Unicode
+    - Error conditions
+
+5. **Use test utilities**
+    - Server: In-memory SQLite for repository tests
+    - Web: React Testing Library for components
+    - Mocking: Vitest's built-in mocking
+
+### Example Tests
+
+**Backend (Service):**
+
+```typescript
+// packages/server/src/services/__tests__/auth.service.test.ts
+import {describe, it, expect, beforeEach} from 'vitest'
+import {AuthService} from '../auth.service'
+
+describe('AuthService', () => {
+    let authService: AuthService
+
+    beforeEach(() => {
+        process.env.JWT_SECRET = 'test-secret'
+        authService = new AuthService()
+    })
+
+    it('should successfully login with valid credentials', async () => {
+        const result = await authService.login({
+            email: 'admin@example.com',
+            password: 'admin123',
+        })
+
+        expect(result.success).toBe(true)
+        expect(result.token).toMatch(/^[\w-]+\.[\w-]+\.[\w-]+$/) // JWT format
+    })
+})
+```
+
+**Frontend (Hook):**
+
+```typescript
+// packages/web/src/features/tests/hooks/__tests__/useTestFilters.test.ts
+import {renderHook, act} from '@testing-library/react'
+import {describe, it, expect} from 'vitest'
+import {useTestFilters} from '../useTestFilters'
+
+describe('useTestFilters', () => {
+    it('should filter tests by status', () => {
+        const {result} = renderHook(() => useTestFilters())
+
+        act(() => {
+            result.current.setStatusFilter('failed')
+        })
+
+        expect(result.current.statusFilter).toBe('failed')
+    })
+})
+```
+
+### Critical Tests (Already Implemented)
+
+✅ **Reporter - Test ID Generation** (~35 tests)
+
+- Determinism, uniqueness, edge cases
+- File: `packages/reporter/src/__tests__/testIdGeneration.test.ts`
+
+✅ **Server - JWT Authentication** (~30 tests)
+
+- Login/logout, token verification, security
+- File: `packages/server/src/services/__tests__/auth.service.test.ts`
+
+✅ **Server - Flaky Detection** (~25 tests)
+
+- SQL algorithm, thresholds, ranking
+- File: `packages/server/src/repositories/__tests__/test.repository.flaky.test.ts`
+
+### Testing Documentation
+
+For comprehensive testing documentation, see [TESTING.md](docs/TESTING.md).
+
+---
+
 ## Related Documentation
 
 - [Architecture Overview](./ARCHITECTURE.md)
 - [Configuration Details](./CONFIGURATION.md)
 - [Deployment Guide](./DEPLOYMENT.md)
 - [API Reference](./API_REFERENCE.md)
+- [Testing Infrastructure](docs/TESTING.md)
 - [Attachment Management System](./features/PER_RUN_ATTACHMENTS.md)

@@ -15,6 +15,7 @@ Understanding what NOT to do is as important as knowing what to do. These anti-p
 **Severity:** 🔴 Critical - Violates core architecture
 
 **Wrong Approach:**
+
 ```typescript
 // test.controller.ts
 async someController(req: ServiceRequest, res: Response) {
@@ -31,6 +32,7 @@ async someController(req: ServiceRequest, res: Response) {
 ```
 
 **Correct Approach:**
+
 ```typescript
 // test.controller.ts
 async someController(req: ServiceRequest, res: Response) {
@@ -59,6 +61,7 @@ async updateStatus(testId: string, status: string): Promise<void> {
 ```
 
 **Why This Matters:**
+
 - Maintains separation of concerns
 - Enables easier testing (mock service layer)
 - Centralized business logic
@@ -71,6 +74,7 @@ async updateStatus(testId: string, status: string): Promise<void> {
 **Severity:** 🔴 Critical - Breaks historical tracking
 
 **Wrong Approach:**
+
 ```typescript
 // database.manager.ts
 async saveTestResult(testData: TestResultData): Promise<string> {
@@ -97,6 +101,7 @@ async saveTestResult(testData: TestResultData): Promise<string> {
 ```
 
 **Correct Approach:**
+
 ```typescript
 // database.manager.ts
 async saveTestResult(testData: TestResultData): Promise<string> {
@@ -123,6 +128,7 @@ async saveTestResult(testData: TestResultData): Promise<string> {
 ```
 
 **Database Structure:**
+
 ```sql
 -- Multiple rows with same testId = execution history
 id (UUID)          | testId (hash)  | status  | created_at
@@ -133,6 +139,7 @@ mno-789-pqr        | test-66jqtq    | passed  | 2025-10-09 12:00
 ```
 
 **Why This Matters:**
+
 - Preserves complete execution history
 - Enables trend analysis and flaky test detection
 - Each run has independent attachments
@@ -145,6 +152,7 @@ mno-789-pqr        | test-66jqtq    | passed  | 2025-10-09 12:00
 **Severity:** 🔴 Critical - Breaks historical tracking
 
 **Wrong Approach:**
+
 ```typescript
 // Reporter (packages/reporter/src/index.ts)
 generateTestId(filePath: string, title: string): string {
@@ -162,6 +170,7 @@ generateTestId(filePath: string, title: string): string {
 **Result:** Same test gets different IDs, historical tracking broken!
 
 **Correct Approach:**
+
 ```typescript
 // IDENTICAL algorithm in both reporter AND discovery
 // packages/reporter/src/index.ts
@@ -186,6 +195,7 @@ generateStableTestId(filePath: string, title: string): string {
 ```
 
 **Why This Matters:**
+
 - Same test always gets same testId
 - Historical tracking works correctly
 - Discovery and execution results match
@@ -198,6 +208,7 @@ generateStableTestId(filePath: string, title: string): string {
 **Severity:** 🟡 High - Breaks attachment viewing
 
 **Wrong Approach:**
+
 ```typescript
 // attachment.service.ts
 async processAttachments(attachments: any[], testResultId: string) {
@@ -222,6 +233,7 @@ async processAttachments(attachments: any[], testResultId: string) {
 **Result:** Attachments work initially, but break after next test run (Playwright cleans temp dir)!
 
 **Correct Approach:**
+
 ```typescript
 // attachment.service.ts
 async processAttachments(attachments: any[], testResultId: string) {
@@ -295,6 +307,7 @@ async copyPlaywrightAttachment(
 ```
 
 **Why This Matters:**
+
 - Attachments survive Playwright cleanup
 - Each execution has isolated storage
 - No conflicts between test runs
@@ -309,12 +322,13 @@ async copyPlaywrightAttachment(
 **Severity:** 🔴 Critical - Security vulnerability
 
 **Wrong Approach:**
+
 ```typescript
 // LoginPage.tsx
 const LoginPage = () => {
     const [formData, setFormData] = useState({
-        email: 'admin@admin.com',    // ❌ Hardcoded credentials
-        password: 'qwe123',           // ❌ Committed to repository
+        email: 'admin@admin.com', // ❌ Hardcoded credentials
+        password: 'qwe123', // ❌ Committed to repository
     })
 
     // ❌ Credentials visible in browser DevTools
@@ -324,6 +338,7 @@ const LoginPage = () => {
 ```
 
 **Correct Approach:**
+
 ```typescript
 // LoginPage.tsx
 const LoginPage = () => {
@@ -344,6 +359,7 @@ ADMIN_PASSWORD=secure-hashed-password
 ```
 
 **Why This Matters:**
+
 - No credential leaks in code
 - Environment-specific credentials
 - Production security
@@ -356,6 +372,7 @@ ADMIN_PASSWORD=secure-hashed-password
 **Severity:** 🟡 High - Violates DRY principle
 
 **Wrong Approach:**
+
 ```typescript
 // TestDetailModal.tsx (45 lines of duplicated logic)
 const TestDetailModal = ({test, isOpen, onClose}) => {
@@ -394,6 +411,7 @@ const TestDetailModal = ({test, isOpen, onClose}) => {
 ```
 
 **Correct Approach:**
+
 ```typescript
 // features/authentication/utils/webSocketUrl.ts
 // ✅ Single source of truth
@@ -435,6 +453,7 @@ const TestDetailModal = ({test, isOpen, onClose}) => {
 ```
 
 **Benefits:**
+
 - 45 lines → 1 line (45× reduction)
 - Bugs fixed once, applied everywhere
 - Easier to test
@@ -447,6 +466,7 @@ const TestDetailModal = ({test, isOpen, onClose}) => {
 **Severity:** 🟡 Medium - Maintainability issue
 
 **Wrong Approach:**
+
 ```typescript
 // TestDetailModal.tsx - 577 lines
 export function TestDetailModal({test, isOpen, onClose}) {
@@ -480,6 +500,7 @@ export function TestDetailModal({test, isOpen, onClose}) {
 ```
 
 **Correct Approach:**
+
 ```typescript
 // TestDetailModal.tsx - 95 lines (orchestrator)
 export function TestDetailModal({test, isOpen, onClose}) {
@@ -533,6 +554,7 @@ export function TestDetailModal({test, isOpen, onClose}) {
 ```
 
 **Benefits:**
+
 - Each component under 200 lines
 - Single responsibility per component
 - Easier to test individually
@@ -546,6 +568,7 @@ export function TestDetailModal({test, isOpen, onClose}) {
 **Severity:** 🟡 Medium - Causes connection failures
 
 **Wrong Approach:**
+
 ```typescript
 // App.tsx
 const App = () => {
@@ -557,7 +580,7 @@ const App = () => {
 
     // Auth check happens later
     useEffect(() => {
-        checkAuth().then(isAuth => {
+        checkAuth().then((isAuth) => {
             setIsAuthenticated(isAuth)
             setIsLoading(false)
         })
@@ -571,6 +594,7 @@ const App = () => {
 **Result:** WebSocket fails to connect because token isn't available yet!
 
 **Correct Approach:**
+
 ```typescript
 // App.tsx
 const App = () => {
@@ -580,7 +604,7 @@ const App = () => {
 
     // First: Check authentication
     useEffect(() => {
-        checkAuth().then(isAuth => {
+        checkAuth().then((isAuth) => {
             setIsAuthenticated(isAuth)
             setIsLoading(false)
         })
@@ -589,7 +613,7 @@ const App = () => {
     // Then: Setup WebSocket URL after auth is ready
     useEffect(() => {
         if (isAuthenticated && !isLoading) {
-            const url = getWebSocketUrl(true)  // ✅ Token now available
+            const url = getWebSocketUrl(true) // ✅ Token now available
             setWebSocketUrl(url)
         } else {
             setWebSocketUrl(null)
@@ -602,6 +626,7 @@ const App = () => {
 ```
 
 **Why This Matters:**
+
 - WebSocket connects successfully
 - No failed connection attempts
 - Proper authentication flow

@@ -183,7 +183,7 @@ export class AttachmentManager {
                     await fs.promises.rmdir(testDir)
                     console.log(`Removed empty test directory: ${testDir}`)
                 }
-            } catch (error) {
+            } catch {
                 // Directory might not be empty or might not exist, ignore
             }
 

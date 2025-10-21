@@ -553,8 +553,7 @@ packages/web/src/features/authentication/utils/authFetch.ts
 ├── package.json                # Workspace configuration
 ├── turbo.json                  # Turborepo configuration
 ├── tsconfig.json               # TypeScript base config
-├── vitest.workspace.ts         # Vitest workspace configuration
-├── vitest.shared.ts            # Shared Vitest config for all packages
+├── vitest.config.ts            # Vitest root config with test.projects (Vitest 3.x)
 └── ../TESTING.md                  # Testing infrastructure documentation
 ```
 

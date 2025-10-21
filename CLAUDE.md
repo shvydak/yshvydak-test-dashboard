@@ -71,7 +71,7 @@ User clicks "Run All"
 - Rerun button? → `web/src/features/tests/components/history/ExecutionSidebar.tsx`
 - Copy attachments? → `server/src/storage/attachmentManager.ts`
 - Flaky detection? → `server/src/repositories/test.repository.ts`
-- **Test configurations?** → `vitest.workspace.ts`, `vitest.shared.ts`
+- **Test configurations?** → `vitest.config.ts`, `packages/{package}/vitest.config.ts`
 - **Write tests?** → `packages/{package}/src/__tests__/`
 
 **Full structure:** See [docs/ai/FILE_LOCATIONS.md](docs/ai/FILE_LOCATIONS.md)

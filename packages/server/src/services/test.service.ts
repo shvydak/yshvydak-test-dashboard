@@ -91,7 +91,11 @@ export class TestService implements ITestService {
     }
 
     async clearAllTests(): Promise<void> {
+        // Clear database records
         await this.testRepository.clearAllTests()
+
+        // Clear physical attachment files
+        await this.attachmentService.clearAllAttachments()
     }
 
     async saveTestResult(testData: TestResultData): Promise<string> {

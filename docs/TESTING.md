@@ -33,12 +33,14 @@ npm test --workspace=playwright-dashboard-reporter
 
 ## Configuration Structure
 
-- Root workspace: `vitest.workspace.ts` (runs all packages together)
-- Shared settings: `vitest.shared.ts` (globals, coverage provider, timeouts)
-- Package configs:
+- Root config: `vitest.config.ts` (runs all packages via `test.projects`)
+- Shared settings: Defined in root config (globals, coverage provider, timeouts)
+- Package configs (inherit from root and add overrides):
     - `packages/server/vitest.config.ts` (environment: node, setup: `vitest.setup.ts`)
     - `packages/web/vitest.config.ts` (environment: jsdom, setup: `vitest.setup.ts`)
     - `packages/reporter/vitest.config.ts` (environment: node)
+
+**Note:** Migrated from deprecated `vitest.workspace.ts` to `test.projects` in Vitest 3.x
 
 ## Test Locations & Naming
 

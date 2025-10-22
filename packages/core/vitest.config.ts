@@ -1,5 +1,5 @@
 import {defineConfig, mergeConfig} from 'vitest/config'
-import {sharedConfig} from '../../vitest.shared'
+import rootConfig from '../../vitest.config'
 
 /**
  * Vitest Configuration for Core Package
@@ -8,7 +8,7 @@ import {sharedConfig} from '../../vitest.shared'
  * This package mainly contains TypeScript types, so tests are minimal.
  */
 export default mergeConfig(
-    sharedConfig,
+    rootConfig,
     defineConfig({
         test: {
             name: 'core',

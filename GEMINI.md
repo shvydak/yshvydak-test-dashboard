@@ -71,7 +71,7 @@ User clicks "Run All"
 - Rerun button? → `web/src/features/tests/components/history/ExecutionSidebar.tsx`
 - Copy attachments? → `server/src/storage/attachmentManager.ts`
 - Flaky detection? → `server/src/repositories/test.repository.ts`
-- **Test configurations?** → `vitest.workspace.ts`, `vitest.shared.ts`
+- **Test configurations?** → `vitest.config.ts`, `packages/{package}/vitest.config.ts`
 - **Write tests?** → `packages/{package}/src/__tests__/`
 
 **Full structure:** See [docs/ai/FILE_LOCATIONS.md](docs/ai/FILE_LOCATIONS.md)
@@ -175,6 +175,22 @@ cd packages/reporter && npm run dev   # Reporter watch
 - ALWAYS check before adding/updating dependencies
 - ALWAYS check before changing dependency configuration
 - Get latest docs, breaking changes, migration guides
+
+**Complete Development Checklist** (MANDATORY after ANY code changes):
+
+1. ✨ `npm run format` - Format all files with Prettier
+2. 🔍 `npm run type-check` - Verify TypeScript
+3. 🎨 `npm run lint:fix` - Fix linting issues
+4. ✅ `npm test` - Run all tests
+5. 📦 `npm run build` - Ensure build succeeds
+
+**IMPORTANT**: Never skip this checklist during vibe coding sessions!
+
+### ❌ DON'T:
+
+**Git Operations:**
+
+- ❌ NEVER commit changes unless explicitly requested by the user
 
 ---
 

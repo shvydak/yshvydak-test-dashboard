@@ -76,7 +76,7 @@ export default function Header({
                                     ? 'bg-primary-100 dark:bg-primary-900 text-primary-700 dark:text-primary-300'
                                     : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-700'
                             }`}>
-                            Dashboard
+                            Dashboard !!!
                         </button>
                         <button
                             onClick={() => onViewChange('tests')}

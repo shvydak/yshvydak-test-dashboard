@@ -1,4 +1,4 @@
-# GEMINI.md - Quick Reference for AI Development
+# CLAUDE.md - Quick Reference for AI Development
 
 ## 🔥 CRITICAL CONTEXT (30 seconds to read)
 

@@ -33,7 +33,7 @@ function getAllowedOrigins(): string[] | boolean {
 }
 
 export const corsOptions = {
-    origin: true, // Allow all origins for development
+    origin: getAllowedOrigins(), // Allow all origins for development
     credentials: false,
     optionsSuccessStatus: 200,
 }

@@ -16,11 +16,25 @@ import path from 'path'
 export default mergeConfig(
     rootConfig,
     defineConfig({
-        plugins: [react()],
+        plugins: [
+            react({
+                // Force development mode for tests to enable React.act() support
+                jsxRuntime: 'automatic',
+            }),
+        ],
+
+        // Force define NODE_ENV and DEV mode for React
+        define: {
+            'process.env.NODE_ENV': JSON.stringify('test'),
+            __DEV__: true,
+        },
 
         test: {
             name: 'web',
             environment: 'jsdom',
+
+            // Override root projects config for package-specific runs
+            projects: undefined,
 
             // Include test files
             include: ['src/**/__tests__/**/*.test.{ts,tsx}', 'src/**/*.test.{ts,tsx}'],

@@ -317,6 +317,42 @@ export class AttachmentManager {
         console.log(`Cleanup complete: deleted ${deletedFiles} files, freed ${freedSpace} bytes`)
         return {deletedFiles, freedSpace}
     }
+
+    // Clear all attachments (used when clearing all test data)
+    async clearAllAttachments(): Promise<{deletedFiles: number; freedSpace: number}> {
+        let deletedFiles = 0
+        let freedSpace = 0
+
+        try {
+            // Check if directory exists
+            if (!fs.existsSync(this.attachmentsDir)) {
+                console.log('Attachments directory does not exist, nothing to clear')
+                return {deletedFiles, freedSpace}
+            }
+
+            // Get storage stats before deletion
+            const stats = await this.getStorageStats()
+            deletedFiles = stats.totalFiles
+            freedSpace = stats.totalSize
+
+            // Delete entire attachments directory recursively
+            await fs.promises.rm(this.attachmentsDir, {recursive: true, force: true})
+            console.log(
+                `Deleted attachments directory: ${this.attachmentsDir} (${deletedFiles} files, ${freedSpace} bytes)`
+            )
+
+            // Recreate empty directory
+            this.ensureDirectoryExists()
+            console.log(`Recreated empty attachments directory: ${this.attachmentsDir}`)
+
+            return {deletedFiles, freedSpace}
+        } catch (error) {
+            console.error('Error clearing attachments:', error)
+            throw new Error(
+                `Failed to clear attachments: ${error instanceof Error ? error.message : 'Unknown error'}`
+            )
+        }
+    }
 }
 
 // Factory function

@@ -101,4 +101,13 @@ export class AttachmentService implements IAttachmentService {
     async getAttachmentById(attachmentId: string): Promise<AttachmentData | null> {
         return this.attachmentRepository.getAttachmentById(attachmentId)
     }
+
+    /**
+     * Clears all attachments from permanent storage
+     * Used when clearing all test data to ensure physical files are deleted
+     * @returns Statistics about deleted files
+     */
+    async clearAllAttachments(): Promise<{deletedFiles: number; freedSpace: number}> {
+        return this.attachmentManager.clearAllAttachments()
+    }
 }

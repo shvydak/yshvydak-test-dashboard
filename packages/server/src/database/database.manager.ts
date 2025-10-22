@@ -421,10 +421,13 @@ export class DatabaseManager {
         `)
 
         // Ensure all values are numbers (handle null/undefined from empty tables)
+        // Return camelCase to match DatabaseStats interface
         return {
-            total_runs: stats?.total_runs || 0,
-            total_results: stats?.total_results || 0,
-            total_attachments: stats?.total_attachments || 0,
+            totalRuns: stats?.total_runs || 0,
+            totalTests: stats?.total_results || 0,
+            totalAttachments: stats?.total_attachments || 0,
+            databaseSize: 0, // TODO: Implement actual size calculation if needed
+            lastUpdated: new Date().toISOString(),
         }
     }
 

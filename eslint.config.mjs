@@ -18,6 +18,8 @@ export default [
             '.turbo/**',
             'turbo/**',
             '**/*.tsbuildinfo',
+            'html/**',
+            'packages/**/dist/**',
         ],
     },
     {

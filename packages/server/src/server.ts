@@ -15,30 +15,57 @@ function startServer() {
         Logger.serverStart(config.server.port)
         Logger.info(`📁 Output directory: ${config.storage.outputDir}`)
         Logger.info(`🎭 Playwright project directory: ${config.playwright.projectDir}`)
+
+        // Signal PM2 that the app is ready (for cluster mode with wait_ready: true)
+        if (process.send) {
+            process.send('ready')
+            Logger.info('✅ Sent ready signal to PM2')
+        }
     })
 
     // Start WebSocket server
     const wsServer = createWebSocketServer(server)
     setWebSocketManager(wsServer)
 
-    // Graceful shutdown
-    const gracefulShutdown = () => {
-        Logger.info('🛑 Shutting down gracefully...')
+    // Graceful shutdown handler
+    const gracefulShutdown = (signal: string) => {
+        Logger.info(`🛑 Received ${signal}, shutting down gracefully...`)
 
+        // Stop accepting new connections
         server.close(() => {
-            Logger.info('HTTP server closed')
+            Logger.info('✅ HTTP server closed - no longer accepting connections')
 
+            // Close all WebSocket connections
             wsServer.close(() => {
-                Logger.info('WebSocket server closed')
+                Logger.info('✅ WebSocket server closed - all connections terminated')
 
+                // Close database connection
                 dbManager.close()
+                Logger.info('✅ Database connection closed')
+
+                Logger.info('🎉 Graceful shutdown completed')
                 process.exit(0)
             })
         })
+
+        // Force shutdown if graceful shutdown takes too long
+        setTimeout(() => {
+            Logger.error('⚠️ Graceful shutdown timeout exceeded, forcing exit')
+            process.exit(1)
+        }, 4500) // 4.5 seconds (slightly less than PM2's kill_timeout of 5s)
     }
 
-    process.on('SIGTERM', gracefulShutdown)
-    process.on('SIGINT', gracefulShutdown)
+    // Handle shutdown signals
+    process.on('SIGTERM', () => gracefulShutdown('SIGTERM')) // PM2 stop/restart
+    process.on('SIGINT', () => gracefulShutdown('SIGINT')) // Ctrl+C in terminal
+    process.on('SIGUSR2', () => gracefulShutdown('SIGUSR2')) // PM2 reload (cluster mode)
+
+    // Handle PM2 shutdown message (cluster mode)
+    process.on('message', (msg) => {
+        if (msg === 'shutdown') {
+            gracefulShutdown('PM2_SHUTDOWN_MESSAGE')
+        }
+    })
 
     return {server, wsServer, serviceContainer}
 }

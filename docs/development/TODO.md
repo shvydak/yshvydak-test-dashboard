@@ -24,6 +24,54 @@
 
 # Task:
 
-как ты считаешь, имеет ли смысл добавить тесты (unit или какие-то другие) для этого проекта? Посоветуй мне, согласно лучших практик и архитектре и функциональности этого проекта. Хорошо проанализируй весь мой проект предложи самый лучший вариант. для архитектуры и стека моего проекта, предложенный тобой вариант соответствует лучшим практикам и подходам именно для моего проекта. я хочу чтобы ты
-сделал research и перед тем как начинать что-то разрабатывать - я хочу убедиться что мы используем самые лучшие, современные и подходы согласно лучших
-практик для моего проекта
+Привет! Нужно исправить баг в функции "Clear All Data".
+
+**Проблема:**
+Когда пользователь нажимает "Clear All Data" в настройках, очищается только база данных, но физические файлы attachments остаются на диске.
+
+**Текущая реализация:**
+
+- `packages/server/src/services/test.service.ts` → `clearAllTests()` только вызывает `testRepository.clearAllTests()`
+- `packages/server/src/database/database.manager.ts` → `clearAllData()` делает `DELETE FROM test_runs, test_results, attachments`
+- Результат: БД чистая, но файлы в `packages/server/test-results/attachments/` остаются (5.2GB!)
+
+**Что нужно сделать:**
+
+1. Добавить метод в `packages/server/src/storage/attachmentManager.ts`:
+
+````typescript
+async clearAllAttachments(): Promise<void> {
+    // Удалить всю папку attachments и пересоздать пустую
+}
+Добавить метод в packages/server/src/services/attachment.service.ts:
+async clearAllAttachments(): Promise<void> {
+    await this.attachmentManager.clearAllAttachments()
+}
+Обновить packages/server/src/services/test.service.ts:
+async clearAllTests(): Promise<void> {
+    await this.testRepository.clearAllTests()
+    await this.attachmentService.clearAllAttachments() // ДОБАВИТЬ!
+}
+Написать тест в packages/server/src/services/__tests__/attachment.service.test.ts для проверки clearAllAttachments()
+Требования:
+Использовать fs.promises.rm(dir, { recursive: true, force: true })
+Пересоздать пустую папку после удаления
+Добавить error handling
+Логировать результат (сколько файлов удалено)
+Написать unit тест
+Контекст: Проект: Playwright Test Dashboard Stack: Node.js, TypeScript, SQLite Следуй архитектуре: Controller → Service → Repository/Manager Начни с реализации метода в AttachmentManager.
+
+---
+
+## 📝 Дополнительная информация (если нужно):
+
+**Структура файлов:**
+- `packages/server/src/storage/attachmentManager.ts` - управление файлами
+- `packages/server/src/services/attachment.service.ts` - бизнес-логика
+- `packages/server/src/services/test.service.ts` - orchestration
+
+**Путь к attachments:**
+```typescript
+this.attachmentsDir = path.join(baseDir, 'test-results', 'attachments')
+Удачи! 🚀
+````

@@ -33,8 +33,8 @@ function getAllowedOrigins(): string[] | boolean {
 }
 
 export const corsOptions = {
-    origin: getAllowedOrigins(),
-    credentials: false, // We use JWT in headers, not cookies
+    origin: true, // Allow all origins for development
+    credentials: false,
     optionsSuccessStatus: 200,
 }
 

@@ -65,10 +65,46 @@ HTML coverage report is written to `coverage/index.html` at the repo root when r
 - Narrow the scope with `--workspace` to iterate on a single package.
 - Keep tests co-located with the code for quicker navigation and edits.
 
-## Examples and References
+## Testing Patterns
 
-- Reporter ID generation tests: `packages/reporter/src/__tests__/testIdGeneration.test.ts`
-- Server auth tests: `packages/server/src/services/__tests__/auth.service.test.ts`
-- Server flaky detection tests: `packages/server/src/repositories/__tests__/test.repository.flaky.test.ts`
+**Critical Examples:**
 
-If unsure where something lives, see `docs/ai/FILE_LOCATIONS.md`.
+- Test ID generation: `packages/reporter/src/__tests__/testIdGeneration.test.ts` (CRITICAL - must match server)
+- Authentication: `packages/web/src/features/authentication/utils/__tests__/authFetch.test.ts` (JWT, 401 handling)
+- Flaky detection: `packages/server/src/repositories/__tests__/test.repository.flaky.test.ts` (SQL algorithm)
+
+**Common Patterns:**
+
+```typescript
+// Mock storage (localStorage/sessionStorage)
+beforeEach(() => {
+    localStorage.clear()
+    sessionStorage.clear()
+})
+
+// Mock WebSocket manager
+vi.spyOn(WebSocketServer, 'getWebSocketManager').mockReturnValue(mockWsManager)
+
+// Time-based tests (cleanup/timeout)
+vi.useFakeTimers()
+vi.setSystemTime(new Date('2024-01-01T12:00:00Z'))
+// ... test code
+vi.useRealTimers()
+
+// React Context with wrapper
+const wrapper = ({children}: {children: React.ReactNode}) => (
+    <AuthProvider onLogout={vi.fn()}>{children}</AuthProvider>
+)
+const {result} = renderHook(() => useAuth(), {wrapper})
+
+// Type assertions for complex mocks
+const mockResponse = {ok: true, status: 200} as unknown as Response
+
+// DOM matchers
+import '@testing-library/jest-dom/vitest'
+expect(element).toBeInTheDocument()
+```
+
+**Quick reference:** See [CLAUDE.md](../CLAUDE.md)
+**Full file structure:** See [docs/ai/FILE_LOCATIONS.md](ai/FILE_LOCATIONS.md)
+**Use Context7-MCP** for latest Vitest documentation when needed

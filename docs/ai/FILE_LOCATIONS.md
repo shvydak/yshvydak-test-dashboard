@@ -58,12 +58,7 @@ packages/server/src/
 │   │   ├── getTestTimeline()           # Daily aggregated stats
 │   │   └── rerunTest()                 # Rerun specific test
 │   │
-│   ├── __tests__/              # Service layer tests
-│   │   └── auth.service.test.ts        # JWT authentication tests (SECURITY)
-│   │       ├── Login/logout functionality
-│   │       ├── Token generation & verification
-│   │       ├── Multi-user support
-│   │       └── Security edge cases (SQL injection, XSS)
+│   ├── __tests__/              # Service layer tests (18 test files, 807 tests)
 │   ├── playwright.service.ts   # Playwright integration
 │   │   ├── discoverTests()             # Scan for tests with --list
 │   │   ├── runAllTests()               # Execute all tests
@@ -85,11 +80,6 @@ packages/server/src/
 │   │   └── getTestTimeline()           # SQL: DATE grouping for daily stats
 │   │
 │   ├── __tests__/              # Repository layer tests
-│   │   └── test.repository.flaky.test.ts  # Flaky detection algorithm tests
-│   │       ├── Basic flaky detection (50%, 25% failure rates)
-│   │       ├── Threshold filtering
-│   │       ├── Time range & status filtering
-│   │       └── Multi-test ranking
 │   │
 │   ├── run.repository.ts       # Test run CRUD
 │   └── attachment.repository.ts # Attachment database operations
@@ -237,13 +227,15 @@ packages/web/src/
 │       │   │   ├── Automatic JWT inclusion
 │       │   │   ├── 401 handling → global logout
 │       │   │   └── createProtectedFileURL() for attachments
+│       │   ├── __tests__/              # Authentication utility tests (2 test files, 84 tests)
 │       │   ├── webSocketUrl.ts         # WebSocket URL utility (DRY)
 │       │   │   └── getWebSocketUrl(includeAuth)  # Single source of truth
 │       │   └── tokenValidator.ts       # Token validation
 │       │       └── verifyToken() via /api/auth/verify
 │       │
 │       └── context/
-│           └── AuthContext.tsx         # Global logout function
+│           ├── AuthContext.tsx         # Global logout function
+│           └── __tests__/              # Auth context tests
 │
 ├── hooks/                               # Global hooks
 │   ├── useWebSocket.ts                 # WebSocket connection management
@@ -289,14 +281,7 @@ packages/reporter/
 │   │       ├── RUN_ID (from dashboard)
 │   │       └── NODE_ENV (from dashboard)
 │   │
-│   └── __tests__/                      # Reporter tests (CRITICAL)
-│       └── testIdGeneration.test.ts    # Test ID generation tests
-│           ├── Determinism (same input = same output)
-│           ├── Uniqueness (different input = different output)
-│           ├── Edge cases (empty, long paths, Unicode)
-│           ├── Format validation
-│           ├── Collision resistance
-│           └── Performance benchmarks
+│   └── __tests__/                      # Reporter tests (2 test files, 55 tests - CRITICAL)
 │
 ├── vitest.config.ts                    # Vitest test configuration
 ├── package.json                        # npm package configuration

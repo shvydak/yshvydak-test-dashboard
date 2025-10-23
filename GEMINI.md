@@ -145,24 +145,24 @@ cd packages/reporter && npm run dev   # Reporter watch
 
 ---
 
-## 🧪 Testing Infrastructure
+## 🧪 Testing
 
-**Framework:** Vitest 3.2 (TypeScript-first, 10-20x faster than Jest)
+**Framework:** Vitest 3.2
+**Status:** 30 test files, 1,274 tests passing
+
+**Commands:**
+
+- `npm test` - Run all tests
+- `npm run test:watch` - Watch mode
+- `npm run test:coverage` - Coverage report
 
 **Coverage Targets:**
 
 - Reporter: 90%+ (Test ID generation - CRITICAL)
 - Server: 80%+ (Services, repositories)
 - Web: 70%+ (Hooks, utilities)
-- **Overall: 75-80%**
 
-**Key Test Locations:**
-
-- Test ID generation: `packages/reporter/src/__tests__/testIdGeneration.test.ts`
-- JWT Authentication: `packages/server/src/services/__tests__/auth.service.test.ts`
-- Flaky detection: `packages/server/src/repositories/__tests__/test.repository.flaky.test.ts`
-
-**Full testing guide:** [TESTING.md](docs/TESTING.md)
+**Full guide:** [TESTING.md](docs/TESTING.md)
 
 ---
 
@@ -181,7 +181,7 @@ cd packages/reporter && npm run dev   # Reporter watch
 1. ✨ `npm run format` - Format all files with Prettier
 2. 🔍 `npm run type-check` - Verify TypeScript
 3. 🎨 `npm run lint:fix` - Fix linting issues
-4. ✅ `npm test` - Run all tests
+4. ✅ `npm test` - Run all tests (update affected tests if needed)
 5. 📦 `npm run build` - Ensure build succeeds
 
 **IMPORTANT**: Never skip this checklist during vibe coding sessions!

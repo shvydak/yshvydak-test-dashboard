@@ -16,7 +16,9 @@ export function DashboardStats({stats, tests, loading}: DashboardStatsProps) {
         skippedTests: tests.filter((t) => t.status === 'skipped').length,
         successRate:
             tests.length > 0
-                ? (tests.filter((t) => t.status === 'passed').length / tests.length) * 100
+                ? (tests.filter((t) => t.status === 'passed').length /
+                      (tests.length - tests.filter((t) => t.status === 'skipped').length)) *
+                  100
                 : 0,
         totalRuns: 0,
         recentRuns: [],
@@ -27,8 +29,8 @@ export function DashboardStats({stats, tests, loading}: DashboardStatsProps) {
     return (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             <StatsCard
-                title="Total Tests"
-                value={displayStats.totalTests}
+                title={`Total Tests (not include "skipped" status)`}
+                value={displayStats.totalTests - displayStats.skippedTests}
                 icon="📊"
                 loading={loading}
             />

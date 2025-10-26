@@ -44,6 +44,9 @@
         "format:check": "prettier --check .",
         "clean": "turbo clean && rm -rf node_modules/.turbo",
         "clear-data": "node scripts/clear-data.js",
+        "trigger-tests": "node scripts/trigger-test-run.js",
+        "trigger-tests:wait": "node scripts/trigger-test-run.js --wait",
+        "trigger-tests:silent": "node scripts/trigger-test-run.js --wait --silent",
         "prepare": "husky"
     },
     "keywords": [

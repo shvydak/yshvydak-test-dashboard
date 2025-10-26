@@ -136,6 +136,14 @@ async function makeRequest(url, options = {}) {
         const data = await response.json()
 
         if (!response.ok) {
+            // Handle "tests already running" case (409 Conflict)
+            if (response.status === 409 && data.code === 'TESTS_ALREADY_RUNNING') {
+                const error = new Error(data.message || 'Tests already running')
+                error.code = 'TESTS_ALREADY_RUNNING'
+                error.data = data
+                throw error
+            }
+
             throw new Error(data.message || `HTTP ${response.status}: ${response.statusText}`)
         }
 
@@ -211,6 +219,32 @@ async function triggerTestRun(baseUrl, token, maxWorkers) {
 
         throw new Error('Invalid test run response')
     } catch (error) {
+        // Handle "tests already running" case
+        if (error.code === 'TESTS_ALREADY_RUNNING') {
+            const errorData = error.data
+            log('Tests are already running', 'warning')
+            log(`  Current Run ID: ${errorData.currentRunId}`, 'warning')
+            log(`  Started: ${new Date(errorData.startedAt).toLocaleString()}`, 'warning')
+            log(`  Estimated time remaining: ${errorData.estimatedTimeRemaining}s`, 'warning')
+
+            if (config.silent) {
+                console.log(
+                    JSON.stringify({
+                        success: false,
+                        error: 'Tests already running',
+                        code: 'TESTS_ALREADY_RUNNING',
+                        currentRunId: errorData.currentRunId,
+                        estimatedTimeRemaining: errorData.estimatedTimeRemaining,
+                        startedAt: errorData.startedAt,
+                        message:
+                            'Tests are already running. Please wait for completion or try again later.',
+                    })
+                )
+            }
+
+            process.exit(2) // Exit with code 2 for "already running"
+        }
+
         exitWithError(`Failed to trigger test run: ${error.message}`, 1)
     }
 }

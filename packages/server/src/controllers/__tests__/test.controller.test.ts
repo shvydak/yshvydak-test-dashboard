@@ -171,6 +171,46 @@ describe('TestController', () => {
             expect(mockTestService.runAllTests).toHaveBeenCalledWith(undefined)
         })
 
+        it('should handle tests already running error (409)', async () => {
+            const errorData = {
+                code: 'TESTS_ALREADY_RUNNING',
+                message: 'Tests are already running',
+                currentRunId: 'existing-run-123',
+                estimatedTimeRemaining: 120,
+                startedAt: '2025-10-26T10:00:00.000Z',
+            }
+            const error = new Error(JSON.stringify(errorData))
+            mockTestService.runAllTests.mockRejectedValue(error)
+
+            await controller.runAllTests(mockReq as ServiceRequest, mockRes as Response)
+
+            expect(mockRes.status).toHaveBeenCalledWith(409)
+            expect(mockRes.json).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    success: false,
+                    error: 'Tests are already running',
+                    code: 'TESTS_ALREADY_RUNNING',
+                    currentRunId: 'existing-run-123',
+                    estimatedTimeRemaining: 120,
+                    startedAt: '2025-10-26T10:00:00.000Z',
+                })
+            )
+        })
+
+        it('should handle malformed already running error gracefully', async () => {
+            const error = new Error('Some TESTS_ALREADY_RUNNING error without JSON')
+            mockTestService.runAllTests.mockRejectedValue(error)
+
+            await controller.runAllTests(mockReq as ServiceRequest, mockRes as Response)
+
+            expect(ResponseHelper.error).toHaveBeenCalledWith(
+                mockRes,
+                'Tests are already running',
+                'Tests are already running',
+                409
+            )
+        })
+
         it('should handle errors when running tests', async () => {
             const error = new Error('Failed to start tests')
             mockTestService.runAllTests.mockRejectedValue(error)

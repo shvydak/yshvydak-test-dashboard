@@ -25,6 +25,8 @@ vi.mock('../activeProcesses.service', () => ({
     activeProcessesTracker: {
         addProcess: vi.fn(),
         removeProcess: vi.fn(),
+        isRunAllActive: vi.fn(() => false),
+        getActiveProcesses: vi.fn(() => []),
     },
 }))
 
@@ -659,6 +661,77 @@ describe('TestService', () => {
                 1,
                 'run-all'
             )
+        })
+
+        it('should prevent duplicate runs when tests are already running', async () => {
+            // Mock activeProcessesTracker to indicate tests are running
+            const {activeProcessesTracker} = await import('../activeProcesses.service')
+            vi.mocked(activeProcessesTracker.isRunAllActive).mockReturnValue(true)
+            vi.mocked(activeProcessesTracker.getActiveProcesses).mockReturnValue([
+                {
+                    id: 'existing-run-123',
+                    type: 'run-all',
+                    startedAt: new Date(Date.now() - 60000).toISOString(), // Started 1 minute ago
+                    details: {
+                        runId: 'existing-run-123',
+                    },
+                },
+            ])
+
+            await expect(testService.runAllTests()).rejects.toThrow('TESTS_ALREADY_RUNNING')
+
+            // Verify that PlaywrightService was NOT called
+            expect(mockPlaywrightService.runAllTests).not.toHaveBeenCalled()
+            expect(mockRunRepository.createTestRun).not.toHaveBeenCalled()
+        })
+
+        it('should include current run details in error when duplicate run prevented', async () => {
+            const startTime = new Date(Date.now() - 60000).toISOString()
+            const {activeProcessesTracker} = await import('../activeProcesses.service')
+            vi.mocked(activeProcessesTracker.isRunAllActive).mockReturnValue(true)
+            vi.mocked(activeProcessesTracker.getActiveProcesses).mockReturnValue([
+                {
+                    id: 'existing-run-456',
+                    type: 'run-all',
+                    startedAt: startTime,
+                    details: {
+                        runId: 'existing-run-456',
+                    },
+                },
+            ])
+
+            try {
+                await testService.runAllTests()
+                expect.fail('Should have thrown error')
+            } catch (error: any) {
+                const errorData = JSON.parse(error.message)
+                expect(errorData.code).toBe('TESTS_ALREADY_RUNNING')
+                expect(errorData.currentRunId).toBe('existing-run-456')
+                expect(errorData.startedAt).toBe(startTime)
+                expect(errorData.estimatedTimeRemaining).toBeGreaterThanOrEqual(0)
+            }
+        })
+
+        it('should allow new run when no tests are running', async () => {
+            const mockProcess = createMockProcess()
+            const mockResult = {
+                runId: 'run-789',
+                message: 'Tests started',
+                timestamp: '2025-10-21T10:00:00.000Z',
+                process: mockProcess,
+            }
+
+            const {activeProcessesTracker} = await import('../activeProcesses.service')
+            vi.mocked(activeProcessesTracker.isRunAllActive).mockReturnValue(false)
+            vi.mocked(activeProcessesTracker.getActiveProcesses).mockReturnValue([])
+
+            mockPlaywrightService.runAllTests.mockResolvedValue(mockResult)
+            mockRunRepository.createTestRun.mockResolvedValue('run-789')
+
+            const result = await testService.runAllTests()
+
+            expect(result).toEqual(mockResult)
+            expect(mockPlaywrightService.runAllTests).toHaveBeenCalled()
         })
     })
 

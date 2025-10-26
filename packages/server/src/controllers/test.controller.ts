@@ -38,6 +38,33 @@ export class TestController {
             const result = await this.testService.runAllTests(maxWorkers)
             ResponseHelper.success(res, result)
         } catch (error) {
+            // Check if this is a "tests already running" error
+            if (error instanceof Error && error.message.includes('TESTS_ALREADY_RUNNING')) {
+                try {
+                    const errorData = JSON.parse(error.message)
+                    res.status(409).json({
+                        success: false,
+                        error: errorData.message,
+                        message: errorData.message,
+                        code: errorData.code,
+                        currentRunId: errorData.currentRunId,
+                        estimatedTimeRemaining: errorData.estimatedTimeRemaining,
+                        startedAt: errorData.startedAt,
+                        timestamp: new Date().toISOString(),
+                    })
+                    return
+                } catch {
+                    // Fallback if JSON parsing fails
+                    ResponseHelper.error(
+                        res,
+                        'Tests are already running',
+                        'Tests are already running',
+                        409
+                    )
+                    return
+                }
+            }
+
             Logger.error('Error running all tests', error)
             ResponseHelper.error(
                 res,

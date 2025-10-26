@@ -125,6 +125,30 @@ export class TestService implements ITestService {
     }
 
     async runAllTests(maxWorkers?: number): Promise<any> {
+        // Check if tests are already running
+        if (activeProcessesTracker.isRunAllActive()) {
+            const activeRuns = activeProcessesTracker.getActiveProcesses()
+            const currentRun = activeRuns.find((r) => r.type === 'run-all')
+
+            if (currentRun) {
+                // Calculate estimated time remaining (rough estimate based on typical test duration)
+                const startTime = new Date(currentRun.startedAt).getTime()
+                const elapsed = Date.now() - startTime
+                const estimatedTotal = 180000 // 3 minutes typical duration
+                const remaining = Math.max(0, Math.floor((estimatedTotal - elapsed) / 1000))
+
+                throw new Error(
+                    JSON.stringify({
+                        code: 'TESTS_ALREADY_RUNNING',
+                        message: 'Tests are already running',
+                        currentRunId: currentRun.id,
+                        estimatedTimeRemaining: remaining,
+                        startedAt: currentRun.startedAt,
+                    })
+                )
+            }
+        }
+
         const result = await this.playwrightService.runAllTests(maxWorkers)
 
         // Add process to tracker

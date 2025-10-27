@@ -106,10 +106,10 @@ TodoWrite([
     'Research complete',
     'Implement backend (Controller → Service → Repository)',
     'Implement frontend (Feature-based structure)',
-    'Write/update tests',
     'Run validation checklist',
-    'Check test coverage',
-    'Check documentation updates',
+    'Wait for user verification',
+    'Write/update tests (if approved)',
+    'Check documentation updates (if approved)',
 ])
 ```
 
@@ -201,7 +201,50 @@ All validation checks passed!
 
 ---
 
-### 5️⃣ TEST COVERAGE CHECK
+### 5️⃣ USER VERIFICATION (CRITICAL - WAIT FOR USER)
+
+**After validation passes, STOP and ask user to verify:**
+
+```
+✅ Implementation complete! All validation checks passed.
+
+📦 What was implemented:
+- Backend: [List of changes]
+- Frontend: [List of changes]
+- Files modified: [List of files]
+
+⚠️ IMPORTANT: Please test the feature manually before I proceed with tests and documentation.
+
+This prevents wasting tokens on tests/docs if bugs are found.
+
+Ready to continue? Please respond:
+- ✅ "works" / "good" / "approved" - I'll write tests and update docs
+- 🔧 "fix [issue]" - I'll fix the issue first
+- ⏸️ "later" - I'll skip tests/docs for now
+```
+
+**WAIT FOR USER RESPONSE. DO NOT PROCEED TO TESTS/DOCS WITHOUT APPROVAL.**
+
+**If user approves (works/good/approved):**
+
+- Proceed to Test Coverage Check (step 6)
+- Then proceed to Documentation Check (step 7)
+
+**If user reports issues:**
+
+- Fix the reported issues
+- Run validation again
+- Return to this verification step
+
+**If user says later:**
+
+- Skip tests and documentation
+- Acknowledge: "👍 Skipping tests and documentation. You can ask me to add them later."
+- Mark session as complete
+
+---
+
+### 6️⃣ TEST COVERAGE CHECK (Only after user approval)
 
 **Analyze if tests need to be added/updated:**
 
@@ -213,29 +256,30 @@ All validation checks passed!
 - ✅ Edge cases covered?
 - ✅ Coverage targets met? (Reporter: 90%+, Server: 80%+, Web: 70%+)
 
-**If gaps found:**
+**Report format:**
 
 ```
-⚠️ Test coverage gaps detected:
+🧪 Test coverage analysis:
 
-Missing tests:
+New code that needs tests:
 - packages/server/src/services/test.service.ts: rerunMultipleTests()
 - packages/web/src/features/tests/components/BulkActionBar.tsx
 
-Coverage: 75% (target: 80%+ for server)
+Current coverage: 75% (target: 80%+ for server)
 
-Shall I add tests now? (yes/no/later)
+I'll write these tests now.
 ```
 
-**If user says yes:**
+**Then:**
 
 - Write missing tests
 - Run `npm test` again
 - Verify coverage improved
+- Report results to user
 
 ---
 
-### 6️⃣ DOCUMENTATION CHECK
+### 7️⃣ DOCUMENTATION CHECK (Only after user approval)
 
 **Apply rules from docs/ai/DOCUMENTATION_UPDATE_RULES.md:**
 
@@ -268,7 +312,7 @@ Shall I add tests now? (yes/no/later)
 **Format:**
 
 ```
-📝 Documentation updates recommended:
+📝 Documentation updates needed:
 
 P1 (High Priority):
 1. docs/API_REFERENCE.md
@@ -280,21 +324,13 @@ P2 (Medium Priority):
    Reason: Significant user-facing feature
    Content: Feature overview, usage, implementation details
 
-Update now? (yes/no/later)
+I'll update these documents now.
 ```
 
-**If user says yes:**
+**Then:**
 
-- Update the documents
-- Confirm: "✅ Updated [file names]"
-
-**If user says no:**
-
-- Acknowledge: "👍 Skipping documentation updates"
-
-**If user says later:**
-
-- Acknowledge: "👍 I'll remind you before any git operations"
+- Update all recommended documents
+- Confirm: "✅ Documentation updated: [file names]"
 
 ---
 
@@ -335,11 +371,17 @@ Update now? (yes/no/later)
 - ✅ Fix errors before proceeding
 - ✅ Report results to user
 
-**Documentation:**
+**User Verification:**
 
-- ✅ Check DOCUMENTATION_UPDATE_RULES.md at end
-- ✅ Suggest updates based on priority
-- ✅ Ask user before updating (yes/no/later)
+- ✅ ALWAYS wait for user approval after validation
+- ✅ Ask user to test manually before tests/docs
+- ✅ Only proceed to tests/docs after explicit approval
+
+**Tests & Documentation:**
+
+- ✅ Write tests ONLY after user approval
+- ✅ Update documentation ONLY after user approval
+- ✅ Check DOCUMENTATION_UPDATE_RULES.md for what to update
 
 ### ❌ NEVER:
 
@@ -361,7 +403,8 @@ Update now? (yes/no/later)
 - ❌ Ask unnecessary questions that agents could answer
 - ❌ Forget TodoWrite for tracking
 - ❌ Skip validation checklist
-- ❌ Forget to check documentation rules
+- ❌ Write tests/docs before user verifies feature works
+- ❌ Proceed without user approval after validation
 
 **Git:**
 
@@ -414,7 +457,9 @@ See CLAUDE.md for complete project reference and architecture details.
 
 ---
 
-## Response Format Example
+## Response Format Examples
+
+### After Research Phase:
 
 ```
 ✅ Research complete!
@@ -438,15 +483,6 @@ Plan:
    - BulkActionBar component (show count + Run Selected button)
    - Use existing useWebSocket for updates
 
-3. Tests:
-   - Unit tests: TestService.rerunMultipleTests()
-   - Integration tests: POST /api/tests/rerun-bulk
-   - UI tests: Bulk selection behavior
-
-4. Documentation:
-   - docs/API_REFERENCE.md (new endpoint)
-   - Possibly docs/features/BULK_TEST_RERUN.md
-
 No new dependencies needed.
 
 Questions:
@@ -454,6 +490,30 @@ Questions:
   (Recommend: parallel with limit of 3)
 
 Ready to start? (yes/use defaults)
+```
+
+### After Validation Phase:
+
+```
+✅ Implementation complete! All validation checks passed.
+
+📦 What was implemented:
+- Backend: POST /api/tests/rerun-bulk endpoint (Controller → Service → Repository)
+- Frontend: BulkActionBar component + selection logic in TestsList
+- Files modified:
+  - packages/server/src/controllers/test.controller.ts
+  - packages/server/src/services/test.service.ts
+  - packages/web/src/features/tests/components/BulkActionBar.tsx
+  - packages/web/src/features/tests/store/testSelectionStore.ts
+
+⚠️ IMPORTANT: Please test the feature manually before I proceed with tests and documentation.
+
+This prevents wasting tokens on tests/docs if bugs are found.
+
+Ready to continue? Please respond:
+- ✅ "works" / "good" / "approved" - I'll write tests and update docs
+- 🔧 "fix [issue]" - I'll fix the issue first
+- ⏸️ "later" - I'll skip tests/docs for now
 ```
 
 ---
@@ -467,8 +527,9 @@ Ready to start? (yes/use defaults)
 ✅ Repository Pattern followed
 ✅ TodoWrite progress tracking
 ✅ All validation checks passed
-✅ Test coverage analyzed
-✅ Documentation check completed
+✅ User verification and approval obtained
+✅ Tests written (if approved)
+✅ Documentation updated (if approved)
 ✅ User knows what was done and what needs attention
 
 **User experience:**
@@ -476,5 +537,7 @@ Ready to start? (yes/use defaults)
 - Fast context gathering (agents in parallel)
 - Minimal back-and-forth questions
 - Transparent progress (TodoWrite)
-- Complete solution (code + tests + docs)
-- Confidence (validation passed)
+- Opportunity to test before tests/docs are written
+- Token efficiency (no wasted work on buggy code)
+- Complete solution (code + tests + docs after approval)
+- Confidence (validation passed + manual verification)

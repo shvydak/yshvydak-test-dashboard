@@ -58,7 +58,7 @@ packages/server/src/
 │   │   ├── getTestTimeline()           # Daily aggregated stats
 │   │   └── rerunTest()                 # Rerun specific test
 │   │
-│   ├── __tests__/              # Service layer tests (18 test files, 807 tests)
+│   ├── __tests__/              # Service layer tests (6 test files, part of 30 total test files, 1,279 tests)
 │   ├── playwright.service.ts   # Playwright integration
 │   │   ├── discoverTests()             # Scan for tests with --list
 │   │   ├── runAllTests()               # Execute all tests

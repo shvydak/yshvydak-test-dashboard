@@ -61,6 +61,35 @@ User clicks "Run All"
 
 ---
 
+## 🤖 Vibe Coding Agent
+
+For rapid feature development with automated workflow, use the custom agent:
+
+```
+@vibe <feature description>
+```
+
+**The agent automatically:**
+
+- 🔍 Researches existing implementation (parallel Explore agents)
+- 📋 Presents plan + asks only critical questions
+- 💻 Develops following Repository Pattern + best practices
+- 🧪 Runs validation (format/type-check/lint/test/build)
+- 📊 Checks test coverage
+- 📝 Checks documentation updates (DOCUMENTATION_UPDATE_RULES.md)
+
+**Examples:**
+
+```
+@vibe add bulk test rerun
+@vibe fix attachments bug
+@vibe refactor WebSocket logic
+```
+
+**Full guide:** [docs/ai/VIBE_CODING.md](docs/ai/VIBE_CODING.md)
+
+---
+
 ## 📂 Quick File Finder
 
 **Need to:**

@@ -142,7 +142,19 @@ Clear all test data from the database.
 
 Execute all tests in the project.
 
-**Response:**
+**Request Body (Optional):**
+
+```json
+{
+    "maxWorkers": 4
+}
+```
+
+**Query Parameters:**
+
+- `maxWorkers` (optional) - Maximum number of parallel workers
+
+**Response (200 - Success):**
 
 ```json
 {
@@ -153,6 +165,27 @@ Execute all tests in the project.
     }
 }
 ```
+
+**Response (409 - Tests Already Running):**
+
+```json
+{
+    "success": false,
+    "error": "Tests are already running",
+    "code": "TESTS_ALREADY_RUNNING",
+    "currentRunId": "existing-run-123",
+    "estimatedTimeRemaining": 120,
+    "startedAt": "2025-10-26T10:00:00.000Z",
+    "timestamp": "2025-10-26T10:02:00.000Z"
+}
+```
+
+**Notes:**
+
+- This endpoint prevents duplicate test runs. If tests are already running, it returns HTTP 409.
+- The `estimatedTimeRemaining` field provides seconds until the current run is expected to complete.
+- Clients should wait and retry after the estimated time, or check status via WebSocket events.
+- Useful for automation systems (n8n, CI/CD) to avoid triggering duplicate runs.
 
 ### POST /api/tests/run-group
 

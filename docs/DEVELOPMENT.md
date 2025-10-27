@@ -549,7 +549,7 @@ describe('useTestFilters', () => {
 
 ### Testing Documentation
 
-For comprehensive testing documentation, see [TESTING.md](docs/TESTING.md).
+For comprehensive testing documentation, see [TESTING.md](./TESTING.md).
 
 ---
 
@@ -559,5 +559,5 @@ For comprehensive testing documentation, see [TESTING.md](docs/TESTING.md).
 - [Configuration Details](./CONFIGURATION.md)
 - [Deployment Guide](./DEPLOYMENT.md)
 - [API Reference](./API_REFERENCE.md)
-- [Testing Infrastructure](docs/TESTING.md)
+- [Testing Infrastructure](./TESTING.md)
 - [Attachment Management System](./features/PER_RUN_ATTACHMENTS.md)

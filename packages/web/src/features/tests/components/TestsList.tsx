@@ -1,4 +1,5 @@
-import {useState} from 'react'
+import {useState, useEffect, useRef} from 'react'
+import {useSearchParams} from 'react-router-dom'
 import {TestResult} from '@yshvydak/core'
 import {ViewMode, LoadingSpinner} from '@shared/components'
 import {useTestsStore} from '../store/testsStore'
@@ -22,12 +23,14 @@ export default function TestsList({
     selectedTest,
     loading,
 }: TestsListProps) {
-    const {tests, error} = useTestsStore()
+    const {tests, error, selectExecution} = useTestsStore()
+    const [searchParams, setSearchParams] = useSearchParams()
     const [filter, setFilter] = useState<FilterKey>('all')
     const [searchQuery, setSearchQuery] = useState('')
     const [viewMode, setViewMode] = useState<ViewMode>('grouped')
     const [detailModalOpen, setDetailModalOpen] = useState(false)
     const [detailModalTest, setDetailModalTest] = useState<TestResult | null>(null)
+    const hasProcessedUrlRef = useRef(false)
 
     const {filteredTests, counts} = useTestFilters({
         tests,
@@ -35,15 +38,57 @@ export default function TestsList({
         searchQuery,
     })
 
+    // Handle deep linking: open modal if testId is in URL
+    useEffect(() => {
+        const testId = searchParams.get('testId')
+        const executionId = searchParams.get('executionId')
+
+        // Only process URL parameters once when component mounts and tests are loaded
+        if (testId && tests.length > 0 && !hasProcessedUrlRef.current) {
+            hasProcessedUrlRef.current = true
+
+            // Find the test by testId
+            const test = tests.find((t) => t.testId === testId)
+
+            if (test) {
+                setDetailModalTest(test)
+                setDetailModalOpen(true)
+                onTestSelect(test)
+
+                // If executionId is specified, select that execution
+                if (executionId) {
+                    selectExecution(executionId)
+                }
+            } else {
+                // Test not found, clear URL parameters
+                setSearchParams({}, {replace: true})
+            }
+        }
+
+        // Reset the ref when URL changes (user navigates to different test)
+        if (!testId) {
+            hasProcessedUrlRef.current = false
+        }
+    }, [searchParams, tests, onTestSelect, selectExecution, setSearchParams])
+
     const openTestDetail = (test: TestResult) => {
         setDetailModalTest(test)
         setDetailModalOpen(true)
         onTestSelect(test)
+
+        // Update URL with testId and executionId
+        const params = new URLSearchParams()
+        params.set('testId', test.testId)
+        params.set('executionId', test.id)
+        setSearchParams(params, {replace: false})
     }
 
     const closeTestDetail = () => {
         setDetailModalOpen(false)
         setDetailModalTest(null)
+
+        // Clear URL parameters when closing modal
+        setSearchParams({}, {replace: false})
     }
 
     if (loading && tests.length === 0) {

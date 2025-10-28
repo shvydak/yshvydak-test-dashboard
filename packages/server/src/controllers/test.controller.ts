@@ -225,6 +225,22 @@ export class TestController {
 
             await this.testService.saveTestResult(testResultData as any)
 
+            // Update progress for active process
+            const progress = activeProcessesTracker.updateProgress(testData.runId, {
+                testId: testData.testId,
+                name: testData.name,
+                filePath: testData.filePath || '',
+                status: testData.status || 'pending',
+            })
+
+            // Broadcast progress update via WebSocket
+            if (progress) {
+                const wsManager = getWebSocketManager()
+                if (wsManager) {
+                    wsManager.broadcastTestProgress(progress)
+                }
+            }
+
             return ResponseHelper.success(res, {id: testData.id}, 'Test result saved successfully')
         } catch (error) {
             Logger.error('Error saving test result', error)
@@ -390,6 +406,48 @@ export class TestController {
                 res,
                 error instanceof Error ? error.message : 'Unknown error',
                 'Failed to handle process start notification',
+                500
+            )
+        }
+    }
+
+    // POST /api/tests/test-start - Notification that a test has started
+    testStart = async (req: ServiceRequest, res: Response): Promise<void> => {
+        try {
+            const {runId, testId, name, filePath} = req.body
+
+            // Validate required fields
+            if (!runId || !testId || !name || !filePath) {
+                ResponseHelper.badRequest(
+                    res,
+                    'Missing required fields: runId, testId, name, filePath'
+                )
+                return
+            }
+
+            // Update progress tracker
+            const progress = activeProcessesTracker.startTest(runId, {
+                testId,
+                name,
+                filePath,
+            })
+
+            // Broadcast progress update via WebSocket
+            if (progress) {
+                const wsManager = getWebSocketManager()
+                if (wsManager) {
+                    wsManager.broadcastTestProgress(progress)
+                }
+            }
+
+            ResponseHelper.success(res, {testId}, 'Test start notification received')
+            return
+        } catch (error) {
+            Logger.error('Error handling test start notification', error)
+            ResponseHelper.error(
+                res,
+                error instanceof Error ? error.message : 'Unknown error',
+                'Failed to handle test start notification',
                 500
             )
         }

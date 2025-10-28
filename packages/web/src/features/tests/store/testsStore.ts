@@ -1,6 +1,6 @@
 import {create} from 'zustand'
 import {devtools} from 'zustand/middleware'
-import {TestResult, TestRun} from '@yshvydak/core'
+import {TestResult, TestRun, TestProgress} from '@yshvydak/core'
 import {authGet, authPost} from '@features/authentication/utils/authFetch'
 import {getMaxWorkersFromStorage} from '@/hooks/usePlaywrightWorkers'
 
@@ -16,6 +16,7 @@ interface TestsState {
     error: string | null
     lastUpdated: Date | null
     selectedExecutionId: string | null
+    activeProgress: TestProgress | null
 
     // Computed function
     getIsAnyTestRunning: () => boolean
@@ -33,6 +34,8 @@ interface TestsState {
     setRunningAllTests: (isRunning: boolean) => void
     checkAndRestoreActiveStates: () => Promise<void>
     selectExecution: (executionId: string | null) => void
+    updateProgress: (progress: TestProgress) => void
+    clearProgress: () => void
 }
 
 import {config} from '@config/environment.config'
@@ -53,6 +56,7 @@ export const useTestsStore = create<TestsState>()(
             error: null,
             lastUpdated: null,
             selectedExecutionId: null,
+            activeProgress: null,
 
             // Computed function
             getIsAnyTestRunning: () => {
@@ -315,6 +319,14 @@ export const useTestsStore = create<TestsState>()(
 
             selectExecution: (executionId: string | null) => {
                 set({selectedExecutionId: executionId})
+            },
+
+            updateProgress: (progress: TestProgress) => {
+                set({activeProgress: progress})
+            },
+
+            clearProgress: () => {
+                set({activeProgress: null})
             },
         }),
         {

@@ -111,6 +111,8 @@ describe('useWebSocket', () => {
             setGroupRunning: vi.fn(),
             setTestRunning: vi.fn(),
             setRunningAllTests: vi.fn(),
+            updateProgress: vi.fn(),
+            clearProgress: vi.fn(),
         }
 
         // Mock useTestsStore to return our mock actions

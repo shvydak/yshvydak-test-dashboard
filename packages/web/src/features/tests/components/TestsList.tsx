@@ -23,7 +23,7 @@ export default function TestsList({
     selectedTest,
     loading,
 }: TestsListProps) {
-    const {tests, error, selectExecution} = useTestsStore()
+    const {tests, error} = useTestsStore()
     const [searchParams, setSearchParams] = useSearchParams()
     const [filter, setFilter] = useState<FilterKey>('all')
     const [searchQuery, setSearchQuery] = useState('')
@@ -41,7 +41,6 @@ export default function TestsList({
     // Handle deep linking: open modal if testId is in URL
     useEffect(() => {
         const testId = searchParams.get('testId')
-        const executionId = searchParams.get('executionId')
 
         // Only process URL parameters once when component mounts and tests are loaded
         if (testId && tests.length > 0 && !hasProcessedUrlRef.current) {
@@ -54,11 +53,6 @@ export default function TestsList({
                 setDetailModalTest(test)
                 setDetailModalOpen(true)
                 onTestSelect(test)
-
-                // If executionId is specified, select that execution
-                if (executionId) {
-                    selectExecution(executionId)
-                }
             } else {
                 // Test not found, clear URL parameters
                 setSearchParams({}, {replace: true})
@@ -69,17 +63,16 @@ export default function TestsList({
         if (!testId) {
             hasProcessedUrlRef.current = false
         }
-    }, [searchParams, tests, onTestSelect, selectExecution, setSearchParams])
+    }, [searchParams, tests, onTestSelect, setSearchParams])
 
     const openTestDetail = (test: TestResult) => {
         setDetailModalTest(test)
         setDetailModalOpen(true)
         onTestSelect(test)
 
-        // Update URL with testId and executionId
+        // Update URL with testId only
         const params = new URLSearchParams()
         params.set('testId', test.testId)
-        params.set('executionId', test.id)
         setSearchParams(params, {replace: false})
     }
 

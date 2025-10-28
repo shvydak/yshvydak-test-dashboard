@@ -86,6 +86,7 @@ export interface ActiveProcessInfo {
         totalTests?: number
         originalTestId?: string
     }
+    progress?: TestProgress
 }
 
 export interface ConnectionStatusMessage {
@@ -124,4 +125,35 @@ export interface WebSocketMessage {
     data?: any
     timestamp?: string
     clientId?: string
+}
+
+// Test Progress Tracking Types
+export interface RunningTestInfo {
+    testId: string
+    name: string
+    filePath: string
+    currentStep?: string
+    stepProgress?: {
+        current: number
+        total: number
+    }
+    startedAt: string
+}
+
+export interface TestProgress {
+    processId: string
+    type: 'run-all' | 'run-group' | 'rerun'
+    totalTests: number
+    completedTests: number
+    passedTests: number
+    failedTests: number
+    skippedTests: number
+    runningTests: RunningTestInfo[]
+    startTime: number
+    estimatedEndTime?: number
+}
+
+export interface TestProgressUpdate extends WebSocketMessage {
+    type: 'test:progress'
+    data: TestProgress
 }

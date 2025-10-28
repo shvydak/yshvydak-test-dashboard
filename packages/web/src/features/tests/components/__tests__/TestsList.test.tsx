@@ -53,14 +53,12 @@ const mockTests: TestResult[] = [
 describe('TestsList - Shareable URLs', () => {
     const mockOnTestSelect = vi.fn()
     const mockOnTestRerun = vi.fn()
-    const mockSelectExecution = vi.fn()
 
     beforeEach(() => {
         vi.clearAllMocks()
         vi.mocked(useTestsStore).mockReturnValue({
             tests: mockTests,
             error: null,
-            selectExecution: mockSelectExecution,
         } as any)
     })
 
@@ -88,30 +86,6 @@ describe('TestsList - Shareable URLs', () => {
             )
         })
 
-        it('should open modal with specific execution when executionId is in URL', async () => {
-            render(
-                <MemoryRouter initialEntries={['/?testId=test-abc123&executionId=exec-1']}>
-                    <TestsList
-                        onTestSelect={mockOnTestSelect}
-                        onTestRerun={mockOnTestRerun}
-                        selectedTest={null}
-                        loading={false}
-                    />
-                </MemoryRouter>
-            )
-
-            await waitFor(() => {
-                expect(mockSelectExecution).toHaveBeenCalledWith('exec-1')
-            })
-
-            expect(mockOnTestSelect).toHaveBeenCalledWith(
-                expect.objectContaining({
-                    testId: 'test-abc123',
-                    id: 'exec-1',
-                })
-            )
-        })
-
         it('should handle URL with testId that does not exist', async () => {
             render(
                 <MemoryRouter initialEntries={['/?testId=nonexistent']}>
@@ -136,7 +110,6 @@ describe('TestsList - Shareable URLs', () => {
             vi.mocked(useTestsStore).mockReturnValue({
                 tests: [],
                 error: null,
-                selectExecution: mockSelectExecution,
             } as any)
 
             render(
@@ -192,7 +165,6 @@ describe('TestsList - Shareable URLs', () => {
             vi.mocked(useTestsStore).mockReturnValue({
                 tests: [],
                 error: null,
-                selectExecution: mockSelectExecution,
             } as any)
 
             render(
@@ -213,7 +185,6 @@ describe('TestsList - Shareable URLs', () => {
             vi.mocked(useTestsStore).mockReturnValue({
                 tests: [],
                 error: 'Failed to load tests',
-                selectExecution: mockSelectExecution,
             } as any)
 
             render(
@@ -249,7 +220,7 @@ describe('TestsList - Shareable URLs', () => {
     })
 
     describe('URL Parameter Handling', () => {
-        it('should handle URL with only testId (no executionId)', async () => {
+        it('should handle URL with testId', async () => {
             render(
                 <MemoryRouter initialEntries={['/?testId=test-xyz789']}>
                     <TestsList
@@ -266,14 +237,11 @@ describe('TestsList - Shareable URLs', () => {
                     expect.objectContaining({testId: 'test-xyz789'})
                 )
             })
-
-            // selectExecution should not be called without executionId
-            expect(mockSelectExecution).not.toHaveBeenCalled()
         })
 
-        it('should ignore URL parameters when no testId is present', () => {
+        it('should ignore URL when no testId is present', () => {
             render(
-                <MemoryRouter initialEntries={['/?executionId=exec-1']}>
+                <MemoryRouter initialEntries={['/?someParam=value']}>
                     <TestsList
                         onTestSelect={mockOnTestSelect}
                         onTestRerun={mockOnTestRerun}
@@ -284,7 +252,6 @@ describe('TestsList - Shareable URLs', () => {
             )
 
             expect(mockOnTestSelect).not.toHaveBeenCalled()
-            expect(mockSelectExecution).not.toHaveBeenCalled()
         })
 
         it('should handle URL with hyphenated testId', async () => {
@@ -302,7 +269,6 @@ describe('TestsList - Shareable URLs', () => {
             vi.mocked(useTestsStore).mockReturnValue({
                 tests: [...mockTests, hyphenatedTest],
                 error: null,
-                selectExecution: mockSelectExecution,
             } as any)
 
             render(

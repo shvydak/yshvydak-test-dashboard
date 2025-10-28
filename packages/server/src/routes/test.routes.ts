@@ -13,6 +13,7 @@ export function createTestRoutes(container: ServiceContainer): Router {
 
     // Process notification endpoints
     router.post('/process-start', testController.processStart)
+    router.post('/test-start', testController.testStart)
     router.post('/process-end', testController.processEnd)
     router.post('/force-reset', testController.forceReset)
 

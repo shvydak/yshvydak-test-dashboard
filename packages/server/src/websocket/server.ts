@@ -5,6 +5,7 @@ import {v4 as uuidv4} from 'uuid'
 import {activeProcessesTracker} from '../services/activeProcesses.service'
 import {AuthService} from '../services/auth.service'
 import {config} from '../config/environment.config'
+import {TestProgress} from '@yshvydak/core'
 
 export interface WebSocketMessage {
     type: string
@@ -18,13 +19,6 @@ export interface TestStatusUpdate {
     status: 'running' | 'passed' | 'failed' | 'skipped' | 'timeout'
     progress?: number
     message?: string
-}
-
-export interface TestProgressUpdate {
-    testId: string
-    currentStep: string
-    progress: number
-    totalSteps?: number
 }
 
 export class WebSocketManager {
@@ -226,10 +220,11 @@ export class WebSocketManager {
     }
 
     // Send test progress update
-    public broadcastTestProgress(update: TestProgressUpdate): void {
+    public broadcastTestProgress(progress: TestProgress): void {
         this.broadcast({
             type: 'test:progress',
-            data: update,
+            data: progress,
+            timestamp: new Date().toISOString(),
         })
     }
 

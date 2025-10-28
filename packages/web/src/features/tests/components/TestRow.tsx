@@ -1,5 +1,5 @@
 import {TestResult} from '@yshvydak/core'
-import {StatusBadge, ActionButton} from '@shared/components'
+import {StatusBadge, ActionButton, LoadingSpinner} from '@shared/components'
 import {formatDuration, formatLastRun} from '../utils'
 import {useTestsStore} from '../store/testsStore'
 
@@ -11,9 +11,12 @@ export interface TestRowProps {
 }
 
 export function TestRow({test, selected, onSelect, onRerun}: TestRowProps) {
-    const {runningTests, getIsAnyTestRunning} = useTestsStore()
+    const {runningTests, getIsAnyTestRunning, activeProgress} = useTestsStore()
     const isRunning = runningTests.has(test.id)
     const isAnyTestRunning = getIsAnyTestRunning()
+
+    // Find if this test is currently running in the active progress
+    const runningInfo = activeProgress?.runningTests.find((t) => t.testId === test.testId)
 
     return (
         <tr
@@ -26,7 +29,21 @@ export function TestRow({test, selected, onSelect, onRerun}: TestRowProps) {
             </td>
             <td className="py-3 px-6">
                 <div className="font-medium text-gray-900 dark:text-white">{test.name}</div>
-                {test.errorMessage && (
+                {runningInfo && (
+                    <div className="flex items-center gap-2 text-xs text-blue-600 dark:text-blue-400 mt-1">
+                        <LoadingSpinner size="sm" />
+                        <span>
+                            {runningInfo.currentStep || 'Running...'}
+                            {runningInfo.stepProgress && (
+                                <span className="ml-1 text-gray-500 dark:text-gray-400">
+                                    ({runningInfo.stepProgress.current}/
+                                    {runningInfo.stepProgress.total})
+                                </span>
+                            )}
+                        </span>
+                    </div>
+                )}
+                {!runningInfo && test.errorMessage && (
                     <div className="text-xs text-red-600 dark:text-red-400 mt-1 truncate max-w-xs">
                         {test.errorMessage}
                     </div>

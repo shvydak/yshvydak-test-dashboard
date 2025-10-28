@@ -13,6 +13,14 @@ import {v4 as uuidv4} from 'uuid'
 import * as dotenv from 'dotenv'
 dotenv.config()
 
+interface TestStep {
+    title: string
+    category: string
+    duration: number
+    startTime: Date
+    error?: string
+}
+
 interface YShvydakTestResult {
     id: string
     testId: string
@@ -29,6 +37,9 @@ interface YShvydakTestResult {
         path: string
         contentType: string
     }>
+    metadata?: {
+        steps?: TestStep[]
+    }
 }
 
 interface YShvydakTestRun {
@@ -109,6 +120,20 @@ class YShvydakReporter implements Reporter {
         console.log(`🚀 Starting test run with ${suite.allTests().length} tests`)
     }
 
+    onTestBegin(test: TestCase) {
+        const testId = this.generateStableTestId(test)
+        const filePath = path.relative(process.cwd(), test.location.file)
+
+        // Notify dashboard that test is starting
+        this.notifyTestStart({
+            testId,
+            name: test.title,
+            filePath,
+        })
+
+        console.log(`▶️  Starting: ${test.title}`)
+    }
+
     onTestEnd(test: TestCase, result: TestResult) {
         const testId = this.generateStableTestId(test)
         const filePath = path.relative(process.cwd(), test.location.file)
@@ -118,6 +143,17 @@ class YShvydakReporter implements Reporter {
         if (result.status === 'failed' && result.error) {
             enhancedErrorMessage = this.createEnhancedErrorMessage(test, result.error)
         }
+
+        // Capture test steps from Playwright
+        const steps: TestStep[] = result.steps
+            ? result.steps.map((step) => ({
+                  title: step.title,
+                  category: step.category,
+                  duration: step.duration,
+                  startTime: step.startTime,
+                  error: step.error?.message,
+              }))
+            : []
 
         const testResult: YShvydakTestResult = {
             id: uuidv4(),
@@ -131,6 +167,9 @@ class YShvydakReporter implements Reporter {
             errorMessage: enhancedErrorMessage,
             errorStack: result.error?.stack,
             attachments: this.processAttachments(result.attachments),
+            metadata: {
+                steps: steps.length > 0 ? steps : undefined,
+            },
         }
 
         this.results.push(testResult)
@@ -391,6 +430,28 @@ class YShvydakReporter implements Reporter {
             }
         } catch (error) {
             console.warn(`⚠️  Process start notification failed: ${error}`)
+        }
+    }
+
+    private async notifyTestStart(data: {testId: string; name: string; filePath: string}) {
+        try {
+            const response = await fetch(`${this.apiBaseUrl}/api/tests/test-start`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    runId: this.runId,
+                    ...data,
+                }),
+            })
+
+            if (!response.ok) {
+                console.warn(`⚠️  Failed to notify test start: ${response.status}`)
+            }
+        } catch (error) {
+            // Silently fail - don't interrupt test execution
+            console.warn(`⚠️  Test start notification failed: ${error}`)
         }
     }
 

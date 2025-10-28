@@ -484,7 +484,7 @@ describe('PlaywrightService', () => {
                     'test',
                     'auth.spec.ts',
                     '--grep',
-                    'should login successfully',
+                    'should login successfully$', // Pattern is anchored to match exact test name
                     '--reporter=json,playwright-dashboard-reporter',
                 ],
                 expect.anything()
@@ -527,6 +527,37 @@ describe('PlaywrightService', () => {
             // Assert
             const args = mockSpawn.mock.calls[0][1]
             expect(args).toContain('--workers=1')
+        })
+
+        it('should escape special regex characters in test name', async () => {
+            // Arrange
+            mockSpawn.mockReturnValue(createMockProcess(''))
+
+            // Act - Test name with special regex characters
+            await service.rerunSingleTest('test.spec.ts', 'test with (parentheses) and [brackets]')
+
+            // Assert
+            const args = mockSpawn.mock.calls[0][1]
+            const grepIndex = args.indexOf('--grep')
+            expect(grepIndex).toBeGreaterThan(-1)
+            // Special characters should be escaped
+            expect(args[grepIndex + 1]).toBe('test with \\(parentheses\\) and \\[brackets\\]$')
+        })
+
+        it('should anchor pattern to prevent partial matches', async () => {
+            // Arrange
+            mockSpawn.mockReturnValue(createMockProcess(''))
+
+            // Act - Test name that could partially match other tests
+            await service.rerunSingleTest('login.spec.ts', 'Successful Login')
+
+            // Assert
+            const args = mockSpawn.mock.calls[0][1]
+            const grepIndex = args.indexOf('--grep')
+            expect(grepIndex).toBeGreaterThan(-1)
+            // Pattern should end with $ to match exact test name
+            expect(args[grepIndex + 1]).toBe('Successful Login$')
+            // This prevents matching "Unsuccessful Login with invalid email"
         })
 
         it('should return message indicating test rerun', async () => {

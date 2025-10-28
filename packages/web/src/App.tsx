@@ -5,6 +5,7 @@ import {Header} from '@shared/components'
 import {Dashboard} from '@features/dashboard'
 import {SettingsModal} from '@features/dashboard/components/settings'
 import {TestsList} from '@features/tests'
+import {FloatingProgressPanel} from '@features/tests/components/progress/FloatingProgressPanel'
 import {LoginPage, setGlobalLogout} from '@features/authentication'
 import {useTestsStore} from '@features/tests/store/testsStore'
 import {useWebSocket} from './hooks/useWebSocket'
@@ -238,6 +239,9 @@ function App() {
                     <Route path="/dashboard" element={<Dashboard />} />
                 </Routes>
             </main>
+
+            {/* Floating Progress Panel */}
+            <FloatingProgressPanel />
 
             {/* Footer */}
             <footer className="bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 mt-12">

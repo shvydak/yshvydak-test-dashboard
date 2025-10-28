@@ -686,4 +686,382 @@ describe('ActiveProcessesTracker', () => {
             expect(tracker.getActiveProcesses()[0].type).toBe('run-group')
         })
     })
+
+    describe('Progress Tracking', () => {
+        beforeEach(() => {
+            tracker.addProcess({
+                runId: 'run-123',
+                type: 'run-all',
+                totalTests: 10,
+            })
+        })
+
+        describe('updateProgress', () => {
+            it('should update progress and increment completed tests', () => {
+                const progress = tracker.updateProgress('run-123', {
+                    testId: 'test-1',
+                    name: 'Test 1',
+                    filePath: 'test.spec.ts',
+                    status: 'passed',
+                })
+
+                expect(progress).toBeDefined()
+                expect(progress?.completedTests).toBe(1)
+                expect(progress?.passedTests).toBe(1)
+                expect(progress?.failedTests).toBe(0)
+                expect(progress?.skippedTests).toBe(0)
+            })
+
+            it('should track passed tests correctly', () => {
+                tracker.updateProgress('run-123', {
+                    testId: 'test-1',
+                    name: 'Test 1',
+                    filePath: 'test.spec.ts',
+                    status: 'passed',
+                })
+                tracker.updateProgress('run-123', {
+                    testId: 'test-2',
+                    name: 'Test 2',
+                    filePath: 'test.spec.ts',
+                    status: 'passed',
+                })
+
+                const progress = tracker.getProgress('run-123')
+                expect(progress?.passedTests).toBe(2)
+                expect(progress?.completedTests).toBe(2)
+            })
+
+            it('should track failed tests correctly', () => {
+                tracker.updateProgress('run-123', {
+                    testId: 'test-1',
+                    name: 'Test 1',
+                    filePath: 'test.spec.ts',
+                    status: 'failed',
+                })
+
+                const progress = tracker.getProgress('run-123')
+                expect(progress?.failedTests).toBe(1)
+                expect(progress?.passedTests).toBe(0)
+            })
+
+            it('should track skipped tests correctly', () => {
+                tracker.updateProgress('run-123', {
+                    testId: 'test-1',
+                    name: 'Test 1',
+                    filePath: 'test.spec.ts',
+                    status: 'skipped',
+                })
+
+                const progress = tracker.getProgress('run-123')
+                expect(progress?.skippedTests).toBe(1)
+            })
+
+            it('should calculate estimated end time based on average test duration', () => {
+                vi.useFakeTimers()
+                const startTime = Date.now()
+                vi.setSystemTime(startTime)
+
+                // Simulate time passing (1ms)
+                vi.advanceTimersByTime(1)
+
+                tracker.updateProgress('run-123', {
+                    testId: 'test-1',
+                    name: 'Test 1',
+                    filePath: 'test.spec.ts',
+                    status: 'passed',
+                })
+
+                const progress = tracker.getProgress('run-123')
+                expect(progress?.estimatedEndTime).toBeDefined()
+                expect(progress?.estimatedEndTime).toBeGreaterThan(startTime)
+
+                vi.useRealTimers()
+            })
+
+            it('should return null for non-existent process', () => {
+                const progress = tracker.updateProgress('non-existent', {
+                    testId: 'test-1',
+                    name: 'Test 1',
+                    filePath: 'test.spec.ts',
+                    status: 'passed',
+                })
+
+                expect(progress).toBeNull()
+            })
+
+            it('should log warning for non-existent process', () => {
+                tracker.updateProgress('non-existent', {
+                    testId: 'test-1',
+                    name: 'Test 1',
+                    filePath: 'test.spec.ts',
+                    status: 'passed',
+                })
+
+                expect(LoggerUtil.Logger.warn).toHaveBeenCalledWith(
+                    'Cannot update progress for non-existent process: non-existent'
+                )
+            })
+
+            it('should handle multiple test updates sequentially', () => {
+                for (let i = 1; i <= 5; i++) {
+                    tracker.updateProgress('run-123', {
+                        testId: `test-${i}`,
+                        name: `Test ${i}`,
+                        filePath: 'test.spec.ts',
+                        status: i % 2 === 0 ? 'failed' : 'passed',
+                    })
+                }
+
+                const progress = tracker.getProgress('run-123')
+                expect(progress?.completedTests).toBe(5)
+                expect(progress?.passedTests).toBe(3)
+                expect(progress?.failedTests).toBe(2)
+            })
+
+            it('should not crash on pending status', () => {
+                const progress = tracker.updateProgress('run-123', {
+                    testId: 'test-1',
+                    name: 'Test 1',
+                    filePath: 'test.spec.ts',
+                    status: 'pending',
+                })
+
+                expect(progress?.completedTests).toBe(1)
+                expect(progress?.passedTests).toBe(0)
+                expect(progress?.failedTests).toBe(0)
+                expect(progress?.skippedTests).toBe(0)
+            })
+        })
+
+        describe('startTest', () => {
+            it('should add test to runningTests array', () => {
+                const progress = tracker.startTest('run-123', {
+                    testId: 'test-1',
+                    name: 'Test 1',
+                    filePath: 'test.spec.ts',
+                })
+
+                expect(progress).toBeDefined()
+                expect(progress?.runningTests).toHaveLength(1)
+                expect(progress?.runningTests[0]).toMatchObject({
+                    testId: 'test-1',
+                    name: 'Test 1',
+                    filePath: 'test.spec.ts',
+                })
+                expect(progress?.runningTests[0].startedAt).toBeDefined()
+            })
+
+            it('should handle multiple running tests', () => {
+                tracker.startTest('run-123', {
+                    testId: 'test-1',
+                    name: 'Test 1',
+                    filePath: 'test1.spec.ts',
+                })
+                tracker.startTest('run-123', {
+                    testId: 'test-2',
+                    name: 'Test 2',
+                    filePath: 'test2.spec.ts',
+                })
+
+                const progress = tracker.getProgress('run-123')
+                expect(progress?.runningTests).toHaveLength(2)
+            })
+
+            it('should not duplicate test if already running', () => {
+                tracker.startTest('run-123', {
+                    testId: 'test-1',
+                    name: 'Test 1',
+                    filePath: 'test.spec.ts',
+                })
+                tracker.startTest('run-123', {
+                    testId: 'test-1',
+                    name: 'Test 1',
+                    filePath: 'test.spec.ts',
+                })
+
+                const progress = tracker.getProgress('run-123')
+                expect(progress?.runningTests).toHaveLength(1)
+            })
+
+            it('should return null for non-existent process', () => {
+                const progress = tracker.startTest('non-existent', {
+                    testId: 'test-1',
+                    name: 'Test 1',
+                    filePath: 'test.spec.ts',
+                })
+
+                expect(progress).toBeNull()
+            })
+        })
+
+        describe('updateProgress - with running tests', () => {
+            it('should remove test from runningTests when completed', () => {
+                // Start test
+                tracker.startTest('run-123', {
+                    testId: 'test-1',
+                    name: 'Test 1',
+                    filePath: 'test.spec.ts',
+                })
+
+                let progress = tracker.getProgress('run-123')
+                expect(progress?.runningTests).toHaveLength(1)
+
+                // Complete test
+                tracker.updateProgress('run-123', {
+                    testId: 'test-1',
+                    name: 'Test 1',
+                    filePath: 'test.spec.ts',
+                    status: 'passed',
+                })
+
+                progress = tracker.getProgress('run-123')
+                expect(progress?.runningTests).toHaveLength(0)
+            })
+
+            it('should remove only the completed test from runningTests', () => {
+                // Start multiple tests
+                tracker.startTest('run-123', {
+                    testId: 'test-1',
+                    name: 'Test 1',
+                    filePath: 'test.spec.ts',
+                })
+                tracker.startTest('run-123', {
+                    testId: 'test-2',
+                    name: 'Test 2',
+                    filePath: 'test.spec.ts',
+                })
+
+                // Complete one test
+                tracker.updateProgress('run-123', {
+                    testId: 'test-1',
+                    name: 'Test 1',
+                    filePath: 'test.spec.ts',
+                    status: 'passed',
+                })
+
+                const progress = tracker.getProgress('run-123')
+                expect(progress?.runningTests).toHaveLength(1)
+                expect(progress?.runningTests[0].testId).toBe('test-2')
+            })
+        })
+
+        describe('getProgress', () => {
+            it('should return progress for existing process', () => {
+                const progress = tracker.getProgress('run-123')
+
+                expect(progress).toBeDefined()
+                expect(progress?.processId).toBe('run-123')
+                expect(progress?.type).toBe('run-all')
+                expect(progress?.totalTests).toBe(10)
+                expect(progress?.completedTests).toBe(0)
+            })
+
+            it('should return null for non-existent process', () => {
+                const progress = tracker.getProgress('non-existent')
+
+                expect(progress).toBeNull()
+            })
+
+            it('should return initial progress state when no tests completed', () => {
+                const progress = tracker.getProgress('run-123')
+
+                expect(progress).toEqual({
+                    processId: 'run-123',
+                    type: 'run-all',
+                    totalTests: 10,
+                    completedTests: 0,
+                    passedTests: 0,
+                    failedTests: 0,
+                    skippedTests: 0,
+                    runningTests: [],
+                    startTime: expect.any(Number),
+                })
+            })
+        })
+
+        describe('Progress in Active Processes', () => {
+            it('should include progress in active process info', () => {
+                tracker.updateProgress('run-123', {
+                    testId: 'test-1',
+                    name: 'Test 1',
+                    filePath: 'test.spec.ts',
+                    status: 'passed',
+                })
+
+                const processes = tracker.getActiveProcesses()
+                expect(processes[0].progress).toBeDefined()
+                expect(processes[0].progress?.completedTests).toBe(1)
+            })
+
+            it('should include progress in connection status', () => {
+                tracker.updateProgress('run-123', {
+                    testId: 'test-1',
+                    name: 'Test 1',
+                    filePath: 'test.spec.ts',
+                    status: 'passed',
+                })
+
+                const status = tracker.getConnectionStatus()
+                expect(status.activeRuns[0].progress).toBeDefined()
+                expect(status.activeRuns[0].progress?.completedTests).toBe(1)
+            })
+        })
+
+        describe('Estimated Time Calculation', () => {
+            it('should not set estimated time when no tests completed', () => {
+                const progress = tracker.getProgress('run-123')
+                expect(progress?.estimatedEndTime).toBeUndefined()
+            })
+
+            it('should calculate estimated time after first test', () => {
+                vi.useFakeTimers()
+                const startTime = Date.now()
+                vi.setSystemTime(startTime)
+
+                // First test takes 1000ms
+                vi.advanceTimersByTime(1000)
+                tracker.updateProgress('run-123', {
+                    testId: 'test-1',
+                    name: 'Test 1',
+                    filePath: 'test.spec.ts',
+                    status: 'passed',
+                })
+
+                const progress = tracker.getProgress('run-123')
+                expect(progress?.estimatedEndTime).toBeDefined()
+
+                // Should estimate 9 more tests at 1000ms each = 9000ms
+                const expectedEndTime = Date.now() + 9000
+                expect(progress?.estimatedEndTime).toBeCloseTo(expectedEndTime, -2)
+
+                vi.useRealTimers()
+            })
+
+            it('should update estimated time as more tests complete', () => {
+                vi.useFakeTimers()
+                const startTime = Date.now()
+                vi.setSystemTime(startTime)
+
+                // Complete 3 tests, each taking 500ms
+                for (let i = 1; i <= 3; i++) {
+                    vi.advanceTimersByTime(500)
+                    tracker.updateProgress('run-123', {
+                        testId: `test-${i}`,
+                        name: `Test ${i}`,
+                        filePath: 'test.spec.ts',
+                        status: 'passed',
+                    })
+                }
+
+                const progress = tracker.getProgress('run-123')
+
+                // 3 tests completed in 1500ms total = 500ms average
+                // 7 tests remaining = 3500ms
+                const expectedEndTime = Date.now() + 3500
+                expect(progress?.estimatedEndTime).toBeCloseTo(expectedEndTime, -2)
+
+                vi.useRealTimers()
+            })
+        })
+    })
 })

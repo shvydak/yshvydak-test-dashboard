@@ -569,6 +569,47 @@ Register a new test process as started.
 }
 ```
 
+### POST /api/tests/test-start
+
+**✨ New in v1.0.1** - Notify that an individual test has started execution.
+
+Used for real-time progress tracking. See [Progress Tracking](features/PROGRESS_TRACKING.md) for details.
+
+**Request Body:**
+
+```json
+{
+    "runId": "run-abc-123",
+    "testId": "test-hash-456",
+    "name": "should validate user login",
+    "filePath": "tests/auth.spec.ts"
+}
+```
+
+**Response:**
+
+```json
+{
+    "status": "success",
+    "data": {
+        "testId": "test-hash-456"
+    },
+    "message": "Test start notification received"
+}
+```
+
+**Side Effects:**
+
+- Adds test to `activeProcessesTracker.runningTests`
+- Broadcasts `test:progress` WebSocket event
+- Updates frontend FloatingProgressPanel
+
+**Related:**
+
+- WebSocket event: `test:progress`
+- Reporter method: `onTestBegin()`
+- Frontend component: `FloatingProgressPanel`
+
 ### POST /api/tests/process-end
 
 Mark a test process as completed.
@@ -670,15 +711,42 @@ Real-time test status updates during execution.
 
 #### test:progress
 
-Test execution progress updates.
+**✨ Enhanced in v1.0.1** - Real-time test execution progress with currently running tests.
+
+Broadcast when:
+
+- A test starts execution (`POST /api/tests/test-start`)
+- A test completes (`POST /api/tests`)
+
+See [Progress Tracking](features/PROGRESS_TRACKING.md) for implementation details.
 
 ```json
 {
     "type": "test:progress",
     "data": {
-        "completed": 45,
-        "total": 80,
-        "percentage": 56.25
+        "processId": "run-abc-123",
+        "type": "run-all",
+        "totalTests": 14,
+        "completedTests": 6,
+        "passedTests": 5,
+        "failedTests": 0,
+        "skippedTests": 1,
+        "runningTests": [
+            {
+                "testId": "test-hash-1",
+                "name": "API - Link Budget Item",
+                "filePath": "e2e/tests/api/api.test.ts",
+                "startedAt": "2025-10-28T09:30:00Z"
+            },
+            {
+                "testId": "test-hash-2",
+                "name": "API - Create Contract",
+                "filePath": "e2e/tests/api/api.test.ts",
+                "startedAt": "2025-10-28T09:30:01Z"
+            }
+        ],
+        "startTime": 1698489000000,
+        "estimatedEndTime": 1698489007000
     }
 }
 ```

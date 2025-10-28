@@ -19,8 +19,15 @@ export function useWebSocket(url: string | null, options?: WebSocketOptions) {
     const [lastMessage, setLastMessage] = useState<WebSocketMessage | null>(null)
     const wsRef = useRef<WebSocket | null>(null)
     const queryClient = useQueryClient()
-    const {fetchTests, fetchRuns, setGroupRunning, setTestRunning, setRunningAllTests} =
-        useTestsStore()
+    const {
+        fetchTests,
+        fetchRuns,
+        setGroupRunning,
+        setTestRunning,
+        setRunningAllTests,
+        updateProgress,
+        clearProgress,
+    } = useTestsStore()
     const reconnectTimeoutRef = useRef<NodeJS.Timeout>()
     const reconnectAttempts = useRef(0)
     const maxReconnectAttempts = 5
@@ -53,11 +60,15 @@ export function useWebSocket(url: string | null, options?: WebSocketOptions) {
                         }
                         break
                 }
+
+                // Restore progress if available
+                if (run.progress) {
+                    updateProgress(run.progress)
+                }
             })
         } else {
             // Ensure all states are cleared
-            // Note: We don't need to clear individual running states here as the store
-            // should handle this, but we can add it if needed
+            clearProgress()
         }
 
         // Refresh data to get latest state
@@ -156,6 +167,13 @@ export function useWebSocket(url: string | null, options?: WebSocketOptions) {
                 fetchTests()
                 break
 
+            case 'test:progress':
+                // Update progress state with real-time progress data
+                if (message.data) {
+                    updateProgress(message.data)
+                }
+                break
+
             case 'stats:update':
                 queryClient.invalidateQueries({
                     queryKey: ['dashboard-stats'],
@@ -185,6 +203,9 @@ export function useWebSocket(url: string | null, options?: WebSocketOptions) {
                 })
                 fetchTests()
                 fetchRuns()
+
+                // Clear progress when run completes
+                clearProgress()
 
                 // Clear group running state if this was a group run
                 if (message.data?.type === 'run-group' && message.data?.filePath) {

@@ -23,6 +23,9 @@ vi.mock('../../services/activeProcesses.service', () => ({
         isProcessRunning: vi.fn(),
         getConnectionStatus: vi.fn(),
         forceReset: vi.fn(),
+        updateProgress: vi.fn().mockReturnValue(null),
+        getProgress: vi.fn(),
+        startTest: vi.fn(),
     },
 }))
 vi.mock('../../websocket/server', () => ({
@@ -878,6 +881,100 @@ describe('TestController', () => {
 
             expect(Logger.error).toHaveBeenCalledWith(
                 'Error handling process start notification',
+                expect.any(Error)
+            )
+            expect(ResponseHelper.error).toHaveBeenCalled()
+        })
+    })
+
+    describe('testStart', () => {
+        it('should handle test start notification', async () => {
+            const testData = {
+                runId: 'run-123',
+                testId: 'test-1',
+                name: 'Test 1',
+                filePath: 'test.spec.ts',
+            }
+            mockReq.body = testData
+
+            const mockProgress = {
+                processId: 'run-123',
+                type: 'run-all' as const,
+                totalTests: 10,
+                completedTests: 0,
+                passedTests: 0,
+                failedTests: 0,
+                skippedTests: 0,
+                runningTests: [{...testData, startedAt: new Date().toISOString()}],
+                startTime: Date.now(),
+            }
+            vi.mocked(activeProcessesTracker.startTest).mockReturnValue(mockProgress)
+
+            const mockWsManager = {
+                broadcastTestProgress: vi.fn(),
+            }
+            vi.mocked(getWebSocketManager).mockReturnValue(mockWsManager as any)
+
+            await controller.testStart(mockReq as ServiceRequest, mockRes as Response)
+
+            expect(activeProcessesTracker.startTest).toHaveBeenCalledWith('run-123', {
+                testId: 'test-1',
+                name: 'Test 1',
+                filePath: 'test.spec.ts',
+            })
+            expect(mockWsManager.broadcastTestProgress).toHaveBeenCalledWith(mockProgress)
+            expect(ResponseHelper.success).toHaveBeenCalledWith(
+                mockRes,
+                {testId: 'test-1'},
+                'Test start notification received'
+            )
+        })
+
+        it('should return bad request when missing required fields', async () => {
+            mockReq.body = {runId: 'run-123', testId: 'test-1'}
+
+            await controller.testStart(mockReq as ServiceRequest, mockRes as Response)
+
+            expect(ResponseHelper.badRequest).toHaveBeenCalledWith(
+                mockRes,
+                'Missing required fields: runId, testId, name, filePath'
+            )
+            expect(activeProcessesTracker.startTest).not.toHaveBeenCalled()
+        })
+
+        it('should handle test start without WebSocket manager', async () => {
+            const testData = {
+                runId: 'run-123',
+                testId: 'test-1',
+                name: 'Test 1',
+                filePath: 'test.spec.ts',
+            }
+            mockReq.body = testData
+
+            vi.mocked(activeProcessesTracker.startTest).mockReturnValue(null)
+            vi.mocked(getWebSocketManager).mockReturnValue(null)
+
+            await controller.testStart(mockReq as ServiceRequest, mockRes as Response)
+
+            expect(activeProcessesTracker.startTest).toHaveBeenCalled()
+            expect(ResponseHelper.success).toHaveBeenCalled()
+        })
+
+        it('should handle errors during test start', async () => {
+            mockReq.body = {
+                runId: 'run-123',
+                testId: 'test-1',
+                name: 'Test 1',
+                filePath: 'test.spec.ts',
+            }
+            vi.mocked(activeProcessesTracker.startTest).mockImplementation(() => {
+                throw new Error('Tracker error')
+            })
+
+            await controller.testStart(mockReq as ServiceRequest, mockRes as Response)
+
+            expect(Logger.error).toHaveBeenCalledWith(
+                'Error handling test start notification',
                 expect.any(Error)
             )
             expect(ResponseHelper.error).toHaveBeenCalled()

@@ -1,4 +1,4 @@
-import {ActiveProcessInfo, ProcessStartData} from '@yshvydak/core'
+import {ActiveProcessInfo, ProcessStartData, TestProgress} from '@yshvydak/core'
 import {Logger} from '../utils/logger.util'
 
 export class ActiveProcessesTracker {
@@ -23,11 +23,114 @@ export class ActiveProcessesTracker {
                 totalTests: data.totalTests,
                 originalTestId: data.originalTestId,
             },
+            progress: {
+                processId: data.runId,
+                type: data.type,
+                totalTests: data.totalTests || 0,
+                completedTests: 0,
+                passedTests: 0,
+                failedTests: 0,
+                skippedTests: 0,
+                runningTests: [],
+                startTime: Date.now(),
+            },
         }
 
         this.activeProcesses.set(data.runId, processInfo)
         Logger.info(`Added active process: ${data.runId} (${data.type})`)
         this.logCurrentState()
+    }
+
+    /**
+     * Start tracking a test execution
+     */
+    startTest(
+        runId: string,
+        testInfo: {
+            testId: string
+            name: string
+            filePath: string
+        }
+    ): TestProgress | null {
+        const process = this.activeProcesses.get(runId)
+        if (!process || !process.progress) {
+            Logger.warn(`Cannot start test for non-existent process: ${runId}`)
+            return null
+        }
+
+        const progress = process.progress
+
+        // Remove if already exists (shouldn't happen, but safety check)
+        progress.runningTests = progress.runningTests.filter((t) => t.testId !== testInfo.testId)
+
+        // Add to running tests
+        progress.runningTests.push({
+            testId: testInfo.testId,
+            name: testInfo.name,
+            filePath: testInfo.filePath,
+            startedAt: new Date().toISOString(),
+        })
+
+        Logger.debug(`Started test ${testInfo.name} in process ${runId}`)
+
+        return progress
+    }
+
+    /**
+     * Update progress for a running process (called when test completes)
+     */
+    updateProgress(
+        runId: string,
+        testResult: {
+            testId: string
+            name: string
+            filePath: string
+            status: 'passed' | 'failed' | 'skipped' | 'pending'
+        }
+    ): TestProgress | null {
+        const process = this.activeProcesses.get(runId)
+        if (!process || !process.progress) {
+            Logger.warn(`Cannot update progress for non-existent process: ${runId}`)
+            return null
+        }
+
+        const progress = process.progress
+
+        // Remove test from running tests
+        progress.runningTests = progress.runningTests.filter((t) => t.testId !== testResult.testId)
+
+        // Update completed test counts
+        progress.completedTests++
+
+        if (testResult.status === 'passed') {
+            progress.passedTests++
+        } else if (testResult.status === 'failed') {
+            progress.failedTests++
+        } else if (testResult.status === 'skipped') {
+            progress.skippedTests++
+        }
+
+        // Calculate estimated end time based on progress
+        if (progress.completedTests > 0 && progress.totalTests > 0) {
+            const elapsedTime = Date.now() - progress.startTime
+            const avgTimePerTest = elapsedTime / progress.completedTests
+            const remainingTests = progress.totalTests - progress.completedTests
+            progress.estimatedEndTime = Date.now() + avgTimePerTest * remainingTests
+        }
+
+        Logger.debug(
+            `Updated progress for ${runId}: ${progress.completedTests}/${progress.totalTests}`
+        )
+
+        return progress
+    }
+
+    /**
+     * Get progress for a specific process
+     */
+    getProgress(runId: string): TestProgress | null {
+        const process = this.activeProcesses.get(runId)
+        return process?.progress || null
     }
 
     /**

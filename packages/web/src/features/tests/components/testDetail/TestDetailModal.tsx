@@ -6,7 +6,7 @@ import {useTestExecutionHistory} from '../../hooks/useTestExecutionHistory'
 import {useTestsStore} from '../../store/testsStore'
 import {useWebSocket} from '../../../../hooks/useWebSocket'
 import {getWebSocketUrl} from '@features/authentication/utils'
-import {ModalBackdrop} from '@shared/components/molecules'
+import {ModalBackdrop, ConfirmationDialog} from '@shared/components/molecules'
 import {TestDetailHeader} from './TestDetailHeader'
 import {TestDetailTabs} from './TestDetailTabs'
 import {TestOverviewTab} from './TestOverviewTab'
@@ -21,10 +21,13 @@ export interface TestDetailModalProps {
 
 export function TestDetailModal({test, isOpen, onClose}: TestDetailModalProps) {
     const [activeTab, setActiveTab] = useState<TabKey>('overview')
+    const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false)
+    const [isDeleting, setIsDeleting] = useState(false)
 
     const selectedExecutionId = useTestsStore((state) => state.selectedExecutionId)
     const selectExecution = useTestsStore((state) => state.selectExecution)
     const rerunTest = useTestsStore((state) => state.rerunTest)
+    const deleteTest = useTestsStore((state) => state.deleteTest)
 
     const {
         executions,
@@ -82,6 +85,29 @@ export function TestDetailModal({test, isOpen, onClose}: TestDetailModalProps) {
         selectExecution(executionId)
     }
 
+    const handleDeleteClick = () => {
+        setShowDeleteConfirmation(true)
+    }
+
+    const handleDeleteConfirm = async () => {
+        if (!test?.testId) return
+
+        try {
+            setIsDeleting(true)
+            await deleteTest(test.testId)
+            handleClose()
+        } catch (error) {
+            console.error('Failed to delete test:', error)
+        } finally {
+            setIsDeleting(false)
+            setShowDeleteConfirmation(false)
+        }
+    }
+
+    const handleDeleteCancel = () => {
+        setShowDeleteConfirmation(false)
+    }
+
     if (!isOpen || !test) return null
 
     return (
@@ -97,6 +123,7 @@ export function TestDetailModal({test, isOpen, onClose}: TestDetailModalProps) {
                         isLatest={!selectedExecutionId}
                         onClose={handleClose}
                         onBackToLatest={() => selectExecution(null)}
+                        onDelete={handleDeleteClick}
                     />
 
                     <TestDetailTabs activeTab={activeTab} onTabChange={setActiveTab} />
@@ -130,6 +157,19 @@ export function TestDetailModal({test, isOpen, onClose}: TestDetailModalProps) {
                         />
                     </div>
                 </div>
+
+                {/* Delete Confirmation Dialog */}
+                <ConfirmationDialog
+                    isOpen={showDeleteConfirmation}
+                    title="Delete Test"
+                    description={`Are you sure you want to delete "${test.name}"? This will permanently delete all execution history and attachments for this test. This action cannot be undone.`}
+                    confirmText="Delete"
+                    cancelText="Cancel"
+                    variant="danger"
+                    isLoading={isDeleting}
+                    onConfirm={handleDeleteConfirm}
+                    onCancel={handleDeleteCancel}
+                />
             </div>
         </div>
     )

@@ -79,6 +79,7 @@ describe('TestController', () => {
             getTestStats: vi.fn(),
             getFlakyTests: vi.fn(),
             getTestTimeline: vi.fn(),
+            deleteTest: vi.fn(),
             clearAllTests: vi.fn(),
             saveTestResult: vi.fn(),
             getTestById: vi.fn(),
@@ -1287,6 +1288,102 @@ describe('TestController', () => {
                 'Failed to serve trace file',
                 500
             )
+        })
+    })
+
+    describe('deleteTest', () => {
+        it('should successfully delete a test', async () => {
+            mockReq.params = {testId: 'test-123'}
+            mockTestService.deleteTest.mockResolvedValue({deletedExecutions: 5})
+
+            await controller.deleteTest(mockReq as ServiceRequest, mockRes as Response)
+
+            expect(mockTestService.deleteTest).toHaveBeenCalledWith('test-123')
+            expect(ResponseHelper.success).toHaveBeenCalledWith(mockRes, {
+                message: 'Test deleted successfully',
+                deletedExecutions: 5,
+            })
+        })
+
+        it('should return bad request if testId is missing', async () => {
+            mockReq.params = {}
+
+            await controller.deleteTest(mockReq as ServiceRequest, mockRes as Response)
+
+            expect(mockTestService.deleteTest).not.toHaveBeenCalled()
+            expect(ResponseHelper.badRequest).toHaveBeenCalledWith(
+                mockRes,
+                'Missing testId parameter'
+            )
+        })
+
+        it('should return bad request if testId is empty string', async () => {
+            mockReq.params = {testId: ''}
+
+            await controller.deleteTest(mockReq as ServiceRequest, mockRes as Response)
+
+            expect(mockTestService.deleteTest).not.toHaveBeenCalled()
+            expect(ResponseHelper.badRequest).toHaveBeenCalledWith(
+                mockRes,
+                'Missing testId parameter'
+            )
+        })
+
+        it('should handle service errors', async () => {
+            mockReq.params = {testId: 'test-123'}
+            const error = new Error('Database constraint violation')
+            mockTestService.deleteTest.mockRejectedValue(error)
+
+            await controller.deleteTest(mockReq as ServiceRequest, mockRes as Response)
+
+            expect(Logger.error).toHaveBeenCalledWith('Error deleting test', error)
+            expect(ResponseHelper.error).toHaveBeenCalledWith(
+                mockRes,
+                'Database constraint violation',
+                'Failed to delete test',
+                500
+            )
+        })
+
+        it('should handle unknown errors', async () => {
+            mockReq.params = {testId: 'test-123'}
+            mockTestService.deleteTest.mockRejectedValue('Unknown error')
+
+            await controller.deleteTest(mockReq as ServiceRequest, mockRes as Response)
+
+            expect(Logger.error).toHaveBeenCalledWith('Error deleting test', 'Unknown error')
+            expect(ResponseHelper.error).toHaveBeenCalledWith(
+                mockRes,
+                'Unknown error',
+                'Failed to delete test',
+                500
+            )
+        })
+
+        it('should handle deletion when no executions found', async () => {
+            mockReq.params = {testId: 'non-existent-test'}
+            mockTestService.deleteTest.mockResolvedValue({deletedExecutions: 0})
+
+            await controller.deleteTest(mockReq as ServiceRequest, mockRes as Response)
+
+            expect(mockTestService.deleteTest).toHaveBeenCalledWith('non-existent-test')
+            expect(ResponseHelper.success).toHaveBeenCalledWith(mockRes, {
+                message: 'Test deleted successfully',
+                deletedExecutions: 0,
+            })
+        })
+
+        it('should handle testId with special characters', async () => {
+            mockReq.params = {testId: 'test-with-special-chars-!@#$%'}
+            mockTestService.deleteTest.mockResolvedValue({deletedExecutions: 2})
+
+            await controller.deleteTest(mockReq as ServiceRequest, mockRes as Response)
+
+            expect(mockTestService.deleteTest).toHaveBeenCalledWith('test-with-special-chars-!@#$%')
+            expect(ResponseHelper.success).toHaveBeenCalledWith(mockRes, {
+                message: 'Test deleted successfully',
+                deletedExecutions: 2,
+            })
         })
     })
 })

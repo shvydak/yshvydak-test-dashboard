@@ -4,6 +4,7 @@
 
 ### Active Issues
 
+- `[ ]` Same name tests error!
 - `[ ]` Clickable statistic lead to test page (filter -> all, passed, failed... )
 - `[ ]` Documentation - when should add tests?
 - `[ ]` Implement multiprojects supporting

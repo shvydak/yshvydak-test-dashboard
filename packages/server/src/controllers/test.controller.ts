@@ -173,6 +173,32 @@ export class TestController {
         }
     }
 
+    // DELETE /api/tests/:testId - Delete a specific test and all its executions
+    deleteTest = async (req: ServiceRequest, res: Response): Promise<Response> => {
+        try {
+            const {testId} = req.params
+
+            if (!testId) {
+                return ResponseHelper.badRequest(res, 'Missing testId parameter')
+            }
+
+            const result = await this.testService.deleteTest(testId)
+
+            return ResponseHelper.success(res, {
+                message: 'Test deleted successfully',
+                deletedExecutions: result.deletedExecutions,
+            })
+        } catch (error) {
+            Logger.error('Error deleting test', error)
+            return ResponseHelper.error(
+                res,
+                error instanceof Error ? error.message : 'Unknown error',
+                'Failed to delete test',
+                500
+            )
+        }
+    }
+
     // DELETE /api/tests/all - Clear all test data
     clearAllTests = async (req: ServiceRequest, res: Response): Promise<Response> => {
         try {

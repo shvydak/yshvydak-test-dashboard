@@ -45,6 +45,7 @@ describe('AttachmentService', () => {
     let mockAttachmentManager: {
         copyPlaywrightAttachment: Mock
         clearAllAttachments: Mock
+        deleteTestAttachments: Mock
     }
     let mockFs: {existsSync: Mock}
     const testResultId = 'test-result-123'
@@ -76,6 +77,7 @@ describe('AttachmentService', () => {
                 deletedFiles: 0,
                 freedSpace: 0,
             }),
+            deleteTestAttachments: vi.fn().mockResolvedValue(0),
         }
 
         // Mock AttachmentManager constructor
@@ -735,6 +737,54 @@ describe('AttachmentService', () => {
             )
 
             consoleErrorSpy.mockRestore()
+        })
+    })
+
+    describe('deleteAttachmentsForTestResult', () => {
+        it('should call AttachmentManager.deleteTestAttachments with correct testResultId', async () => {
+            mockAttachmentManager.deleteTestAttachments = vi.fn().mockResolvedValue(3)
+
+            const result = await service.deleteAttachmentsForTestResult(testResultId)
+
+            expect(mockAttachmentManager.deleteTestAttachments).toHaveBeenCalledWith(testResultId)
+            expect(result).toBe(3)
+        })
+
+        it('should return deleted file count from AttachmentManager', async () => {
+            mockAttachmentManager.deleteTestAttachments = vi.fn().mockResolvedValue(5)
+
+            const result = await service.deleteAttachmentsForTestResult(testResultId)
+
+            expect(result).toBe(5)
+        })
+
+        it('should return 0 when no attachments exist', async () => {
+            mockAttachmentManager.deleteTestAttachments = vi.fn().mockResolvedValue(0)
+
+            const result = await service.deleteAttachmentsForTestResult(testResultId)
+
+            expect(result).toBe(0)
+        })
+
+        it('should propagate errors from AttachmentManager', async () => {
+            mockAttachmentManager.deleteTestAttachments = vi
+                .fn()
+                .mockRejectedValue(new Error('Delete failed'))
+
+            await expect(service.deleteAttachmentsForTestResult(testResultId)).rejects.toThrow(
+                'Delete failed'
+            )
+        })
+
+        it('should handle permission errors gracefully', async () => {
+            const permissionError = new Error('EACCES: permission denied')
+            ;(permissionError as any).code = 'EACCES'
+
+            mockAttachmentManager.deleteTestAttachments = vi.fn().mockRejectedValue(permissionError)
+
+            await expect(service.deleteAttachmentsForTestResult(testResultId)).rejects.toThrow(
+                'permission denied'
+            )
         })
     })
 })

@@ -55,7 +55,7 @@ The agent will automatically execute your complete development workflow.
 
 ## 🔄 What the Agent Does
 
-The `@vibe` agent executes a complete 7-phase workflow:
+The `@vibe` agent executes a complete 6-phase workflow:
 
 ### 1️⃣ Research Phase (30 sec - 2 min)
 
@@ -117,10 +117,10 @@ Ready to start? (yes/use defaults)
 ✅ Research complete
 🔄 Implement backend (Repository Pattern)
 ⏳ Implement frontend
+⏳ Write/update tests
 ⏳ Run validation checklist
-⏳ Wait for user verification
-⏳ Write/update tests (if approved)
-⏳ Check documentation updates (if approved)
+⏳ Check test coverage
+⏳ Check documentation updates
 ```
 
 ### 4️⃣ Validation Phase (Automatic)
@@ -148,63 +148,35 @@ npm run build         # 📦 Build
 All validation checks passed!
 ```
 
-### 5️⃣ User Verification (IMPORTANT)
+### 5️⃣ Test Coverage Check
 
-**Agent stops and asks you to verify:**
+**Agent analyzes:**
 
-```
-✅ Implementation complete! All validation checks passed.
+- New service methods have tests?
+- New API endpoints have integration tests?
+- UI components have tests?
+- Coverage targets met?
 
-📦 What was implemented:
-- Backend: New endpoint POST /api/tests/rerun-bulk
-- Frontend: BulkActionBar component + selection logic
-- Files modified: TestController.ts, TestService.ts, BulkActionBar.tsx
-
-⚠️ IMPORTANT: Please test the feature manually before I proceed with tests and documentation.
-
-This prevents wasting tokens on tests/docs if bugs are found.
-
-Ready to continue? Please respond:
-- ✅ "works" / "good" / "approved" - I'll write tests and update docs
-- 🔧 "fix [issue]" - I'll fix the issue first
-- ⏸️ "later" - I'll skip tests/docs for now
-```
-
-**What you do:**
-
-- Test the feature manually
-- If it works: Type `works`, `good`, or `approved`
-- If there's a bug: Type `fix [description of the issue]`
-- If you want to test later: Type `later`
-
-**Why this matters:**
-
-This step saves tokens by preventing the agent from writing tests and documentation for buggy code. If a bug is found after tests are written, both code and tests need to be fixed, wasting tokens.
-
-### 6️⃣ Test Coverage Check (Only after approval)
-
-**Agent analyzes and writes tests:**
+**You see (if gaps found):**
 
 ```
-🧪 Test coverage analysis:
+⚠️ Test coverage gaps detected:
 
-New code that needs tests:
+Missing tests:
 - TestService.rerunMultipleTests()
 - BulkActionBar.tsx component
 
-Current coverage: 75% (target: 80%+ for server)
-
-I'll write these tests now.
+Shall I add tests now? (yes/no/later)
 ```
 
-**Then agent writes tests, runs them, and reports results.**
+### 6️⃣ Documentation Check
 
-### 7️⃣ Documentation Check (Only after approval)
+**Agent checks `DOCUMENTATION_UPDATE_RULES.md`:**
 
-**Agent checks `DOCUMENTATION_UPDATE_RULES.md` and updates docs:**
+**You see:**
 
 ```
-📝 Documentation updates needed:
+📝 Documentation updates recommended:
 
 P1 (High Priority):
 1. docs/API_REFERENCE.md
@@ -214,10 +186,8 @@ P2 (Medium Priority):
 2. docs/features/BULK_TEST_RERUN.md (new)
    Reason: Significant user-facing feature
 
-I'll update these documents now.
+Update now? (yes/no/later)
 ```
-
-**Then agent updates all necessary documentation.**
 
 ---
 
@@ -249,11 +219,7 @@ Automatically checks latest dependency docs before installing.
 
 ### Documentation Awareness
 
-Proactively updates docs based on changes made (after user approval).
-
-### User Verification Step
-
-Waits for manual testing before writing tests/docs to save tokens.
+Proactively suggests doc updates based on changes made.
 
 ---
 
@@ -265,9 +231,6 @@ Waits for manual testing before writing tests/docs to save tokens.
 @vibe добавить фичу X
 [wait for research]
 use defaults
-[wait for implementation + validation]
-works
-[agent writes tests and docs]
 [done!]
 ```
 
@@ -279,23 +242,6 @@ works
 [answer questions if any]
 yes
 [review progress in TodoWrite]
-[test manually after validation]
-approved
-[agent writes tests and docs]
-[done!]
-```
-
-### Fix During Verification
-
-```
-@vibe добавить фичу X
-use defaults
-[wait for implementation + validation]
-fix: кнопка не работает при первом клике
-[agent fixes the issue]
-[test again]
-works
-[agent writes tests and docs]
 [done!]
 ```
 
@@ -358,15 +304,15 @@ After `@vibe` completes:
 
 ## 🎯 Expected Timeline
 
-| Task Type          | Research | Development | Validation | User Test | Tests/Docs | Total        |
-| ------------------ | -------- | ----------- | ---------- | --------- | ---------- | ------------ |
-| **Small feature**  | 30 sec   | 10-15 min   | 2-3 min    | 1-2 min   | 3-5 min    | ~17-26 min   |
-| **Medium feature** | 1-2 min  | 30-45 min   | 2-3 min    | 2-5 min   | 5-10 min   | ~40-65 min   |
-| **Large feature**  | 2-3 min  | 1-2 hours   | 3-5 min    | 5-10 min  | 10-20 min  | ~1.5-2.5 hrs |
-| **Refactoring**    | 2-3 min  | 20-60 min   | 2-3 min    | 2-5 min   | 5-10 min   | ~30-80 min   |
-| **Bug fix**        | 2-5 min  | 10-30 min   | 2-3 min    | 1-2 min   | 2-5 min    | ~17-47 min   |
+| Task Type          | Research | Development | Validation | Total      |
+| ------------------ | -------- | ----------- | ---------- | ---------- |
+| **Small feature**  | 30 sec   | 10-15 min   | 2-3 min    | ~15-20 min |
+| **Medium feature** | 1-2 min  | 30-45 min   | 2-3 min    | ~35-50 min |
+| **Large feature**  | 2-3 min  | 1-2 hours   | 3-5 min    | ~1-2 hours |
+| **Refactoring**    | 2-3 min  | 20-60 min   | 2-3 min    | ~25-65 min |
+| **Bug fix**        | 2-5 min  | 10-30 min   | 2-3 min    | ~15-40 min |
 
-_Research is fast because agents run in parallel. User Test is your manual verification time._
+_Research is fast because agents run in parallel_
 
 ---
 
@@ -427,14 +373,6 @@ _Research is fast because agents run in parallel. User Test is your manual verif
 
 **A:** Yes! Works for features, bugs, refactoring, enhancements, investigations.
 
-### Q: What if I find a bug during verification?
-
-**A:** Simply type `fix [description]` and the agent will fix the issue, then ask you to verify again.
-
-### Q: Can I skip tests and documentation?
-
-**A:** Yes! Type `later` during verification step and the agent will skip tests/docs. You can ask to add them later.
-
 ---
 
 ## 📚 Related Documentation
@@ -473,11 +411,9 @@ Claude: ✅ Research complete! Plan: [...] Ready?
 You: use defaults
 [Development with progress tracking]
 [Automatic validation]
-Claude: ✅ Implementation complete! Please test manually before I proceed.
-You: [tests the feature] works
-[Agent writes tests]
-[Agent updates documentation]
-Claude: ✅ Done! Tests written, docs updated. Ready to commit.
+[Automatic test coverage check]
+[Automatic documentation check]
+Claude: ✅ Done! All checks passed, docs updated.
 ```
 
 ---

@@ -114,7 +114,12 @@ export class PlaywrightService implements IPlaywrightService {
         const runId = uuidv4()
         Logger.testRerun(testName, runId)
 
-        const args = ['playwright', 'test', testFile, '--grep', testName]
+        // Escape special regex characters and anchor pattern to match exact test name
+        // This prevents partial matches (e.g., "Successful Login" matching "Unsuccessful Login")
+        const escapedTestName = testName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+        const grepPattern = `${escapedTestName}$`
+
+        const args = ['playwright', 'test', testFile, '--grep', grepPattern]
         if (maxWorkers) {
             args.push(`--workers=${maxWorkers}`)
         }

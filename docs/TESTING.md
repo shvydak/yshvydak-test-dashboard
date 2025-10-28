@@ -438,3 +438,7 @@ expect(element).toBeInTheDocument()
 **Quick reference:** See [CLAUDE.md](../CLAUDE.md)
 **Full file structure:** See [docs/ai/FILE_LOCATIONS.md](ai/FILE_LOCATIONS.md)
 **Use Context7-MCP** for latest Vitest documentation when needed
+
+---
+
+**Last Updated:** October 2025

@@ -172,3 +172,7 @@ function formatLastRun(test: any): string {
 - [CLAUDE.md](../CLAUDE.md) - Main project documentation
 - Server repository layer: `packages/server/src/repositories/test.repository.ts`
 - Frontend display logic: `packages/web/src/components/TestsList.tsx`
+
+---
+
+**Last Updated:** October 2025

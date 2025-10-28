@@ -68,3 +68,7 @@
 **For Users:** Test counts remain consistent throughout discovery → execution → display cycle. Shows "All (80)" reliably regardless of how tests are run.
 
 **For Developers:** Core logic lives in `PlaywrightService.discoverTests()`, `TestRepository.getAllTests()`, and `testsStore.fetchTests()`. Test ID generation uses identical algorithms in both discovery and reporter phases.
+
+---
+
+**Last Updated:** October 2025

@@ -4,21 +4,18 @@
 
 ### Active Issues
 
-- `[ ]` Same name tests error!
 - `[ ]` Clickable statistic lead to test page (filter -> all, passed, failed... )
-- `[ ]` Documentation - when should add tests?
 - `[ ]` Implement multiprojects supporting
 - `[ ]` Button loader for relevant test
 - `[ ]` Show annotation/descriptions in a test
 - `[ ]` Memory usage (attachments)
-- `[ ]` Delete test (with confirmation 'warning!')
 - `[ ]` Failed group tests: run only failed tests (not all tests in the group)
-- `[ ]` Add progress bar
-- `[ ]` Run All Tests loading only on run all tests or show what test executes now
+  now
 - `[ ]` Clearn package.json scripts
 
 ### Completed Issues ✅
 
+- `[X]` Add progress bar
 - `[X]` Statistic without 'skipped' tests
 - `[X]` Test (jest/vitest) to dashboard
 - `[X]` Remove from documentation [reporter] - we use cli command!

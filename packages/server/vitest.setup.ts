@@ -13,6 +13,14 @@ beforeAll(() => {
     process.env.NODE_ENV = 'test'
     process.env.JWT_SECRET = 'test-secret-key-for-testing-only'
     process.env.JWT_EXPIRES_IN = '1h'
+    process.env.ADMIN_EMAIL = 'test-admin@example.com'
+    process.env.ADMIN_PASSWORD = 'test-password-123'
+
+    // Use temporary database for tests to avoid conflicts
+    // Each test run gets a unique temp directory
+    if (!process.env.PLAYWRIGHT_PROJECT_DIR) {
+        process.env.PLAYWRIGHT_PROJECT_DIR = './test-results'
+    }
 })
 
 // Cleanup after each test

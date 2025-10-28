@@ -254,8 +254,8 @@ cd packages/reporter && npm run dev   # Reporter watch
 
 ## 📦 Version Info
 
-**Current:** 1.0.1 (October 2025)
-**Reporter:** `playwright-dashboard-reporter@1.0.1`
+**Current:** 1.0.2 (October 2025)
+**Reporter:** `playwright-dashboard-reporter@1.0.2`
 **Dev workflow:** `npm link` for local changes
 **Breaking changes:** v0.x → v1.0.0 (npm package migration)
 

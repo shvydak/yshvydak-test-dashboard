@@ -62,6 +62,7 @@ describe('TestService', () => {
             getTestResult: vi.fn(),
             getAllTests: vi.fn(),
             getTestResultsByTestId: vi.fn(),
+            deleteByTestId: vi.fn(),
             clearAllTests: vi.fn(),
             getTestStats: vi.fn(),
             getFlakyTests: vi.fn(),
@@ -96,6 +97,7 @@ describe('TestService', () => {
             saveAttachmentsForTestResult: vi.fn(),
             getAttachmentById: vi.fn(),
             clearAllAttachments: vi.fn(),
+            deleteAttachmentsForTestResult: vi.fn(),
         }
 
         // Create service instance
@@ -1162,6 +1164,194 @@ describe('TestService', () => {
 
             await expect(testService.saveTestResult(testDataWithAttachments)).rejects.toThrow(
                 'Attachment save failed'
+            )
+        })
+    })
+
+    describe('deleteTest', () => {
+        it('should delete test with all executions and attachments', async () => {
+            const testId = 'test-to-delete'
+            const executions = [
+                {
+                    id: 'exec-1',
+                    testId,
+                    runId: 'run-1',
+                    name: 'Test',
+                    filePath: '/path/test.spec.ts',
+                    status: 'passed',
+                    duration: 100,
+                    timestamp: '2025-10-21T10:00:00.000Z',
+                    createdAt: '2025-10-21T10:00:00.000Z',
+                    updatedAt: '2025-10-21T10:00:00.000Z',
+                    attachments: [],
+                },
+                {
+                    id: 'exec-2',
+                    testId,
+                    runId: 'run-2',
+                    name: 'Test',
+                    filePath: '/path/test.spec.ts',
+                    status: 'failed',
+                    duration: 150,
+                    timestamp: '2025-10-21T11:00:00.000Z',
+                    createdAt: '2025-10-21T11:00:00.000Z',
+                    updatedAt: '2025-10-21T11:00:00.000Z',
+                    attachments: [],
+                },
+            ]
+
+            mockTestRepository.getTestResultsByTestId.mockResolvedValue(executions)
+            mockAttachmentService.deleteAttachmentsForTestResult.mockResolvedValue(3)
+            mockTestRepository.deleteByTestId.mockResolvedValue(2)
+
+            const result = await testService.deleteTest(testId)
+
+            // Should get executions first
+            expect(mockTestRepository.getTestResultsByTestId).toHaveBeenCalledWith(testId, 1000)
+
+            // Should delete attachments for each execution
+            expect(mockAttachmentService.deleteAttachmentsForTestResult).toHaveBeenCalledTimes(2)
+            expect(mockAttachmentService.deleteAttachmentsForTestResult).toHaveBeenCalledWith(
+                'exec-1'
+            )
+            expect(mockAttachmentService.deleteAttachmentsForTestResult).toHaveBeenCalledWith(
+                'exec-2'
+            )
+
+            // Should delete test records
+            expect(mockTestRepository.deleteByTestId).toHaveBeenCalledWith(testId)
+
+            // Should return deleted count
+            expect(result).toEqual({deletedExecutions: 2})
+        })
+
+        it('should handle deletion when no executions exist', async () => {
+            const testId = 'non-existent-test'
+
+            mockTestRepository.getTestResultsByTestId.mockResolvedValue([])
+            mockTestRepository.deleteByTestId.mockResolvedValue(0)
+
+            const result = await testService.deleteTest(testId)
+
+            expect(mockAttachmentService.deleteAttachmentsForTestResult).not.toHaveBeenCalled()
+            expect(result).toEqual({deletedExecutions: 0})
+        })
+
+        it('should continue deleting even if attachment deletion fails', async () => {
+            const testId = 'test-with-attachment-errors'
+            const executions = [
+                {
+                    id: 'exec-1',
+                    testId,
+                    runId: 'run-1',
+                    name: 'Test',
+                    filePath: '/path/test.spec.ts',
+                    status: 'passed',
+                    duration: 100,
+                    timestamp: '2025-10-21T10:00:00.000Z',
+                    createdAt: '2025-10-21T10:00:00.000Z',
+                    updatedAt: '2025-10-21T10:00:00.000Z',
+                    attachments: [],
+                },
+            ]
+
+            mockTestRepository.getTestResultsByTestId.mockResolvedValue(executions)
+            mockAttachmentService.deleteAttachmentsForTestResult.mockRejectedValue(
+                new Error('Permission denied')
+            )
+            mockTestRepository.deleteByTestId.mockResolvedValue(1)
+
+            const result = await testService.deleteTest(testId)
+
+            // Should still delete test records despite attachment error
+            expect(mockTestRepository.deleteByTestId).toHaveBeenCalledWith(testId)
+            expect(result).toEqual({deletedExecutions: 1})
+        })
+
+        it('should handle multiple execution deletions with mixed attachment results', async () => {
+            const testId = 'test-complex'
+            const executions = [
+                {
+                    id: 'exec-1',
+                    testId,
+                    runId: 'run-1',
+                    name: 'Test',
+                    filePath: '/path/test.spec.ts',
+                    status: 'passed',
+                    duration: 100,
+                    timestamp: '2025-10-21T10:00:00.000Z',
+                    createdAt: '2025-10-21T10:00:00.000Z',
+                    updatedAt: '2025-10-21T10:00:00.000Z',
+                    attachments: [],
+                },
+                {
+                    id: 'exec-2',
+                    testId,
+                    runId: 'run-2',
+                    name: 'Test',
+                    filePath: '/path/test.spec.ts',
+                    status: 'failed',
+                    duration: 150,
+                    timestamp: '2025-10-21T11:00:00.000Z',
+                    createdAt: '2025-10-21T11:00:00.000Z',
+                    updatedAt: '2025-10-21T11:00:00.000Z',
+                    attachments: [],
+                },
+                {
+                    id: 'exec-3',
+                    testId,
+                    runId: 'run-3',
+                    name: 'Test',
+                    filePath: '/path/test.spec.ts',
+                    status: 'passed',
+                    duration: 120,
+                    timestamp: '2025-10-21T12:00:00.000Z',
+                    createdAt: '2025-10-21T12:00:00.000Z',
+                    updatedAt: '2025-10-21T12:00:00.000Z',
+                    attachments: [],
+                },
+            ]
+
+            mockTestRepository.getTestResultsByTestId.mockResolvedValue(executions)
+            mockAttachmentService.deleteAttachmentsForTestResult
+                .mockResolvedValueOnce(2) // exec-1: 2 files
+                .mockRejectedValueOnce(new Error('Failed')) // exec-2: error
+                .mockResolvedValueOnce(1) // exec-3: 1 file
+            mockTestRepository.deleteByTestId.mockResolvedValue(3)
+
+            const result = await testService.deleteTest(testId)
+
+            expect(mockAttachmentService.deleteAttachmentsForTestResult).toHaveBeenCalledTimes(3)
+            expect(mockTestRepository.deleteByTestId).toHaveBeenCalledWith(testId)
+            expect(result).toEqual({deletedExecutions: 3})
+        })
+
+        it('should propagate repository deletion errors', async () => {
+            const testId = 'test-error'
+            const executions = [
+                {
+                    id: 'exec-1',
+                    testId,
+                    runId: 'run-1',
+                    name: 'Test',
+                    filePath: '/path/test.spec.ts',
+                    status: 'passed',
+                    duration: 100,
+                    timestamp: '2025-10-21T10:00:00.000Z',
+                    createdAt: '2025-10-21T10:00:00.000Z',
+                    updatedAt: '2025-10-21T10:00:00.000Z',
+                    attachments: [],
+                },
+            ]
+
+            mockTestRepository.getTestResultsByTestId.mockResolvedValue(executions)
+            mockAttachmentService.deleteAttachmentsForTestResult.mockResolvedValue(1)
+            mockTestRepository.deleteByTestId.mockRejectedValue(
+                new Error('Database constraint violation')
+            )
+
+            await expect(testService.deleteTest(testId)).rejects.toThrow(
+                'Database constraint violation'
             )
         })
     })

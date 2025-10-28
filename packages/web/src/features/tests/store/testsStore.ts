@@ -1,7 +1,7 @@
 import {create} from 'zustand'
 import {devtools} from 'zustand/middleware'
 import {TestResult, TestRun, TestProgress} from '@yshvydak/core'
-import {authGet, authPost} from '@features/authentication/utils/authFetch'
+import {authGet, authPost, authDelete} from '@features/authentication/utils/authFetch'
 import {getMaxWorkersFromStorage} from '@/hooks/usePlaywrightWorkers'
 
 interface TestsState {
@@ -25,6 +25,7 @@ interface TestsState {
     fetchTests: () => Promise<void>
     fetchRuns: () => Promise<void>
     rerunTest: (testId: string) => Promise<void>
+    deleteTest: (testId: string) => Promise<void>
     discoverTests: () => Promise<void>
     runAllTests: () => Promise<void>
     runTestsGroup: (filePath: string) => Promise<void>
@@ -172,6 +173,33 @@ export const useTestsStore = create<TestsState>()(
                     })
                     // Clear the running state for this test on error
                     get().setTestRunning(testId, false)
+                }
+            },
+
+            deleteTest: async (testId: string) => {
+                try {
+                    set({error: null})
+
+                    const response = await authDelete(`${API_BASE_URL}/tests/${testId}`)
+
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`)
+                    }
+
+                    const data = await response.json()
+
+                    if (data.success) {
+                        // Refresh tests list after deletion
+                        await get().fetchTests()
+                    } else {
+                        throw new Error(data.message || 'Failed to delete test')
+                    }
+                } catch (error) {
+                    console.error('Error deleting test:', error)
+                    set({
+                        error: error instanceof Error ? error.message : 'Failed to delete test',
+                    })
+                    throw error
                 }
             },
 

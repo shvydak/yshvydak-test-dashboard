@@ -875,4 +875,123 @@ describe('TestRepository - Core Functionality', () => {
             expect(saved?.duration).toBe(999999999)
         })
     })
+
+    describe('deleteByTestId()', () => {
+        it('should delete all executions for a specific testId', async () => {
+            const testId = 'test-to-delete'
+
+            // Create multiple executions for the same testId
+            await repository.saveTestResult(createTestResult(testId, 'passed'))
+            await repository.saveTestResult(createTestResult(testId, 'failed'))
+            await repository.saveTestResult(createTestResult(testId, 'passed'))
+
+            // Verify they exist
+            const beforeDelete = await repository.getTestResultsByTestId(testId)
+            expect(beforeDelete).toHaveLength(3)
+
+            // Delete all executions
+            const deletedCount = await repository.deleteByTestId(testId)
+
+            expect(deletedCount).toBe(3)
+
+            // Verify they're gone
+            const afterDelete = await repository.getTestResultsByTestId(testId)
+            expect(afterDelete).toHaveLength(0)
+        })
+
+        it('should NOT delete executions from other tests', async () => {
+            const testId1 = 'test-delete-1'
+            const testId2 = 'test-keep-2'
+
+            await repository.saveTestResult(createTestResult(testId1, 'passed'))
+            await repository.saveTestResult(createTestResult(testId1, 'failed'))
+            await repository.saveTestResult(createTestResult(testId2, 'passed'))
+
+            // Delete only testId1
+            const deletedCount = await repository.deleteByTestId(testId1)
+
+            expect(deletedCount).toBe(2)
+
+            // Verify testId1 is gone
+            const deleted = await repository.getTestResultsByTestId(testId1)
+            expect(deleted).toHaveLength(0)
+
+            // Verify testId2 still exists
+            const kept = await repository.getTestResultsByTestId(testId2)
+            expect(kept).toHaveLength(1)
+        })
+
+        it('should return 0 when deleting non-existent testId', async () => {
+            const deletedCount = await repository.deleteByTestId('non-existent-test-id')
+
+            expect(deletedCount).toBe(0)
+        })
+
+        it('should cascade delete attachments from database', async () => {
+            const testId = 'test-with-attachments'
+
+            // Create test execution
+            const testData = createTestResult(testId, 'passed')
+            const resultId = await repository.saveTestResult(testData)
+
+            // Create attachment
+            const attachmentData: AttachmentData = {
+                id: `att-${Date.now()}`,
+                testResultId: resultId,
+                type: 'screenshot',
+                fileName: 'test.png',
+                filePath: '/path/to/test.png',
+                fileSize: 1024,
+                url: '/attachments/test.png',
+            }
+            await attachmentRepository.saveAttachment(attachmentData)
+
+            // Verify attachment exists
+            const beforeDelete = await attachmentRepository.getAttachmentsByTestResult(resultId)
+            expect(beforeDelete).toHaveLength(1)
+
+            // Delete test (CASCADE should delete attachments)
+            await repository.deleteByTestId(testId)
+
+            // Verify attachment is gone (CASCADE)
+            const afterDelete = await attachmentRepository.getAttachmentsByTestResult(resultId)
+            expect(afterDelete).toHaveLength(0)
+        })
+
+        it('should handle deleting tests with multiple executions and attachments', async () => {
+            const testId = 'test-complex-delete'
+
+            // Create 3 executions with attachments
+            for (let i = 0; i < 3; i++) {
+                const testData = createTestResult(testId, i % 2 === 0 ? 'passed' : 'failed')
+                const resultId = await repository.saveTestResult(testData)
+
+                // Add 2 attachments per execution
+                for (let j = 0; j < 2; j++) {
+                    await attachmentRepository.saveAttachment({
+                        id: `att-${Date.now()}-${i}-${j}`,
+                        testResultId: resultId,
+                        type: j === 0 ? 'screenshot' : 'video',
+                        fileName: `file-${i}-${j}.png`,
+                        filePath: `/path/to/file-${i}-${j}.png`,
+                        fileSize: 1024,
+                        url: `/attachments/file-${i}-${j}.png`,
+                    })
+                }
+            }
+
+            // Verify setup: 3 executions exist
+            const beforeDelete = await repository.getTestResultsByTestId(testId)
+            expect(beforeDelete).toHaveLength(3)
+
+            // Delete all
+            const deletedCount = await repository.deleteByTestId(testId)
+
+            expect(deletedCount).toBe(3)
+
+            // Verify all executions are gone
+            const afterDelete = await repository.getTestResultsByTestId(testId)
+            expect(afterDelete).toHaveLength(0)
+        })
+    })
 })

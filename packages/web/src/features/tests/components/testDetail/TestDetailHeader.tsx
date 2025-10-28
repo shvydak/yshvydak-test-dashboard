@@ -1,4 +1,4 @@
-import {StatusBadge} from '@shared/components'
+import {StatusBadge, Button} from '@shared/components'
 import {formatLastRun} from '../../utils/formatters'
 
 export interface TestDetailHeaderProps {
@@ -8,6 +8,7 @@ export interface TestDetailHeaderProps {
     isLatest: boolean
     onClose: () => void
     onBackToLatest: () => void
+    onDelete?: () => void
 }
 
 export function TestDetailHeader({
@@ -17,6 +18,7 @@ export function TestDetailHeader({
     isLatest,
     onClose,
     onBackToLatest,
+    onDelete,
 }: TestDetailHeaderProps) {
     return (
         <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
@@ -48,18 +50,25 @@ export function TestDetailHeader({
                 )}
             </div>
 
-            <button
-                onClick={onClose}
-                className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors">
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M6 18L18 6M6 6l12 12"
-                    />
-                </svg>
-            </button>
+            <div className="flex items-center gap-2">
+                {onDelete && (
+                    <Button variant="danger" size="sm" onClick={onDelete}>
+                        Delete Test
+                    </Button>
+                )}
+                <button
+                    onClick={onClose}
+                    className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors">
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M6 18L18 6M6 6l12 12"
+                        />
+                    </svg>
+                </button>
+            </div>
         </div>
     )
 }

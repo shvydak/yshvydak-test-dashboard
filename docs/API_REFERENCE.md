@@ -120,6 +120,88 @@ Discover all available tests in the Playwright project.
 }
 ```
 
+### DELETE /api/tests/:testId
+
+**✨ New in v1.0.2** - Delete a specific test and all its execution history.
+
+**Description**: Permanently deletes a test by its `testId`, including:
+
+- All execution records (test_results table)
+- All attachment records (attachments table via CASCADE)
+- All physical attachment files (screenshots, videos, traces) from disk
+
+**Important Notes**:
+
+- This action is **irreversible** and cannot be undone
+- The test will reappear if it exists in the codebase and "Discover Tests" or "Run All Tests" is executed
+- Use this for cleaning up renamed or removed tests
+- Frontend shows confirmation dialog before deletion
+
+**Path Parameters:**
+
+- `testId` - The stable test identifier (e.g., `test-66jqtq`)
+
+**Example Request:**
+
+```http
+DELETE /api/tests/test-66jqtq
+Authorization: Bearer {jwt-token}
+```
+
+**Response (200 - Success):**
+
+```json
+{
+    "status": "success",
+    "data": {
+        "message": "Test deleted successfully",
+        "deletedExecutions": 15
+    }
+}
+```
+
+**Response (400 - Bad Request):**
+
+```json
+{
+    "status": "error",
+    "error": {
+        "message": "Missing testId parameter",
+        "code": "BAD_REQUEST"
+    }
+}
+```
+
+**Response (500 - Server Error):**
+
+```json
+{
+    "status": "error",
+    "error": {
+        "message": "Failed to delete test",
+        "code": "SERVER_ERROR"
+    }
+}
+```
+
+**What Gets Deleted:**
+
+1. **Database Records**: All rows in `test_results` where `test_id = testId`
+2. **Attachment Records**: CASCADE deletion from `attachments` table
+3. **Physical Files**: All files in `{OUTPUT_DIR}/attachments/{executionId}/` directories
+
+**Example Use Cases:**
+
+- Cleaning up after renaming a test (old test remains in history)
+- Removing obsolete tests that no longer exist in codebase
+- Clearing failed test runs with corrupted data
+- Managing storage space by removing old test data
+
+**Related Endpoints:**
+
+- `GET /api/tests/:id/history` - View execution history before deletion
+- `DELETE /api/tests/all` - Clear ALL test data (more destructive)
+
 ### DELETE /api/tests/all
 
 Clear all test data from the database.

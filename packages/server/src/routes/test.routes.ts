@@ -26,6 +26,7 @@ export function createTestRoutes(container: ServiceContainer): Router {
     router.delete('/all', testController.clearAllTests)
     router.post('/', testController.createTestResult)
     router.get('/:id', testController.getTestById)
+    router.delete('/:testId', testController.deleteTest)
     router.post('/:id/rerun', testController.rerunTest)
     router.get('/:id/history', testController.getTestHistory)
     router.get('/:id/attachments', testController.getTestAttachments)

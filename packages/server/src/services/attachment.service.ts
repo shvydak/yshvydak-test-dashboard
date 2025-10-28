@@ -103,6 +103,16 @@ export class AttachmentService implements IAttachmentService {
     }
 
     /**
+     * Deletes all attachments for a specific test result
+     * Removes both physical files and database records
+     * @param testResultId - ID of the test result whose attachments should be deleted
+     * @returns Number of deleted files
+     */
+    async deleteAttachmentsForTestResult(testResultId: string): Promise<number> {
+        return this.attachmentManager.deleteTestAttachments(testResultId)
+    }
+
+    /**
      * Clears all attachments from permanent storage
      * Used when clearing all test data to ensure physical files are deleted
      * @returns Statistics about deleted files

@@ -114,10 +114,12 @@ export class PlaywrightService implements IPlaywrightService {
         const runId = uuidv4()
         Logger.testRerun(testName, runId)
 
-        // Escape special regex characters and anchor pattern to match exact test name
+        // Escape special regex characters and use negative lookahead/lookbehind for precise matching
         // This prevents partial matches (e.g., "Successful Login" matching "Unsuccessful Login")
+        // Using (?<![a-zA-Z]) and (?![a-zA-Z]) ensures test name is not part of a longer word
+        // This works with Playwright's full test path format which includes describe blocks
         const escapedTestName = testName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-        const grepPattern = `${escapedTestName}$`
+        const grepPattern = `(?<![a-zA-Z])${escapedTestName}(?![a-zA-Z])`
 
         const args = ['playwright', 'test', testFile, '--grep', grepPattern]
         if (maxWorkers) {

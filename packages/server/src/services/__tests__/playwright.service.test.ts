@@ -484,7 +484,7 @@ describe('PlaywrightService', () => {
                     'test',
                     'auth.spec.ts',
                     '--grep',
-                    'should login successfully$', // Pattern is anchored to match exact test name
+                    '(?<![a-zA-Z])should login successfully(?![a-zA-Z])', // Pattern uses lookahead/lookbehind to match exact test name
                     '--reporter=json,playwright-dashboard-reporter',
                 ],
                 expect.anything()
@@ -541,7 +541,9 @@ describe('PlaywrightService', () => {
             const grepIndex = args.indexOf('--grep')
             expect(grepIndex).toBeGreaterThan(-1)
             // Special characters should be escaped
-            expect(args[grepIndex + 1]).toBe('test with \\(parentheses\\) and \\[brackets\\]$')
+            expect(args[grepIndex + 1]).toBe(
+                '(?<![a-zA-Z])test with \\(parentheses\\) and \\[brackets\\](?![a-zA-Z])'
+            )
         })
 
         it('should anchor pattern to prevent partial matches', async () => {
@@ -555,8 +557,8 @@ describe('PlaywrightService', () => {
             const args = mockSpawn.mock.calls[0][1]
             const grepIndex = args.indexOf('--grep')
             expect(grepIndex).toBeGreaterThan(-1)
-            // Pattern should end with $ to match exact test name
-            expect(args[grepIndex + 1]).toBe('Successful Login$')
+            // Pattern should use negative lookahead/lookbehind to match exact test name
+            expect(args[grepIndex + 1]).toBe('(?<![a-zA-Z])Successful Login(?![a-zA-Z])')
             // This prevents matching "Unsuccessful Login with invalid email"
         })
 

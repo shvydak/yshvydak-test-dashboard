@@ -358,3 +358,7 @@ ENV PLAYWRIGHT_PROJECT_DIR=/app/tests
 - **Environment Parity**: Same variables across environments
 - **Container Friendly**: Fewer environment variables to manage
 - **Configuration Drift Prevention**: Derived values always consistent
+
+---
+
+**Last Updated:** October 2025

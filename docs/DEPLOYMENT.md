@@ -130,3 +130,7 @@ cp .env.production .env.production.backup
 - [Development Guidelines](./DEVELOPMENT.md)
 - [API Reference](./API_REFERENCE.md)
 - [Attachment Management System](./features/PER_RUN_ATTACHMENTS.md)
+
+---
+
+**Last Updated:** October 2025

@@ -99,3 +99,7 @@ VITE_PORT=3000                               # Web dev server port (optional)
 - [Deployment Guide](./DEPLOYMENT.md)
 - [Simplified Environment Configuration](./SIMPLIFIED_ENV_CONFIGURATION.md)
 - [Attachment Management System](./features/PER_RUN_ATTACHMENTS.md)
+
+---
+
+**Last Updated:** October 2025

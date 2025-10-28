@@ -904,7 +904,281 @@ Common HTTP status codes:
 
 ## Authentication
 
-Currently, the API does not require authentication. All endpoints are publicly accessible within the configured network.
+The dashboard supports JWT-based authentication for secure access control. Authentication can be enabled/disabled via environment configuration.
+
+### POST /api/auth/login
+
+Authenticate user with email and password.
+
+**Request Body:**
+
+```json
+{
+    "email": "user@example.com",
+    "password": "your-password"
+}
+```
+
+**Response (200 - Success):**
+
+```json
+{
+    "status": "success",
+    "data": {
+        "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+        "user": {
+            "email": "user@example.com"
+        },
+        "expiresIn": "24h"
+    }
+}
+```
+
+**Response (401 - Unauthorized):**
+
+```json
+{
+    "status": "error",
+    "error": {
+        "message": "Authentication failed",
+        "code": "UNAUTHORIZED"
+    }
+}
+```
+
+**Response (400 - Bad Request):**
+
+```json
+{
+    "status": "error",
+    "error": {
+        "message": "Email and password are required",
+        "code": "BAD_REQUEST"
+    }
+}
+```
+
+### POST /api/auth/logout
+
+Logout current user and invalidate token.
+
+**Headers:**
+
+```
+Authorization: Bearer {jwt-token}
+```
+
+**Response (200 - Success):**
+
+```json
+{
+    "status": "success",
+    "data": {
+        "message": "Logout successful"
+    }
+}
+```
+
+**Response (500 - Server Error):**
+
+```json
+{
+    "status": "error",
+    "error": {
+        "message": "Logout service error",
+        "code": "SERVER_ERROR"
+    }
+}
+```
+
+### GET /api/auth/verify
+
+Verify JWT token validity.
+
+**Headers:**
+
+```
+Authorization: Bearer {jwt-token}
+```
+
+**Response (200 - Valid Token):**
+
+```json
+{
+    "status": "success",
+    "data": {
+        "valid": true,
+        "user": {
+            "email": "user@example.com"
+        }
+    }
+}
+```
+
+**Response (401 - Invalid Token):**
+
+```json
+{
+    "status": "error",
+    "error": {
+        "message": "Invalid token",
+        "code": "UNAUTHORIZED"
+    }
+}
+```
+
+**Response (401 - No Authorization Header):**
+
+```json
+{
+    "status": "error",
+    "error": {
+        "message": "No authorization header provided",
+        "code": "UNAUTHORIZED"
+    }
+}
+```
+
+### GET /api/auth/me
+
+Get current authenticated user information.
+
+**Headers:**
+
+```
+Authorization: Bearer {jwt-token}
+```
+
+**Response (200 - Success):**
+
+```json
+{
+    "status": "success",
+    "data": {
+        "user": {
+            "email": "user@example.com"
+        }
+    }
+}
+```
+
+**Response (401 - Unauthorized):**
+
+```json
+{
+    "status": "error",
+    "error": {
+        "message": "User information not available",
+        "code": "UNAUTHORIZED"
+    }
+}
+```
+
+**Notes:**
+
+- This endpoint requires valid JWT token in Authorization header
+- User info is extracted from the token by auth middleware
+- Use this endpoint to verify user session and get current user details
+
+### GET /api/auth/config
+
+Get authentication configuration for the frontend.
+
+**Response (200 - Success):**
+
+```json
+{
+    "status": "success",
+    "data": {
+        "authEnabled": true,
+        "requiresAuth": true
+    }
+}
+```
+
+**Notes:**
+
+- Returns whether authentication is enabled for the dashboard
+- Frontend uses this to determine if login page should be shown
+- No sensitive configuration details are exposed
+- Does not require authentication to access
+
+### Authentication Flow
+
+**1. Initial Setup:**
+
+```
+Frontend → GET /api/auth/config
+         ← authEnabled: true/false
+```
+
+**2. User Login:**
+
+```
+Frontend → POST /api/auth/login (email, password)
+         ← {token, user, expiresIn}
+```
+
+**3. Store Token:**
+
+```
+Frontend stores token in localStorage or sessionStorage
+```
+
+**4. Authenticated Requests:**
+
+```
+Frontend → Any API request with header:
+           Authorization: Bearer {token}
+```
+
+**5. Token Verification:**
+
+```
+Frontend → GET /api/auth/verify (periodic check)
+         ← {valid: true, user}
+```
+
+**6. Logout:**
+
+```
+Frontend → POST /api/auth/logout
+         ← {message: "Logout successful"}
+Frontend clears stored token
+```
+
+### JWT Token Details
+
+- **Algorithm:** HS256 (HMAC with SHA-256)
+- **Expiration:** 24 hours (default)
+- **Storage:** Frontend stores in localStorage with key `_auth`
+- **Header Format:** `Authorization: Bearer {token}`
+- **Token Structure:**
+    ```json
+    {
+        "email": "user@example.com",
+        "iat": 1698489000,
+        "exp": 1698575400
+    }
+    ```
+
+### Protected Endpoints
+
+When authentication is enabled, all API endpoints (except `/api/auth/*` and `/api/health`) require valid JWT token:
+
+- All `/api/tests/*` endpoints
+- All `/api/runs/*` endpoints
+- WebSocket connections (token passed as query parameter)
+
+### WebSocket Authentication
+
+WebSocket connections require JWT token in URL:
+
+```
+ws://localhost:3001/ws?token={jwt-token}
+```
+
+See [Authentication Implementation](features/AUTHENTICATION_IMPLEMENTATION.md) for detailed setup and configuration.
 
 ## Rate Limiting
 

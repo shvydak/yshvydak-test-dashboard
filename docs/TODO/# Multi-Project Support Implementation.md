@@ -465,3 +465,7 @@ Update existing tests to work with multi-project:
 **Then** the UI should show connection status and gracefully degrade (no real-time updates)
 
 **And** I should still be able to use the dashboard with manual refresh
+
+---
+
+**Last Updated:** October 2025

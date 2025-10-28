@@ -408,3 +408,7 @@ Potential improvements for this feature:
 3. **Cancel Button**: Add ability to cancel running test
 4. **Rerun with Options**: Allow rerun with different browser/configuration
 5. **Batch Rerun**: Select multiple executions to compare or rerun
+
+---
+
+**Last Updated:** October 2025

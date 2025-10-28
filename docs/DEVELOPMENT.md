@@ -561,3 +561,7 @@ For comprehensive testing documentation, see [TESTING.md](./TESTING.md).
 - [API Reference](./API_REFERENCE.md)
 - [Testing Infrastructure](./TESTING.md)
 - [Attachment Management System](./features/PER_RUN_ATTACHMENTS.md)
+
+---
+
+**Last Updated:** October 2025

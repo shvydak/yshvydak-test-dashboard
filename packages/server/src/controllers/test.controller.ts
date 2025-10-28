@@ -243,7 +243,7 @@ export class TestController {
                 duration: testData.duration || 0,
                 errorMessage: testData.errorMessage || null,
                 errorStack: testData.errorStack || null,
-                retryCount: 0,
+                retryCount: testData.retryCount || 0,
                 metadata: testData.metadata || {},
                 timestamp: new Date().toISOString(),
                 attachments: testData.attachments,

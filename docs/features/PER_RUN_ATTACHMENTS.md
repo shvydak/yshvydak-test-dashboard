@@ -1159,3 +1159,7 @@ async cleanupOldAttachments(daysToKeep: number = 30): Promise<void> {
 - [Authentication Implementation](./AUTHENTICATION_IMPLEMENTATION.md) - JWT-based file access protection
 - [Development Guidelines](../DEVELOPMENT.md) - Development best practices and commands
 - [Deployment Guide](../DEPLOYMENT.md) - Production deployment and configuration
+
+---
+
+**Last Updated:** October 2025

@@ -4,21 +4,18 @@
 
 ### Active Issues
 
-- `[ ]` Same name tests error!
 - `[ ]` Clickable statistic lead to test page (filter -> all, passed, failed... )
-- `[ ]` Documentation - when should add tests?
 - `[ ]` Implement multiprojects supporting
 - `[ ]` Button loader for relevant test
 - `[ ]` Show annotation/descriptions in a test
 - `[ ]` Memory usage (attachments)
-- `[ ]` Delete test (with confirmation 'warning!')
 - `[ ]` Failed group tests: run only failed tests (not all tests in the group)
-- `[ ]` Add progress bar
-- `[ ]` Run All Tests loading only on run all tests or show what test executes now
+  now
 - `[ ]` Clearn package.json scripts
 
 ### Completed Issues ✅
 
+- `[X]` Add progress bar
 - `[X]` Statistic without 'skipped' tests
 - `[X]` Test (jest/vitest) to dashboard
 - `[X]` Remove from documentation [reporter] - we use cli command!
@@ -34,3 +31,7 @@
 # Task:
 
 Я не знаю на что способен проект с технической точки зрения, проанализируй и скажи каким образом я могу реализовать фичу прогресс выполнения теста/тестов. Сейчас когда я запускаю тест или тесты - я просто вижу, что кнопки заблокированы и что крутится loader, так я понимаю что запущены тесты, но какие тест и на каком этапе я не знаю. Предложи мне решение. Важно, чтобы прогрес не исчезал при перезагрузке страницы или при новом логине, чтобы он автоматически подтягивался и обновлялся.
+
+---
+
+**Last Updated:** October 2025

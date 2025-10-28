@@ -833,3 +833,7 @@ async saveTestResult(testData: TestResultData): Promise<string> {
 - [Attachment Management](./PER_RUN_ATTACHMENTS.md) - Permanent attachment storage system
 - [Frontend Architecture](../ARCHITECTURE.md#frontend-feature-based-architecture) - Feature-based component organization
 - [Development Guidelines](../DEVELOPMENT.md) - Development best practices
+
+---
+
+**Last Updated:** October 2025

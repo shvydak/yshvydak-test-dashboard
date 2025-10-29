@@ -275,11 +275,12 @@ export class DatabaseManager {
     }
 
     // Test Results
-    async saveTestResult(testData: TestResultData): Promise<string> {
+    async saveTestResult(testData: TestResultData & {timestamp?: string}): Promise<string> {
+        const timestamp = (testData as any).timestamp || new Date().toISOString()
         const insertSql = `
             INSERT INTO test_results
-            (id, run_id, test_id, name, file_path, status, duration, error_message, error_stack, retry_count, metadata)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            (id, run_id, test_id, name, file_path, status, duration, error_message, error_stack, retry_count, metadata, created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `
         await this.run(insertSql, [
             testData.id,
@@ -293,6 +294,8 @@ export class DatabaseManager {
             testData.errorStack || null,
             testData.retryCount || 0,
             testData.metadata ? JSON.stringify(testData.metadata) : null,
+            timestamp, // Use timestamp from reporter (already in UTC ISO format)
+            timestamp, // Set both created_at and updated_at to the same value
         ])
 
         return testData.id

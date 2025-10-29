@@ -37,20 +37,21 @@ export function formatLastRun(test: any): string {
             return 'N/A'
         }
 
-        date.setHours(date.getHours() + 2)
-
-        const formattedDate = date.toLocaleDateString('en-GB', {
+        // Use system timezone (automatically uses browser's locale timezone)
+        // This ensures the time matches the user's system clock
+        const formattedDateTime = date.toLocaleString('en-GB', {
             day: '2-digit',
             month: '2-digit',
             year: 'numeric',
-        })
-        const formattedTime = date.toLocaleTimeString('en-GB', {
             hour: '2-digit',
             minute: '2-digit',
-            hourCycle: 'h23',
             second: '2-digit',
+            hourCycle: 'h23',
         })
-        return `${formattedTime} ${formattedDate}`
+
+        // Format: "DD/MM/YYYY, HH:MM:SS" -> "HH:MM:SS DD/MM/YYYY"
+        const [datePart, timePart] = formattedDateTime.split(', ')
+        return `${timePart} ${datePart}`
     } catch {
         return 'N/A'
     }

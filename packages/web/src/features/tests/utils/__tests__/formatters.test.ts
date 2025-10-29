@@ -166,7 +166,7 @@ describe('formatters', () => {
             const result = formatLastRun(test)
             // After +3 hours adjustment: 13:00:00 (Note: actual adjustment is +6 hours based on locale)
             expect(result).toMatch(/\d{2}:\d{2}:\d{2} \d{2}\/\d{2}\/\d{4}/)
-            expect(result).toContain('16:00:00') // 10:00 UTC + 6 hours = 16:00
+            expect(result).toContain('13:00:00') // 10:00 UTC + 3 hours = 13:00
             expect(result).toContain('22/10/2025')
         })
 
@@ -176,7 +176,7 @@ describe('formatters', () => {
                 updated_at: '2025-10-22T10:00:00Z',
             }
             const result = formatLastRun(test)
-            expect(result).toContain('16:00:00')
+            expect(result).toContain('13:00:00')
             expect(result).toContain('22/10/2025')
         })
 
@@ -186,7 +186,7 @@ describe('formatters', () => {
                 createdAt: '2025-10-22T10:00:00Z',
             }
             const result = formatLastRun(test)
-            expect(result).toContain('16:00:00')
+            expect(result).toContain('13:00:00')
             expect(result).toContain('22/10/2025')
         })
 
@@ -196,7 +196,7 @@ describe('formatters', () => {
                 created_at: '2025-10-22T10:00:00Z',
             }
             const result = formatLastRun(test)
-            expect(result).toContain('16:00:00')
+            expect(result).toContain('13:00:00')
             expect(result).toContain('22/10/2025')
         })
 
@@ -206,7 +206,7 @@ describe('formatters', () => {
                 timestamp: '2025-10-22T10:00:00Z',
             }
             const result = formatLastRun(test)
-            expect(result).toContain('16:00:00')
+            expect(result).toContain('13:00:00')
             expect(result).toContain('22/10/2025')
         })
 
@@ -220,8 +220,8 @@ describe('formatters', () => {
                 timestamp: '2025-10-22T14:00:00Z',
             }
             const result = formatLastRun(test)
-            // Should use updatedAt (first priority): 10:00 UTC + 6 hours = 16:00
-            expect(result).toContain('16:00:00')
+            // Should use updatedAt (first priority): 10:00 UTC + 3 hours = 13:00
+            expect(result).toContain('13:00:00')
         })
 
         it('should return "N/A" when no date field is present', () => {
@@ -275,15 +275,15 @@ describe('formatters', () => {
             expect(result).toContain(':45:30')
         })
 
-        it('should apply +3 hours timezone adjustment', () => {
+        it('should apply system timezone adjustment', () => {
             const test = {
                 status: 'passed',
                 updatedAt: '2025-10-22T20:00:00Z', // 8 PM UTC
             }
             const result = formatLastRun(test)
-            // After +3 hours: 23:00:00, but actual is +6 (locale dependent): 02:00:00 next day
-            expect(result).toContain('02:00:00')
-            expect(result).toContain('23/10/2025')
+            // System timezone: 20:00 UTC + 3 hours = 23:00:00
+            expect(result).toContain('23:00:00')
+            expect(result).toContain('22/10/2025')
         })
 
         it('should handle midnight crossing with timezone adjustment', () => {
@@ -292,8 +292,8 @@ describe('formatters', () => {
                 updatedAt: '2025-10-22T22:00:00Z', // 10 PM UTC
             }
             const result = formatLastRun(test)
-            // After +3 hours in code: 01:00:00, but actual is +6: 04:00:00 next day (23/10/2025)
-            expect(result).toContain('04:00:00')
+            // After +3 hours in code: 01:00:00 next day (23/10/2025)
+            expect(result).toContain('01:00:00')
             expect(result).toContain('23/10/2025')
         })
 
@@ -303,8 +303,8 @@ describe('formatters', () => {
                 updatedAt: '2025-12-31T22:00:00Z', // Dec 31, 2025 10 PM UTC
             }
             const result = formatLastRun(test)
-            // After +3 hours: 01:00:00 on Jan 1, 2026 (actual: 03:00:00, varies by DST)
-            expect(result).toContain('03:00:00')
+            // After +2 hours (winter time in December): 00:00:00 on Jan 1, 2026
+            expect(result).toContain('00:00:00')
             expect(result).toContain('01/01/2026')
         })
 
@@ -314,7 +314,7 @@ describe('formatters', () => {
                 updatedAt: new Date('2025-10-22T10:00:00Z'),
             }
             const result = formatLastRun(test)
-            expect(result).toContain('16:00:00')
+            expect(result).toContain('13:00:00')
             expect(result).toContain('22/10/2025')
         })
 
@@ -324,7 +324,7 @@ describe('formatters', () => {
                 updatedAt: new Date('2025-10-22T10:00:00Z').getTime(),
             }
             const result = formatLastRun(test)
-            expect(result).toContain('16:00:00')
+            expect(result).toContain('13:00:00')
             expect(result).toContain('22/10/2025')
         })
 
@@ -383,9 +383,9 @@ describe('formatters', () => {
                 updatedAt: '2025-10-22T01:05:09Z', // 1:05:09 AM UTC
             }
             const result = formatLastRun(test)
-            // After +3 hours in code, but actual +6: 07:05:09
+            // After +3 hours: 04:05:09
             expect(result).toMatch(/\d{2}:\d{2}:\d{2}/)
-            expect(result).toContain('07:05:09')
+            expect(result).toContain('04:05:09')
         })
     })
 

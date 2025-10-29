@@ -245,7 +245,7 @@ export class TestController {
                 errorStack: testData.errorStack || null,
                 retryCount: testData.retryCount || 0,
                 metadata: testData.metadata || {},
-                timestamp: new Date().toISOString(),
+                timestamp: testData.timestamp || new Date().toISOString(), // Use reporter's timestamp
                 attachments: testData.attachments,
             }
 

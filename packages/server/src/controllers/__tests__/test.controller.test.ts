@@ -239,7 +239,11 @@ describe('TestController', () => {
 
             await controller.runTestGroup(mockReq as ServiceRequest, mockRes as Response)
 
-            expect(mockTestService.runTestGroup).toHaveBeenCalledWith('tests/example.spec.ts', 2)
+            expect(mockTestService.runTestGroup).toHaveBeenCalledWith(
+                'tests/example.spec.ts',
+                2,
+                undefined
+            )
             expect(ResponseHelper.success).toHaveBeenCalledWith(mockRes, runResult)
         })
 

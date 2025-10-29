@@ -16,7 +16,11 @@ export interface ITestService {
 export interface IPlaywrightService {
     discoverTests(): Promise<DiscoveredTest[]>
     runAllTests(): Promise<TestRunProcess>
-    runTestGroup(filePath: string): Promise<TestRunProcess>
+    runTestGroup(
+        filePath: string,
+        maxWorkers?: number,
+        testNames?: string[]
+    ): Promise<TestRunProcess>
     rerunSingleTest(testFile: string, testName: string): Promise<TestRunProcess>
 }
 

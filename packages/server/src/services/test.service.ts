@@ -212,8 +212,8 @@ export class TestService implements ITestService {
         return result
     }
 
-    async runTestGroup(filePath: string, maxWorkers?: number): Promise<any> {
-        const result = await this.playwrightService.runTestGroup(filePath, maxWorkers)
+    async runTestGroup(filePath: string, maxWorkers?: number, testNames?: string[]): Promise<any> {
+        const result = await this.playwrightService.runTestGroup(filePath, maxWorkers, testNames)
 
         // Add process to tracker
         activeProcessesTracker.addProcess({
@@ -235,6 +235,7 @@ export class TestService implements ITestService {
                 type: 'run-group',
                 filePath,
                 triggeredFrom: 'dashboard',
+                filteredTests: testNames ? testNames.length : undefined,
             },
         })
 

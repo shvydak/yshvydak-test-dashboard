@@ -462,6 +462,97 @@ describe('PlaywrightService', () => {
             // Assert
             expect(result.message).toBe('Tests started for auth.spec.ts')
         })
+
+        // ============================================================================
+        // NEW: Test filtering with testNames parameter
+        // ============================================================================
+
+        it('should add --grep flag when testNames are provided', async () => {
+            // Arrange
+            mockSpawn.mockReturnValue(createMockProcess(''))
+            const testNames = ['Login Test', 'Logout Test']
+
+            // Act
+            await service.runTestGroup('auth.spec.ts', undefined, testNames)
+
+            // Assert
+            const args = mockSpawn.mock.calls[0][1]
+            expect(args).toContain('--grep')
+            const grepIndex = args.indexOf('--grep')
+            const grepPattern = args[grepIndex + 1]
+            expect(grepPattern).toBe(
+                '(?<![a-zA-Z])Login Test(?![a-zA-Z])|(?<![a-zA-Z])Logout Test(?![a-zA-Z])'
+            )
+        })
+
+        it('should escape special regex characters in test names', async () => {
+            // Arrange
+            mockSpawn.mockReturnValue(createMockProcess(''))
+            const testNames = ['Test with (parens)', 'Test with [brackets]']
+
+            // Act
+            await service.runTestGroup('test.spec.ts', undefined, testNames)
+
+            // Assert
+            const args = mockSpawn.mock.calls[0][1]
+            const grepIndex = args.indexOf('--grep')
+            const grepPattern = args[grepIndex + 1]
+            expect(grepPattern).toContain('\\(parens\\)')
+            expect(grepPattern).toContain('\\[brackets\\]')
+        })
+
+        it('should not add --grep flag when testNames is undefined', async () => {
+            // Arrange
+            mockSpawn.mockReturnValue(createMockProcess(''))
+
+            // Act
+            await service.runTestGroup('test.spec.ts', undefined, undefined)
+
+            // Assert
+            const args = mockSpawn.mock.calls[0][1]
+            expect(args).not.toContain('--grep')
+        })
+
+        it('should not add --grep flag when testNames is empty array', async () => {
+            // Arrange
+            mockSpawn.mockReturnValue(createMockProcess(''))
+
+            // Act
+            await service.runTestGroup('test.spec.ts', undefined, [])
+
+            // Assert
+            const args = mockSpawn.mock.calls[0][1]
+            expect(args).not.toContain('--grep')
+        })
+
+        it('should work with both maxWorkers and testNames', async () => {
+            // Arrange
+            mockSpawn.mockReturnValue(createMockProcess(''))
+            const testNames = ['Test 1', 'Test 2']
+
+            // Act
+            await service.runTestGroup('test.spec.ts', 4, testNames)
+
+            // Assert
+            const args = mockSpawn.mock.calls[0][1]
+            expect(args).toContain('--workers=4')
+            expect(args).toContain('--grep')
+        })
+
+        it('should handle single test name in array', async () => {
+            // Arrange
+            mockSpawn.mockReturnValue(createMockProcess(''))
+            const testNames = ['Single Test']
+
+            // Act
+            await service.runTestGroup('test.spec.ts', undefined, testNames)
+
+            // Assert
+            const args = mockSpawn.mock.calls[0][1]
+            const grepIndex = args.indexOf('--grep')
+            const grepPattern = args[grepIndex + 1]
+            expect(grepPattern).toBe('(?<![a-zA-Z])Single Test(?![a-zA-Z])')
+        })
     })
 
     // ============================================================================

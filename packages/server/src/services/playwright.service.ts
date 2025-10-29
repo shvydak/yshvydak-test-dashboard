@@ -77,13 +77,28 @@ export class PlaywrightService implements IPlaywrightService {
         }
     }
 
-    async runTestGroup(filePath: string, maxWorkers?: number): Promise<TestRunProcess> {
+    async runTestGroup(
+        filePath: string,
+        maxWorkers?: number,
+        testNames?: string[]
+    ): Promise<TestRunProcess> {
         const runId = uuidv4()
         Logger.testRun('run-group', runId)
 
         const normalizedPath = this.normalizeFilePath(filePath)
 
         const args = ['playwright', 'test', normalizedPath]
+
+        // Add grep pattern if specific test names are provided
+        if (testNames && testNames.length > 0) {
+            const grepPattern = this.buildGrepPattern(testNames)
+            args.push('--grep', grepPattern)
+            Logger.info(`Running filtered tests in ${filePath}`, {
+                testCount: testNames.length,
+                testNames,
+            })
+        }
+
         if (maxWorkers) {
             args.push(`--workers=${maxWorkers}`)
         }
@@ -389,6 +404,22 @@ export class PlaywrightService implements IPlaywrightService {
             hash = hash | 0
         }
         return `${PLAYWRIGHT_CONSTANTS.STABLE_TEST_ID_PREFIX}${Math.abs(hash).toString(36)}`
+    }
+
+    /**
+     * Builds a grep pattern for filtering specific tests by name
+     * Uses negative lookahead/lookbehind to prevent partial matches
+     * Multiple test names are combined with OR operator (|)
+     */
+    private buildGrepPattern(testNames: string[]): string {
+        const patterns = testNames.map((name) => {
+            // Escape special regex characters
+            const escapedName = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+            // Use negative lookahead/lookbehind for precise matching
+            return `(?<![a-zA-Z])${escapedName}(?![a-zA-Z])`
+        })
+        // Combine all patterns with OR operator
+        return patterns.join('|')
     }
 
     // ============================================================================

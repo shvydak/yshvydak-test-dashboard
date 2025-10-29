@@ -4,15 +4,23 @@ import {Card} from '@shared/components'
 import {TestGroupData} from '../hooks/useTestGroups'
 import {TestGroupHeader} from './TestGroupHeader'
 import {TestsTable} from './TestsTable'
+import {FilterKey} from '../constants'
 
 export interface TestGroupProps {
     group: TestGroupData
     selectedTest: TestResult | null
     onTestSelect: (test: TestResult) => void
     onTestRerun: (testId: string) => void
+    filter?: FilterKey
 }
 
-export function TestGroup({group, selectedTest, onTestSelect, onTestRerun}: TestGroupProps) {
+export function TestGroup({
+    group,
+    selectedTest,
+    onTestSelect,
+    onTestRerun,
+    filter,
+}: TestGroupProps) {
     const [expanded, setExpanded] = useState(true)
 
     return (
@@ -21,6 +29,7 @@ export function TestGroup({group, selectedTest, onTestSelect, onTestRerun}: Test
                 group={group}
                 expanded={expanded}
                 onToggle={() => setExpanded(!expanded)}
+                filter={filter}
             />
 
             {expanded && (

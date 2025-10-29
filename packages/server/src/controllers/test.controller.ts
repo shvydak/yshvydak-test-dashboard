@@ -78,12 +78,12 @@ export class TestController {
     // POST /api/tests/run-group - Run tests from a specific file/group
     runTestGroup = async (req: ServiceRequest, res: Response): Promise<Response> => {
         try {
-            const {filePath, maxWorkers} = req.body
+            const {filePath, maxWorkers, testNames} = req.body
             if (!filePath) {
                 return ResponseHelper.badRequest(res, 'Missing filePath parameter')
             }
 
-            const result = await this.testService.runTestGroup(filePath, maxWorkers)
+            const result = await this.testService.runTestGroup(filePath, maxWorkers, testNames)
             return ResponseHelper.success(res, result)
         } catch (error) {
             Logger.error('Error running group tests', error)

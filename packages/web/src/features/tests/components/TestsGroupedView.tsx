@@ -1,12 +1,14 @@
 import {TestResult} from '@yshvydak/core'
 import {useTestGroups} from '../hooks'
 import {TestGroup} from './TestGroup'
+import {FilterKey} from '../constants'
 
 export interface TestsGroupedViewProps {
     tests: TestResult[]
     selectedTest: TestResult | null
     onTestSelect: (test: TestResult) => void
     onTestRerun: (testId: string) => void
+    filter?: FilterKey
 }
 
 export function TestsGroupedView({
@@ -14,6 +16,7 @@ export function TestsGroupedView({
     selectedTest,
     onTestSelect,
     onTestRerun,
+    filter,
 }: TestsGroupedViewProps) {
     const groupStats = useTestGroups(tests)
 
@@ -26,6 +29,7 @@ export function TestsGroupedView({
                     selectedTest={selectedTest}
                     onTestSelect={onTestSelect}
                     onTestRerun={onTestRerun}
+                    filter={filter}
                 />
             ))}
         </div>

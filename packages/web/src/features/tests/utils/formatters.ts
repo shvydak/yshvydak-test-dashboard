@@ -37,7 +37,7 @@ export function formatLastRun(test: any): string {
             return 'N/A'
         }
 
-        date.setHours(date.getHours() + 3)
+        date.setHours(date.getHours() + 2)
 
         const formattedDate = date.toLocaleDateString('en-GB', {
             day: '2-digit',

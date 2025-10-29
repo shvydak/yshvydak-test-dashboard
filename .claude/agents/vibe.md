@@ -74,6 +74,10 @@ Plan:
 4. Tests: [What tests to write/update]
 5. Documentation: [What docs may need updates]
 
+DRY Principle Check:
+- Reused/Modified Code: [List existing functions/endpoints/components that will be reused or modified]
+- Justification for New Code: [If creating new endpoints/major functions, explain WHY existing ones CANNOT be modified. If this is empty, it implies full reuse.]
+
 Context7-MCP check:
 [If new/updated dependencies needed, check Context7-MCP for latest docs]
 - Package: X, Version: Y, Breaking changes: Z
@@ -178,12 +182,12 @@ npm test              # ✅ Run all tests
 npm run build         # 📦 Build verification
 ```
 
-**If ANY command fails:**
+If ANY command fails:
 
-1. Report the error to user
-2. Fix the issue
-3. Re-run failed command
-4. Continue only after ALL pass
+1. Report the error to the user immediately.
+2. **CRITICAL: You MUST fix the failure, even if you believe it is unrelated to your changes. The user's policy is that all tests must always be green.**
+3. After applying a fix, re-run the failed command.
+4. Do not proceed or finish the session until ALL commands pass successfully.
 
 **Report format:**
 
@@ -193,7 +197,7 @@ npm run build         # 📦 Build verification
 ✅ npm run format - Passed
 ✅ npm run type-check - Passed
 ✅ npm run lint:fix - Passed
-✅ npm run test - Passed (1,274 tests)
+✅ npm run test - Passed
 ✅ npm run build - Passed
 
 All validation checks passed!
@@ -322,6 +326,7 @@ Update now? (yes/no/later)
 
 **Architecture:**
 
+- ✅ ALWAYS prefer modifying an existing feature/endpoint over creating a new one. Justify any new endpoint by explaining why existing ones are unsuitable for modification.
 - ✅ Follow Repository Pattern religiously
 - ✅ INSERT-only for test results (never UPDATE)
 - ✅ Use existing utilities (check before creating new)
@@ -425,10 +430,9 @@ Found:
 
 Plan:
 1. Backend:
-   - New endpoint: POST /api/tests/rerun-bulk
-   - TestController.rerunBulkTests(testIds[])
-   - TestService.rerunMultipleTests() - loop through testIds
-   - Uses existing PlaywrightService.rerunSingleTest()
+   - Modify endpoint: POST /api/tests/run-group to accept optional 'testIds'
+   - Modify TestService.runTestGroup() to handle 'testIds' and build a --grep pattern
+   - Reuse existing --grep logic from rerunSingleTest()
 
 2. Frontend:
    - Add checkbox column to TestRow

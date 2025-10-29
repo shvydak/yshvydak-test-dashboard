@@ -5,16 +5,16 @@
 ### Active Issues
 
 - `[ ]` Clickable statistic lead to test page (filter -> all, passed, failed... )
-- `[ ]` Implement multiprojects supporting
 - `[ ]` Button loader for relevant test
 - `[ ]` Show annotation/descriptions in a test
 - `[ ]` Memory usage (attachments)
-- `[ ]` Failed group tests: run only failed tests (not all tests in the group)
   now
 - `[ ]` Clearn package.json scripts
+- `[ ]` Implement multiprojects supporting
 
 ### Completed Issues ✅
 
+- `[X]` Failed group tests: run only failed tests (not all tests in the group)
 - `[X]` Add progress bar
 - `[X]` Statistic without 'skipped' tests
 - `[X]` Test (jest/vitest) to dashboard
@@ -30,7 +30,9 @@
 
 # Task:
 
-Я не знаю на что способен проект с технической точки зрения, проанализируй и скажи каким образом я могу реализовать фичу прогресс выполнения теста/тестов. Сейчас когда я запускаю тест или тесты - я просто вижу, что кнопки заблокированы и что крутится loader, так я понимаю что запущены тесты, но какие тест и на каком этапе я не знаю. Предложи мне решение. Важно, чтобы прогрес не исчезал при перезагрузке страницы или при новом логине, чтобы он автоматически подтягивался и обновлялся.
+Проблема:
+На странице Tests если кликнуть на фильтр Failed (FilterButtonGroup если я не ошибаюсь) то отображаются упавшие тесты.
+Выбрав этот фильтр Failed у меня есть возможность запустить как одиночный тест так и группу Тестов. Так вот предположим что в группе Тестов всего есть пять Тестов, которые находятся в одном тестовом файле, ну из этого файла упало всего предположим два теста – и эти два теста отображаются фильтры Failed . Так вот если фильтре Failed мы запустим групповой тест в котором отображаются предположим два упавших теста – то в реальности запустятся все тесты находящиеся в файле. Как можно именно фильтре Failed нажатием на запуск групповых Тестов запускать только упавшие тесты а не все тесты из файла? Остальные фильтры не требуется затрагивать – они работают как положено. Если нужна документация для playwright используй Context7-mcp.
 
 ---
 

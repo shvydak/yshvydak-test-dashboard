@@ -28,7 +28,7 @@ interface TestsState {
     deleteTest: (testId: string) => Promise<void>
     discoverTests: () => Promise<void>
     runAllTests: () => Promise<void>
-    runTestsGroup: (filePath: string) => Promise<void>
+    runTestsGroup: (filePath: string, testNames?: string[]) => Promise<void>
     clearError: () => void
     setTestRunning: (testId: string, isRunning: boolean) => void
     setGroupRunning: (filePath: string, isRunning: boolean) => void
@@ -270,7 +270,7 @@ export const useTestsStore = create<TestsState>()(
                 }
             },
 
-            runTestsGroup: async (filePath: string) => {
+            runTestsGroup: async (filePath: string, testNames?: string[]) => {
                 try {
                     // Set this specific group as running
                     get().setGroupRunning(filePath, true)
@@ -280,6 +280,7 @@ export const useTestsStore = create<TestsState>()(
                     const response = await authPost(`${API_BASE_URL}/tests/run-group`, {
                         filePath,
                         maxWorkers,
+                        testNames,
                     })
 
                     if (!response.ok) {

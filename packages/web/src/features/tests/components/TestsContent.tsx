@@ -2,6 +2,7 @@ import {TestResult} from '@yshvydak/core'
 import {ViewMode} from '@shared/components'
 import {TestsGroupedView} from './TestsGroupedView'
 import {TestsTableView} from './TestsTableView'
+import {FilterKey} from '../constants'
 
 export interface TestsContentProps {
     tests: TestResult[]
@@ -10,7 +11,7 @@ export interface TestsContentProps {
     onTestSelect: (test: TestResult) => void
     onTestRerun: (testId: string) => void
     searchQuery?: string
-    filter?: string
+    filter?: FilterKey
 }
 
 export function TestsContent({
@@ -44,6 +45,7 @@ export function TestsContent({
             selectedTest={selectedTest}
             onTestSelect={onTestSelect}
             onTestRerun={onTestRerun}
+            filter={filter}
         />
     ) : (
         <TestsTableView

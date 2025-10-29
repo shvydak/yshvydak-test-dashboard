@@ -755,7 +755,8 @@ describe('TestService', () => {
             expect(result).toEqual(mockResult)
             expect(mockPlaywrightService.runTestGroup).toHaveBeenCalledWith(
                 '/path/to/test.spec.ts',
-                2
+                2,
+                undefined
             )
             expect(mockRunRepository.createTestRun).toHaveBeenCalledWith({
                 id: 'run-456',

@@ -1,4 +1,6 @@
 import path from 'path'
+import * as dotenv from 'dotenv'
+dotenv.config()
 
 export interface EnvironmentConfig {
     server: {
@@ -78,7 +80,9 @@ export const config: EnvironmentConfig = {
                 })()
             )
         },
+
         get expiresIn() {
+            console.log('JWT_EXPITRES_IN', process.env.JWT_EXPIRES_IN)
             return process.env.JWT_EXPIRES_IN || '24h'
         },
         get adminEmail() {

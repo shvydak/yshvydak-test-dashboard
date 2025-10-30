@@ -42,7 +42,7 @@ export function DashboardStats({stats, tests, loading}: DashboardStatsProps) {
     return (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             <StatsCard
-                title={`Total Tests (not include "skipped" status)`}
+                title={`Total Tests ( not include "skipped" )`}
                 value={displayStats.totalTests - displayStats.skippedTests}
                 icon="📊"
                 loading={loading}

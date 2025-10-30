@@ -388,6 +388,7 @@ Update now? (yes/no/later)
 2. INSERT-only Strategy - NEVER UPDATE test results
 3. Test ID Generation - Identical hash algorithm in discovery + reporter
 4. Attachment Storage - Permanent storage (survives Playwright cleanup)
+5. Context7-MCP Integration - MANDATORY check before any dependency changes
 
 **Key Files & Locations:**
 

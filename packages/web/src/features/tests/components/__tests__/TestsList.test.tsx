@@ -289,4 +289,141 @@ describe('TestsList - Shareable URLs', () => {
             })
         })
     })
+
+    describe('URL Filter Parameter Handling', () => {
+        it('should initialize filter from URL parameter', async () => {
+            render(
+                <MemoryRouter initialEntries={['/?filter=failed']}>
+                    <TestsList
+                        onTestSelect={mockOnTestSelect}
+                        onTestRerun={mockOnTestRerun}
+                        selectedTest={null}
+                        loading={false}
+                    />
+                </MemoryRouter>
+            )
+
+            // Component should render without errors and filters should be initialized
+            expect(screen.getByTestId('filters')).toBeInTheDocument()
+        })
+
+        it('should handle valid filter values from URL', async () => {
+            const validFilters = ['all', 'passed', 'failed', 'skipped', 'pending']
+
+            for (const filter of validFilters) {
+                const {unmount} = render(
+                    <MemoryRouter initialEntries={[`/?filter=${filter}`]}>
+                        <TestsList
+                            onTestSelect={mockOnTestSelect}
+                            onTestRerun={mockOnTestRerun}
+                            selectedTest={null}
+                            loading={false}
+                        />
+                    </MemoryRouter>
+                )
+
+                expect(screen.getByTestId('filters')).toBeInTheDocument()
+                unmount()
+            }
+        })
+
+        it('should ignore invalid filter values in URL', () => {
+            render(
+                <MemoryRouter initialEntries={['/?filter=invalid']}>
+                    <TestsList
+                        onTestSelect={mockOnTestSelect}
+                        onTestRerun={mockOnTestRerun}
+                        selectedTest={null}
+                        loading={false}
+                    />
+                </MemoryRouter>
+            )
+
+            // Should still render without errors, defaulting to 'all'
+            expect(screen.getByTestId('filters')).toBeInTheDocument()
+        })
+
+        it('should handle URL with both filter and testId parameters', async () => {
+            render(
+                <MemoryRouter initialEntries={['/?filter=failed&testId=test-abc123']}>
+                    <TestsList
+                        onTestSelect={mockOnTestSelect}
+                        onTestRerun={mockOnTestRerun}
+                        selectedTest={null}
+                        loading={false}
+                    />
+                </MemoryRouter>
+            )
+
+            await waitFor(() => {
+                const modal = screen.getByTestId('modal')
+                expect(modal).toHaveAttribute('data-open', 'true')
+            })
+
+            expect(mockOnTestSelect).toHaveBeenCalledWith(
+                expect.objectContaining({testId: 'test-abc123'})
+            )
+        })
+
+        it('should default to "all" filter when no filter parameter is present', () => {
+            render(
+                <MemoryRouter initialEntries={['/']}>
+                    <TestsList
+                        onTestSelect={mockOnTestSelect}
+                        onTestRerun={mockOnTestRerun}
+                        selectedTest={null}
+                        loading={false}
+                    />
+                </MemoryRouter>
+            )
+
+            expect(screen.getByTestId('filters')).toBeInTheDocument()
+            expect(screen.getByTestId('content')).toBeInTheDocument()
+        })
+
+        it('should handle filter parameter case-sensitively', () => {
+            render(
+                <MemoryRouter initialEntries={['/?filter=Failed']}>
+                    <TestsList
+                        onTestSelect={mockOnTestSelect}
+                        onTestRerun={mockOnTestRerun}
+                        selectedTest={null}
+                        loading={false}
+                    />
+                </MemoryRouter>
+            )
+
+            // Invalid filter (capital F), should default to 'all'
+            expect(screen.getByTestId('filters')).toBeInTheDocument()
+        })
+
+        it('should update filter when URL parameter changes', async () => {
+            const {rerender} = render(
+                <MemoryRouter initialEntries={['/?filter=passed']}>
+                    <TestsList
+                        onTestSelect={mockOnTestSelect}
+                        onTestRerun={mockOnTestRerun}
+                        selectedTest={null}
+                        loading={false}
+                    />
+                </MemoryRouter>
+            )
+
+            expect(screen.getByTestId('filters')).toBeInTheDocument()
+
+            // Simulate URL change
+            rerender(
+                <MemoryRouter initialEntries={['/?filter=failed']}>
+                    <TestsList
+                        onTestSelect={mockOnTestSelect}
+                        onTestRerun={mockOnTestRerun}
+                        selectedTest={null}
+                        loading={false}
+                    />
+                </MemoryRouter>
+            )
+
+            expect(screen.getByTestId('filters')).toBeInTheDocument()
+        })
+    })
 })

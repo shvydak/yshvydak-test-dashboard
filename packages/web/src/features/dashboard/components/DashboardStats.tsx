@@ -1,4 +1,5 @@
 import {TestResult} from '@yshvydak/core'
+import {useNavigate} from 'react-router-dom'
 import StatsCard from './StatsCard'
 import {DashboardStats as DashboardStatsType} from '../hooks/useDashboardStats'
 
@@ -9,6 +10,8 @@ export interface DashboardStatsProps {
 }
 
 export function DashboardStats({stats, tests, loading}: DashboardStatsProps) {
+    const navigate = useNavigate()
+
     const fallbackStats = {
         totalTests: tests.length,
         passedTests: tests.filter((t) => t.status === 'passed').length,
@@ -26,6 +29,10 @@ export function DashboardStats({stats, tests, loading}: DashboardStatsProps) {
 
     const displayStats = stats || fallbackStats
 
+    const handleStatsClick = (filter: string) => {
+        navigate(`/tests?filter=${filter}`)
+    }
+
     return (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             <StatsCard
@@ -33,6 +40,7 @@ export function DashboardStats({stats, tests, loading}: DashboardStatsProps) {
                 value={displayStats.totalTests - displayStats.skippedTests}
                 icon="📊"
                 loading={loading}
+                onClick={() => handleStatsClick('all')}
             />
             <StatsCard
                 title="Passed"
@@ -40,6 +48,7 @@ export function DashboardStats({stats, tests, loading}: DashboardStatsProps) {
                 icon="✅"
                 className="text-success-600 dark:text-success-400"
                 loading={loading}
+                onClick={() => handleStatsClick('passed')}
             />
             <StatsCard
                 title="Failed"
@@ -47,6 +56,7 @@ export function DashboardStats({stats, tests, loading}: DashboardStatsProps) {
                 icon="❌"
                 className="text-danger-600 dark:text-danger-400"
                 loading={loading}
+                onClick={() => handleStatsClick('failed')}
             />
             <StatsCard
                 title="Success Rate"

@@ -4,7 +4,7 @@ import {TestResult} from '@yshvydak/core'
 import {ViewMode, LoadingSpinner} from '@shared/components'
 import {useTestsStore} from '../store/testsStore'
 import {useTestFilters} from '../hooks'
-import {FilterKey} from '../constants'
+import {FilterKey, FILTER_OPTIONS} from '../constants'
 // import {TestsListHeader} from './TestsListHeader'
 import {TestsListFilters} from './TestsListFilters'
 import {TestsContent} from './TestsContent'
@@ -25,18 +25,43 @@ export default function TestsList({
 }: TestsListProps) {
     const {tests, error} = useTestsStore()
     const [searchParams, setSearchParams] = useSearchParams()
-    const [filter, setFilter] = useState<FilterKey>('all')
     const [searchQuery, setSearchQuery] = useState('')
     const [viewMode, setViewMode] = useState<ViewMode>('grouped')
     const [detailModalOpen, setDetailModalOpen] = useState(false)
     const [detailModalTest, setDetailModalTest] = useState<TestResult | null>(null)
     const hasProcessedUrlRef = useRef(false)
 
+    // Initialize filter from URL or default to 'all'
+    const getInitialFilter = (): FilterKey => {
+        const filterParam = searchParams.get('filter')
+        if (filterParam) {
+            const validFilter = FILTER_OPTIONS.find((opt) => opt.key === filterParam)
+            if (validFilter) {
+                return validFilter.key as FilterKey
+            }
+        }
+        return 'all'
+    }
+
+    const [filter, setFilter] = useState<FilterKey>(getInitialFilter)
+
     const {filteredTests, counts} = useTestFilters({
         tests,
         filter,
         searchQuery,
     })
+
+    // Sync filter with URL parameter changes
+    useEffect(() => {
+        const filterParam = searchParams.get('filter')
+        const validFilter = FILTER_OPTIONS.find((opt) => opt.key === filterParam)
+
+        if (validFilter && validFilter.key !== filter) {
+            setFilter(validFilter.key as FilterKey)
+        } else if (!filterParam && filter !== 'all') {
+            setFilter('all')
+        }
+    }, [searchParams, filter])
 
     // Handle deep linking: open modal if testId is in URL
     useEffect(() => {
@@ -124,12 +149,25 @@ export default function TestsList({
         )
     }
 
+    const handleFilterChange = (newFilter: FilterKey) => {
+        setFilter(newFilter)
+
+        // Update URL with new filter
+        const params = new URLSearchParams(searchParams)
+        if (newFilter === 'all') {
+            params.delete('filter')
+        } else {
+            params.set('filter', newFilter)
+        }
+        setSearchParams(params, {replace: true})
+    }
+
     return (
         <div className="space-y-6">
             {/* <TestsListHeader testsCount={filteredTests.length} /> */}
             <TestsListFilters
                 filter={filter}
-                onFilterChange={setFilter}
+                onFilterChange={handleFilterChange}
                 counts={counts}
                 viewMode={viewMode}
                 onViewModeChange={setViewMode}

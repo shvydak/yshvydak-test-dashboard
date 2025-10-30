@@ -136,7 +136,7 @@ Dependencies:
 
 ```
 Located at: ../../CLAUDE.md
-Contains: 5 critical concepts + quick navigation
+Contains: 6 critical concepts + quick navigation
 ```
 
 ### Step 2: Use Quick File Finder (30 seconds)

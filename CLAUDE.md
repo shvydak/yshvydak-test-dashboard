@@ -1,5 +1,8 @@
 # CLAUDE.md - Quick Reference for AI Development
 
+> **Note:** This is the Claude Code-optimized version of project documentation. For Gemini, see [GEMINI.md](GEMINI.md).
+> Both files contain identical technical content but may have AI-specific formatting.
+
 ## 🔥 CRITICAL CONTEXT (30 seconds to read)
 
 ### 1️⃣ Repository Pattern - NEVER Bypass
@@ -35,6 +38,18 @@
 - Files copied from Playwright temp → permanent storage
 - Survives Playwright's cleanup cycles
 - 📂 `packages/server/src/storage/attachmentManager.ts`
+
+### 6️⃣ Context7-MCP Integration - MANDATORY for Dependencies
+
+**ALWAYS check before dependency changes:**
+
+- Adding package? → Check Context7-MCP first
+- Updating package? → Check Context7-MCP first
+- Changing config? → Check Context7-MCP first
+
+**Why:** Latest docs, breaking changes, best practices
+**Priority:** P0 (Critical) - blocks development until checked
+📂 Rule: `docs/ai/DOCUMENTATION_UPDATE_RULES.md`
 
 ---
 
@@ -86,7 +101,7 @@ For rapid feature development with automated workflow, use the custom agent:
 @vibe refactor WebSocket logic
 ```
 
-**Full guide:** [docs/ai/VIBE_CODING.md](docs/ai/VIBE_CODING.md)
+**Agent definition:** `.claude/agents/vibe.md` (customizable)
 
 ---
 

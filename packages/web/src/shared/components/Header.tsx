@@ -1,4 +1,5 @@
 import {useState, useEffect} from 'react'
+import {useNavigate, useLocation} from 'react-router-dom'
 import {useTheme} from '@/hooks/useTheme'
 
 interface HeaderProps {
@@ -17,6 +18,8 @@ export default function Header({
     onOpenSettings,
 }: HeaderProps) {
     const {isDark} = useTheme()
+    const navigate = useNavigate()
+    const location = useLocation()
     const [showUserMenu, setShowUserMenu] = useState(false)
 
     useEffect(() => {
@@ -46,6 +49,19 @@ export default function Header({
         return user || null
     }
 
+    // Handle view changes with URL preservation
+    const handleViewChange = (view: 'dashboard' | 'tests') => {
+        if (view === 'tests') {
+            // Preserve filter parameters when navigating to tests
+            const params = new URLSearchParams(location.search)
+            const filter = params.get('filter')
+            navigate(filter ? `/tests?filter=${filter}` : '/tests')
+        } else {
+            navigate('/dashboard')
+        }
+        onViewChange(view)
+    }
+
     return (
         <header className="sticky top-0 z-50 bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700">
             <div className="container mx-auto px-4">
@@ -70,7 +86,7 @@ export default function Header({
                     {/* Navigation */}
                     <nav className="flex items-center space-x-1">
                         <button
-                            onClick={() => onViewChange('dashboard')}
+                            onClick={() => handleViewChange('dashboard')}
                             className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
                                 currentView === 'dashboard'
                                     ? 'bg-primary-100 dark:bg-primary-900 text-primary-700 dark:text-primary-300'
@@ -79,7 +95,7 @@ export default function Header({
                             Dashboard
                         </button>
                         <button
-                            onClick={() => onViewChange('tests')}
+                            onClick={() => handleViewChange('tests')}
                             className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
                                 currentView === 'tests'
                                     ? 'bg-primary-100 dark:bg-primary-900 text-primary-700 dark:text-primary-300'

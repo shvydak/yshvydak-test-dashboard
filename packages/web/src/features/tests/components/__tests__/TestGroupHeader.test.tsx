@@ -239,8 +239,8 @@ describe('TestGroupHeader', () => {
                 />
             )
 
-            // Assert - ActionButton shows "Loading..." when isRunning is true
-            expect(screen.getByText('Loading...')).toBeInTheDocument()
+            // Assert - ActionButton shows "Running..." when isRunning is true
+            expect(screen.getByText('Running...')).toBeInTheDocument()
         })
     })
 })

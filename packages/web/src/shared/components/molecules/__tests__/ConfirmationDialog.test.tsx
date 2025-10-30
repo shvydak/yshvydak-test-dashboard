@@ -70,7 +70,7 @@ describe('ConfirmationDialog', () => {
     it('should show loading state on confirm button', () => {
         render(<ConfirmationDialog {...defaultProps} isLoading={true} />)
 
-        expect(screen.getByText('Loading...')).toBeInTheDocument()
+        expect(screen.getByText('Running...')).toBeInTheDocument()
     })
 
     it('should call onCancel when backdrop is clicked', () => {

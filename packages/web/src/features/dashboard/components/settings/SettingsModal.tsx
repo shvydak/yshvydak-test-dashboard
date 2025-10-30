@@ -2,6 +2,7 @@ import {ModalBackdrop} from '@shared/components/molecules'
 import {SettingsThemeSection} from './SettingsThemeSection'
 import {SettingsTestExecutionSection} from './SettingsTestExecutionSection'
 import {SettingsActionsSection} from './SettingsActionsSection'
+import {SettingsStorageSection} from './SettingsStorageSection'
 
 export interface SettingsModalProps {
     isOpen: boolean
@@ -48,6 +49,7 @@ export function SettingsModal({isOpen, onClose}: SettingsModalProps) {
                         <SettingsThemeSection />
                         <SettingsTestExecutionSection />
                         <SettingsActionsSection />
+                        <SettingsStorageSection />
                     </div>
                 </div>
             </div>

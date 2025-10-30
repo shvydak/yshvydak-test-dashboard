@@ -1,5 +1,11 @@
 import {describe, it, expect, beforeEach, afterEach, vi} from 'vitest'
-import {formatDuration, formatLastRun, getStatusIcon, getStatusColor} from '../formatters'
+import {
+    formatDuration,
+    formatLastRun,
+    getStatusIcon,
+    getStatusColor,
+    formatBytes,
+} from '../formatters'
 import {TEST_STATUS_ICONS, TEST_STATUS_COLORS} from '../../constants'
 
 describe('formatters', () => {
@@ -489,6 +495,122 @@ describe('formatters', () => {
         it('should handle Infinity duration', () => {
             const result = formatDuration(Infinity)
             expect(result).toContain('Infinity')
+        })
+    })
+
+    describe('formatBytes', () => {
+        it('should format zero bytes', () => {
+            expect(formatBytes(0)).toBe('0 Bytes')
+        })
+
+        it('should format bytes (< 1 KB)', () => {
+            expect(formatBytes(1)).toBe('1 Bytes')
+            expect(formatBytes(512)).toBe('512 Bytes')
+            expect(formatBytes(1023)).toBe('1023 Bytes')
+        })
+
+        it('should format kilobytes', () => {
+            expect(formatBytes(1024)).toBe('1 KB')
+            expect(formatBytes(1536)).toBe('1.5 KB')
+            expect(formatBytes(10240)).toBe('10 KB')
+            expect(formatBytes(1024 * 500)).toBe('500 KB')
+        })
+
+        it('should format megabytes', () => {
+            expect(formatBytes(1024 * 1024)).toBe('1 MB')
+            expect(formatBytes(1024 * 1024 * 1.5)).toBe('1.5 MB')
+            expect(formatBytes(1024 * 1024 * 10)).toBe('10 MB')
+            expect(formatBytes(1024 * 1024 * 500)).toBe('500 MB')
+        })
+
+        it('should format gigabytes', () => {
+            expect(formatBytes(1024 * 1024 * 1024)).toBe('1 GB')
+            expect(formatBytes(1024 * 1024 * 1024 * 2.5)).toBe('2.5 GB')
+            expect(formatBytes(1024 * 1024 * 1024 * 100)).toBe('100 GB')
+        })
+
+        it('should format terabytes', () => {
+            expect(formatBytes(1024 * 1024 * 1024 * 1024)).toBe('1 TB')
+            expect(formatBytes(1024 * 1024 * 1024 * 1024 * 5)).toBe('5 TB')
+        })
+
+        it('should respect custom decimal places', () => {
+            expect(formatBytes(1536, 0)).toBe('2 KB')
+            expect(formatBytes(1536, 1)).toBe('1.5 KB')
+            expect(formatBytes(1536, 2)).toBe('1.5 KB') // parseFloat removes trailing zeros
+            expect(formatBytes(1536, 3)).toBe('1.5 KB') // parseFloat removes trailing zeros
+        })
+
+        it('should handle negative decimal places', () => {
+            // Should default to 0 decimals for negative values
+            expect(formatBytes(1536, -1)).toBe('2 KB')
+            expect(formatBytes(1536, -5)).toBe('2 KB')
+        })
+
+        it('should default to 2 decimal places', () => {
+            expect(formatBytes(1234567)).toBe('1.18 MB')
+            expect(formatBytes(1234567890)).toBe('1.15 GB')
+        })
+
+        it('should handle very large values', () => {
+            // Test with 100 TB (within TB range)
+            const largeValue = 1024 * 1024 * 1024 * 1024 * 100
+            const result = formatBytes(largeValue)
+            expect(result).toContain('TB')
+            expect(result).toBe('100 TB')
+        })
+
+        it('should handle fractional bytes', () => {
+            expect(formatBytes(512.5)).toBe('512.5 Bytes')
+            expect(formatBytes(1024.7)).toBe('1 KB')
+        })
+
+        it('should round correctly at boundaries', () => {
+            expect(formatBytes(1023.9)).toBe('1023.9 Bytes')
+            expect(formatBytes(1024)).toBe('1 KB')
+            expect(formatBytes(1024.1)).toBe('1 KB')
+        })
+
+        it('should handle edge case values', () => {
+            expect(formatBytes(1)).toBe('1 Bytes')
+            expect(formatBytes(1023)).toBe('1023 Bytes')
+            expect(formatBytes(1024)).toBe('1 KB')
+            expect(formatBytes(1048575)).toBe('1024 KB')
+            expect(formatBytes(1048576)).toBe('1 MB')
+        })
+
+        it('should format realistic storage sizes', () => {
+            // Database size: 2 MB
+            expect(formatBytes(2097152)).toBe('2 MB')
+
+            // Large video: 50 MB
+            expect(formatBytes(52428800)).toBe('50 MB')
+
+            // Screenshot: 500 KB
+            expect(formatBytes(512000)).toBe('500 KB')
+
+            // Total storage: 5 GB
+            expect(formatBytes(5368709120)).toBe('5 GB')
+        })
+
+        it('should handle zero with custom decimals', () => {
+            expect(formatBytes(0, 0)).toBe('0 Bytes')
+            expect(formatBytes(0, 2)).toBe('0 Bytes')
+            expect(formatBytes(0, 5)).toBe('0 Bytes')
+        })
+
+        it('should format values used in storage statistics', () => {
+            // Database: 1.5 MB
+            const dbSize = 1024 * 1024 * 1.5
+            expect(formatBytes(dbSize)).toBe('1.5 MB')
+
+            // Attachments: 4.68 GB (from screenshot)
+            const attachmentsSize = 5027020800
+            expect(formatBytes(attachmentsSize)).toBe('4.68 GB')
+
+            // Average per test: 3.13 MB
+            const avgSize = 3282397
+            expect(formatBytes(avgSize)).toBe('3.13 MB')
         })
     })
 })

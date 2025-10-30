@@ -3,11 +3,14 @@ import {DatabaseManager} from '../database/database.manager'
 import {TestRepository} from '../repositories/test.repository'
 import {RunRepository} from '../repositories/run.repository'
 import {AttachmentRepository} from '../repositories/attachment.repository'
+import {StorageRepository} from '../repositories/storage.repository'
 import {TestService} from '../services/test.service'
 import {PlaywrightService} from '../services/playwright.service'
 import {WebSocketService} from '../services/websocket.service'
 import {AttachmentService} from '../services/attachment.service'
+import {StorageService} from '../services/storage.service'
 import {AuthService} from '../services/auth.service'
+import {AttachmentManager} from '../storage/attachmentManager'
 import {config} from '../config/environment.config'
 
 // Dependency container
@@ -16,10 +19,12 @@ export interface ServiceContainer {
     testRepository: TestRepository
     runRepository: RunRepository
     attachmentRepository: AttachmentRepository
+    storageRepository: StorageRepository
     testService: TestService
     playwrightService: PlaywrightService
     websocketService: WebSocketService
     attachmentService: AttachmentService
+    storageService: StorageService
     authService: AuthService
 }
 
@@ -27,16 +32,19 @@ export interface ServiceContainer {
 export function createServiceContainer(): ServiceContainer {
     // Initialize core services
     const dbManager = new DatabaseManager(config.storage.outputDir)
+    const attachmentManager = new AttachmentManager(config.storage.outputDir)
 
     // Initialize repositories
     const testRepository = new TestRepository(dbManager)
     const runRepository = new RunRepository(dbManager)
     const attachmentRepository = new AttachmentRepository(dbManager)
+    const storageRepository = new StorageRepository(dbManager, attachmentManager)
 
     // Initialize services
     const websocketService = new WebSocketService()
     const playwrightService = new PlaywrightService()
     const attachmentService = new AttachmentService(attachmentRepository)
+    const storageService = new StorageService(storageRepository)
     const authService = new AuthService()
     const testService = new TestService(
         testRepository,
@@ -50,10 +58,12 @@ export function createServiceContainer(): ServiceContainer {
         testRepository,
         runRepository,
         attachmentRepository,
+        storageRepository,
         testService,
         playwrightService,
         websocketService,
         attachmentService,
+        storageService,
         authService,
     }
 }

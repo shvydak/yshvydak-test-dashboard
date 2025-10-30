@@ -19,7 +19,7 @@ export function TestsTableView({
     onTestRerun,
 }: TestsTableViewProps) {
     const {sortedTests, handleSort, getSortIcon} = useTestSort(tests)
-    const {runningTests, getIsAnyTestRunning} = useTestsStore()
+    const {runningTests, getIsAnyTestRunning, activeProgress} = useTestsStore()
     const isAnyTestRunning = getIsAnyTestRunning()
 
     return (
@@ -89,19 +89,31 @@ export function TestsTableView({
                                     {formatLastRun(test)}
                                 </td>
                                 <td className="py-4 px-6">
-                                    <ActionButton
-                                        size="sm"
-                                        variant="primary"
-                                        isRunning={runningTests.has(test.id)}
-                                        runningText="Running..."
-                                        icon="▶️"
-                                        disabled={isAnyTestRunning}
-                                        onClick={(e) => {
-                                            e.stopPropagation()
-                                            onTestRerun(test.id)
-                                        }}>
-                                        Run
-                                    </ActionButton>
+                                    {(() => {
+                                        // Check if test is running from either source:
+                                        // 1. runningTests Set (for single test reruns)
+                                        // 2. activeProgress.runningTests (for group/all runs)
+                                        const runningInfo = activeProgress?.runningTests.find(
+                                            (t) => t.testId === test.testId
+                                        )
+                                        const isRunning = runningTests.has(test.id) || !!runningInfo
+
+                                        return (
+                                            <ActionButton
+                                                size="sm"
+                                                variant="primary"
+                                                isRunning={isRunning}
+                                                runningText="Running..."
+                                                icon="▶️"
+                                                disabled={isAnyTestRunning}
+                                                onClick={(e) => {
+                                                    e.stopPropagation()
+                                                    onTestRerun(test.id)
+                                                }}>
+                                                Run
+                                            </ActionButton>
+                                        )
+                                    })()}
                                 </td>
                             </tr>
                         ))}

@@ -12,11 +12,15 @@ export interface TestRowProps {
 
 export function TestRow({test, selected, onSelect, onRerun}: TestRowProps) {
     const {runningTests, getIsAnyTestRunning, activeProgress} = useTestsStore()
-    const isRunning = runningTests.has(test.id)
     const isAnyTestRunning = getIsAnyTestRunning()
 
     // Find if this test is currently running in the active progress
     const runningInfo = activeProgress?.runningTests.find((t) => t.testId === test.testId)
+
+    // Check if test is running from either source:
+    // 1. runningTests Set (for single test reruns)
+    // 2. activeProgress.runningTests (for group/all runs)
+    const isRunning = runningTests.has(test.id) || !!runningInfo
 
     return (
         <tr

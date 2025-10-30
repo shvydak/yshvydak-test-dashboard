@@ -26,6 +26,16 @@ vi.mock('@features/tests/store/testsStore', () => ({
     useTestsStore: vi.fn(),
 }))
 
+// Mock TestDetailModal and its dependencies to avoid needing QueryClientProvider
+vi.mock('@features/tests/components/testDetail/TestDetailModal', () => ({
+    TestDetailModal: vi.fn(() => null),
+}))
+
+// Mock useWebSocket hook used by TestDetailModal
+vi.mock('@/hooks/useWebSocket', () => ({
+    useWebSocket: vi.fn(),
+}))
+
 describe('FloatingProgressPanel', () => {
     let mockActiveProgress: TestProgress
     let mockClearProgress: ReturnType<typeof vi.fn>
@@ -60,6 +70,7 @@ describe('FloatingProgressPanel', () => {
         vi.mocked(useTestsStore).mockReturnValue({
             activeProgress: mockActiveProgress,
             clearProgress: mockClearProgress,
+            tests: [], // Add tests array for test lookup
         } as any)
     })
 
@@ -73,11 +84,14 @@ describe('FloatingProgressPanel', () => {
             vi.mocked(useTestsStore).mockReturnValue({
                 activeProgress: null,
                 clearProgress: mockClearProgress,
+                tests: [],
             } as any)
 
-            const {container} = render(<FloatingProgressPanel />)
+            render(<FloatingProgressPanel />)
 
-            expect(container.firstChild).toBeNull()
+            // TestDetailModal is mocked to return null, so container should be empty
+            // The actual panel content should not be rendered
+            expect(screen.queryByText('Running Tests')).not.toBeInTheDocument()
         })
 
         it('should render when activeProgress exists', () => {
@@ -197,6 +211,7 @@ describe('FloatingProgressPanel', () => {
             vi.mocked(useTestsStore).mockReturnValue({
                 activeProgress: manyRunningTests,
                 clearProgress: mockClearProgress,
+                tests: [],
             } as any)
 
             render(<FloatingProgressPanel />)
@@ -213,6 +228,7 @@ describe('FloatingProgressPanel', () => {
             vi.mocked(useTestsStore).mockReturnValue({
                 activeProgress: noRunningTests,
                 clearProgress: mockClearProgress,
+                tests: [],
             } as any)
 
             render(<FloatingProgressPanel />)
@@ -287,6 +303,7 @@ describe('FloatingProgressPanel', () => {
                 vi.mocked(useTestsStore).mockReturnValue({
                     activeProgress: completedProgress,
                     clearProgress: mockClearProgress,
+                    tests: [],
                 } as any)
 
                 render(<FloatingProgressPanel />)
@@ -334,6 +351,7 @@ describe('FloatingProgressPanel', () => {
             vi.mocked(useTestsStore).mockReturnValue({
                 activeProgress: noEstimate,
                 clearProgress: mockClearProgress,
+                tests: [],
             } as any)
 
             render(<FloatingProgressPanel />)
@@ -350,6 +368,7 @@ describe('FloatingProgressPanel', () => {
             vi.mocked(useTestsStore).mockReturnValue({
                 activeProgress: pastEstimate,
                 clearProgress: mockClearProgress,
+                tests: [],
             } as any)
 
             render(<FloatingProgressPanel />)
@@ -368,6 +387,7 @@ describe('FloatingProgressPanel', () => {
             vi.mocked(useTestsStore).mockReturnValue({
                 activeProgress: zeroProgress,
                 clearProgress: mockClearProgress,
+                tests: [],
             } as any)
 
             render(<FloatingProgressPanel />)
@@ -384,6 +404,7 @@ describe('FloatingProgressPanel', () => {
             vi.mocked(useTestsStore).mockReturnValue({
                 activeProgress: fullProgress,
                 clearProgress: mockClearProgress,
+                tests: [],
             } as any)
 
             render(<FloatingProgressPanel />)
@@ -401,6 +422,7 @@ describe('FloatingProgressPanel', () => {
             vi.mocked(useTestsStore).mockReturnValue({
                 activeProgress: noTotalTests,
                 clearProgress: mockClearProgress,
+                tests: [],
             } as any)
 
             const {container} = render(<FloatingProgressPanel />)

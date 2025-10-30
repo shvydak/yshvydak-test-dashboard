@@ -51,7 +51,7 @@ export function Button({
             {loading ? (
                 <span className="flex items-center justify-center space-x-2">
                     <span className="animate-spin">⚡</span>
-                    <span>Loading...</span>
+                    <span>Running...</span>
                 </span>
             ) : (
                 children

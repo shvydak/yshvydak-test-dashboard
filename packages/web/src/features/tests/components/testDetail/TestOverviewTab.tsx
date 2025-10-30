@@ -125,7 +125,7 @@ export function TestOverviewTab({
                                 <span className="text-xs text-gray-400">Attachments:</span>
                                 <p className="text-sm text-gray-900 dark:text-white">
                                     {attachmentsLoading
-                                        ? 'Loading...'
+                                        ? 'Running...'
                                         : `${attachments.length} file(s)`}
                                 </p>
                             </div>

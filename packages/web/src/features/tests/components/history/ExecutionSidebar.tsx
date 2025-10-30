@@ -22,9 +22,18 @@ export function ExecutionSidebar({
     loading,
     error,
 }: ExecutionSidebarProps) {
-    const {runningTests, getIsAnyTestRunning} = useTestsStore()
-    const isRunning = runningTests.has(testId)
+    const {runningTests, getIsAnyTestRunning, activeProgress} = useTestsStore()
     const isAnyTestRunning = getIsAnyTestRunning()
+
+    // Check if test is running from either source:
+    // 1. runningTests Set (for single test reruns) - uses execution ID
+    // 2. activeProgress.runningTests (for group/all runs) - uses testId
+    // Note: testId prop is the execution ID, but we need test.testId for matching
+    // Get the actual testId from the current test (first execution or matched by ID)
+    const currentTest = executions.find((e) => e.id === testId) || executions[0]
+    const actualTestId = currentTest?.testId || testId
+    const runningInfo = activeProgress?.runningTests.find((t) => t.testId === actualTestId)
+    const isRunning = runningTests.has(testId) || !!runningInfo
 
     return (
         <div className="w-80 border-l border-gray-200 dark:border-gray-700 flex flex-col bg-gray-50 dark:bg-gray-900/50">

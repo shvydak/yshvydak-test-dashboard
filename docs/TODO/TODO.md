@@ -4,7 +4,6 @@
 
 ### Active Issues
 
-- `[ ]` Clickable statistic lead to test page (filter -> all, passed, failed... )
 - `[ ]` Show annotation/descriptions in a test
 - `[ ]` Memory usage (attachments)
 - `[ ]` Link to github repo
@@ -14,6 +13,8 @@
 
 ### Completed Issues ✅
 
+- `[X]` Clickable statistic lead to test page (filter -> all, passed, failed... )
+- `[X]` Statistic - fail percentage by passed tests (not all)
 - `[X]` Button loader for relevant test
 - `[X]` Failed group tests: run only failed tests (not all tests in the group)
 - `[X]` Add progress bar

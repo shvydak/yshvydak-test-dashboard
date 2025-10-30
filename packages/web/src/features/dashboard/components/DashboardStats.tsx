@@ -17,12 +17,18 @@ export function DashboardStats({stats, tests, loading}: DashboardStatsProps) {
         passedTests: tests.filter((t) => t.status === 'passed').length,
         failedTests: tests.filter((t) => t.status === 'failed').length,
         skippedTests: tests.filter((t) => t.status === 'skipped').length,
-        successRate:
-            tests.length > 0
-                ? (tests.filter((t) => t.status === 'passed').length /
-                      (tests.length - tests.filter((t) => t.status === 'skipped').length)) *
-                  100
-                : 0,
+        successRate: (() => {
+            // Success rate should only consider completed tests (passed + failed)
+            // Exclude pending and skipped tests
+            const completedTests = tests.filter(
+                (t) => t.status === 'passed' || t.status === 'failed'
+            )
+            const passedTests = tests.filter((t) => t.status === 'passed')
+
+            return completedTests.length > 0
+                ? (passedTests.length / completedTests.length) * 100
+                : 0
+        })(),
         totalRuns: 0,
         recentRuns: [],
     }

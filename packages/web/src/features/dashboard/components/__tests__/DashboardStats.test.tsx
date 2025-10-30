@@ -224,6 +224,59 @@ describe('DashboardStats', () => {
 
             expect(screen.getByText('0%')).toBeInTheDocument()
         })
+
+        it('should exclude pending tests from success rate calculation', () => {
+            const tests: TestResult[] = [
+                createTestResult({status: 'passed'}),
+                createTestResult({id: '2', testId: 'test-2', status: 'passed'}),
+                createTestResult({id: '3', testId: 'test-3', status: 'passed'}),
+                createTestResult({id: '4', testId: 'test-4', status: 'passed'}),
+                createTestResult({id: '5', testId: 'test-5', status: 'passed'}),
+                createTestResult({id: '6', testId: 'test-6', status: 'passed'}),
+                createTestResult({id: '7', testId: 'test-7', status: 'passed'}),
+                createTestResult({id: '8', testId: 'test-8', status: 'passed'}),
+                createTestResult({id: '9', testId: 'test-9', status: 'passed'}),
+                createTestResult({id: '10', testId: 'test-10', status: 'passed'}),
+                createTestResult({id: '11', testId: 'test-11', status: 'passed'}),
+                createTestResult({id: '12', testId: 'test-12', status: 'passed'}),
+                createTestResult({id: '13', testId: 'test-13', status: 'passed'}),
+                createTestResult({id: '14', testId: 'test-14', status: 'passed'}),
+                createTestResult({id: '15', testId: 'test-15', status: 'passed'}),
+                createTestResult({id: '16', testId: 'test-16', status: 'failed'}),
+                // Add 62 pending tests (should be excluded from success rate)
+                ...Array.from({length: 62}, (_, i) =>
+                    createTestResult({
+                        id: `pending-${i}`,
+                        testId: `pending-${i}`,
+                        status: 'pending',
+                    })
+                ),
+                // Add 1 skipped test (should also be excluded)
+                createTestResult({id: 'skipped-1', testId: 'skipped-1', status: 'skipped'}),
+            ]
+
+            renderWithRouter(<DashboardStats tests={tests} loading={false} />)
+
+            // Success rate should be: 15 passed / (15 passed + 1 failed) = 15/16 = 93.75% ≈ 94%
+            // NOT 15 / (79 - 1 skipped) = 15/78 = 19%
+            expect(screen.getByText('94%')).toBeInTheDocument()
+        })
+
+        it('should exclude skipped tests from success rate calculation', () => {
+            const tests: TestResult[] = [
+                createTestResult({status: 'passed'}),
+                createTestResult({id: '2', testId: 'test-2', status: 'passed'}),
+                createTestResult({id: '3', testId: 'test-3', status: 'failed'}),
+                createTestResult({id: '4', testId: 'test-4', status: 'skipped'}),
+                createTestResult({id: '5', testId: 'test-5', status: 'skipped'}),
+            ]
+
+            renderWithRouter(<DashboardStats tests={tests} loading={false} />)
+
+            // Success rate: 2 passed / (2 passed + 1 failed) = 2/3 = 66.67% ≈ 67%
+            // Skipped tests should NOT be included in denominator
+            expect(screen.getByText('67%')).toBeInTheDocument()
+        })
     })
 
     describe('Edge Cases', () => {

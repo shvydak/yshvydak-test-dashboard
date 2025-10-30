@@ -48,6 +48,8 @@ packages/server/src/
 │   │   ├── POST /api/tests/discovery          # Discover tests
 │   │   └── DELETE /api/tests/all              # Clear all tests
 │   ├── run.controller.ts       # Test run lifecycle
+│   ├── storage.controller.ts   # Storage statistics (✨ v1.0.4)
+│   │   └── GET /api/storage/stats             # Get storage statistics
 │   └── auth.controller.ts      # Authentication endpoints
 │
 ├── services/                    # Business logic and orchestration
@@ -69,6 +71,8 @@ packages/server/src/
 │   │   ├── processAttachments()        # Copy files to permanent storage
 │   │   ├── saveAttachmentsForTestResult() # Handle rerun cleanup
 │   │   └── getAttachmentsByTestResult() # Load attachments with URLs
+│   ├── storage.service.ts      # Storage statistics (✨ v1.0.4)
+│   │   └── getStorageStats()           # Get storage stats with error handling
 │   └── websocket.service.ts    # Real-time event broadcasting
 │       ├── broadcast()                 # Send to all clients
 │       └── broadcastToClient()         # Send to specific client
@@ -82,14 +86,19 @@ packages/server/src/
 │   ├── __tests__/              # Repository layer tests
 │   │
 │   ├── run.repository.ts       # Test run CRUD
-│   └── attachment.repository.ts # Attachment database operations
-│       ├── saveAttachment()            # Insert attachment record
-│       ├── getAttachmentsByTestResult() # Query by test result ID
-│       └── getAttachmentsWithUrls()    # Include formatted URLs
+│   ├── attachment.repository.ts # Attachment database operations
+│   │   ├── saveAttachment()            # Insert attachment record
+│   │   ├── getAttachmentsByTestResult() # Query by test result ID
+│   │   └── getAttachmentsWithUrls()    # Include formatted URLs
+│   │
+│   └── storage.repository.ts   # Storage statistics (✨ v1.0.4)
+│       ├── getStorageStats()           # Get database + attachment storage stats
+│       └── getDatabaseStats()          # Calculate SQLite file size (includes WAL/SHM)
 │
 ├── routes/                      # Route definitions
 │   ├── test.routes.ts          # Test API routes with dependency injection
 │   ├── run.routes.ts           # Run API routes
+│   ├── storage.routes.ts       # Storage statistics routes (✨ v1.0.4)
 │   └── auth.routes.ts          # Authentication routes
 │
 ├── database/                    # Database management
@@ -182,7 +191,7 @@ packages/web/src/
 │   │   │       └── TabKey
 │   │   │
 │   │   ├── utils/                        # Helper functions
-│   │   │   ├── formatters.ts            # formatDuration, formatDate, getStatusIcon
+│   │   │   ├── formatters.ts            # formatDuration, formatDate, formatBytes (✨ v1.0.4), getStatusIcon
 │   │   │   └── attachmentHelpers.ts     # getAttachmentIcon, openTraceViewer
 │   │   │
 │   │   └── constants/                    # Constants and enums
@@ -206,6 +215,12 @@ packages/web/src/
 │   │   │       ├── SettingsSection.tsx         # Reusable section wrapper
 │   │   │       ├── SettingsThemeSection.tsx    # Auto/Light/Dark theme selector
 │   │   │       ├── SettingsTestExecutionSection.tsx # Max workers config
+│   │   │       ├── SettingsStorageSection.tsx  # Storage statistics display (✨ v1.0.4)
+│   │   │       │   ├── Collapsible storage info
+│   │   │       │   ├── Database size + record counts
+│   │   │       │   ├── Attachments breakdown by type
+│   │   │       │   ├── Total storage + average per test
+│   │   │       │   └── Refresh button for manual update
 │   │   │       └── SettingsActionsSection.tsx  # Admin actions (discover, clear, health)
 │   │   │
 │   │   └── hooks/                       # Dashboard-specific hooks
@@ -215,7 +230,11 @@ packages/web/src/
 │   │       │   ├── localStorage persistence (days, threshold)
 │   │       │   ├── updateDays(), updateThreshold()
 │   │       │   └── React Query integration
-│   │       └── useTestTimeline.ts       # Daily test execution stats
+│   │       ├── useTestTimeline.ts       # Daily test execution stats
+│   │       └── useStorageStats.ts       # Storage statistics (✨ v1.0.4)
+│   │           ├── React Query with 30s stale time
+│   │           ├── GET /api/storage/stats
+│   │           └── Manual refetch support
 │   │
 │   └── authentication/                  # Authentication feature
 │       ├── components/
@@ -458,6 +477,57 @@ packages/web/src/features/tests/components/TestsListFilters.tsx
 - Better context (see tests you're about to run)
 - Proximity to results
 - Dashboard focuses on overview/stats
+
+---
+
+### "Where is storage statistics calculated?"
+
+**✨ New in v1.0.4**
+
+**Backend (Repository Pattern):**
+
+```
+packages/server/src/repositories/storage.repository.ts
+  → getStorageStats()           # Main method
+  → getDatabaseStats()           # SQLite file size (includes WAL/SHM)
+```
+
+**Service layer:**
+
+```
+packages/server/src/services/storage.service.ts
+  → getStorageStats()            # Business logic + error handling
+```
+
+**API endpoint:**
+
+```
+packages/server/src/controllers/storage.controller.ts
+  → GET /api/storage/stats
+```
+
+**Frontend hook:**
+
+```
+packages/web/src/features/dashboard/hooks/useStorageStats.ts
+  → useStorageStats()            # React Query with refetch
+```
+
+**Display:**
+
+```
+packages/web/src/features/dashboard/components/settings/SettingsStorageSection.tsx
+  → Collapsible section in Settings Modal
+  → Shows: Database size, Attachments breakdown, Total storage
+  → Includes refresh button
+```
+
+**Utilities:**
+
+```
+packages/web/src/features/tests/utils/formatters.ts
+  → formatBytes(bytes, decimals)  # Converts bytes to KB/MB/GB/TB
+```
 
 ---
 

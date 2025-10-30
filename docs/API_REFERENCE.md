@@ -710,6 +710,125 @@ Get test statistics and summary data.
 }
 ```
 
+## Storage Management
+
+### GET /api/storage/stats
+
+**✨ New in v1.0.4** - Get comprehensive storage statistics for the dashboard.
+
+**Description**: Returns detailed storage usage information including database size, attachment storage breakdown by type, and total storage consumption. Useful for monitoring disk usage and planning storage capacity.
+
+**Example Request:**
+
+```http
+GET /api/storage/stats
+Authorization: Bearer {jwt-token}
+```
+
+**Response (200 - Success):**
+
+```json
+{
+    "status": "success",
+    "data": {
+        "database": {
+            "size": 2097152,
+            "totalRuns": 203,
+            "totalResults": 1532,
+            "totalAttachments": 2532
+        },
+        "attachments": {
+            "totalSize": 5027020800,
+            "totalFiles": 2532,
+            "testDirectories": 1399,
+            "typeBreakdown": {
+                "video": {
+                    "count": 977,
+                    "size": 711231488
+                },
+                "screenshot": {
+                    "count": 89,
+                    "size": 5976064
+                },
+                "trace": {
+                    "count": 1394,
+                    "size": 4204883968
+                },
+                "log": {
+                    "count": 0,
+                    "size": 0
+                },
+                "other": {
+                    "count": 72,
+                    "size": 1041408
+                }
+            }
+        },
+        "total": {
+            "size": 5029117952,
+            "averageSizePerTest": 3282397
+        }
+    }
+}
+```
+
+**Response (500 - Server Error):**
+
+```json
+{
+    "status": "error",
+    "error": {
+        "message": "Failed to retrieve storage statistics",
+        "code": "SERVER_ERROR"
+    }
+}
+```
+
+**Storage Breakdown:**
+
+1. **Database**: SQLite database file size including:
+    - Main database file (`test-results.db`)
+    - Write-Ahead Log file (`test-results.db-wal`)
+    - Shared memory file (`test-results.db-shm`)
+    - Record counts for runs, results, and attachment metadata
+
+2. **Attachments**: Physical file storage including:
+    - Total size of all attachment files
+    - Count of files by type (video, screenshot, trace, log, other)
+    - Number of test execution directories
+    - Per-type breakdown with individual counts and sizes
+
+3. **Total**: Combined statistics including:
+    - Total storage consumption (database + attachments)
+    - Average storage per test execution
+
+**Storage Location:**
+
+- **Database**: `{OUTPUT_DIR}/test-results.db`
+- **Attachments**: `{OUTPUT_DIR}/attachments/{testResultId}/`
+
+**Notes:**
+
+- All sizes are in bytes
+- Database size includes WAL and SHM files if present
+- Attachments are organized by test result ID for isolation
+- Files are categorized by extension into types
+- Storage statistics reflect current disk usage
+- Used by Settings Modal to display storage information
+
+**Use Cases:**
+
+- Monitor storage consumption over time
+- Plan storage capacity and cleanup schedules
+- Identify storage-heavy test types (e.g., videos)
+- Track attachment growth trends
+- Debug storage-related issues
+
+**Related Endpoints:**
+
+- `DELETE /api/tests/all` - Clear all test data to free storage
+- `DELETE /api/tests/:testId` - Delete specific test to free storage
+
 ## Process Tracking
 
 ### POST /api/tests/process-start

@@ -4,8 +4,9 @@
 
 ### Active Issues
 
+- `[ ]` Notes for test run
+- `[ ]` Open test modal window when clicking on the progress bar test
 - `[ ]` Show annotation/descriptions in a test
-- `[ ]` Memory usage (attachments)
 - `[ ]` Link to github repo
   now
 - `[ ]` Clearn package.json scripts
@@ -13,6 +14,7 @@
 
 ### Completed Issues ✅
 
+- `[X]` Memory usage (attachments)
 - `[X]` Clickable statistic lead to test page (filter -> all, passed, failed... )
 - `[X]` Statistic - fail percentage by passed tests (not all)
 - `[X]` Button loader for relevant test

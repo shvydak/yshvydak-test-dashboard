@@ -1,5 +1,5 @@
 import {useState, useEffect, useMemo} from 'react'
-import {Routes, Route, useLocation} from 'react-router-dom'
+import {Routes, Route, useLocation, Navigate} from 'react-router-dom'
 import {TestResult} from '@yshvydak/core'
 import {Header} from '@shared/components'
 import {Dashboard} from '@features/dashboard'
@@ -22,7 +22,10 @@ function App() {
     const [isSettingsOpen, setIsSettingsOpen] = useState(false)
 
     // Determine current view from URL
-    const currentView: ViewMode = location.pathname.includes('/dashboard') ? 'dashboard' : 'tests'
+    const currentView: ViewMode =
+        location.pathname === '/' || location.pathname.includes('/dashboard')
+            ? 'dashboard'
+            : 'tests'
     const {
         fetchTests,
         isLoading: testsLoading,
@@ -215,21 +218,7 @@ function App() {
 
             <main className="flex-1 overflow-y-auto container mx-auto px-4 py-8">
                 <Routes>
-                    <Route
-                        path="/"
-                        element={
-                            currentView === 'dashboard' ? (
-                                <Dashboard />
-                            ) : (
-                                <TestsList
-                                    onTestSelect={handleTestSelect}
-                                    onTestRerun={handleTestRerun}
-                                    selectedTest={selectedTest}
-                                    loading={testsLoading}
-                                />
-                            )
-                        }
-                    />
+                    <Route path="/" element={<Navigate to="/dashboard" replace />} />
                     <Route
                         path="/tests"
                         element={

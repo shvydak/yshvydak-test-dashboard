@@ -48,9 +48,7 @@ describe('DashboardStats', () => {
 
             renderWithRouter(<DashboardStats tests={tests} loading={false} />)
 
-            expect(
-                screen.getByText('Total Tests (not include "skipped" status)')
-            ).toBeInTheDocument()
+            expect(screen.getByText('Total Tests ( not include "skipped" )')).toBeInTheDocument()
             expect(screen.getByText('Passed')).toBeInTheDocument()
             expect(screen.getByText('Failed')).toBeInTheDocument()
             expect(screen.getByText('Success Rate')).toBeInTheDocument()
@@ -98,9 +96,7 @@ describe('DashboardStats', () => {
         it('should show loading state', () => {
             renderWithRouter(<DashboardStats tests={[]} loading={true} />)
 
-            expect(
-                screen.getByText('Total Tests (not include "skipped" status)')
-            ).toBeInTheDocument()
+            expect(screen.getByText('Total Tests ( not include "skipped" )')).toBeInTheDocument()
             expect(screen.getByText('Passed')).toBeInTheDocument()
             expect(screen.getByText('Failed')).toBeInTheDocument()
             expect(screen.getByText('Success Rate')).toBeInTheDocument()
@@ -115,7 +111,7 @@ describe('DashboardStats', () => {
             renderWithRouter(<DashboardStats tests={tests} loading={false} />)
 
             const totalCard = screen
-                .getByText('Total Tests (not include "skipped" status)')
+                .getByText('Total Tests ( not include "skipped" )')
                 .closest('[role="button"]')
             expect(totalCard).toBeInTheDocument()
 

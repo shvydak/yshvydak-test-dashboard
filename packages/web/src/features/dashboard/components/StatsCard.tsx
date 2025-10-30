@@ -4,6 +4,7 @@ interface StatsCardProps {
     icon: string
     className?: string
     loading?: boolean
+    onClick?: () => void
 }
 
 export default function StatsCard({
@@ -12,9 +13,26 @@ export default function StatsCard({
     icon,
     className = '',
     loading = false,
+    onClick,
 }: StatsCardProps) {
+    const isClickable = !!onClick
+
     return (
-        <div className="card">
+        <div
+            className={`card ${isClickable ? 'cursor-pointer hover:shadow-lg transition-shadow' : ''}`}
+            onClick={onClick}
+            role={isClickable ? 'button' : undefined}
+            tabIndex={isClickable ? 0 : undefined}
+            onKeyDown={
+                isClickable
+                    ? (e) => {
+                          if (e.key === 'Enter' || e.key === ' ') {
+                              e.preventDefault()
+                              onClick()
+                          }
+                      }
+                    : undefined
+            }>
             <div className="card-content">
                 <div className="flex items-center justify-between">
                     <div className="flex-1">

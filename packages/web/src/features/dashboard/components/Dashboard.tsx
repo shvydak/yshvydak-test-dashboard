@@ -1,4 +1,5 @@
-import {useEffect, useState, useCallback} from 'react'
+import {useEffect, useState, useCallback, useRef} from 'react'
+import {useSearchParams} from 'react-router-dom'
 import {useTestsStore} from '@features/tests/store/testsStore'
 import {useDashboardStats, useFlakyTests, useTestTimeline} from '../hooks'
 import {DashboardStats} from './DashboardStats'
@@ -11,6 +12,7 @@ import {TestDetailModal} from '@features/tests/components/testDetail'
 export default function Dashboard() {
     const {tests, fetchTests, lastUpdated} = useTestsStore()
     const queryClient = useQueryClient()
+    const [searchParams, setSearchParams] = useSearchParams()
 
     const {isLoading: statsLoading, error: statsError} = useDashboardStats()
     const {
@@ -26,6 +28,7 @@ export default function Dashboard() {
     const [webSocketUrl, setWebSocketUrl] = useState<string | null>(null)
     const [detailModalOpen, setDetailModalOpen] = useState(false)
     const [selectedTestId, setSelectedTestId] = useState<string | null>(null)
+    const hasProcessedUrlRef = useRef(false)
 
     useEffect(() => {
         const url = getWebSocketUrl(true)
@@ -49,14 +52,48 @@ export default function Dashboard() {
         }
     }, [tests.length, fetchTests])
 
+    // Handle deep linking: open modal if testId is in URL
+    useEffect(() => {
+        const testId = searchParams.get('testId')
+
+        // Only process URL parameters once when component mounts and tests are loaded
+        if (testId && tests.length > 0 && !hasProcessedUrlRef.current) {
+            hasProcessedUrlRef.current = true
+
+            // Find the test by testId
+            const test = tests.find((t) => t.testId === testId)
+
+            if (test) {
+                setSelectedTestId(testId)
+                setDetailModalOpen(true)
+            } else {
+                // Test not found, clear URL parameters
+                setSearchParams({}, {replace: true})
+            }
+        }
+
+        // Reset the ref when URL changes (user navigates to different test)
+        if (!testId) {
+            hasProcessedUrlRef.current = false
+        }
+    }, [searchParams, tests, setSearchParams])
+
     const handleFlakyTestClick = (testId: string) => {
         setSelectedTestId(testId)
         setDetailModalOpen(true)
+
+        // Update URL with testId
+        const params = new URLSearchParams()
+        params.set('testId', testId)
+        setSearchParams(params, {replace: false})
     }
 
     const handleCloseModal = () => {
         setDetailModalOpen(false)
         setSelectedTestId(null)
+
+        // Clear URL parameters when closing modal
+        setSearchParams({}, {replace: false})
     }
 
     const selectedTest = selectedTestId ? tests.find((t) => t.testId === selectedTestId) : null

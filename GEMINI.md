@@ -1,5 +1,8 @@
 # GEMINI.md - Quick Reference for AI Development
 
+> **Note:** This is the Gemini-optimized version of project documentation. For Claude Code, see [CLAUDE.md](CLAUDE.md).
+> Both files contain identical technical content but may have AI-specific formatting.
+
 ## 🔥 CRITICAL CONTEXT (30 seconds to read)
 
 ### 1️⃣ Repository Pattern - NEVER Bypass
@@ -36,6 +39,18 @@
 - Survives Playwright's cleanup cycles
 - 📂 `packages/server/src/storage/attachmentManager.ts`
 
+### 6️⃣ Context7-MCP Integration - MANDATORY for Dependencies
+
+**ALWAYS check before dependency changes:**
+
+- Adding package? → Check Context7-MCP first
+- Updating package? → Check Context7-MCP first
+- Changing config? → Check Context7-MCP first
+
+**Why:** Latest docs, breaking changes, best practices
+**Priority:** P0 (Critical) - blocks development until checked
+📂 Rule: `docs/ai/DOCUMENTATION_UPDATE_RULES.md`
+
 ---
 
 ## 🗺️ Concept Flow (30 seconds)
@@ -61,32 +76,18 @@ User clicks "Run All"
 
 ---
 
-## 🤖 Vibe Coding Agent
+## 🤖 Vibe Coding (Not Available in Gemini)
 
-For rapid feature development with automated workflow, use the custom agent:
+**Note:** Vibe coding agent (`@vibe`) is a Claude Code-specific feature using `.claude/agents/vibe.md`.
 
-```
-@vibe <feature description>
-```
+For development in Gemini, follow the manual workflow:
 
-**The agent automatically:**
-
-- 🔍 Researches existing implementation (parallel Explore agents)
-- 📋 Presents plan + asks only critical questions
-- 💻 Develops following Repository Pattern + best practices
-- 🧪 Runs validation (format/type-check/lint/test/build)
-- 📊 Checks test coverage
-- 📝 Checks documentation updates (DOCUMENTATION_UPDATE_RULES.md)
-
-**Examples:**
-
-```
-@vibe add bulk test rerun
-@vibe fix attachments bug
-@vibe refactor WebSocket logic
-```
-
-**Full guide:** [docs/ai/VIBE_CODING.md](docs/ai/VIBE_CODING.md)
+1. 🔍 Research existing implementation
+2. 📋 Present plan + ask critical questions
+3. 💻 Develop following Repository Pattern + best practices
+4. 🧪 Run validation (format/type-check/lint/test/build)
+5. 📊 Check test coverage
+6. 📝 Check documentation updates (DOCUMENTATION_UPDATE_RULES.md)
 
 ---
 
@@ -254,8 +255,8 @@ cd packages/reporter && npm run dev   # Reporter watch
 
 ## 📦 Version Info
 
-**Current:** 1.0.1 (October 2025)
-**Reporter:** `playwright-dashboard-reporter@1.0.1`
+**Dashboard:** 1.0.0 (October 2025)
+**Reporter:** `playwright-dashboard-reporter@1.0.2`
 **Dev workflow:** `npm link` for local changes
 **Breaking changes:** v0.x → v1.0.0 (npm package migration)
 

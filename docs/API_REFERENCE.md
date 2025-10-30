@@ -271,16 +271,91 @@ Execute all tests in the project.
 
 ### POST /api/tests/run-group
 
-Execute a group of tests by file or pattern.
+Execute a group of tests by file path, with optional filtering by test names.
+
+**✨ Enhanced in v1.0.3** - Added support for running specific tests within a file using `testNames` parameter.
 
 **Request Body:**
 
 ```json
 {
-    "pattern": "tests/api/*.spec.ts",
-    "files": ["tests/api/actions.spec.ts"]
+    "filePath": "tests/api/actions.spec.ts",
+    "maxWorkers": 4,
+    "testNames": ["should create action", "should update action"]
 }
 ```
+
+**Parameters:**
+
+- `filePath` (required) - Path to the test file (e.g., `"tests/api/actions.spec.ts"` or `"e2e/tests/auth.spec.ts"`)
+- `maxWorkers` (optional) - Maximum number of parallel workers (default: Playwright config)
+- `testNames` (optional) - Array of test names to run. When provided, only specified tests are executed using Playwright's `--grep` flag
+
+**Response (200 - Success):**
+
+```json
+{
+    "status": "success",
+    "data": {
+        "runId": "run-abc-123",
+        "message": "Tests started for tests/api/actions.spec.ts",
+        "timestamp": "2025-10-30T10:00:00.000Z"
+    }
+}
+```
+
+**Response (400 - Bad Request):**
+
+```json
+{
+    "status": "error",
+    "error": {
+        "message": "Missing filePath parameter",
+        "code": "BAD_REQUEST"
+    }
+}
+```
+
+**Use Cases:**
+
+1. **Run all tests in a file:**
+
+    ```json
+    {
+        "filePath": "tests/api/actions.spec.ts"
+    }
+    ```
+
+    Executes: `npx playwright test tests/api/actions.spec.ts`
+
+2. **Run specific tests from "Failed" filter:**
+
+    ```json
+    {
+        "filePath": "tests/api/actions.spec.ts",
+        "testNames": ["should handle error", "should validate input"]
+    }
+    ```
+
+    Executes: `npx playwright test tests/api/actions.spec.ts --grep "pattern"`
+
+    This is used by the dashboard's "Failed" filter - when running a group of tests from the failed filter, only the failed tests are executed instead of all tests in the file.
+
+3. **Run with custom worker count:**
+    ```json
+    {
+        "filePath": "tests/api/actions.spec.ts",
+        "maxWorkers": 2
+    }
+    ```
+
+**Notes:**
+
+- The `testNames` parameter uses Playwright's `--grep` flag with regex pattern matching
+- Special characters in test names are automatically escaped
+- When `testNames` is provided, the test run metadata includes `filteredTests` count
+- Empty `testNames` array is treated as no filter (runs all tests)
+- Test names must match exactly (uses word boundary matching to prevent partial matches)
 
 ### POST /api/tests/:id/rerun
 

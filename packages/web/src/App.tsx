@@ -1,5 +1,5 @@
 import {useState, useEffect, useMemo} from 'react'
-import {Routes, Route} from 'react-router-dom'
+import {Routes, Route, useLocation} from 'react-router-dom'
 import {TestResult} from '@yshvydak/core'
 import {Header} from '@shared/components'
 import {Dashboard} from '@features/dashboard'
@@ -15,11 +15,14 @@ import {verifyToken} from '@features/authentication/utils/tokenValidator'
 type ViewMode = 'dashboard' | 'tests'
 
 function App() {
+    const location = useLocation()
     const [isAuthenticated, setIsAuthenticated] = useState(false)
     const [isLoading, setIsLoading] = useState(true)
-    const [currentView, setCurrentView] = useState<ViewMode>('tests')
     const [selectedTest, setSelectedTest] = useState<TestResult | null>(null)
     const [isSettingsOpen, setIsSettingsOpen] = useState(false)
+
+    // Determine current view from URL
+    const currentView: ViewMode = location.pathname.includes('/dashboard') ? 'dashboard' : 'tests'
     const {
         fetchTests,
         isLoading: testsLoading,
@@ -191,7 +194,9 @@ function App() {
         <div className="flex flex-col h-screen bg-gray-50 dark:bg-gray-900">
             <Header
                 currentView={currentView}
-                onViewChange={setCurrentView}
+                onViewChange={() => {
+                    // View change is handled by navigation in Header component
+                }}
                 wsConnected={isConnected}
                 onOpenSettings={() => setIsSettingsOpen(true)}
                 user={() => {

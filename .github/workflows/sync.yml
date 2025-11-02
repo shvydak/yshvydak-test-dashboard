@@ -1,0 +1,21 @@
+name: Sync to private repository
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Push to private repository
+        uses: pixta-dev/repository-mirroring-action@v1
+        with:
+          target_repo_url: git@github.com:probuildGit/test-dashboard.git
+          ssh_private_key: ${{ secrets.SSH_PRIVATE_KEY }}

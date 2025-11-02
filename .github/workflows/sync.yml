@@ -1,4 +1,4 @@
-name: Sync to private repository
+name: Sync to probuild repository
 
 on:
   push:

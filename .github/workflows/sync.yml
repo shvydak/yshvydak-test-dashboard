@@ -8,6 +8,7 @@ on:
 jobs:
     sync:
         runs-on: ubuntu-latest
+        if: github.repository == 'shvydak/yshvydak-test-dashboard' # Condition to run only in the public repo
         steps:
             - name: Checkout code
               uses: actions/checkout@v4

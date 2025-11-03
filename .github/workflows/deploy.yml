@@ -1,36 +1,34 @@
-# name: Deploy Test Dashboard
+name: Deploy Test Dashboard
 
-# on:
-#   push:
-#     branches: [ main ]
+on:
+    push:
+        branches: [main]
 
-# jobs:
-#   build-and-deploy:
-#     runs-on: [self-hosted]
-#     if: github.repository == 'probuildGit/test-dashboard' # Condition to run only in the private repo
+jobs:
+    build-and-deploy:
+        runs-on: [self-hosted]
+        if: github.repository == 'probuildGit/test-dashboard' # Condition to run only in the private repo
 
-#     strategy:
-#       matrix:
-#         node-version: [18.x]
+        strategy:
+            matrix:
+                node-version: [18.x]
 
-#     steps:
-#       - uses: actions/checkout@v4
+        # steps:
+        #     - uses: actions/checkout@v4
 
-#       - name: Use Node.js ${{ matrix.node-version }}
-#         uses: actions/setup-node@v4
-#         with:
-#           node-version: ${{ matrix.node-version }}
-#           cache: 'npm'
+        #     - name: Use Node.js ${{ matrix.node-version }}
+        #       uses: actions/setup-node@v4
+        #       with:
+        #           node-version: ${{ matrix.node-version }}
+        #           cache: 'npm'
 
-#       - name: Install dependencies
-#         run: npm install --legacy-peer-deps
+        #     - name: Install dependencies
+        #       run: npm install --legacy-peer-deps
 
-#       # Шаг сборки теперь включен в npm run auto:prod
+        #     - name: Create .env file
+        #       run: echo "${{ secrets.DOT_ENV }}" > .env
 
-#       - name: Create .env file
-#         run: echo "${{ secrets.DOT_ENV }}" > .env
-
-#       - name: Deploy to dev server
-#         run: |
-#           rsync -avz --delete ./ git@dev01:/var/www/test-dashboard/
-#           ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no git@dev01 "cd /var/www/test-dashboard && npm run auto:prod"
+        #     - name: Deploy to dev server
+        #       run: |
+        #           rsync -avz --delete ./ git@dev01:/var/www/test-dashboard/
+        #           ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no git@dev01 "cd /var/www/test-dashboard && npm run auto:prod"

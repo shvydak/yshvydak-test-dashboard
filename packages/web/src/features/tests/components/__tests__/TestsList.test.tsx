@@ -1,6 +1,6 @@
 import {describe, it, expect, beforeEach, vi} from 'vitest'
 import {render, screen, waitFor} from '@testing-library/react'
-import {BrowserRouter, MemoryRouter} from 'react-router-dom'
+import {BrowserRouter, MemoryRouter, useSearchParams} from 'react-router-dom'
 import TestsList from '../TestsList'
 import {useTestsStore} from '../../store/testsStore'
 import {TestResult} from '@yshvydak/core'
@@ -363,6 +363,75 @@ describe('TestsList - Shareable URLs', () => {
             expect(mockOnTestSelect).toHaveBeenCalledWith(
                 expect.objectContaining({testId: 'test-abc123'})
             )
+        })
+
+        it('should preserve filter when testId is not found in URL', async () => {
+            const TestWrapper = () => {
+                const [searchParams] = useSearchParams()
+                return (
+                    <div>
+                        <div data-testid="filter-param">{searchParams.get('filter') || 'none'}</div>
+                        <TestsList
+                            onTestSelect={mockOnTestSelect}
+                            onTestRerun={mockOnTestRerun}
+                            selectedTest={null}
+                            loading={false}
+                        />
+                    </div>
+                )
+            }
+
+            render(
+                <MemoryRouter initialEntries={['/?filter=failed&testId=nonexistent']}>
+                    <TestWrapper />
+                </MemoryRouter>
+            )
+
+            // Filter should be preserved even when testId is not found
+            await waitFor(() => {
+                const filterParam = screen.getByTestId('filter-param')
+                expect(filterParam).toHaveTextContent('failed')
+            })
+        })
+
+        it('should preserve filter when both filter and testId are present', async () => {
+            const TestWrapper = () => {
+                const [searchParams] = useSearchParams()
+                return (
+                    <div>
+                        <div data-testid="filter-param">{searchParams.get('filter') || 'none'}</div>
+                        <div data-testid="test-id-param">
+                            {searchParams.get('testId') || 'none'}
+                        </div>
+                        <TestsList
+                            onTestSelect={mockOnTestSelect}
+                            onTestRerun={mockOnTestRerun}
+                            selectedTest={null}
+                            loading={false}
+                        />
+                    </div>
+                )
+            }
+
+            render(
+                <MemoryRouter initialEntries={['/?filter=failed&testId=test-abc123']}>
+                    <TestWrapper />
+                </MemoryRouter>
+            )
+
+            // Both filter and testId should be in URL
+            await waitFor(() => {
+                const filterParam = screen.getByTestId('filter-param')
+                const testIdParam = screen.getByTestId('test-id-param')
+                expect(filterParam).toHaveTextContent('failed')
+                expect(testIdParam).toHaveTextContent('test-abc123')
+            })
+
+            // Modal should be open
+            await waitFor(() => {
+                const modal = screen.getByTestId('modal')
+                expect(modal).toHaveAttribute('data-open', 'true')
+            })
         })
 
         it('should default to "all" filter when no filter parameter is present', () => {

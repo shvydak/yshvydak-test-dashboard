@@ -1,3 +1,4 @@
+import {LoadingSpinner} from './LoadingSpinner'
 import {ButtonHTMLAttributes, ReactNode} from 'react'
 
 export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
@@ -50,7 +51,7 @@ export function Button({
         <button className={finalStyles} disabled={disabled || loading} {...props}>
             {loading ? (
                 <span className="flex items-center justify-center space-x-2">
-                    <span className="animate-spin">⚡</span>
+                    <LoadingSpinner size="sm" />
                     <span>Running...</span>
                 </span>
             ) : (

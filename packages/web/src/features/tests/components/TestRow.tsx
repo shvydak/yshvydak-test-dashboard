@@ -1,5 +1,5 @@
 import {TestResult} from '@yshvydak/core'
-import {StatusBadge, ActionButton, LoadingSpinner} from '@shared/components'
+import {StatusBadge, ActionButton, LoadingSpinner, Badge} from '@shared/components'
 import {formatDuration, formatLastRun} from '../utils'
 import {useTestsStore} from '../store/testsStore'
 
@@ -25,28 +25,25 @@ export function TestRow({test, selected, onSelect, onRerun}: TestRowProps) {
     return (
         <tr
             className={`border-b border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors cursor-pointer ${
-                selected ? 'bg-primary-50 dark:bg-primary-900/20' : ''
+                isRunning
+                    ? 'bg-blue-50 dark:bg-blue-900/20 border-l-4 border-l-blue-500 animate-pulse'
+                    : selected
+                      ? 'bg-primary-50 dark:bg-primary-900/20'
+                      : ''
             }`}
             onClick={() => onSelect(test)}>
             <td className="py-3 px-6 w-32">
-                <StatusBadge status={test.status as any} />
+                {isRunning ? (
+                    <Badge variant="info" size="md">
+                        <LoadingSpinner size="sm" className="mr-1" />
+                        <span>Running...</span>
+                    </Badge>
+                ) : (
+                    <StatusBadge status={test.status as any} />
+                )}
             </td>
             <td className="py-3 px-6">
                 <div className="font-medium text-gray-900 dark:text-white">{test.name}</div>
-                {runningInfo && (
-                    <div className="flex items-center gap-2 text-xs text-blue-600 dark:text-blue-400 mt-1">
-                        <LoadingSpinner size="sm" />
-                        <span>
-                            {runningInfo.currentStep || 'Running...'}
-                            {runningInfo.stepProgress && (
-                                <span className="ml-1 text-gray-500 dark:text-gray-400">
-                                    ({runningInfo.stepProgress.current}/
-                                    {runningInfo.stepProgress.total})
-                                </span>
-                            )}
-                        </span>
-                    </div>
-                )}
                 {!runningInfo && test.errorMessage && (
                     <div className="text-xs text-red-600 dark:text-red-400 mt-1 truncate max-w-xs">
                         {test.errorMessage}

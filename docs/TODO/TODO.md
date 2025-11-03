@@ -5,15 +5,16 @@
 ### Active Issues
 
 - `[ ]` Notes for test run
-- `[ ]` Open test modal window when clicking on the progress bar test
 - `[ ]` Show annotation/descriptions in a test
-- `[ ]` Link to github repo
-  now
+- `[ ]` Link to github repo now
 - `[ ]` Clearn package.json scripts
 - `[ ]` Implement multiprojects supporting
 
 ### Completed Issues ✅
 
+- `[X]` Open test modal window when clicking on the progress bar test
+- `[X]` Status column - when test is running => status should display 'Running...' loader
+- `[X]` If filter "fails" and I close the test modal window - the filter resets to "all"
 - `[X]` Memory usage (attachments)
 - `[X]` Clickable statistic lead to test page (filter -> all, passed, failed... )
 - `[X]` Statistic - fail percentage by passed tests (not all)

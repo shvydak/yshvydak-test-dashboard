@@ -1,4 +1,5 @@
 import {Button, ButtonProps} from '../atoms'
+import {LoadingSpinner} from '../atoms/LoadingSpinner'
 
 export interface ActionButtonProps extends Omit<ButtonProps, 'loading'> {
     isRunning?: boolean
@@ -18,7 +19,7 @@ export function ActionButton({
         <Button {...props} loading={isRunning} disabled={disabled || isRunning}>
             {isRunning ? (
                 <span className="flex items-center space-x-1">
-                    <span className="animate-spin">⚡</span>
+                    <LoadingSpinner size="sm" />
                     <span>{runningText}</span>
                 </span>
             ) : (

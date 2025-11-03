@@ -48,7 +48,7 @@ const args = process.argv.slice(2)
 const config = {
     maxWorkers: parseInt(args[args.indexOf('--max-workers') + 1]) || undefined,
     wait: args.includes('--wait'),
-    timeout: parseInt(args[args.indexOf('--timeout') + 1]) || 600, // 10 minutes default
+    timeout: parseInt(args[args.indexOf('--timeout') + 1]) || 900, // 15 minutes default
     silent: args.includes('--silent'),
     help: args.includes('--help') || args.includes('-h'),
 }

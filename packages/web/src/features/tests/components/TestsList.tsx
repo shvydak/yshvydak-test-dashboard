@@ -79,8 +79,10 @@ export default function TestsList({
                 setDetailModalOpen(true)
                 onTestSelect(test)
             } else {
-                // Test not found, clear URL parameters
-                setSearchParams({}, {replace: true})
+                // Test not found, remove testId but preserve filter
+                const params = new URLSearchParams(searchParams)
+                params.delete('testId')
+                setSearchParams(params, {replace: true})
             }
         }
 
@@ -95,8 +97,8 @@ export default function TestsList({
         setDetailModalOpen(true)
         onTestSelect(test)
 
-        // Update URL with testId only
-        const params = new URLSearchParams()
+        // Update URL with testId while preserving filter
+        const params = new URLSearchParams(searchParams)
         params.set('testId', test.testId)
         setSearchParams(params, {replace: false})
     }
@@ -105,8 +107,10 @@ export default function TestsList({
         setDetailModalOpen(false)
         setDetailModalTest(null)
 
-        // Clear URL parameters when closing modal
-        setSearchParams({}, {replace: false})
+        // Remove testId from URL while preserving filter
+        const params = new URLSearchParams(searchParams)
+        params.delete('testId')
+        setSearchParams(params, {replace: false})
     }
 
     if (loading && tests.length === 0) {

@@ -109,7 +109,11 @@ export class AttachmentService implements IAttachmentService {
      * @returns Number of deleted files
      */
     async deleteAttachmentsForTestResult(testResultId: string): Promise<number> {
-        return this.attachmentManager.deleteTestAttachments(testResultId)
+        // Delete physical files from disk
+        const deletedFiles = await this.attachmentManager.deleteTestAttachments(testResultId)
+        // Delete database records explicitly (ensures cleanup independent of CASCADE)
+        await this.attachmentRepository.deleteAttachmentsByTestResult(testResultId)
+        return deletedFiles
     }
 
     /**

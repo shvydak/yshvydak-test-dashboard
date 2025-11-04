@@ -1,10 +1,3 @@
-# GEMINI.md - Quick Reference for AI Development
-
-> **Note:** This is the Gemini-optimized version of project documentation. For Claude Code, see [CLAUDE.md](CLAUDE.md).
-> Both files contain identical technical content but may have AI-specific formatting.
-
-## 🔥 CRITICAL CONTEXT (30 seconds to read)
-
 ### 1️⃣ Repository Pattern - NEVER Bypass
 
 **Controller → Service → Repository → Database**
@@ -76,18 +69,32 @@ User clicks "Run All"
 
 ---
 
-## 🤖 Vibe Coding (Not Available in Gemini)
+## 🤖 Vibe Coding Agent
 
-**Note:** Vibe coding agent (`@vibe`) is a Claude Code-specific feature using `.claude/agents/vibe.md`.
+For rapid feature development with automated workflow, use the custom agent:
 
-For development in Gemini, follow the manual workflow:
+```
+@vibe <feature description>
+```
 
-1. 🔍 Research existing implementation
-2. 📋 Present plan + ask critical questions
-3. 💻 Develop following Repository Pattern + best practices
-4. 🧪 Run validation (format/type-check/lint/test/build)
-5. 📊 Check test coverage
-6. 📝 Check documentation updates (DOCUMENTATION_UPDATE_RULES.md)
+**The agent automatically:**
+
+- 🔍 Researches existing implementation (parallel Explore agents)
+- 📋 Presents plan + asks only critical questions
+- 💻 Develops following Repository Pattern + best practices
+- 🧪 Runs validation (format/type-check/lint/test/build)
+- 📊 Checks test coverage
+- 📝 Checks documentation updates (DOCUMENTATION_UPDATE_RULES.md)
+
+**Examples:**
+
+```
+@vibe add bulk test rerun
+@vibe fix attachments bug
+@vibe refactor WebSocket logic
+```
+
+**Agent definition:** `.claude/agents/vibe.md` (customizable)
 
 ---
 

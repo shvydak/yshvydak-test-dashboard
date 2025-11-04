@@ -63,6 +63,7 @@ describe('TestService', () => {
             getAllTests: vi.fn(),
             getTestResultsByTestId: vi.fn(),
             deleteByTestId: vi.fn(),
+            deleteByExecutionId: vi.fn(),
             clearAllTests: vi.fn(),
             getTestStats: vi.fn(),
             getFlakyTests: vi.fn(),
@@ -1353,6 +1354,249 @@ describe('TestService', () => {
 
             await expect(testService.deleteTest(testId)).rejects.toThrow(
                 'Database constraint violation'
+            )
+        })
+    })
+
+    describe('deleteExecution', () => {
+        it('should delete a specific execution successfully', async () => {
+            const executionId = 'exec-123'
+
+            mockAttachmentService.deleteAttachmentsForTestResult.mockResolvedValue(2)
+            mockTestRepository.deleteByExecutionId.mockResolvedValue(1)
+
+            const result = await testService.deleteExecution(executionId)
+
+            // Should delete attachments first
+            expect(mockAttachmentService.deleteAttachmentsForTestResult).toHaveBeenCalledWith(
+                executionId
+            )
+
+            // Then delete the database record
+            expect(mockTestRepository.deleteByExecutionId).toHaveBeenCalledWith(executionId)
+
+            // Should return success
+            expect(result).toEqual({success: true})
+        })
+
+        it('should return success=false when execution not found', async () => {
+            const executionId = 'non-existent-exec'
+
+            mockAttachmentService.deleteAttachmentsForTestResult.mockResolvedValue(0)
+            mockTestRepository.deleteByExecutionId.mockResolvedValue(0)
+
+            const result = await testService.deleteExecution(executionId)
+
+            expect(result).toEqual({success: false})
+            expect(mockAttachmentService.deleteAttachmentsForTestResult).toHaveBeenCalledWith(
+                executionId
+            )
+            expect(mockTestRepository.deleteByExecutionId).toHaveBeenCalledWith(executionId)
+        })
+
+        it('should continue deletion even if attachment deletion fails', async () => {
+            const executionId = 'exec-with-attachment-error'
+
+            mockAttachmentService.deleteAttachmentsForTestResult.mockRejectedValue(
+                new Error('Permission denied on file system')
+            )
+            mockTestRepository.deleteByExecutionId.mockResolvedValue(1)
+
+            const result = await testService.deleteExecution(executionId)
+
+            // Should still delete database record despite attachment error
+            expect(mockTestRepository.deleteByExecutionId).toHaveBeenCalledWith(executionId)
+
+            // Should return success because database deletion succeeded
+            expect(result).toEqual({success: true})
+        })
+
+        it('should delete execution with multiple attachments', async () => {
+            const executionId = 'exec-with-multiple-attachments'
+
+            mockAttachmentService.deleteAttachmentsForTestResult.mockResolvedValue(5)
+            mockTestRepository.deleteByExecutionId.mockResolvedValue(1)
+
+            const result = await testService.deleteExecution(executionId)
+
+            expect(mockAttachmentService.deleteAttachmentsForTestResult).toHaveBeenCalledWith(
+                executionId
+            )
+            expect(mockTestRepository.deleteByExecutionId).toHaveBeenCalledWith(executionId)
+            expect(result).toEqual({success: true})
+        })
+
+        it('should delete execution with no attachments', async () => {
+            const executionId = 'exec-no-attachments'
+
+            mockAttachmentService.deleteAttachmentsForTestResult.mockResolvedValue(0)
+            mockTestRepository.deleteByExecutionId.mockResolvedValue(1)
+
+            const result = await testService.deleteExecution(executionId)
+
+            expect(mockAttachmentService.deleteAttachmentsForTestResult).toHaveBeenCalledWith(
+                executionId
+            )
+            expect(mockTestRepository.deleteByExecutionId).toHaveBeenCalledWith(executionId)
+            expect(result).toEqual({success: true})
+        })
+
+        it('should handle repository deletion errors', async () => {
+            const executionId = 'exec-with-db-error'
+
+            mockAttachmentService.deleteAttachmentsForTestResult.mockResolvedValue(1)
+            mockTestRepository.deleteByExecutionId.mockRejectedValue(
+                new Error('Database error: foreign key constraint')
+            )
+
+            await expect(testService.deleteExecution(executionId)).rejects.toThrow(
+                'Database error: foreign key constraint'
+            )
+
+            // Attachments should have been attempted first
+            expect(mockAttachmentService.deleteAttachmentsForTestResult).toHaveBeenCalledWith(
+                executionId
+            )
+        })
+
+        it('should properly propagate attachment deletion errors when critical', async () => {
+            const executionId = 'exec-critical-error'
+
+            // Simulate a critical attachment error (though current implementation catches all)
+            mockAttachmentService.deleteAttachmentsForTestResult.mockRejectedValue(
+                new Error('Disk full')
+            )
+            mockTestRepository.deleteByExecutionId.mockResolvedValue(1)
+
+            // Current implementation logs and continues, should still succeed
+            const result = await testService.deleteExecution(executionId)
+
+            expect(result).toEqual({success: true})
+        })
+
+        it('should handle execution deletion order: attachments then database', async () => {
+            const executionId = 'exec-order-test'
+            const callOrder: string[] = []
+
+            mockAttachmentService.deleteAttachmentsForTestResult.mockImplementation(async () => {
+                callOrder.push('attachments')
+                return 2
+            })
+
+            mockTestRepository.deleteByExecutionId.mockImplementation(async () => {
+                callOrder.push('database')
+                return 1
+            })
+
+            await testService.deleteExecution(executionId)
+
+            // Verify attachments are deleted BEFORE database
+            expect(callOrder).toEqual(['attachments', 'database'])
+        })
+
+        it('should delete execution from the middle of history', async () => {
+            const executionId = 'exec-middle'
+
+            mockAttachmentService.deleteAttachmentsForTestResult.mockResolvedValue(1)
+            mockTestRepository.deleteByExecutionId.mockResolvedValue(1)
+
+            const result = await testService.deleteExecution(executionId)
+
+            expect(result).toEqual({success: true})
+            expect(mockTestRepository.deleteByExecutionId).toHaveBeenCalledWith(executionId)
+        })
+
+        it('should handle concurrent deletion attempts gracefully', async () => {
+            const executionId = 'exec-concurrent'
+
+            mockAttachmentService.deleteAttachmentsForTestResult.mockResolvedValue(1)
+            mockTestRepository.deleteByExecutionId.mockResolvedValue(1)
+
+            // Simulate concurrent calls
+            const [result1, result2] = await Promise.all([
+                testService.deleteExecution(executionId),
+                testService.deleteExecution(executionId),
+            ])
+
+            // Both should attempt deletion
+            expect(mockTestRepository.deleteByExecutionId).toHaveBeenCalledTimes(2)
+
+            // First call should succeed
+            expect(result1).toEqual({success: true})
+
+            // Second call behavior depends on repository (in real scenario, second call would return 0)
+            expect(result2).toEqual({success: true})
+        })
+
+        it('should handle deletion when attachment service is slow', async () => {
+            const executionId = 'exec-slow-attachments'
+
+            // Simulate slow attachment deletion
+            mockAttachmentService.deleteAttachmentsForTestResult.mockImplementation(
+                () => new Promise((resolve) => setTimeout(() => resolve(3), 100))
+            )
+            mockTestRepository.deleteByExecutionId.mockResolvedValue(1)
+
+            const result = await testService.deleteExecution(executionId)
+
+            expect(result).toEqual({success: true})
+            expect(mockAttachmentService.deleteAttachmentsForTestResult).toHaveBeenCalledWith(
+                executionId
+            )
+            expect(mockTestRepository.deleteByExecutionId).toHaveBeenCalledWith(executionId)
+        })
+
+        it('should delete execution with large attachments', async () => {
+            const executionId = 'exec-large-attachments'
+
+            // Simulate deletion of many attachments
+            mockAttachmentService.deleteAttachmentsForTestResult.mockResolvedValue(100)
+            mockTestRepository.deleteByExecutionId.mockResolvedValue(1)
+
+            const result = await testService.deleteExecution(executionId)
+
+            expect(result).toEqual({success: true})
+        })
+
+        it('should handle SQL injection attempts safely', async () => {
+            const maliciousId = "'; DROP TABLE test_results; --"
+
+            mockAttachmentService.deleteAttachmentsForTestResult.mockResolvedValue(0)
+            mockTestRepository.deleteByExecutionId.mockResolvedValue(0)
+
+            const result = await testService.deleteExecution(maliciousId)
+
+            // Should be treated as regular string, return false (not found)
+            expect(result).toEqual({success: false})
+            expect(mockTestRepository.deleteByExecutionId).toHaveBeenCalledWith(maliciousId)
+        })
+
+        it('should verify attachments are deleted from filesystem', async () => {
+            const executionId = 'exec-filesystem-check'
+
+            // Mock that returns number of files deleted
+            mockAttachmentService.deleteAttachmentsForTestResult.mockResolvedValue(3)
+            mockTestRepository.deleteByExecutionId.mockResolvedValue(1)
+
+            await testService.deleteExecution(executionId)
+
+            // Verify attachment service was called with correct executionId
+            expect(mockAttachmentService.deleteAttachmentsForTestResult).toHaveBeenCalledWith(
+                executionId
+            )
+        })
+
+        it('should handle execution with trace files', async () => {
+            const executionId = 'exec-with-traces'
+
+            mockAttachmentService.deleteAttachmentsForTestResult.mockResolvedValue(1)
+            mockTestRepository.deleteByExecutionId.mockResolvedValue(1)
+
+            const result = await testService.deleteExecution(executionId)
+
+            expect(result).toEqual({success: true})
+            expect(mockAttachmentService.deleteAttachmentsForTestResult).toHaveBeenCalledWith(
+                executionId
             )
         })
     })

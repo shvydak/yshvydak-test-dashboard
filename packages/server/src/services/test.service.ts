@@ -111,6 +111,27 @@ export class TestService implements ITestService {
         return {deletedExecutions: deletedCount}
     }
 
+    async deleteExecution(executionId: string): Promise<{success: boolean}> {
+        // Delete physical attachment files for this execution
+        try {
+            await this.attachmentService.deleteAttachmentsForTestResult(executionId)
+        } catch (error) {
+            Logger.error(`Failed to delete attachments for execution ${executionId}`, error)
+        }
+
+        // Delete the test_results record (CASCADE will delete attachment records)
+        const deletedCount = await this.testRepository.deleteByExecutionId(executionId)
+
+        if (deletedCount === 0) {
+            Logger.warn(`Execution ${executionId} not found`)
+            return {success: false}
+        }
+
+        Logger.info(`Deleted execution ${executionId}`)
+
+        return {success: true}
+    }
+
     async clearAllTests(): Promise<void> {
         // Clear database records
         await this.testRepository.clearAllTests()

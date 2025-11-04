@@ -2,8 +2,6 @@
 alwaysApply: true
 ---
 
-## 🔥 CRITICAL CONTEXT (30 seconds to read)
-
 ### 1️⃣ Repository Pattern - NEVER Bypass
 
 **Controller → Service → Repository → Database**

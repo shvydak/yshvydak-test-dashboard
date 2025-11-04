@@ -18,6 +18,7 @@ export function createTestRoutes(container: ServiceContainer): Router {
     router.post('/force-reset', testController.forceReset)
 
     // CRUD endpoints
+    // Note: Specific routes must come before parameterized routes to avoid conflicts
     router.get('/', testController.getAllTests)
     router.get('/stats', testController.getTestStats)
     router.get('/flaky', testController.getFlakyTests)
@@ -25,6 +26,8 @@ export function createTestRoutes(container: ServiceContainer): Router {
     router.get('/diagnostics', testController.getDiagnostics)
     router.delete('/all', testController.clearAllTests)
     router.post('/', testController.createTestResult)
+    // Nested route must come before single-param route
+    router.delete('/:testId/executions/:executionId', testController.deleteExecution)
     router.get('/:id', testController.getTestById)
     router.delete('/:testId', testController.deleteTest)
     router.post('/:id/rerun', testController.rerunTest)

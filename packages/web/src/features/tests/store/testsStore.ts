@@ -26,6 +26,7 @@ interface TestsState {
     fetchRuns: () => Promise<void>
     rerunTest: (testId: string) => Promise<void>
     deleteTest: (testId: string) => Promise<void>
+    deleteExecution: (testId: string, executionId: string) => Promise<void>
     discoverTests: () => Promise<void>
     runAllTests: () => Promise<void>
     runTestsGroup: (filePath: string, testNames?: string[]) => Promise<void>
@@ -198,6 +199,36 @@ export const useTestsStore = create<TestsState>()(
                     console.error('Error deleting test:', error)
                     set({
                         error: error instanceof Error ? error.message : 'Failed to delete test',
+                    })
+                    throw error
+                }
+            },
+
+            deleteExecution: async (testId: string, executionId: string) => {
+                try {
+                    set({error: null})
+
+                    const response = await authDelete(
+                        `${API_BASE_URL}/tests/${testId}/executions/${executionId}`
+                    )
+
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`)
+                    }
+
+                    const data = await response.json()
+
+                    if (data.success) {
+                        // Refresh tests list after deletion to update the latest execution
+                        await get().fetchTests()
+                    } else {
+                        throw new Error(data.message || 'Failed to delete execution')
+                    }
+                } catch (error) {
+                    console.error('Error deleting execution:', error)
+                    set({
+                        error:
+                            error instanceof Error ? error.message : 'Failed to delete execution',
                     })
                     throw error
                 }

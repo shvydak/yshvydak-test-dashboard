@@ -200,7 +200,99 @@ Authorization: Bearer {jwt-token}
 **Related Endpoints:**
 
 - `GET /api/tests/:id/history` - View execution history before deletion
+- `DELETE /api/tests/:testId/executions/:executionId` - Delete a single execution
 - `DELETE /api/tests/all` - Clear ALL test data (more destructive)
+
+### DELETE /api/tests/:testId/executions/:executionId
+
+Delete a specific test execution while preserving other executions of the same test.
+
+**URL Parameters:**
+
+- `testId` (required) - The unique identifier for the test
+- `executionId` (required) - The unique identifier for the specific execution to delete
+
+**Authentication:** Required (JWT token)
+
+**Request:**
+
+```bash
+DELETE /api/tests/test_abc123/executions/exec_xyz789
+Authorization: Bearer <token>
+```
+
+**Response (200 - Success):**
+
+```json
+{
+    "status": "success",
+    "data": {
+        "message": "Execution deleted successfully"
+    }
+}
+```
+
+**Response (400 - Bad Request):**
+
+```json
+{
+    "status": "error",
+    "error": {
+        "message": "Missing executionId parameter",
+        "code": "BAD_REQUEST"
+    }
+}
+```
+
+**Response (404 - Not Found):**
+
+```json
+{
+    "status": "error",
+    "error": {
+        "message": "Execution not found",
+        "code": "NOT_FOUND"
+    }
+}
+```
+
+**Response (500 - Server Error):**
+
+```json
+{
+    "status": "error",
+    "error": {
+        "message": "Failed to delete execution",
+        "code": "SERVER_ERROR"
+    }
+}
+```
+
+**What Gets Deleted:**
+
+1. **Database Record**: Single row in `test_results` where `id = executionId`
+2. **Attachment Records**: CASCADE deletion from `attachments` table for this execution
+3. **Physical Files**: All files in `{OUTPUT_DIR}/attachments/{executionId}/` directory
+
+**Example Use Cases:**
+
+- Removing a single failed execution while keeping successful ones
+- Cleaning up executions with corrupted attachments
+- Managing storage by removing old executions selectively
+- Deleting accidental test runs
+
+**Important Notes:**
+
+- ⚠️ Deletion is permanent and cannot be undone
+- ✅ Other executions of the same test remain intact
+- ✅ If the deleted execution was currently viewed in UI, the next execution is automatically selected
+- ✅ Attachments are safely deleted from filesystem to prevent orphaned files
+
+**Related Endpoints:**
+
+- `GET /api/tests/:id/history` - View execution history before deletion
+- `DELETE /api/tests/:testId` - Delete all executions of a test
+- `POST /api/tests/:id/rerun` - Rerun a test to create new execution
 
 ### DELETE /api/tests/all
 

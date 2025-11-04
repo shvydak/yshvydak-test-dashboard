@@ -160,11 +160,18 @@ packages/web/src/
 │   │   │   │   └── TestStepsTab.tsx      # Test steps display (49 lines)
 │   │   │   │
 │   │   │   └── history/                  # Execution history components
-│   │   │       └── ExecutionSidebar.tsx  # Always-visible history panel
-│   │   │           ├── Run button in header
-│   │   │           ├── Execution list with status badges
-│   │   │           ├── "LATEST" + "Currently viewing" indicators
-│   │   │           └── Click to switch execution
+│   │   │       ├── ExecutionSidebar.tsx  # Always-visible history panel
+│   │   │       │   ├── Run button in header
+│   │   │       │   ├── Execution list with status badges
+│   │   │       │   └── Maps executions to ExecutionItem components
+│   │   │       │
+│   │   │       └── ExecutionItem.tsx     # Individual execution item (✨ v1.0.0)
+│   │   │           ├── Separated from ExecutionSidebar for modularity
+│   │   │           ├── Status badge + LATEST indicator
+│   │   │           ├── Date, duration, attachment count
+│   │   │           ├── Hover-based REMOVE button (all executions)
+│   │   │           ├── Click to switch execution (disabled for current)
+│   │   │           └── onDelete callback for execution deletion
 │   │   │
 │   │   ├── hooks/                        # Custom hooks for tests feature
 │   │   │   ├── useTestAttachments.ts     # Fetch attachments for test
@@ -181,6 +188,8 @@ packages/web/src/
 │   │   │       ├── selectedExecutionId: string | null
 │   │   │       ├── fetchTests()
 │   │   │       ├── rerunTest()           # Rerun with WebSocket updates
+│   │   │       ├── deleteTest()          # Delete all executions of a test
+│   │   │       ├── deleteExecution()     # Delete single execution (✨ v1.0.0)
 │   │   │       ├── selectExecution()     # Switch history view
 │   │   │       └── getIsAnyTestRunning()
 │   │   │

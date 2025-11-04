@@ -994,4 +994,219 @@ describe('TestRepository - Core Functionality', () => {
             expect(afterDelete).toHaveLength(0)
         })
     })
+
+    describe('deleteByExecutionId()', () => {
+        it('should delete a specific execution by id', async () => {
+            const testId = 'test-execution-delete'
+
+            // Create multiple executions for the same testId
+            const result1Id = await repository.saveTestResult(createTestResult(testId, 'passed'))
+            const result2Id = await repository.saveTestResult(createTestResult(testId, 'failed'))
+            const result3Id = await repository.saveTestResult(createTestResult(testId, 'passed'))
+
+            // Verify all exist
+            const beforeDelete = await repository.getTestResultsByTestId(testId)
+            expect(beforeDelete).toHaveLength(3)
+
+            // Delete only the second execution
+            const deletedCount = await repository.deleteByExecutionId(result2Id)
+
+            expect(deletedCount).toBe(1)
+
+            // Verify only result2 is gone
+            const afterDelete = await repository.getTestResultsByTestId(testId)
+            expect(afterDelete).toHaveLength(2)
+
+            const remaining = afterDelete.map((r) => r.id)
+            expect(remaining).toContain(result1Id)
+            expect(remaining).toContain(result3Id)
+            expect(remaining).not.toContain(result2Id)
+        })
+
+        it('should return 0 when deleting non-existent execution', async () => {
+            const deletedCount = await repository.deleteByExecutionId('non-existent-execution-id')
+
+            expect(deletedCount).toBe(0)
+        })
+
+        it('should cascade delete attachments from database', async () => {
+            const testId = 'test-execution-with-attachments'
+
+            // Create 2 executions
+            const result1Id = await repository.saveTestResult(createTestResult(testId, 'passed'))
+            const result2Id = await repository.saveTestResult(createTestResult(testId, 'failed'))
+
+            // Add attachment to result1
+            const attachment1: AttachmentData = {
+                id: `att-result1-${Date.now()}`,
+                testResultId: result1Id,
+                type: 'screenshot',
+                fileName: 'screenshot1.png',
+                filePath: '/path/to/screenshot1.png',
+                fileSize: 1024,
+                url: '/attachments/screenshot1.png',
+            }
+            await attachmentRepository.saveAttachment(attachment1)
+
+            // Add attachment to result2
+            const attachment2: AttachmentData = {
+                id: `att-result2-${Date.now()}`,
+                testResultId: result2Id,
+                type: 'video',
+                fileName: 'video2.webm',
+                filePath: '/path/to/video2.webm',
+                fileSize: 2048,
+                url: '/attachments/video2.webm',
+            }
+            await attachmentRepository.saveAttachment(attachment2)
+
+            // Verify both attachments exist
+            const attachments1Before =
+                await attachmentRepository.getAttachmentsByTestResult(result1Id)
+            const attachments2Before =
+                await attachmentRepository.getAttachmentsByTestResult(result2Id)
+            expect(attachments1Before).toHaveLength(1)
+            expect(attachments2Before).toHaveLength(1)
+
+            // Delete only result1 (should CASCADE delete attachment1)
+            await repository.deleteByExecutionId(result1Id)
+
+            // Verify attachment1 is gone (CASCADE)
+            const attachments1After =
+                await attachmentRepository.getAttachmentsByTestResult(result1Id)
+            expect(attachments1After).toHaveLength(0)
+
+            // Verify attachment2 still exists
+            const attachments2After =
+                await attachmentRepository.getAttachmentsByTestResult(result2Id)
+            expect(attachments2After).toHaveLength(1)
+        })
+
+        it('should NOT delete other executions of the same test', async () => {
+            const testId = 'test-preserve-other-executions'
+
+            // Create 5 executions for the same test
+            const executionIds = []
+            for (let i = 0; i < 5; i++) {
+                const id = await repository.saveTestResult(
+                    createTestResult(testId, i % 2 === 0 ? 'passed' : 'failed')
+                )
+                executionIds.push(id)
+            }
+
+            // Delete the middle execution (index 2)
+            await repository.deleteByExecutionId(executionIds[2])
+
+            // Verify 4 executions remain
+            const remaining = await repository.getTestResultsByTestId(testId)
+            expect(remaining).toHaveLength(4)
+
+            // Verify the deleted one is gone
+            const remainingIds = remaining.map((r) => r.id)
+            expect(remainingIds).not.toContain(executionIds[2])
+
+            // Verify others still exist
+            expect(remainingIds).toContain(executionIds[0])
+            expect(remainingIds).toContain(executionIds[1])
+            expect(remainingIds).toContain(executionIds[3])
+            expect(remainingIds).toContain(executionIds[4])
+        })
+
+        it('should handle deletion of execution with multiple attachments', async () => {
+            const testId = 'test-multiple-attachments-delete'
+            const resultId = await repository.saveTestResult(createTestResult(testId, 'passed'))
+
+            // Add 5 attachments
+            for (let i = 0; i < 5; i++) {
+                await attachmentRepository.saveAttachment({
+                    id: `att-${Date.now()}-${i}`,
+                    testResultId: resultId,
+                    type: i % 2 === 0 ? 'screenshot' : 'video',
+                    fileName: `file-${i}.png`,
+                    filePath: `/path/to/file-${i}.png`,
+                    fileSize: 1024 * (i + 1),
+                    url: `/attachments/file-${i}.png`,
+                })
+            }
+
+            // Verify all attachments exist
+            const beforeDelete = await attachmentRepository.getAttachmentsByTestResult(resultId)
+            expect(beforeDelete).toHaveLength(5)
+
+            // Delete execution
+            const deletedCount = await repository.deleteByExecutionId(resultId)
+
+            expect(deletedCount).toBe(1)
+
+            // Verify all attachments are gone (CASCADE)
+            const afterDelete = await attachmentRepository.getAttachmentsByTestResult(resultId)
+            expect(afterDelete).toHaveLength(0)
+        })
+
+        it('should work correctly when deleting the latest execution', async () => {
+            const testId = 'test-delete-latest'
+
+            // Create 3 executions
+            await repository.saveTestResult(createTestResult(testId, 'passed'))
+            await new Promise((resolve) => setTimeout(resolve, 100))
+            await repository.saveTestResult(createTestResult(testId, 'failed'))
+            await new Promise((resolve) => setTimeout(resolve, 100))
+            const latestId = await repository.saveTestResult(createTestResult(testId, 'passed'))
+
+            // Verify latest is the one we expect
+            const beforeDelete = await repository.getTestResultsByTestId(testId)
+            expect(beforeDelete).toHaveLength(3)
+            expect(beforeDelete[0].id).toBe(latestId) // First in array is latest
+
+            // Delete the latest execution
+            await repository.deleteByExecutionId(latestId)
+
+            // Verify deletion worked
+            const afterDelete = await repository.getTestResultsByTestId(testId)
+            expect(afterDelete).toHaveLength(2)
+            expect(afterDelete[0].id).not.toBe(latestId) // New latest is different
+        })
+
+        it('should work correctly when deleting the oldest execution', async () => {
+            const testId = 'test-delete-oldest'
+
+            // Create 3 executions
+            const oldestId = await repository.saveTestResult(createTestResult(testId, 'passed'))
+            await new Promise((resolve) => setTimeout(resolve, 100))
+            await repository.saveTestResult(createTestResult(testId, 'failed'))
+            await new Promise((resolve) => setTimeout(resolve, 100))
+            await repository.saveTestResult(createTestResult(testId, 'passed'))
+
+            // Verify oldest is the one we expect
+            const beforeDelete = await repository.getTestResultsByTestId(testId)
+            expect(beforeDelete).toHaveLength(3)
+            expect(beforeDelete[2].id).toBe(oldestId) // Last in array is oldest
+
+            // Delete the oldest execution
+            await repository.deleteByExecutionId(oldestId)
+
+            // Verify deletion worked
+            const afterDelete = await repository.getTestResultsByTestId(testId)
+            expect(afterDelete).toHaveLength(2)
+            expect(afterDelete.map((r) => r.id)).not.toContain(oldestId)
+        })
+
+        it('should handle SQL injection attempts safely', async () => {
+            const testId = 'test-sql-injection'
+            const validId = await repository.saveTestResult(createTestResult(testId, 'passed'))
+
+            // Attempt SQL injection via executionId parameter
+            const maliciousId = "'; DROP TABLE test_results; --"
+
+            // Should return 0 (no deletion) without throwing error
+            const deletedCount = await repository.deleteByExecutionId(maliciousId)
+
+            expect(deletedCount).toBe(0)
+
+            // Verify original execution still exists
+            const result = await repository.getTestResult(validId)
+            expect(result).toBeDefined()
+            expect(result?.id).toBe(validId)
+        })
+    })
 })

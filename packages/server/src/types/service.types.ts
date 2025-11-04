@@ -7,6 +7,8 @@ export interface ITestService {
     getAllTests(filters: TestFilters): Promise<TestResult[]>
     getTestById(id: string): Promise<TestResult | null>
     getTestHistory(testId: string, limit?: number): Promise<TestResult[]>
+    deleteTest(testId: string): Promise<{deletedExecutions: number}>
+    deleteExecution(executionId: string): Promise<{success: boolean}>
     clearAllTests(): Promise<void>
     saveTestResult(testData: TestResultData): Promise<string>
     getTestStats(): Promise<DatabaseStats>

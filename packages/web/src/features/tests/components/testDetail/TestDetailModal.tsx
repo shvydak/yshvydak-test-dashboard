@@ -122,12 +122,19 @@ export function TestDetailModal({test, isOpen, onClose}: TestDetailModalProps) {
 
         try {
             setIsDeletingExecution(true)
-            await deleteExecution(test.testId, executionToDelete)
 
-            // If we deleted the currently selected execution, switch to latest
-            if (selectedExecutionId === executionToDelete) {
-                selectExecution(null)
+            // If we deleted the currently selected execution, find the next one to select
+            if (selectedExecutionId === executionToDelete && executions.length > 1) {
+                // Find the next execution to select (the one after the deleted one)
+                const deletedIndex = executions.findIndex((e) => e.id === executionToDelete)
+                const nextExecution = executions[deletedIndex + 1] || executions[0]
+                // Select the next execution before deleting
+                if (nextExecution && nextExecution.id !== executionToDelete) {
+                    selectExecution(nextExecution.id)
+                }
             }
+
+            await deleteExecution(test.testId, executionToDelete)
 
             // Refetch history to update the list
             refetchHistory()

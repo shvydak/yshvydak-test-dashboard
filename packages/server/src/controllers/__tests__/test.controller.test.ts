@@ -80,6 +80,7 @@ describe('TestController', () => {
             getFlakyTests: vi.fn(),
             getTestTimeline: vi.fn(),
             deleteTest: vi.fn(),
+            deleteExecution: vi.fn(),
             clearAllTests: vi.fn(),
             saveTestResult: vi.fn(),
             getTestById: vi.fn(),
@@ -1388,6 +1389,235 @@ describe('TestController', () => {
                 message: 'Test deleted successfully',
                 deletedExecutions: 2,
             })
+        })
+    })
+
+    describe('deleteExecution', () => {
+        it('should delete execution successfully', async () => {
+            mockReq.params = {testId: 'test-123', executionId: 'exec-456'}
+            mockTestService.deleteExecution.mockResolvedValue({success: true})
+
+            await controller.deleteExecution(mockReq as ServiceRequest, mockRes as Response)
+
+            expect(mockTestService.deleteExecution).toHaveBeenCalledWith('exec-456')
+            expect(ResponseHelper.success).toHaveBeenCalledWith(mockRes, {
+                message: 'Execution deleted successfully',
+            })
+        })
+
+        it('should return 400 when executionId is missing', async () => {
+            mockReq.params = {testId: 'test-123'} // Missing executionId
+
+            await controller.deleteExecution(mockReq as ServiceRequest, mockRes as Response)
+
+            expect(mockTestService.deleteExecution).not.toHaveBeenCalled()
+            expect(ResponseHelper.badRequest).toHaveBeenCalledWith(
+                mockRes,
+                'Missing executionId parameter'
+            )
+        })
+
+        it('should return 400 when executionId is empty string', async () => {
+            mockReq.params = {testId: 'test-123', executionId: ''}
+
+            await controller.deleteExecution(mockReq as ServiceRequest, mockRes as Response)
+
+            expect(mockTestService.deleteExecution).not.toHaveBeenCalled()
+            expect(ResponseHelper.badRequest).toHaveBeenCalledWith(
+                mockRes,
+                'Missing executionId parameter'
+            )
+        })
+
+        it('should return 404 when execution not found', async () => {
+            mockReq.params = {testId: 'test-123', executionId: 'non-existent-exec'}
+            mockTestService.deleteExecution.mockResolvedValue({success: false})
+
+            await controller.deleteExecution(mockReq as ServiceRequest, mockRes as Response)
+
+            expect(mockTestService.deleteExecution).toHaveBeenCalledWith('non-existent-exec')
+            expect(ResponseHelper.notFound).toHaveBeenCalledWith(mockRes, 'Execution')
+        })
+
+        it('should handle service errors', async () => {
+            mockReq.params = {testId: 'test-123', executionId: 'exec-456'}
+            const error = new Error('Database error')
+            mockTestService.deleteExecution.mockRejectedValue(error)
+
+            await controller.deleteExecution(mockReq as ServiceRequest, mockRes as Response)
+
+            expect(Logger.error).toHaveBeenCalledWith('Error deleting execution', error)
+            expect(ResponseHelper.error).toHaveBeenCalledWith(
+                mockRes,
+                error.message,
+                'Failed to delete execution',
+                500
+            )
+        })
+
+        it('should handle unknown errors', async () => {
+            mockReq.params = {testId: 'test-123', executionId: 'exec-456'}
+            mockTestService.deleteExecution.mockRejectedValue('Unknown error')
+
+            await controller.deleteExecution(mockReq as ServiceRequest, mockRes as Response)
+
+            expect(Logger.error).toHaveBeenCalledWith('Error deleting execution', 'Unknown error')
+            expect(ResponseHelper.error).toHaveBeenCalledWith(
+                mockRes,
+                'Unknown error',
+                'Failed to delete execution',
+                500
+            )
+        })
+
+        it('should handle executionId with special characters', async () => {
+            mockReq.params = {testId: 'test-123', executionId: 'exec-with-special-!@#$%'}
+            mockTestService.deleteExecution.mockResolvedValue({success: true})
+
+            await controller.deleteExecution(mockReq as ServiceRequest, mockRes as Response)
+
+            expect(mockTestService.deleteExecution).toHaveBeenCalledWith('exec-with-special-!@#$%')
+            expect(ResponseHelper.success).toHaveBeenCalledWith(mockRes, {
+                message: 'Execution deleted successfully',
+            })
+        })
+
+        it('should handle executionId with UUID format', async () => {
+            mockReq.params = {
+                testId: 'test-123',
+                executionId: '550e8400-e29b-41d4-a716-446655440000',
+            }
+            mockTestService.deleteExecution.mockResolvedValue({success: true})
+
+            await controller.deleteExecution(mockReq as ServiceRequest, mockRes as Response)
+
+            expect(mockTestService.deleteExecution).toHaveBeenCalledWith(
+                '550e8400-e29b-41d4-a716-446655440000'
+            )
+            expect(ResponseHelper.success).toHaveBeenCalledWith(mockRes, {
+                message: 'Execution deleted successfully',
+            })
+        })
+
+        it('should handle very long executionId', async () => {
+            const longId = 'a'.repeat(500)
+            mockReq.params = {testId: 'test-123', executionId: longId}
+            mockTestService.deleteExecution.mockResolvedValue({success: true})
+
+            await controller.deleteExecution(mockReq as ServiceRequest, mockRes as Response)
+
+            expect(mockTestService.deleteExecution).toHaveBeenCalledWith(longId)
+            expect(ResponseHelper.success).toHaveBeenCalledWith(mockRes, {
+                message: 'Execution deleted successfully',
+            })
+        })
+
+        it('should not use testId parameter in deletion logic', async () => {
+            // testId is in URL for RESTful structure but not used in deletion
+            mockReq.params = {testId: 'test-123', executionId: 'exec-456'}
+            mockTestService.deleteExecution.mockResolvedValue({success: true})
+
+            await controller.deleteExecution(mockReq as ServiceRequest, mockRes as Response)
+
+            // Verify only executionId is passed to service
+            expect(mockTestService.deleteExecution).toHaveBeenCalledWith('exec-456')
+            expect(mockTestService.deleteExecution).toHaveBeenCalledTimes(1)
+        })
+
+        it('should handle concurrent deletion requests', async () => {
+            mockReq.params = {testId: 'test-123', executionId: 'exec-456'}
+            mockTestService.deleteExecution.mockResolvedValue({success: true})
+
+            // Simulate concurrent requests
+            await Promise.all([
+                controller.deleteExecution(mockReq as ServiceRequest, mockRes as Response),
+                controller.deleteExecution(mockReq as ServiceRequest, mockRes as Response),
+            ])
+
+            // Both should call the service
+            expect(mockTestService.deleteExecution).toHaveBeenCalledTimes(2)
+            expect(mockTestService.deleteExecution).toHaveBeenCalledWith('exec-456')
+        })
+
+        it('should handle service timeout errors', async () => {
+            mockReq.params = {testId: 'test-123', executionId: 'exec-456'}
+            const timeoutError = new Error('Operation timed out')
+            mockTestService.deleteExecution.mockRejectedValue(timeoutError)
+
+            await controller.deleteExecution(mockReq as ServiceRequest, mockRes as Response)
+
+            expect(Logger.error).toHaveBeenCalledWith('Error deleting execution', timeoutError)
+            expect(ResponseHelper.error).toHaveBeenCalledWith(
+                mockRes,
+                'Operation timed out',
+                'Failed to delete execution',
+                500
+            )
+        })
+
+        it('should handle validation edge cases with whitespace', async () => {
+            mockReq.params = {testId: 'test-123', executionId: '   '} // Only whitespace
+
+            await controller.deleteExecution(mockReq as ServiceRequest, mockRes as Response)
+
+            // Whitespace-only should pass validation (trimming happens in service if needed)
+            expect(mockTestService.deleteExecution).toHaveBeenCalledWith('   ')
+        })
+
+        it('should properly format success response', async () => {
+            mockReq.params = {testId: 'test-123', executionId: 'exec-456'}
+            mockTestService.deleteExecution.mockResolvedValue({success: true})
+
+            await controller.deleteExecution(mockReq as ServiceRequest, mockRes as Response)
+
+            // Verify exact response structure
+            expect(ResponseHelper.success).toHaveBeenCalledWith(mockRes, {
+                message: 'Execution deleted successfully',
+            })
+            expect(ResponseHelper.success).toHaveBeenCalledTimes(1)
+        })
+
+        it('should properly format not found response', async () => {
+            mockReq.params = {testId: 'test-123', executionId: 'exec-456'}
+            mockTestService.deleteExecution.mockResolvedValue({success: false})
+
+            await controller.deleteExecution(mockReq as ServiceRequest, mockRes as Response)
+
+            // Verify exact response structure for 404
+            expect(ResponseHelper.notFound).toHaveBeenCalledWith(mockRes, 'Execution')
+            expect(ResponseHelper.notFound).toHaveBeenCalledTimes(1)
+        })
+
+        it('should handle database constraint errors', async () => {
+            mockReq.params = {testId: 'test-123', executionId: 'exec-456'}
+            const constraintError = new Error('FOREIGN KEY constraint failed')
+            mockTestService.deleteExecution.mockRejectedValue(constraintError)
+
+            await controller.deleteExecution(mockReq as ServiceRequest, mockRes as Response)
+
+            expect(Logger.error).toHaveBeenCalledWith('Error deleting execution', constraintError)
+            expect(ResponseHelper.error).toHaveBeenCalledWith(
+                mockRes,
+                'FOREIGN KEY constraint failed',
+                'Failed to delete execution',
+                500
+            )
+        })
+
+        it('should handle file system errors', async () => {
+            mockReq.params = {testId: 'test-123', executionId: 'exec-456'}
+            const fsError = new Error('ENOENT: no such file or directory')
+            mockTestService.deleteExecution.mockRejectedValue(fsError)
+
+            await controller.deleteExecution(mockReq as ServiceRequest, mockRes as Response)
+
+            expect(Logger.error).toHaveBeenCalledWith('Error deleting execution', fsError)
+            expect(ResponseHelper.error).toHaveBeenCalledWith(
+                mockRes,
+                'ENOENT: no such file or directory',
+                'Failed to delete execution',
+                500
+            )
         })
     })
 })

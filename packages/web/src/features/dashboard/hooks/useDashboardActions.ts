@@ -1,4 +1,5 @@
 import {useState} from 'react'
+import {useQueryClient} from '@tanstack/react-query'
 import {authFetch} from '@features/authentication/utils/authFetch'
 import {config} from '@config/environment.config'
 import {useTestsStore} from '@features/tests/store/testsStore'
@@ -9,6 +10,7 @@ export interface UseDashboardActionsReturn {
 }
 
 export function useDashboardActions(): UseDashboardActionsReturn {
+    const queryClient = useQueryClient()
     const {fetchTests} = useTestsStore()
     const [clearingData, setClearingData] = useState(false)
 
@@ -42,6 +44,9 @@ export function useDashboardActions(): UseDashboardActionsReturn {
             )
 
             fetchTests()
+
+            // Invalidate storage stats cache to reflect cleared storage
+            queryClient.invalidateQueries({queryKey: ['storage-stats']})
         } catch (error) {
             alert(
                 '❌ Failed to clear data: ' +

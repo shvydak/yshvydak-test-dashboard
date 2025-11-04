@@ -60,6 +60,7 @@ describe('AttachmentService', () => {
             saveAttachment: vi.fn().mockResolvedValue('attachment-id'),
             getAttachmentsWithUrls: vi.fn().mockResolvedValue([]),
             getAttachmentById: vi.fn().mockResolvedValue(null),
+            deleteAttachmentsByTestResult: vi.fn().mockResolvedValue(undefined),
         } as any
 
         // Create mock attachment manager

@@ -1,4 +1,5 @@
 import {useState, useMemo, useCallback} from 'react'
+import {useQueryClient} from '@tanstack/react-query'
 import {TestResult} from '@yshvydak/core'
 import {TabKey} from '../../types/attachment.types'
 import {useTestAttachments} from '../../hooks/useTestAttachments'
@@ -27,6 +28,7 @@ export function TestDetailModal({test, isOpen, onClose}: TestDetailModalProps) {
     const [isDeleting, setIsDeleting] = useState(false)
     const [isDeletingExecution, setIsDeletingExecution] = useState(false)
 
+    const queryClient = useQueryClient()
     const selectedExecutionId = useTestsStore((state) => state.selectedExecutionId)
     const selectExecution = useTestsStore((state) => state.selectExecution)
     const rerunTest = useTestsStore((state) => state.rerunTest)
@@ -99,6 +101,10 @@ export function TestDetailModal({test, isOpen, onClose}: TestDetailModalProps) {
         try {
             setIsDeleting(true)
             await deleteTest(test.testId)
+
+            // Invalidate storage stats cache to reflect updated storage after deletion
+            queryClient.invalidateQueries({queryKey: ['storage-stats']})
+
             handleClose()
         } catch (error) {
             console.error('Failed to delete test:', error)
@@ -138,6 +144,9 @@ export function TestDetailModal({test, isOpen, onClose}: TestDetailModalProps) {
 
             // Refetch history to update the list
             refetchHistory()
+
+            // Invalidate storage stats cache to reflect updated storage after deletion
+            queryClient.invalidateQueries({queryKey: ['storage-stats']})
         } catch (error) {
             console.error('Failed to delete execution:', error)
         } finally {

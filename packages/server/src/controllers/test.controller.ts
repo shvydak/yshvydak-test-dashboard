@@ -199,6 +199,35 @@ export class TestController {
         }
     }
 
+    // DELETE /api/tests/:testId/executions/:executionId - Delete a specific execution
+    deleteExecution = async (req: ServiceRequest, res: Response): Promise<Response> => {
+        try {
+            const {executionId} = req.params
+
+            if (!executionId) {
+                return ResponseHelper.badRequest(res, 'Missing executionId parameter')
+            }
+
+            const result = await this.testService.deleteExecution(executionId)
+
+            if (!result.success) {
+                return ResponseHelper.notFound(res, 'Execution')
+            }
+
+            return ResponseHelper.success(res, {
+                message: 'Execution deleted successfully',
+            })
+        } catch (error) {
+            Logger.error('Error deleting execution', error)
+            return ResponseHelper.error(
+                res,
+                error instanceof Error ? error.message : 'Unknown error',
+                'Failed to delete execution',
+                500
+            )
+        }
+    }
+
     // DELETE /api/tests/all - Clear all test data
     clearAllTests = async (req: ServiceRequest, res: Response): Promise<Response> => {
         try {

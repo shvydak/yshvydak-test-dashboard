@@ -22,12 +22,16 @@ export interface TestDetailModalProps {
 export function TestDetailModal({test, isOpen, onClose}: TestDetailModalProps) {
     const [activeTab, setActiveTab] = useState<TabKey>('overview')
     const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false)
+    const [showDeleteExecutionConfirmation, setShowDeleteExecutionConfirmation] = useState(false)
+    const [executionToDelete, setExecutionToDelete] = useState<string | null>(null)
     const [isDeleting, setIsDeleting] = useState(false)
+    const [isDeletingExecution, setIsDeletingExecution] = useState(false)
 
     const selectedExecutionId = useTestsStore((state) => state.selectedExecutionId)
     const selectExecution = useTestsStore((state) => state.selectExecution)
     const rerunTest = useTestsStore((state) => state.rerunTest)
     const deleteTest = useTestsStore((state) => state.deleteTest)
+    const deleteExecution = useTestsStore((state) => state.deleteExecution)
 
     const {
         executions,
@@ -108,6 +112,46 @@ export function TestDetailModal({test, isOpen, onClose}: TestDetailModalProps) {
         setShowDeleteConfirmation(false)
     }
 
+    const handleDeleteExecutionClick = (executionId: string) => {
+        setExecutionToDelete(executionId)
+        setShowDeleteExecutionConfirmation(true)
+    }
+
+    const handleDeleteExecutionConfirm = async () => {
+        if (!executionToDelete || !test?.testId) return
+
+        try {
+            setIsDeletingExecution(true)
+
+            // If we deleted the currently selected execution, find the next one to select
+            if (selectedExecutionId === executionToDelete && executions.length > 1) {
+                // Find the next execution to select (the one after the deleted one)
+                const deletedIndex = executions.findIndex((e) => e.id === executionToDelete)
+                const nextExecution = executions[deletedIndex + 1] || executions[0]
+                // Select the next execution before deleting
+                if (nextExecution && nextExecution.id !== executionToDelete) {
+                    selectExecution(nextExecution.id)
+                }
+            }
+
+            await deleteExecution(test.testId, executionToDelete)
+
+            // Refetch history to update the list
+            refetchHistory()
+        } catch (error) {
+            console.error('Failed to delete execution:', error)
+        } finally {
+            setIsDeletingExecution(false)
+            setShowDeleteExecutionConfirmation(false)
+            setExecutionToDelete(null)
+        }
+    }
+
+    const handleDeleteExecutionCancel = () => {
+        setShowDeleteExecutionConfirmation(false)
+        setExecutionToDelete(null)
+    }
+
     if (!isOpen || !test) return null
 
     return (
@@ -150,6 +194,7 @@ export function TestDetailModal({test, isOpen, onClose}: TestDetailModalProps) {
                             executions={executions}
                             currentExecutionId={currentExecution?.id || test.id}
                             onSelectExecution={handleSelectExecution}
+                            onDeleteExecution={handleDeleteExecutionClick}
                             testId={currentExecution?.id || test.id}
                             onRerun={handleRerun}
                             loading={historyLoading}
@@ -158,7 +203,7 @@ export function TestDetailModal({test, isOpen, onClose}: TestDetailModalProps) {
                     </div>
                 </div>
 
-                {/* Delete Confirmation Dialog */}
+                {/* Delete Test Confirmation Dialog */}
                 <ConfirmationDialog
                     isOpen={showDeleteConfirmation}
                     title="Delete Test"
@@ -169,6 +214,19 @@ export function TestDetailModal({test, isOpen, onClose}: TestDetailModalProps) {
                     isLoading={isDeleting}
                     onConfirm={handleDeleteConfirm}
                     onCancel={handleDeleteCancel}
+                />
+
+                {/* Delete Execution Confirmation Dialog */}
+                <ConfirmationDialog
+                    isOpen={showDeleteExecutionConfirmation}
+                    title="Delete Execution"
+                    description={`Are you sure you want to delete this test execution? This will permanently delete this execution record and all its attachments (screenshots, videos, traces). This action cannot be undone.`}
+                    confirmText="Delete"
+                    cancelText="Cancel"
+                    variant="danger"
+                    isLoading={isDeletingExecution}
+                    onConfirm={handleDeleteExecutionConfirm}
+                    onCancel={handleDeleteExecutionCancel}
                 />
             </div>
         </div>

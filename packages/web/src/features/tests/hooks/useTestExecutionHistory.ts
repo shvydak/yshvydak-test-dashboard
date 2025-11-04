@@ -31,7 +31,7 @@ export function useTestExecutionHistory(testId: string): UseTestExecutionHistory
             setError(null)
             try {
                 const response = await authGet(
-                    `${config.api.serverUrl}/api/tests/${testId}/history?limit=50`
+                    `${config.api.serverUrl}/api/tests/${testId}/history?limit=200`
                 )
 
                 if (response.ok) {

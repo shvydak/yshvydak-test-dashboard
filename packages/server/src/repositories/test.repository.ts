@@ -39,11 +39,14 @@ export class TestRepository extends BaseRepository implements ITestRepository {
         const rows = await this.queryAll<TestResultRow>(
             `SELECT tr.*,
                 a.id as attachment_id, a.type as attachment_type, a.url as attachment_url
-             FROM test_results tr
+             FROM (
+                SELECT * FROM test_results
+                WHERE test_id = ? AND status NOT IN ('pending', 'skipped')
+                ORDER BY created_at DESC
+                LIMIT ?
+             ) tr
              LEFT JOIN attachments a ON tr.id = a.test_result_id
-             WHERE tr.test_id = ? AND tr.status NOT IN ('pending', 'skipped')
-             ORDER BY tr.created_at DESC
-             LIMIT ?`,
+             ORDER BY tr.created_at DESC`,
             [testId, limit]
         )
 

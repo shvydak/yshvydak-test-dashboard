@@ -442,11 +442,11 @@ describe('TestRepository - Core Functionality', () => {
             const limited = await repository.getTestResultsByTestId(testId, 5)
             expect(limited).toHaveLength(5)
 
-            // Default limit (DEFAULT_LIMITS.TEST_HISTORY = 10)
+            // Default limit (DEFAULT_LIMITS.TEST_HISTORY = 200)
             const defaultLimit = await repository.getTestResultsByTestId(testId)
-            expect(defaultLimit).toHaveLength(10) // Limited to default (10)
+            expect(defaultLimit).toHaveLength(15) // All 15 results (under default limit of 200)
 
-            // With higher limit
+            // With higher limit than we have data
             const customLimit = await repository.getTestResultsByTestId(testId, 20)
             expect(customLimit).toHaveLength(15) // All 15 results
         })
@@ -720,6 +720,51 @@ describe('TestRepository - Core Functionality', () => {
             expect(results).toHaveLength(1)
             // But with 5 attachments
             expect(results[0].attachments).toHaveLength(5)
+        })
+
+        it('should apply LIMIT to executions, not to JOIN rows (regression test)', async () => {
+            const testId = 'test-limit-regression'
+
+            // Create 10 executions with small delays to ensure different timestamps
+            const executionIds: string[] = []
+            for (let i = 0; i < 10; i++) {
+                const id = await repository.saveTestResult(createTestResult(testId, 'passed'))
+                executionIds.push(id)
+                // Small delay to ensure different created_at timestamps
+                await new Promise((resolve) => setTimeout(resolve, 10))
+            }
+
+            // Add 3 attachments to EACH execution (30 attachments total)
+            // This creates 10 executions × 3 attachments = 30 JOIN rows
+            for (const executionId of executionIds) {
+                for (let j = 0; j < 3; j++) {
+                    await attachmentRepository.saveAttachment({
+                        id: `att-${executionId}-${j}`,
+                        testResultId: executionId,
+                        type: j === 0 ? 'screenshot' : j === 1 ? 'video' : 'trace',
+                        fileName: `file-${j}.png`,
+                        filePath: `/path/to/file-${j}.png`,
+                        fileSize: 1024,
+                        url: `/attachments/file-${j}.png`,
+                    })
+                }
+            }
+
+            // Request with LIMIT 5
+            const limited = await repository.getTestResultsByTestId(testId, 5)
+
+            // Should return exactly 5 EXECUTIONS, not 5 JOIN rows
+            expect(limited).toHaveLength(5)
+
+            // Each execution should have 3 attachments
+            limited.forEach((execution) => {
+                expect(execution.attachments).toHaveLength(3)
+            })
+
+            // Verify we got the 5 most recent executions (in DESC order)
+            const returnedIds = limited.map((e) => e.id)
+            const expectedIds = executionIds.slice(-5).reverse() // Last 5, newest first
+            expect(returnedIds).toEqual(expectedIds)
         })
     })
 

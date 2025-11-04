@@ -93,6 +93,8 @@ export interface ITestRepository {
     getTestResultsByRun(runId: string): Promise<TestResult[]>
     getTestResultsByTestId(testId: string, limit?: number): Promise<TestResult[]>
     getAllTests(filters: TestFilters): Promise<TestResult[]>
+    deleteByTestId(testId: string): Promise<number>
+    deleteByExecutionId(executionId: string): Promise<number>
     clearAllTests(): Promise<void>
     getTestStats(): Promise<DatabaseStats>
 }

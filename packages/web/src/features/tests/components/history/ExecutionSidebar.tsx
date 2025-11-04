@@ -1,12 +1,13 @@
 import {TestResult} from '@yshvydak/core'
-import {StatusBadge, ActionButton} from '@shared/components'
-import {formatLastRun, formatDuration} from '../../utils/formatters'
+import {ActionButton} from '@shared/components'
 import {useTestsStore} from '../../store/testsStore'
+import {ExecutionItem} from './ExecutionItem'
 
 export interface ExecutionSidebarProps {
     executions: TestResult[]
     currentExecutionId: string
     onSelectExecution: (executionId: string) => void
+    onDeleteExecution: (executionId: string) => void
     testId: string
     onRerun: (testId: string) => void
     loading?: boolean
@@ -17,6 +18,7 @@ export function ExecutionSidebar({
     executions,
     currentExecutionId,
     onSelectExecution,
+    onDeleteExecution,
     testId,
     onRerun,
     loading,
@@ -86,64 +88,16 @@ export function ExecutionSidebar({
 
                 {!loading && !error && executions.length > 0 && (
                     <div className="space-y-2">
-                        {executions.map((execution, index) => {
-                            const isCurrent = execution.id === currentExecutionId
-                            const isLatest = index === 0
-                            const attachmentCount = execution.attachments?.length || 0
-
-                            return (
-                                <button
-                                    key={execution.id}
-                                    onClick={() => onSelectExecution(execution.id)}
-                                    disabled={isCurrent}
-                                    className={`group w-full text-left rounded-lg p-3 transition-all ${
-                                        isCurrent
-                                            ? 'bg-primary-100 dark:bg-primary-900/30 border-2 border-primary-500 shadow-sm cursor-default'
-                                            : 'bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:border-primary-300 dark:hover:border-primary-600 hover:shadow-md cursor-pointer'
-                                    }`}>
-                                    {/* Header with Badge and Date */}
-                                    <div className="flex items-start justify-between gap-2 mb-2">
-                                        <StatusBadge status={execution.status as any} />
-                                        {isLatest && (
-                                            <span className="px-1.5 py-0.5 text-[10px] font-bold rounded bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300 uppercase tracking-wider">
-                                                Latest
-                                            </span>
-                                        )}
-                                    </div>
-
-                                    {/* Date */}
-                                    <div className="text-xs font-medium text-gray-900 dark:text-white mb-1.5">
-                                        {formatLastRun(execution)}
-                                    </div>
-
-                                    {/* Metadata */}
-                                    <div className="flex items-center gap-2 text-[11px] text-gray-600 dark:text-gray-400 mb-2">
-                                        <span>⏱ {formatDuration(execution.duration)}</span>
-                                        {attachmentCount > 0 && (
-                                            <>
-                                                <span>•</span>
-                                                <span>📎 {attachmentCount}</span>
-                                            </>
-                                        )}
-                                    </div>
-
-                                    {/* Current Indicator */}
-                                    {isCurrent && (
-                                        <div className="flex items-center gap-1 text-primary-700 dark:text-primary-300 font-semibold text-[11px] mt-1">
-                                            <span>✓</span>
-                                            <span>Currently viewing</span>
-                                        </div>
-                                    )}
-
-                                    {/* Hover Action Hint */}
-                                    {!isCurrent && (
-                                        <div className="text-primary-600 dark:text-primary-400 text-[11px] font-medium mt-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                            Click to view →
-                                        </div>
-                                    )}
-                                </button>
-                            )
-                        })}
+                        {executions.map((execution, index) => (
+                            <ExecutionItem
+                                key={execution.id}
+                                execution={execution}
+                                isCurrent={execution.id === currentExecutionId}
+                                isLatest={index === 0}
+                                onSelect={onSelectExecution}
+                                onDelete={onDeleteExecution}
+                            />
+                        ))}
                     </div>
                 )}
             </div>

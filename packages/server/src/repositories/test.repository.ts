@@ -98,6 +98,13 @@ export class TestRepository extends BaseRepository implements ITestRepository {
         return result.changes || 0
     }
 
+    async deleteByExecutionId(executionId: string): Promise<number> {
+        const result = await this.dbManager.execute(`DELETE FROM test_results WHERE id = ?`, [
+            executionId,
+        ])
+        return result.changes || 0
+    }
+
     async clearAllTests(): Promise<void> {
         return this.dbManager.clearAllData()
     }

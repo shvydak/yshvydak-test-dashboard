@@ -341,9 +341,9 @@ case 'test:progress':
 
   <CurrentlyRunning>
     🔄 API - Link Budget Item
-       e2e/tests/api/api.test.ts
+       api/api.test.ts
     🔄 API - Create Contract
-       e2e/tests/api/api.test.ts
+       api/api.test.ts
   </CurrentlyRunning>
 
   <TimeEstimates>
@@ -442,9 +442,9 @@ export interface TestProgressUpdate extends WebSocketMessage {
 │ Currently Running:                  │
 │ ┌─────────────────────────────────┐ │
 │ │🔄 API - Link Budget Item        │ │
-│ │  e2e/tests/api/api.test.ts      │ │
+│ │  api/api.test.ts                │ │
 │ │🔄 API - Create Contract         │ │
-│ │  e2e/tests/api/api.test.ts      │ │
+│ │  api/api.test.ts                │ │
 │ └─────────────────────────────────┘ │
 │                                     │
 │ ⏱️ Elapsed: 3s   Est. remaining: ~4s│

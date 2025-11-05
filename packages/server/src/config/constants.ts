@@ -41,7 +41,6 @@ export const DEFAULT_LIMITS = {
 export const PLAYWRIGHT_CONSTANTS = {
     LIST_REPORTER: 'json',
     STABLE_TEST_ID_PREFIX: 'test-',
-    E2E_TESTS_PATH: 'e2e/tests/',
     CONFIG_FILES: ['playwright.config.ts', 'playwright.config.js'],
     PACKAGE_NAME: '@playwright/test',
     REPORTER_PACKAGE_NAME: 'playwright-dashboard-reporter',

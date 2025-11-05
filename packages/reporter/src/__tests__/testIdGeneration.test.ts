@@ -11,13 +11,16 @@
  */
 
 import {describe, it, expect} from 'vitest'
+import {normalizeTestPath} from '@yshvydak/core'
 
 /**
  * Extracted generateStableTestId function for testing
- * This is the EXACT same algorithm used in the Reporter (lines 191-205)
+ * This is the EXACT same algorithm used in the Reporter and Server
  */
 function generateStableTestId(filePath: string, title: string): string {
-    const content = `${filePath}:${title}`
+    // Normalize path before generating ID
+    const normalizedPath = normalizeTestPath(filePath)
+    const content = `${normalizedPath}:${title}`
 
     // Simple hash function for stable IDs (identical to Reporter implementation)
     let hash = 0
@@ -244,6 +247,79 @@ describe('Test ID Generation Algorithm', () => {
 
             // Should complete 1000 generations in less than 100ms
             expect(duration).toBeLessThan(100)
+        })
+    })
+
+    describe('Path Normalization (Critical for Multi-Project Support)', () => {
+        it('should generate same testId regardless of test directory prefix', () => {
+            const title = 'should test something'
+
+            // All these paths should produce the SAME testId after normalization
+            const id1 = generateStableTestId('e2e/tests/actions/actionPopUp.test.ts', title)
+            const id2 = generateStableTestId('tests/actions/actionPopUp.test.ts', title)
+            const id3 = generateStableTestId('e2e/actions/actionPopUp.test.ts', title)
+            const id4 = generateStableTestId('actions/actionPopUp.test.ts', title)
+
+            // They should all be equal
+            expect(id1).toBe(id2)
+            expect(id2).toBe(id3)
+            expect(id3).toBe(id4)
+        })
+
+        it('should handle Windows-style paths', () => {
+            const title = 'test'
+
+            const id1 = generateStableTestId('e2e\\tests\\auth.spec.ts', title)
+            const id2 = generateStableTestId('tests\\auth.spec.ts', title)
+            const id3 = generateStableTestId('auth.spec.ts', title)
+
+            expect(id1).toBe(id2)
+            expect(id2).toBe(id3)
+        })
+
+        it('should not remove prefixes from middle of path', () => {
+            // "tests" in the middle should NOT be removed
+            const id1 = generateStableTestId('src/tests/auth.spec.ts', 'test')
+            const id2 = generateStableTestId('src/auth.spec.ts', 'test')
+
+            // These should be DIFFERENT (prefix only removed from start)
+            expect(id1).not.toBe(id2)
+        })
+
+        it('should preserve nested structure after prefix removal', () => {
+            const title = 'test'
+
+            // After normalization, both should be "auth/login.spec.ts"
+            const id1 = generateStableTestId('e2e/tests/auth/login.spec.ts', title)
+            const id2 = generateStableTestId('tests/auth/login.spec.ts', title)
+            const id3 = generateStableTestId('auth/login.spec.ts', title)
+
+            expect(id1).toBe(id2)
+            expect(id2).toBe(id3)
+        })
+
+        it('should handle paths with no prefix to remove', () => {
+            const id1 = generateStableTestId('simple.test.ts', 'test')
+            const id2 = generateStableTestId('simple.test.ts', 'test')
+
+            expect(id1).toBe(id2)
+            expect(id1).toMatch(/^test-[a-z0-9]+$/)
+        })
+
+        it('should handle real-world scenario: probuild-qa vs funzy-qa', () => {
+            const testTitle = 'Change Action status'
+
+            // probuild-qa structure: e2e/tests/actions/actionPopUp.test.ts
+            const probuildId = generateStableTestId(
+                'e2e/tests/actions/actionPopUp.test.ts',
+                testTitle
+            )
+
+            // funzy-qa structure: tests/actions/actionPopUp.test.ts
+            const funzyId = generateStableTestId('tests/actions/actionPopUp.test.ts', testTitle)
+
+            // After normalization, both should produce same testId
+            expect(probuildId).toBe(funzyId)
         })
     })
 })

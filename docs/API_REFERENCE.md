@@ -379,7 +379,7 @@ Execute a group of tests by file path, with optional filtering by test names.
 
 **Parameters:**
 
-- `filePath` (required) - Path to the test file (e.g., `"tests/api/actions.spec.ts"` or `"e2e/tests/auth.spec.ts"`)
+- `filePath` (required) - Path to the test file relative to Playwright's testDir (e.g., `"api/actions.spec.ts"` or `"auth.spec.ts"`). Paths are determined by your Playwright project structure.
 - `maxWorkers` (optional) - Maximum number of parallel workers (default: Playwright config)
 - `testNames` (optional) - Array of test names to run. When provided, only specified tests are executed using Playwright's `--grep` flag
 
@@ -1103,13 +1103,13 @@ See [Progress Tracking](features/PROGRESS_TRACKING.md) for implementation detail
             {
                 "testId": "test-hash-1",
                 "name": "API - Link Budget Item",
-                "filePath": "e2e/tests/api/api.test.ts",
+                "filePath": "api/api.test.ts",
                 "startedAt": "2025-10-28T09:30:00Z"
             },
             {
                 "testId": "test-hash-2",
                 "name": "API - Create Contract",
-                "filePath": "e2e/tests/api/api.test.ts",
+                "filePath": "api/api.test.ts",
                 "startedAt": "2025-10-28T09:30:01Z"
             }
         ],

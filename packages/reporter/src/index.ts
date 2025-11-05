@@ -11,6 +11,7 @@ import * as path from 'path'
 import * as fs from 'fs'
 import {v4 as uuidv4} from 'uuid'
 import * as dotenv from 'dotenv'
+import {normalizeTestPath} from '@yshvydak/core'
 dotenv.config()
 
 interface TestStep {
@@ -122,7 +123,8 @@ class YShvydakReporter implements Reporter {
 
     onTestBegin(test: TestCase) {
         const testId = this.generateStableTestId(test)
-        const filePath = path.relative(process.cwd(), test.location.file)
+        // Normalize path for consistent file path display
+        const filePath = normalizeTestPath(path.relative(process.cwd(), test.location.file))
 
         // Notify dashboard that test is starting
         this.notifyTestStart({
@@ -136,7 +138,8 @@ class YShvydakReporter implements Reporter {
 
     onTestEnd(test: TestCase, result: TestResult) {
         const testId = this.generateStableTestId(test)
-        const filePath = path.relative(process.cwd(), test.location.file)
+        // Normalize path for consistent file path display
+        const filePath = normalizeTestPath(path.relative(process.cwd(), test.location.file))
 
         // Create enhanced error message with code context like in original Playwright report
         let enhancedErrorMessage = result.error?.stack || result.error?.message
@@ -229,7 +232,12 @@ class YShvydakReporter implements Reporter {
 
     private generateStableTestId(test: TestCase): string {
         // Generate stable ID based on file path and test title
-        const filePath = path.relative(process.cwd(), test.location.file)
+        const originalPath = path.relative(process.cwd(), test.location.file)
+
+        // Normalize path by removing common test directory prefixes
+        // This ensures consistent testId generation across different project structures
+        const filePath = normalizeTestPath(originalPath)
+
         const content = `${filePath}:${test.title}`
 
         // Simple hash function for stable IDs

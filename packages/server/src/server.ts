@@ -77,7 +77,10 @@ async function startServer() {
 
 // Start the server if this file is run directly
 if (require.main === module) {
-    startServer()
+    startServer().catch((error) => {
+        Logger.error('❌ Unhandled error during server startup:', error)
+        process.exit(1)
+    })
 }
 
 export {startServer, createApp}

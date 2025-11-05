@@ -105,7 +105,7 @@ describe('PlaywrightService', () => {
             expect(tests).toHaveLength(2)
             expect(tests[0]).toMatchObject({
                 name: 'should login successfully',
-                filePath: 'e2e/tests/auth.spec.ts',
+                filePath: 'auth.spec.ts',
                 status: 'pending',
             })
             expect(tests[0].testId).toMatch(/^test-/)
@@ -153,7 +153,7 @@ describe('PlaywrightService', () => {
             // Assert
             expect(tests).toHaveLength(2)
             expect(tests[0].name).toBe('nested test 1')
-            expect(tests[0].filePath).toBe('e2e/tests/nested/test.spec.ts')
+            expect(tests[0].filePath).toBe('nested/test.spec.ts')
         })
 
         it('should discover tests from both top-level and nested suites', async () => {
@@ -391,17 +391,12 @@ describe('PlaywrightService', () => {
             // Assert
             expect(mockSpawn).toHaveBeenCalledWith(
                 'npx',
-                [
-                    'playwright',
-                    'test',
-                    'e2e/tests/auth.spec.ts',
-                    '--reporter=playwright-dashboard-reporter',
-                ],
+                ['playwright', 'test', 'auth.spec.ts', '--reporter=playwright-dashboard-reporter'],
                 expect.anything()
             )
         })
 
-        it('should normalize file path to include e2e/tests/ prefix', async () => {
+        it('should pass file path unchanged to Playwright', async () => {
             // Arrange
             const mockProcess = createMockProcess('')
             mockSpawn.mockReturnValue(mockProcess)
@@ -409,12 +404,12 @@ describe('PlaywrightService', () => {
             // Act
             await service.runTestGroup('auth.spec.ts')
 
-            // Assert
+            // Assert - path is passed as-is, Playwright handles resolution
             const args = mockSpawn.mock.calls[0][1]
-            expect(args[2]).toBe('e2e/tests/auth.spec.ts')
+            expect(args[2]).toBe('auth.spec.ts')
         })
 
-        it('should not duplicate e2e/tests/ prefix if already present', async () => {
+        it('should pass full paths unchanged to Playwright', async () => {
             // Arrange
             const mockProcess = createMockProcess('')
             mockSpawn.mockReturnValue(mockProcess)
@@ -422,10 +417,9 @@ describe('PlaywrightService', () => {
             // Act
             await service.runTestGroup('e2e/tests/auth.spec.ts')
 
-            // Assert
+            // Assert - full paths are also passed unchanged
             const args = mockSpawn.mock.calls[0][1]
             expect(args[2]).toBe('e2e/tests/auth.spec.ts')
-            expect(args[2]).not.toContain('e2e/tests/e2e/tests/')
         })
 
         it('should include maxWorkers when provided', async () => {

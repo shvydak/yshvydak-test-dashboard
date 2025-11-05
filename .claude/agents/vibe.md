@@ -176,9 +176,9 @@ packages/web/src/features/{feature-name}/
 
 ```bash
 npm run format        # ✨ Prettier formatting
+npm test              # ✅ Run all tests
 npm run type-check    # 🔍 TypeScript validation
 npm run lint:fix      # 🎨 ESLint auto-fix
-npm test              # ✅ Run all tests
 npm run build         # 📦 Build verification
 ```
 
@@ -195,9 +195,9 @@ If ANY command fails:
 🧪 Running validation checklist...
 
 ✅ npm run format - Passed
+✅ npm run test - Passed
 ✅ npm run type-check - Passed
 ✅ npm run lint:fix - Passed
-✅ npm run test - Passed
 ✅ npm run build - Passed
 
 All validation checks passed!

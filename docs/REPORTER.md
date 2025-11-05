@@ -44,6 +44,8 @@ The Dashboard handles everything automatically:
 2. **Test Execution**: Dashboard runs tests with `npx playwright test --reporter=playwright-dashboard-reporter`
 3. **Results**: Appear in Dashboard automatically via WebSocket
 
+**Note:** The dashboard works with any Playwright project structure. File paths are handled by Playwright based on your `testDir` configuration - whether you use `tests/`, `e2e/tests/`, or any custom directory structure.
+
 **From command line (manual runs):**
 
 ```bash

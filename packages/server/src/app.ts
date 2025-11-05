@@ -7,11 +7,11 @@ import {createServiceContainer, injectServices} from './middleware/service-injec
 import {createAuthMiddleware} from './middleware/auth.middleware'
 import {createApiRoutes} from './routes/index.routes'
 
-export function createApp() {
+export async function createApp() {
     const app = express()
 
-    // Create service container
-    const serviceContainer = createServiceContainer()
+    // Create service container (wait for database initialization)
+    const serviceContainer = await createServiceContainer()
 
     // Basic middleware
     app.use(corsMiddleware)

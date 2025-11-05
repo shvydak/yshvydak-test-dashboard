@@ -42,7 +42,7 @@ export async function setupTestServer(): Promise<TestServerInstance> {
     process.env.PLAYWRIGHT_PROJECT_DIR = testDbDir
 
     // Use the existing createApp function (it will create DB in testDbDir)
-    const {app, serviceContainer} = createApp()
+    const {app, serviceContainer} = await createApp()
 
     // Store for cleanup
     const dbPath = testDbDir

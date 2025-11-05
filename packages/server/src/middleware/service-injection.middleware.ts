@@ -29,10 +29,13 @@ export interface ServiceContainer {
 }
 
 // Create service container
-export function createServiceContainer(): ServiceContainer {
+export async function createServiceContainer(): Promise<ServiceContainer> {
     // Initialize core services
     const dbManager = new DatabaseManager(config.storage.outputDir)
     const attachmentManager = new AttachmentManager(config.storage.outputDir)
+
+    // Wait for database initialization to complete
+    await dbManager.initialize()
 
     // Initialize repositories
     const testRepository = new TestRepository(dbManager)

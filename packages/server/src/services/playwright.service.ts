@@ -1,6 +1,7 @@
 import {spawn, ChildProcess} from 'child_process'
 import path from 'path'
 import {v4 as uuidv4} from 'uuid'
+import {normalizeTestPath} from '@yshvydak/core'
 import {IPlaywrightService, TestRunProcess, DiscoveredTest} from '../types/service.types'
 import {
     PlaywrightListOutput,
@@ -85,9 +86,8 @@ export class PlaywrightService implements IPlaywrightService {
         const runId = uuidv4()
         Logger.testRun('run-group', runId)
 
-        const normalizedPath = this.normalizeFilePath(filePath)
-
-        const args = ['playwright', 'test', normalizedPath]
+        // Use file path directly - Playwright handles path resolution
+        const args = ['playwright', 'test', filePath]
 
         // Add grep pattern if specific test names are provided
         if (testNames && testNames.length > 0) {
@@ -287,15 +287,16 @@ export class PlaywrightService implements IPlaywrightService {
      * Creates a DiscoveredTest object from a Playwright spec
      */
     private createDiscoveredTest(spec: PlaywrightSpec): DiscoveredTest {
-        const fullFilePath = `${PLAYWRIGHT_CONSTANTS.E2E_TESTS_PATH}${spec.file}`
-        const stableTestId = this.generateStableTestId(fullFilePath, spec.title)
+        // Use file path directly from Playwright - it handles path resolution based on testDir
+        const filePath = spec.file
+        const stableTestId = this.generateStableTestId(filePath, spec.title)
 
         return {
             id: uuidv4(),
             testId: stableTestId,
             runId: null,
             name: spec.title,
-            filePath: fullFilePath,
+            filePath: filePath,
             status: 'pending',
             duration: 0,
             metadata: JSON.stringify({
@@ -305,16 +306,6 @@ export class PlaywrightService implements IPlaywrightService {
             }),
             timestamp: new Date().toISOString(),
         }
-    }
-
-    /**
-     * Normalizes file path by ensuring it has the correct e2e/tests/ prefix
-     */
-    private normalizeFilePath(filePath: string): string {
-        if (!filePath.startsWith(PLAYWRIGHT_CONSTANTS.E2E_TESTS_PATH)) {
-            return path.join(PLAYWRIGHT_CONSTANTS.E2E_TESTS_PATH, filePath)
-        }
-        return filePath
     }
 
     /**
@@ -396,7 +387,9 @@ export class PlaywrightService implements IPlaywrightService {
      * This ensures the same test always gets the same ID across discovery and execution
      */
     private generateStableTestId(filePath: string, title: string): string {
-        const content = `${filePath}:${title}`
+        // Normalize path to ensure consistent testId generation
+        const normalizedPath = normalizeTestPath(filePath)
+        const content = `${normalizedPath}:${title}`
         let hash = 0
         for (let i = 0; i < content.length; i++) {
             const char = content.charCodeAt(i)

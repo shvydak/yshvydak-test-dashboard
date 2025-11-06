@@ -4,8 +4,8 @@
 
 ### Active Issues
 
-- `[ ]` Link to github repo now
 - `[ ]` Notes for test run
+- `[ ]` Link to github repo now
 - `[ ]` Show annotation/descriptions in a test
 - `[ ]` Clearn package.json scripts
 - `[ ]` Implement multiprojects supporting

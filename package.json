@@ -51,7 +51,7 @@
     "changeset:status": "npx @changesets/cli@latest status --verbose",
     "version": "npx @changesets/cli@latest version",
     "release:reporter": "cd packages/reporter && npm publish",
-    "prepare": "husky"
+    "prepare": "husky || true"
   },
   "keywords": [
     "playwright",
@@ -92,6 +92,7 @@
     "prettier": "^3.6.2",
     "turbo": "^2.5.8",
     "typescript": "^5.9.3",
+    "vite": "^6.4.1",
     "vitest": "^3.2.4"
   },
   "workspaces": [

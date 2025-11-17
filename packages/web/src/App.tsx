@@ -242,7 +242,25 @@ function App() {
                 <div className="container mx-auto px-4 py-6">
                     <div className="flex items-center justify-between">
                         <p className="text-sm text-gray-600 dark:text-gray-400">
-                            © 2025 YShvydak Test Dashboard. Created by Yurii Shvydak.
+                            © 2025{' '}
+                            <a
+                                href="https://github.com/shvydak/yshvydak-test-dashboard"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="hover:text-primary-600 dark:hover:text-primary-400 transition-colors"
+                                title="View project on GitHub">
+                                YShvydak Test Dashboard
+                            </a>
+                            . Created by{' '}
+                            <a
+                                href="https://github.com/shvydak/yshvydak-test-dashboard"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="hover:text-primary-600 dark:hover:text-primary-400 transition-colors"
+                                title="View project on GitHub">
+                                Yurii Shvydak
+                            </a>
+                            .
                         </p>
                         <div className="flex items-center space-x-4">
                             <span className="text-xs text-gray-500 dark:text-gray-500">

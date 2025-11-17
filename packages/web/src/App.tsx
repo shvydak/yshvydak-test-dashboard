@@ -8,6 +8,7 @@ import {TestsList} from '@features/tests'
 import {FloatingProgressPanel} from '@features/tests/components/progress/FloatingProgressPanel'
 import {LoginPage, setGlobalLogout} from '@features/authentication'
 import {useTestsStore} from '@features/tests/store/testsStore'
+import {VERSION} from '@/config/version'
 import {useWebSocket} from './hooks/useWebSocket'
 import {config} from '@config/environment.config'
 import {verifyToken} from '@features/authentication/utils/tokenValidator'
@@ -277,7 +278,14 @@ function App() {
                                     return 'User'
                                 })()}
                             </span>
-                            <span className="text-xs text-gray-500 dark:text-gray-500">v1.0.0</span>
+                            <a
+                                href={VERSION.releaseUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-xs text-gray-500 dark:text-gray-500 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+                                title="View release notes on GitHub">
+                                v{VERSION.web}
+                            </a>
                         </div>
                     </div>
                 </div>

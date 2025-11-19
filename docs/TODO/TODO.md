@@ -5,14 +5,13 @@
 ### Active Issues
 
 - `[ ]` Notes for test run
-- `[ ]` Notes for test run
-- `[ ]` Link to github repo now
 - `[ ]` Show annotation/descriptions in a test
 - `[ ]` Clearn package.json scripts
 - `[ ]` Implement multiprojects supporting
 
 ### Completed Issues ✅
 
+- `[X]` Link to github repo
 - `[X]` Open test modal window when clicking on the progress bar test
 - `[X]` Status column - when test is running => status should display 'Running...' loader
 - `[X]` If filter "fails" and I close the test modal window - the filter resets to "all"
@@ -35,3 +34,5 @@
 - `[X]` When JWT expired - the user is not logged out - **FIXED**: Automatic logout on token expiry with periodic validation (see [@docs/features/AUTHENTICATION_IMPLEMENTATION.md](../features/AUTHENTICATION_IMPLEMENTATION.md))
 
 # Task:
+
+Проведи исследование, как мне лучше всего ввести в это проэкт версионность, на данном этапе у меня есть только одна ветка и я пушу в неё. у меня нет в этом опыта, но я видел как в других продуктах есть версии и описания что в этой версии нового и это все очень хорошо и грамотно структурировано. Также помимо основного проекта с Dashboard у меня также есть NPM Package и у него тоже есть версии, и также на данный момент у меня уже есть несколько версий но нигде нельзя посмотреть в чем между ними разница. Предложи мне самый лучший подход согласно современных лучших практик и чтобы это вписывалось в архитектуру моего проекта.

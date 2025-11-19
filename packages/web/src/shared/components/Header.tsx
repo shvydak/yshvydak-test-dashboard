@@ -69,15 +69,35 @@ export default function Header({
                     {/* Logo and title */}
                     <div className="flex items-center space-x-4">
                         <div className="flex items-center space-x-2">
-                            <div className="w-8 h-8 bg-gradient-to-br from-primary-500 to-primary-600 rounded-lg flex items-center justify-center">
+                            <a
+                                href="https://github.com/shvydak/yshvydak-test-dashboard"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="w-8 h-8 bg-gradient-to-br from-primary-500 to-primary-600 rounded-lg flex items-center justify-center hover:from-primary-600 hover:to-primary-700 transition-all"
+                                title="View project on GitHub">
                                 <span className="text-white font-bold text-sm">YS</span>
-                            </div>
+                            </a>
                             <div>
                                 <h1 className="text-xl font-bold text-gray-900 dark:text-white">
-                                    Test Dashboard
+                                    <a
+                                        href="https://github.com/shvydak/yshvydak-test-dashboard"
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="hover:text-primary-600 dark:hover:text-primary-400 transition-colors"
+                                        title="View project on GitHub">
+                                        Test Dashboard
+                                    </a>
                                 </h1>
                                 <p className="text-xs text-gray-500 dark:text-gray-400">
-                                    by Yurii Shvydak
+                                    by{' '}
+                                    <a
+                                        href="https://github.com/shvydak/yshvydak-test-dashboard"
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="hover:text-primary-600 dark:hover:text-primary-400 transition-colors"
+                                        title="View project on GitHub">
+                                        Yurii Shvydak
+                                    </a>
                                 </p>
                             </div>
                         </div>

@@ -1,12 +1,9 @@
 import {TestResult} from '@yshvydak/core'
-import {ViewMode} from '@shared/components'
 import {TestsGroupedView} from './TestsGroupedView'
-import {TestsTableView} from './TestsTableView'
 import {FilterKey} from '../constants'
 
 export interface TestsContentProps {
     tests: TestResult[]
-    viewMode: ViewMode
     selectedTest: TestResult | null
     onTestSelect: (test: TestResult) => void
     onTestRerun: (testId: string) => void
@@ -16,7 +13,6 @@ export interface TestsContentProps {
 
 export function TestsContent({
     tests,
-    viewMode,
     selectedTest,
     onTestSelect,
     onTestRerun,
@@ -39,20 +35,13 @@ export function TestsContent({
         )
     }
 
-    return viewMode === 'grouped' ? (
+    return (
         <TestsGroupedView
             tests={tests}
             selectedTest={selectedTest}
             onTestSelect={onTestSelect}
             onTestRerun={onTestRerun}
             filter={filter}
-        />
-    ) : (
-        <TestsTableView
-            tests={tests}
-            selectedTest={selectedTest}
-            onTestSelect={onTestSelect}
-            onTestRerun={onTestRerun}
         />
     )
 }

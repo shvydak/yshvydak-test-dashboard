@@ -298,7 +298,7 @@ packages/web/src/
 │       │   ├── history/            # ExecutionSidebar (always-visible history panel)
 │       │   ├── TestsList.tsx       # Main tests list
 │       │   ├── TestsListFilters.tsx # Filters with "Run All Tests" button
-│       │   ├── TestsTableView.tsx
+│       │   ├── TestsGroupedView.tsx # Grouped view by file path
 │       │   └── ...
 │       ├── hooks/                  # useTestAttachments, useTestFilters, useTestGroups, useTestExecutionHistory
 │       ├── store/                  # testsStore.ts (Zustand)
@@ -360,7 +360,7 @@ import {config} from '@config/environment.config'
 
 #### Tests Feature (Main)
 
-- **Components**: TestsList, TestDetailModal (8 sub-components with rerun functionality), TestsTableView, TestRow, TestGroupHeader, ExecutionSidebar (always-visible history panel with Run button)
+- **Components**: TestsList, TestDetailModal (8 sub-components with rerun functionality), TestsGroupedView (grouped by file path), TestRow, TestGroupHeader, ExecutionSidebar (always-visible history panel with Run button)
 - **Hooks**: useTestAttachments, useTestFilters, useTestGroups, useTestSort, useTestExecutionHistory (with refetch support)
 - **Store**: testsStore.ts (Zustand) - tests state, actions, API calls, selectedExecutionId state, rerunTest method
 - **Types**: attachment.types.ts - Attachment, AttachmentWithBlobURL, TabKey

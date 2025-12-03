@@ -2,6 +2,7 @@ import {TestResult} from '@yshvydak/core'
 import {LoadingSpinner} from '@shared/components'
 import {AttachmentWithBlobURL} from '../../types/attachment.types'
 import {AttachmentItem} from './AttachmentItem'
+import {TestNoteEditor} from './TestNoteEditor'
 import {formatErrorLines} from '../../../../utils/errorFormatter'
 import {formatDuration} from '../../utils/formatters'
 
@@ -11,6 +12,8 @@ export interface TestOverviewTabProps {
     attachmentsLoading: boolean
     attachmentsError: string | null
     onAttachmentsError: (error: string) => void
+    onSaveNote: (note: string) => Promise<void>
+    onDeleteNote: () => Promise<void>
 }
 
 export function TestOverviewTab({
@@ -19,18 +22,32 @@ export function TestOverviewTab({
     attachmentsLoading,
     attachmentsError,
     onAttachmentsError,
+    onSaveNote,
+    onDeleteNote,
 }: TestOverviewTabProps) {
     return (
         <div className="space-y-6">
             {/* Attachments Section */}
             <div>
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
-                    <span>📎</span>
-                    <span>Attachments</span>
-                    <span className="text-sm font-normal text-gray-500 dark:text-gray-400">
-                        ({attachmentsLoading ? '...' : attachments.length})
-                    </span>
-                </h3>
+                <div className="flex items-start justify-between mb-4 gap-4">
+                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+                        <span>📎</span>
+                        <span>Attachments</span>
+                        <span className="text-sm font-normal text-gray-500 dark:text-gray-400">
+                            ({attachmentsLoading ? '...' : attachments.length})
+                        </span>
+                    </h3>
+
+                    {/* Test Notes Section - Next to Attachments heading */}
+                    <div className="flex-1 max-w-2xl">
+                        <TestNoteEditor
+                            testId={test.testId}
+                            initialNote={test.note?.content}
+                            onSave={onSaveNote}
+                            onDelete={onDeleteNote}
+                        />
+                    </div>
+                </div>
 
                 {attachmentsLoading && (
                     <div className="text-center py-8 bg-gray-50 dark:bg-gray-900/50 rounded-lg">

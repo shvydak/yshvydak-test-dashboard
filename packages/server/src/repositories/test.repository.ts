@@ -20,10 +20,12 @@ export class TestRepository extends BaseRepository implements ITestRepository {
 
     async getTestResultsByRun(runId: string): Promise<TestResult[]> {
         const rows = await this.queryAll<TestResultRow>(
-            `SELECT tr.*, 
-                    a.id as attachment_id, a.type as attachment_type, a.url as attachment_url
+            `SELECT tr.*,
+                    a.id as attachment_id, a.type as attachment_type, a.url as attachment_url,
+                    tn.content as note_content, tn.created_at as note_created_at, tn.updated_at as note_updated_at
              FROM test_results tr
              LEFT JOIN attachments a ON tr.id = a.test_result_id
+             LEFT JOIN test_notes tn ON tr.test_id = tn.test_id
              WHERE tr.run_id = ?
              ORDER BY tr.created_at DESC`,
             [runId]
@@ -38,7 +40,8 @@ export class TestRepository extends BaseRepository implements ITestRepository {
     ): Promise<TestResult[]> {
         const rows = await this.queryAll<TestResultRow>(
             `SELECT tr.*,
-                a.id as attachment_id, a.type as attachment_type, a.url as attachment_url
+                a.id as attachment_id, a.type as attachment_type, a.url as attachment_url,
+                tn.content as note_content, tn.created_at as note_created_at, tn.updated_at as note_updated_at
              FROM (
                 SELECT * FROM test_results
                 WHERE test_id = ? AND status NOT IN ('pending', 'skipped')
@@ -46,6 +49,7 @@ export class TestRepository extends BaseRepository implements ITestRepository {
                 LIMIT ?
              ) tr
              LEFT JOIN attachments a ON tr.id = a.test_result_id
+             LEFT JOIN test_notes tn ON tr.test_id = tn.test_id
              ORDER BY tr.created_at DESC`,
             [testId, limit]
         )
@@ -55,10 +59,12 @@ export class TestRepository extends BaseRepository implements ITestRepository {
 
     async getAllTests(filters: TestFilters): Promise<TestResult[]> {
         let sql = `
-            SELECT tr.*, 
-                   a.id as attachment_id, a.type as attachment_type, a.url as attachment_url
+            SELECT tr.*,
+                   a.id as attachment_id, a.type as attachment_type, a.url as attachment_url,
+                   tn.content as note_content, tn.created_at as note_created_at, tn.updated_at as note_updated_at
             FROM test_results tr
             LEFT JOIN attachments a ON tr.id = a.test_result_id
+            LEFT JOIN test_notes tn ON tr.test_id = tn.test_id
         `
         const params: any[] = []
 
@@ -68,14 +74,16 @@ export class TestRepository extends BaseRepository implements ITestRepository {
         } else {
             // Get latest test results grouped by test_id - use updated_at to get most recent execution
             sql = `
-                SELECT DISTINCT tr.*, 
-                       a.id as attachment_id, a.type as attachment_type, a.url as attachment_url
+                SELECT DISTINCT tr.*,
+                       a.id as attachment_id, a.type as attachment_type, a.url as attachment_url,
+                       tn.content as note_content, tn.created_at as note_created_at, tn.updated_at as note_updated_at
                 FROM test_results tr
                 LEFT JOIN attachments a ON tr.id = a.test_result_id
+                LEFT JOIN test_notes tn ON tr.test_id = tn.test_id
                 WHERE tr.id IN (
-                    SELECT id FROM test_results tr2 
-                    WHERE tr2.test_id = tr.test_id 
-                    ORDER BY tr2.updated_at DESC 
+                    SELECT id FROM test_results tr2
+                    WHERE tr2.test_id = tr.test_id
+                    ORDER BY tr2.updated_at DESC
                     LIMIT 1
                 )
             `
@@ -215,6 +223,16 @@ export class TestRepository extends BaseRepository implements ITestRepository {
             if (!testsMap.has(row.id)) {
                 const testResult = this.mapRowToTestResult(row)
                 testsMap.set(row.id, testResult)
+
+                // Add note if present
+                if ((row as any).note_content) {
+                    testResult.note = {
+                        testId: row.test_id,
+                        content: (row as any).note_content,
+                        createdAt: (row as any).note_created_at,
+                        updatedAt: (row as any).note_updated_at,
+                    }
+                }
             }
 
             // Add attachment if present

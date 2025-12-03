@@ -12,6 +12,7 @@ vi.mock('../../repositories/run.repository')
 vi.mock('../playwright.service')
 vi.mock('../websocket.service')
 vi.mock('../attachment.service')
+vi.mock('../note.service')
 vi.mock('../../utils/logger.util', () => ({
     Logger: {
         info: vi.fn(),
@@ -37,6 +38,7 @@ describe('TestService', () => {
     let mockPlaywrightService: any
     let mockWebSocketService: any
     let mockAttachmentService: any
+    let mockNoteService: any
 
     // Helper to create mock child process
     const createMockProcess = (): ChildProcess => {
@@ -101,13 +103,20 @@ describe('TestService', () => {
             deleteAttachmentsForTestResult: vi.fn(),
         }
 
+        mockNoteService = {
+            getNote: vi.fn(),
+            saveNote: vi.fn(),
+            deleteNote: vi.fn(),
+        }
+
         // Create service instance
         testService = new TestService(
             mockTestRepository,
             mockRunRepository,
             mockPlaywrightService,
             mockWebSocketService,
-            mockAttachmentService
+            mockAttachmentService,
+            mockNoteService
         )
     })
 
@@ -1171,7 +1180,7 @@ describe('TestService', () => {
     })
 
     describe('deleteTest', () => {
-        it('should delete test with all executions and attachments', async () => {
+        it('should delete test with all executions, attachments, and note', async () => {
             const testId = 'test-to-delete'
             const executions = [
                 {
@@ -1204,6 +1213,7 @@ describe('TestService', () => {
 
             mockTestRepository.getTestResultsByTestId.mockResolvedValue(executions)
             mockAttachmentService.deleteAttachmentsForTestResult.mockResolvedValue(3)
+            mockNoteService.deleteNote.mockResolvedValue(undefined)
             mockTestRepository.deleteByTestId.mockResolvedValue(2)
 
             const result = await testService.deleteTest(testId)
@@ -1219,6 +1229,9 @@ describe('TestService', () => {
             expect(mockAttachmentService.deleteAttachmentsForTestResult).toHaveBeenCalledWith(
                 'exec-2'
             )
+
+            // Should delete note
+            expect(mockNoteService.deleteNote).toHaveBeenCalledWith(testId)
 
             // Should delete test records
             expect(mockTestRepository.deleteByTestId).toHaveBeenCalledWith(testId)

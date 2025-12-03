@@ -1,86 +1,86 @@
 # Release Process
 
-Этот документ описывает процесс версионирования и релиза для yshvydak-test-dashboard.
+This document describes the versioning and release process for `yshvydak-test-dashboard`.
 
 ## 🚀 Quick Start (TL;DR)
 
-**Для быстрого релиза (рекомендуется):**
+**For a quick release (recommended):**
 
 ```bash
-# 1. В develop - применяем changesets
+# 1. In develop - apply changesets
 git checkout develop && npm run version
 
-# 2. Коммитим + теги
+# 2. Commit + tag
 git add . && git commit -m "chore: release v1.1.0"
 git tag dashboard-v1.1.0
 
-# 3. Push в develop
+# 3. Push to develop
 git push origin develop --follow-tags
 
-# 4. Создаём PR: develop → main через GitHub UI
+# 4. Create PR: develop → main via GitHub UI
 
-# 5. Мёрджим PR → автоматический деплой через n8n
+# 5. Merge PR → automatic deployment via n8n
 ```
 
-**Детали ниже** ⬇️
+**Details below** ⬇️
 
 ---
 
-## 📚 Оглавление
+## 📚 Table of Contents
 
-- [Ежедневная Разработка](#ежедневная-разработка)
-- [Создание Changeset](#создание-changeset)
-- [Процесс Релиза](#процесс-релиза)
-    - [⭐ Рекомендуемый: Версионирование в Develop](#-рекомендуемый-подход-версионирование-в-develop)
-    - [🔄 Альтернативный: Версионирование в Main](#-альтернативный-подход-версионирование-в-main-solo-dev)
-- [Примеры Сценариев](#примеры-сценариев)
-- [Команды Quick Reference](#команды-quick-reference)
+- [Daily Development](#daily-development)
+- [Creating a Changeset](#creating-a-changeset)
+- [Release Process](#release-process)
+    - [⭐ Recommended: Versioning in Develop](#-recommended-versioning-in-develop)
+    - [🔄 Alternative: Versioning in Main (Solo Dev)](#-alternative-versioning-in-main-solo-dev)
+- [Scenario Examples](#scenario-examples)
+- [Quick Reference Commands](#quick-reference-commands)
 - [Troubleshooting](#troubleshooting)
 
 ---
 
-## 🛠 Ежедневная Разработка
+## 🛠 Daily Development
 
-### 1. Создание Feature/Fix Branch
+### 1. Create Feature/Fix Branch
 
 ```bash
-# Для новой функциональности
+# For new functionality
 git checkout develop
 git pull origin develop
-git checkout -b feature/название-фичи
+git checkout -b feature/your-feature-name
 
-# Для исправления бага
+# For bug fixing
 git checkout develop
 git pull origin develop
-git checkout -b fix/название-бага
+git checkout -b fix/your-bug-name
 ```
 
-### 2. Разработка
+### 2. Development
 
-Делайте изменения в коде как обычно.
+Make code changes as usual.
 
-### 3. Создание Changeset
+### 3. Creating a Changeset
 
-**ВАЖНО:** Создавайте changeset ТОЛЬКО если:
+**IMPORTANT:** Create a changeset ONLY if:
 
-- Изменения затрагивают функциональность пакета
-- Требуется обновление версии
+- Changes affect package functionality
+- A version update is required
 
-**НЕ нужен changeset для:**
+**A changeset is NOT needed for:**
 
-- Изменений в документации
-- Обновлений в тестах (без изменения функциональности)
-- Рутинных задач (chore)
+- Documentation changes
+- Test updates (without functional changes)
+- Routine tasks (chore)
 
-**Создание changeset:**
+**How to create a changeset:**
 
 ```bash
 npm run changeset
 ```
 
-Интерактивный промпт спросит:
+The interactive prompt will ask:
 
-#### Шаг 1: Выбор пакетов
+#### Step 1: Select packages
 
 ```
 ? Which packages would you like to include?
@@ -89,17 +89,17 @@ npm run changeset
   [ ] playwright-dashboard-reporter
 ```
 
-**Выберите ТОЛЬКО те пакеты, которые изменили.**
+**Select ONLY the packages that have changed.**
 
-Например:
+For example:
 
-- Изменения только в dashboard → выберите `server` и `web`
-- Изменения только в reporter → выберите `playwright-dashboard-reporter`
-- Изменения в обоих → выберите все три
+- Changes only in dashboard → select `server` and `web`
+- Changes only in reporter → select `playwright-dashboard-reporter`
+- Changes in both → select all three
 
-#### Шаг 2: Тип изменения
+#### Step 2: Type of change
 
-Для каждого выбранного пакета:
+For each selected package:
 
 ```
 ? What kind of change is this for @yshvydak/server?
@@ -108,25 +108,25 @@ npm run changeset
   [ ] patch - Bug fix (1.0.0 → 1.0.1)
 ```
 
-**Когда использовать:**
+**When to use:**
 
-- **major (мажорная)** - BREAKING CHANGE
-    - Изменили API (удалили/переименовали эндпоинты)
-    - Изменили формат данных (несовместимый с предыдущей версией)
-    - Требуется миграция для пользователей
+- **major** - BREAKING CHANGE
+    - API changed (endpoints removed/renamed)
+    - Data format changed (incompatible with previous version)
+    - Requires migration for users
 
-- **minor (минорная)** - Новая функциональность
-    - Добавили новую фичу
-    - Добавили новый API endpoint
-    - Улучшили существующую функциональность
-    - Обратная совместимость сохранена
+- **minor** - New functionality
+    - Added a new feature
+    - Added a new API endpoint
+    - Improved existing functionality
+    - Backward compatibility maintained
 
-- **patch (патч)** - Исправление бага
-    - Исправили баг
-    - Улучшили производительность
-    - Исправили опечатку в тексте
+- **patch** - Bug fix
+    - Fixed a bug
+    - Improved performance
+    - Fixed a typo
 
-#### Шаг 3: Описание изменения
+#### Step 3: Change description
 
 ```
 ? Please enter a summary for this change (this will be written to the changelog).
@@ -134,7 +134,7 @@ npm run changeset
 >
 ```
 
-**Хорошие примеры:**
+**Good examples:**
 
 ```
 ✅ Add bulk test rerun functionality with batch processing
@@ -142,7 +142,7 @@ npm run changeset
 ✅ Improve test filtering performance by 50%
 ```
 
-**Плохие примеры:**
+**Bad examples:**
 
 ```
 ❌ Fixed bug
@@ -150,53 +150,53 @@ npm run changeset
 ❌ Changes
 ```
 
-**Правила для описания:**
+**Description rules:**
 
-- Пишите на английском языке
-- Начинайте с глагола в настоящем времени (Add, Fix, Improve, Update)
-- Будьте конкретны - описывайте ЧТО изменилось
-- Можете добавить детали в следующих строках
+- Write in English
+- Start with a verb in the present tense (Add, Fix, Improve, Update)
+- Be specific - describe WHAT changed
+- You can add details in subsequent lines
 
-**Результат:**
+**Result:**
 
-Создастся файл `.changeset/random-name-abc123.md` с вашими изменениями.
+A file `.changeset/random-name-abc123.md` with your changes will be created.
 
-### 4. Коммит с Conventional Commits
+### 4. Commit with Conventional Commits
 
 ```bash
 git add .
 git commit -m "feat(server): add bulk test rerun functionality"
 ```
 
-**Формат:**
+**Format:**
 
 ```
 type(scope): subject
 
-[опционально: body]
+[optional: body]
 
-[опционально: footer]
+[optional: footer]
 ```
 
-**Типы (type):**
+**Types:**
 
-- `feat:` - новая функциональность
-- `fix:` - исправление бага
-- `docs:` - изменения в документации
-- `chore:` - рутинные задачи (build, deps)
-- `refactor:` - рефакторинг
-- `test:` - тесты
-- `perf:` - улучшения производительности
+- `feat:` - new feature
+- `fix:` - bug fix
+- `docs:` - documentation changes
+- `chore:` - routine tasks (build, deps)
+- `refactor:` - refactoring
+- `test:` - tests
+- `perf:` - performance improvements
 
 **Scope:**
 
-- `server` - изменения в packages/server
-- `web` - изменения в packages/web
-- `reporter` - изменения в packages/reporter
-- `dashboard` - изменения в server + web
-- `*` - изменения во всём проекте
+- `server` - changes in packages/server
+- `web` - changes in packages/web
+- `reporter` - changes in packages/reporter
+- `dashboard` - changes in server + web
+- `*` - changes in the entire project
 
-**Примеры:**
+**Examples:**
 
 ```bash
 git commit -m "feat(reporter): add video attachment support"
@@ -205,25 +205,25 @@ git commit -m "docs: update QUICKSTART.md with new setup steps"
 git commit -m "chore(deps): update playwright to 1.55.0"
 ```
 
-### 5. Push и Pull Request
+### 5. Push and Pull Request
 
 ```bash
-git push origin feature/название-фичи
+git push origin feature/your-feature-name
 ```
 
-Создайте Pull Request в `develop` через GitHub UI.
+Create a Pull Request to `develop` via GitHub UI.
 
 ---
 
-## 📦 Процесс Релиза
+## 📦 Release Process
 
-Когда накопились изменения и готовы к релизу:
+When changes have accumulated and are ready for release:
 
-### ⭐ Рекомендуемый подход: Версионирование в Develop
+### ⭐ Recommended: Versioning in Develop
 
-Этот подход безопаснее - вы увидите изменения версий в Pull Request перед попаданием в production.
+This approach is safer - you will see version changes in the Pull Request before going to production.
 
-### Шаг 1: Проверка что будет релизнуто
+### Step 1: Check what will be released
 
 ```bash
 git checkout develop
@@ -232,23 +232,23 @@ git pull origin develop
 npm run changeset:status
 ```
 
-Вы увидите список пакетов и версий, которые будут обновлены.
+You will see a list of packages and versions that will be updated.
 
-### Шаг 2: Применение Changesets в Develop
+### Step 2: Apply Changesets in Develop
 
 ```bash
-# Оставаясь в develop, применяем changesets
+# Remaining in develop, apply changesets
 npm run version
 ```
 
-**Что произойдёт:**
+**What will happen:**
 
-1. Changesets прочитает все `.changeset/*.md` файлы
-2. Обновит `package.json` версии для затронутых пакетов
-3. Создаст или обновит `CHANGELOG.md` для каждого пакета
-4. Удалит использованные `.changeset/*.md` файлы
+1. Changesets will read all `.changeset/*.md` files
+2. Update `package.json` versions for affected packages
+3. Create or update `CHANGELOG.md` for each package
+4. Delete used `.changeset/*.md` files
 
-**Пример вывода:**
+**Example output:**
 
 ```
 🦋  All files have been updated. Review them and commit at your leisure
@@ -257,20 +257,20 @@ npm run version
 🦋  info playwright-dashboard-reporter: 1.0.3 => 1.0.4
 ```
 
-### Шаг 3: Ревью изменений
+### Step 3: Review changes
 
 ```bash
 git status
 git diff
 ```
 
-**Проверьте:**
+**Check:**
 
-- Версии в `package.json` обновлены корректно
-- `CHANGELOG.md` содержит правильные описания
-- Удалены все changeset файлы
+- `package.json` versions are updated correctly
+- `CHANGELOG.md` contains correct descriptions
+- All changeset files are deleted
 
-### Шаг 4: Коммит изменений версий
+### Step 4: Commit version changes
 
 ```bash
 git add .
@@ -281,77 +281,77 @@ git commit -m "chore: release v1.1.0
 - playwright-dashboard-reporter@1.0.4"
 ```
 
-### Шаг 5: Создание Git Tags
+### Step 5: Create Git Tags
 
 ```bash
-# Если изменился dashboard (server/web)
+# If dashboard (server/web) changed
 git tag dashboard-v1.1.0 -m "Dashboard release 1.1.0"
 
-# Если изменился reporter
+# If reporter changed
 git tag reporter-v1.0.4 -m "Reporter release 1.0.4"
 ```
 
-### Шаг 6: Push в Develop с тегами
+### Step 6: Push to Develop with tags
 
 ```bash
 git push origin develop --follow-tags
 ```
 
-### Шаг 7: Создание Pull Request
+### Step 7: Create Pull Request
 
-1. Перейдите на GitHub: https://github.com/shvydak/yshvydak-test-dashboard
-2. Создайте Pull Request: `develop` → `main`
+1. Go to GitHub: https://github.com/shvydak/yshvydak-test-dashboard
+2. Create Pull Request: `develop` → `main`
 3. **Title:** "Release v1.1.0"
-4. **Description:** Скопируйте содержимое из обновлённого `CHANGELOG.md`
+4. **Description:** Copy the content from the updated `CHANGELOG.md`
 
-**В PR вы увидите:**
+**In the PR you will see:**
 
-- ✅ Изменения версий в `package.json`
-- ✅ Новые записи в `CHANGELOG.md`
-- ✅ Удалённые changeset файлы
+- ✅ Version changes in `package.json`
+- ✅ New entries in `CHANGELOG.md`
+- ✅ Deleted changeset files
 
-### Шаг 8: Мёрдж Pull Request
+### Step 8: Merge Pull Request
 
-После ревью (можете ревьюить сами):
+After review (you can review yourself):
 
-1. Мёрджите PR через GitHub UI
-2. **n8n webhook автоматически задеплоит** новую версию на production
+1. Merge PR via GitHub UI
+2. **n8n webhook will automatically deploy** the new version to production
 
-### Шаг 9: Публикация Reporter в NPM (если нужно)
+### Step 9: Publish Reporter to NPM (if needed)
 
-**ТОЛЬКО если версия `playwright-dashboard-reporter` изменилась:**
+**ONLY if `playwright-dashboard-reporter` version has changed:**
 
 ```bash
 npm run release:reporter
 ```
 
-Или вручную:
+Or manually:
 
 ```bash
 cd packages/reporter
 npm publish
 ```
 
-**ВАЖНО:** Убедитесь что вы залогинены в NPM:
+**IMPORTANT:** Make sure you are logged in to NPM:
 
 ```bash
-npm whoami  # Проверить текущий аккаунт
-npm login   # Если не залогинены
+npm whoami  # Check current account
+npm login   # If not logged in
 ```
 
-### Шаг 10: Создание GitHub Release (опционально)
+### Step 10: Create GitHub Release (optional)
 
-1. Перейдите на https://github.com/shvydak/yshvydak-test-dashboard/releases
-2. Нажмите "Draft a new release"
-3. Выберите тег (например, `dashboard-v1.1.0`)
-4. **Title:** "Dashboard v1.1.0" или "Reporter v1.0.4"
-5. **Description:** Скопируйте содержимое из соответствующего `CHANGELOG.md`
-6. Опубликуйте
+1. Go to https://github.com/shvydak/yshvydak-test-dashboard/releases
+2. Click "Draft a new release"
+3. Select a tag (e.g., `dashboard-v1.1.0`)
+4. **Title:** "Dashboard v1.1.0" or "Reporter v1.0.4"
+5. **Description:** Copy the content from the corresponding `CHANGELOG.md`
+6. Publish
 
-### Шаг 11: Синхронизация Develop (автоматическая)
+### Step 11: Sync Develop (automatic)
 
-После мёрджа PR, develop автоматически синхронизирован с main.
-Если нужно - можете локально обновить:
+After merging the PR, develop is automatically synced with main.
+If needed - you can update locally:
 
 ```bash
 git checkout develop
@@ -360,135 +360,135 @@ git pull origin develop
 
 ---
 
-## 🔄 Альтернативный Подход: Версионирование в Main (Solo-dev)
+## 🔄 Alternative Approach: Versioning in Main (Solo Dev)
 
-Если вы работаете один и хотите минимум шагов без PR:
+If you are working alone and want minimal steps without PRs:
 
 ```bash
-# 1. Мёрдж develop в main ЛОКАЛЬНО (не пушим!)
+# 1. Merge develop into main LOCALLY (do not push!)
 git checkout main
 git pull origin main
 git merge develop
 
-# 2. Применяем changesets СРАЗУ
+# 2. Apply changesets IMMEDIATELY
 npm run version
 
-# 3. Ревьюим изменения
+# 3. Review changes
 git status
 git diff
 
-# 4. Коммитим ВСЁ вместе
+# 4. Commit EVERYTHING together
 git add .
 git commit -m "chore: release v1.1.0
 
 - @yshvydak/web@1.1.0"
 
-# 5. Создаём теги
+# 5. Create tags
 git tag dashboard-v1.1.0
 
-# 6. ОДИН пуш со всем сразу
+# 6. ONE push with everything at once
 git push origin main --follow-tags
-# n8n webhook задеплоит новую версию
+# n8n webhook will deploy the new version
 
-# 7. Публикуем reporter (если нужно)
+# 7. Publish reporter (if needed)
 npm run release:reporter
 
-# 8. Синхронизируем develop
+# 8. Sync develop
 git checkout develop
 git merge main
 git push origin develop
 ```
 
-**Преимущества:** Быстрее, один деплой вместо двух
-**Недостатки:** Нет review процесса, изменения версий не видны в PR
+**Advantages:** Faster, one deploy instead of two
+**Disadvantages:** No review process, version changes not visible in PR
 
 ---
 
-## 📖 Примеры Сценариев
+## 📖 Scenario Examples
 
-### Сценарий 1: Bug Fix в Dashboard (без reporter)
+### Scenario 1: Bug Fix in Dashboard (without reporter)
 
 ```bash
-# 1. Создаём ветку
+# 1. Create branch
 git checkout develop
 git checkout -b fix/websocket-reconnection
 
-# 2. Исправляем баг в packages/server/src/websocket.ts
-# ... код ...
+# 2. Fix bug in packages/server/src/websocket.ts
+# ... code ...
 
-# 3. Создаём changeset
+# 3. Create changeset
 npm run changeset
 # ? Which packages: [x] @yshvydak/server
 # ? What kind: [x] patch
 # ? Summary: Fix WebSocket reconnection after network interruption
 
-# 4. Коммитим
+# 4. Commit
 git add .
 git commit -m "fix(server): resolve WebSocket reconnection issue"
 
-# 5. Push и PR
+# 5. Push and PR
 git push origin fix/websocket-reconnection
-# Создать PR в develop через GitHub
+# Create PR to develop via GitHub
 
-# 6. После мёрджа PR - reporter версия НЕ изменится
+# 6. After PR merge - reporter version will NOT change
 ```
 
-**Результат после релиза:**
+**Result after release:**
 
 - server: 1.0.0 → 1.0.1
-- web: без изменений
-- reporter: без изменений
+- web: no changes
+- reporter: no changes
 
 ---
 
-### Сценарий 2: Новая Фича в Reporter
+### Scenario 2: New Feature in Reporter
 
 ```bash
-# 1. Создаём ветку
+# 1. Create branch
 git checkout develop
 git checkout -b feat/video-attachments
 
-# 2. Добавляем функциональность в packages/reporter/src/index.ts
-# ... код ...
+# 2. Add functionality to packages/reporter/src/index.ts
+# ... code ...
 
-# 3. Создаём changeset
+# 3. Create changeset
 npm run changeset
 # ? Which packages: [x] playwright-dashboard-reporter
 # ? What kind: [x] minor
 # ? Summary: Add support for video attachments in test reports
 
-# 4. Коммитим
+# 4. Commit
 git add .
 git commit -m "feat(reporter): add video attachment support"
 
-# 5. Push и PR
+# 5. Push and PR
 git push origin feat/video-attachments
 
-# 6. После релиза - публикуем в NPM
+# 6. After release - publish to NPM
 npm run release:reporter
 ```
 
-**Результат после релиза:**
+**Result after release:**
 
-- server: без изменений
-- web: без изменений
+- server: no changes
+- web: no changes
 - reporter: 1.0.3 → 1.1.0
 
 ---
 
-### Сценарий 3: Фича затрагивает всё (Dashboard + Reporter)
+### Scenario 3: Feature affecting everything (Dashboard + Reporter)
 
 ```bash
-# 1. Создаём ветку
+# 1. Create branch
 git checkout develop
 git checkout -b feat/parallel-execution
 
-# 2. Изменения в:
-# - packages/reporter/src/index.ts (захват данных)
-# - packages/server/src/services/test.service.ts (обработка)
-# - packages/web/src/features/tests/TestList.tsx (отображение)
+# 2. Changes in:
+# - packages/reporter/src/index.ts (data capture)
+# - packages/server/src/services/test.service.ts (processing)
+# - packages/web/src/features/tests/TestList.tsx (display)
 
-# 3. Создаём changeset
+# 3. Create changeset
 npm run changeset
 # ? Which packages:
 #   [x] @yshvydak/server
@@ -499,7 +499,7 @@ npm run changeset
 # ? What kind for reporter: [x] minor
 # ? Summary: Add support for parallel test execution tracking
 
-# 4. Коммитим
+# 4. Commit
 git add .
 git commit -m "feat: add parallel test execution support
 
@@ -507,14 +507,14 @@ git commit -m "feat: add parallel test execution support
 - Server: process and store parallel test data
 - Web: display parallel execution status"
 
-# 5. Push и PR
+# 5. Push and PR
 git push origin feat/parallel-execution
 
-# 6. После релиза - публикуем reporter
+# 6. After release - publish reporter
 npm run release:reporter
 ```
 
-**Результат после релиза:**
+**Result after release:**
 
 - server: 1.0.0 → 1.1.0
 - web: 1.0.0 → 1.1.0
@@ -522,18 +522,18 @@ npm run release:reporter
 
 ---
 
-### Сценарий 4: Breaking Change (Major Version)
+### Scenario 4: Breaking Change (Major Version)
 
 ```bash
-# 1. Создаём ветку
+# 1. Create branch
 git checkout develop
 git checkout -b refactor/api-v2
 
-# 2. Изменяем API endpoints (несовместимые изменения)
-# - Переименовали /api/tests → /api/v2/tests
-# - Изменили формат ответа
+# 2. Change API endpoints (incompatible changes)
+# - Renamed /api/tests → /api/v2/tests
+# - Changed response format
 
-# 3. Создаём changeset
+# 3. Create changeset
 npm run changeset
 # ? Which packages: [x] @yshvydak/server
 # ? What kind: [x] major  ⚠️ BREAKING CHANGE
@@ -543,37 +543,37 @@ BREAKING CHANGE: API endpoints moved to /api/v2/
 - Renamed /api/tests to /api/v2/tests
 - Changed response format for test results
 
-# 4. Коммитим
+# 4. Commit
 git add .
 git commit -m "refactor(server)!: migrate to API v2
 
 BREAKING CHANGE: API endpoints moved to /api/v2/"
 
-# 5. После релиза
+# 5. After release
 # server: 1.0.0 → 2.0.0  ⚠️ MAJOR bump
 ```
 
 ---
 
-## 🚀 Команды Quick Reference
+## 🚀 Quick Reference Commands
 
 ```bash
-# Создать changeset (интерактивно)
+# Create changeset (interactive)
 npm run changeset
 
-# Посмотреть что будет релизнуто
+# See what will be released
 npm run changeset:status
 
-# Применить changesets (обновить версии)
+# Apply changesets (update versions)
 npm run version
 
-# Опубликовать reporter в NPM
+# Publish reporter to NPM
 npm run release:reporter
 
-# Проверить NPM логин
+# Check NPM login
 npm whoami
 
-# Залогиниться в NPM
+# Log in to NPM
 npm login
 ```
 
@@ -581,15 +581,15 @@ npm login
 
 ## ❓ Troubleshooting
 
-### Проблема: Забыл создать changeset
+### Problem: Forgot to create a changeset
 
-**Решение:**
+**Solution:**
 
 ```bash
-# Создайте changeset сейчас
+# Create changeset now
 npm run changeset
 
-# Закоммитьте changeset
+# Commit changeset
 git add .changeset/
 git commit -m "chore: add missing changeset for previous changes"
 git push
@@ -597,85 +597,85 @@ git push
 
 ---
 
-### Проблема: Создал changeset для неправильного пакета
+### Problem: Created a changeset for the wrong package
 
-**Решение:**
+**Solution:**
 
 ```bash
-# Найдите файл changeset
+# Find the changeset file
 ls .changeset/
 
-# Удалите его
+# Delete it
 rm .changeset/random-name-abc123.md
 
-# Создайте новый правильный
+# Create a new correct one
 npm run changeset
 ```
 
 ---
 
-### Проблема: Хочу отменить релиз
+### Problem: Want to cancel a release
 
-**Если ещё НЕ запушили:**
+**If NOT yet pushed:**
 
 ```bash
-git reset HEAD~1  # Отменить последний коммит
-git restore .     # Восстановить файлы
+git reset HEAD~1  # Undo last commit
+git restore .     # Restore files
 ```
 
-**Если УЖЕ запушили в main:**
+**If ALREADY pushed to main:**
 
 ```bash
-# НЕ делайте git revert на main!
-# Это триггернёт n8n деплой
+# DO NOT git revert on main!
+# This will trigger n8n deploy
 
-# Вместо этого:
-# 1. Создайте hotfix с откатом изменений
-# 2. Сделайте новый релиз
+# Instead:
+# 1. Create a hotfix to revert changes
+# 2. Make a new release
 ```
 
 ---
 
-### Проблема: NPM публикация не удалась
+### Problem: NPM publication failed
 
-**Проверьте:**
+**Check:**
 
 ```bash
-# 1. Залогинены ли вы
+# 1. Are you logged in?
 npm whoami
 
-# 2. Права на публикацию
+# 2. Publishing rights
 npm owner ls playwright-dashboard-reporter
 
-# 3. Версия уже существует?
+# 3. Does the version already exist?
 npm view playwright-dashboard-reporter versions
 ```
 
-**Решение:**
+**Solution:**
 
 ```bash
-# Если версия уже существует, нужно:
-# 1. Откатить версию в package.json
-# 2. Создать новый changeset
-# 3. Сделать новый релиз
+# If the version already exists, you need to:
+# 1. Revert the version in package.json
+# 2. Create a new changeset
+# 3. Make a new release
 ```
 
 ---
 
-### Проблема: Конфликт при мёрдже develop → main
+### Problem: Merge conflict during develop → main merge
 
-**Решение:**
+**Solution:**
 
 ```bash
 git checkout main
 git merge develop
 
-# Решите конфликты в файлах
-# Обычно конфликты в:
-# - package.json (версии)
+# Resolve conflicts in files
+# Conflicts usually occur in:
+# - package.json (versions)
 # - CHANGELOG.md
 
-# После решения:
+# After resolving:
 git add .
 git commit
 git push origin main
@@ -683,23 +683,23 @@ git push origin main
 
 ---
 
-## 📝 Checklist Перед Релизом
+## 📝 Pre-Release Checklist
 
 ```markdown
-- [ ] Все PR смёржены в develop
-- [ ] Все changesets созданы
-- [ ] Тесты прошли (npm test)
-- [ ] Build успешный (npm run build)
-- [ ] develop смёржен в main
-- [ ] npm run version выполнен
-- [ ] Версии в package.json корректны
-- [ ] CHANGELOG.md содержит правильные описания
-- [ ] Коммит "chore: release packages" создан
-- [ ] Git теги созданы
-- [ ] Запушено в main с тегами
-- [ ] Reporter опубликован в NPM (если изменился)
-- [ ] GitHub Release создан (опционально)
-- [ ] main смёржен обратно в develop
+- [ ] All PRs merged into develop
+- [ ] All changesets created
+- [ ] Tests passed (npm test)
+- [ ] Build successful (npm run build)
+- [ ] develop merged into main
+- [ ] npm run version executed
+- [ ] Versions in package.json are correct
+- [ ] CHANGELOG.md contains correct descriptions
+- [ ] Commit "chore: release packages" created
+- [ ] Git tags created
+- [ ] Pushed to main with tags
+- [ ] Reporter published to NPM (if changed)
+- [ ] GitHub Release created (optional)
+- [ ] main merged back into develop
 ```
 
 ---
@@ -708,24 +708,24 @@ git push origin main
 
 ### ✅ DO:
 
-- Создавайте changeset для каждого значимого изменения
-- Пишите понятные описания в changesets
-- Используйте conventional commits
-- Проверяйте `npm run changeset:status` перед релизом
-- Создавайте Git теги для каждого релиза
-- Синхронизируйте develop ← main после релиза
+- Create a changeset for each significant change
+- Write clear descriptions in changesets
+- Use conventional commits
+- Check `npm run changeset:status` before release
+- Create Git tags for each release
+- Sync develop ← main after release
 
 ### ❌ DON'T:
 
-- НЕ редактируйте версии в package.json вручную
-- НЕ редактируйте CHANGELOG.md вручную
-- НЕ удаляйте changesets до применения `npm run version`
-- НЕ пушьте в main без PR (кроме релизных коммитов)
-- НЕ забывайте публиковать reporter в NPM
+- DO NOT manually edit versions in package.json
+- DO NOT manually edit CHANGELOG.md
+- DO NOT delete changesets before running `npm run version`
+- DO NOT push to main without a PR (except for release commits)
+- DO NOT forget to publish the reporter to NPM
 
 ---
 
-## 📚 Полезные Ссылки
+## 📚 Useful Links
 
 - [Changesets Documentation](https://github.com/changesets/changesets)
 - [Conventional Commits](https://www.conventionalcommits.org/)
@@ -734,5 +734,5 @@ git push origin main
 
 ---
 
-**Последнее обновление:** 17 ноября 2024
-**Версия документа:** 1.0.0
+**Last Updated:** November 17, 2024
+**Document Version:** 1.0.0

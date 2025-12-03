@@ -14,6 +14,14 @@ export interface TestResult {
     rerunCount?: number
     steps?: TestStep[]
     attachments?: Attachment[]
+    note?: TestNote
+}
+
+export interface TestNote {
+    testId: string
+    content: string
+    createdAt: string
+    updatedAt: string
 }
 
 export interface TestStep {

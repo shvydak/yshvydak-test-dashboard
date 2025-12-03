@@ -1,10 +1,12 @@
 import {Router} from 'express'
 import {TestController} from '../controllers/test.controller'
+import {NoteController} from '../controllers/note.controller'
 import {ServiceContainer} from '../middleware/service-injection.middleware'
 
 export function createTestRoutes(container: ServiceContainer): Router {
     const router = Router()
     const testController = new TestController(container.testService, container.authService)
+    const noteController = new NoteController(container.noteService)
 
     // Test management endpoints
     router.post('/discovery', testController.discoverTests)
@@ -33,6 +35,11 @@ export function createTestRoutes(container: ServiceContainer): Router {
     router.post('/:id/rerun', testController.rerunTest)
     router.get('/:id/history', testController.getTestHistory)
     router.get('/:id/attachments', testController.getTestAttachments)
+
+    // Note endpoints
+    router.get('/:testId/notes', noteController.getNote)
+    router.post('/:testId/notes', noteController.saveNote)
+    router.delete('/:testId/notes', noteController.deleteNote)
 
     // Trace file endpoint (no auth middleware - JWT validation in controller)
     router.get('/traces/:attachmentId', testController.getTraceFile)

@@ -2,6 +2,8 @@ import {TestResult} from '@yshvydak/core'
 import {StatusBadge, ActionButton, LoadingSpinner, Badge} from '@shared/components'
 import {formatDuration, formatLastRun} from '../utils'
 import {useTestsStore} from '../store/testsStore'
+import {LinkifiedText} from '@/components/atoms/LinkifiedText'
+import {truncateText} from '@/utils/linkify.util'
 
 export interface TestRowProps {
     test: TestResult
@@ -44,6 +46,15 @@ export function TestRow({test, selected, onSelect, onRerun}: TestRowProps) {
             </td>
             <td className="py-3 px-6">
                 <div className="font-medium text-gray-900 dark:text-white">{test.name}</div>
+                {!runningInfo && test.note?.content && (
+                    <div className="text-xs text-gray-600 dark:text-gray-400 mt-1 truncate max-w-xs flex items-center gap-1">
+                        <span>💬</span>
+                        <LinkifiedText
+                            text={truncateText(test.note.content, 50)}
+                            className="truncate"
+                        />
+                    </div>
+                )}
                 {!runningInfo && test.errorMessage && (
                     <div className="text-xs text-red-600 dark:text-red-400 mt-1 truncate max-w-xs">
                         {test.errorMessage}

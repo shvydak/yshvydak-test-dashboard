@@ -45,6 +45,14 @@ CREATE TABLE IF NOT EXISTS attachments (
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
+-- Test notes (per-test comments/annotations)
+CREATE TABLE IF NOT EXISTS test_notes (
+    test_id TEXT PRIMARY KEY,
+    content TEXT NOT NULL CHECK(length(content) <= 1000),
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
 -- Indexes for better performance
 CREATE INDEX IF NOT EXISTS idx_test_runs_status ON test_runs(status);
 CREATE INDEX IF NOT EXISTS idx_test_runs_created_at ON test_runs(created_at);
@@ -57,6 +65,8 @@ CREATE INDEX IF NOT EXISTS idx_test_results_file_path ON test_results(file_path)
 CREATE INDEX IF NOT EXISTS idx_attachments_test_result_id ON attachments(test_result_id);
 CREATE INDEX IF NOT EXISTS idx_attachments_type ON attachments(type);
 
+CREATE INDEX IF NOT EXISTS idx_test_notes_test_id ON test_notes(test_id);
+
 -- Triggers to update timestamps
 CREATE TRIGGER IF NOT EXISTS update_test_runs_timestamp 
     AFTER UPDATE ON test_runs
@@ -64,8 +74,14 @@ BEGIN
     UPDATE test_runs SET updated_at = CURRENT_TIMESTAMP WHERE id = NEW.id;
 END;
 
-CREATE TRIGGER IF NOT EXISTS update_test_results_timestamp 
+CREATE TRIGGER IF NOT EXISTS update_test_results_timestamp
     AFTER UPDATE ON test_results
 BEGIN
     UPDATE test_results SET updated_at = CURRENT_TIMESTAMP WHERE id = NEW.id;
+END;
+
+CREATE TRIGGER IF NOT EXISTS update_test_notes_timestamp
+    AFTER UPDATE ON test_notes
+BEGIN
+    UPDATE test_notes SET updated_at = CURRENT_TIMESTAMP WHERE test_id = NEW.test_id;
 END;

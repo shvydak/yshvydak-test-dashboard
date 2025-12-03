@@ -54,6 +54,12 @@ export interface TestRunProcess {
 
 export interface TestResult extends TestResultData {
     attachments?: AttachmentData[]
+    note?: {
+        testId: string
+        content: string
+        createdAt: string
+        updatedAt: string
+    }
 }
 
 export interface TestFilters {

@@ -1,6 +1,6 @@
 {
     "name": "yshvydak-test-dashboard",
-    "version": "1.0.0",
+    "version": "1.3.0",
     "description": "Modern, full-stack dashboard for Playwright tests with rerun capabilities. Built with React, TypeScript, Express, and SQLite.",
     "homepage": "https://github.com/yshvydak/yshvydak-test-dashboard#readme",
     "repository": {

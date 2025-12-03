@@ -38,6 +38,11 @@ export interface AttachmentData {
     url: string
 }
 
+export interface TestNoteData {
+    testId: string
+    content: string
+}
+
 export class DatabaseManager {
     private db!: sqlite3.Database
     private dbPath: string
@@ -403,7 +408,7 @@ export class DatabaseManager {
 
     async clearAllData(): Promise<void> {
         // Clear all data from all tables (cascading delete will handle related records)
-        const tables = ['test_runs', 'test_results', 'attachments']
+        const tables = ['test_runs', 'test_results', 'attachments', 'test_notes']
 
         for (const table of tables) {
             await this.run(`DELETE FROM ${table}`)
@@ -417,10 +422,11 @@ export class DatabaseManager {
 
     async getDataStats(): Promise<any> {
         const stats = await this.get(`
-            SELECT 
+            SELECT
                 (SELECT COUNT(*) FROM test_runs) as total_runs,
                 (SELECT COUNT(*) FROM test_results) as total_results,
-                (SELECT COUNT(*) FROM attachments) as total_attachments
+                (SELECT COUNT(*) FROM attachments) as total_attachments,
+                (SELECT COUNT(*) FROM test_notes) as total_notes
         `)
 
         // Ensure all values are numbers (handle null/undefined from empty tables)
@@ -429,6 +435,7 @@ export class DatabaseManager {
             totalRuns: stats?.total_runs || 0,
             totalTests: stats?.total_results || 0,
             totalAttachments: stats?.total_attachments || 0,
+            totalNotes: stats?.total_notes || 0,
             databaseSize: 0, // TODO: Implement actual size calculation if needed
             lastUpdated: new Date().toISOString(),
         }
@@ -449,6 +456,28 @@ export class DatabaseManager {
 
     async execute(sql: string, params: any[] = []): Promise<sqlite3.RunResult> {
         return this.run(sql, params)
+    }
+
+    // Test Notes
+    async saveTestNote(noteData: TestNoteData): Promise<void> {
+        const sql = `
+            INSERT INTO test_notes (test_id, content)
+            VALUES (?, ?)
+            ON CONFLICT(test_id) DO UPDATE SET
+                content = excluded.content,
+                updated_at = CURRENT_TIMESTAMP
+        `
+        await this.run(sql, [noteData.testId, noteData.content])
+    }
+
+    async getTestNote(testId: string): Promise<any> {
+        const sql = 'SELECT * FROM test_notes WHERE test_id = ?'
+        return this.get(sql, [testId])
+    }
+
+    async deleteTestNote(testId: string): Promise<void> {
+        const sql = 'DELETE FROM test_notes WHERE test_id = ?'
+        await this.run(sql, [testId])
     }
 
     close(): void {

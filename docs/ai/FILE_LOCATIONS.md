@@ -47,6 +47,10 @@ packages/server/src/
 │   │   ├── POST /api/tests/:id/rerun          # Rerun specific test
 │   │   ├── POST /api/tests/discovery          # Discover tests
 │   │   └── DELETE /api/tests/all              # Clear all tests
+│   ├── note.controller.ts      # Test notes endpoints (✨ v1.2.0)
+│   │   ├── GET /api/tests/:testId/notes       # Get test note
+│   │   ├── POST /api/tests/:testId/notes      # Save/update test note
+│   │   └── DELETE /api/tests/:testId/notes    # Delete test note
 │   ├── run.controller.ts       # Test run lifecycle
 │   ├── storage.controller.ts   # Storage statistics (✨ v1.0.4)
 │   │   └── GET /api/storage/stats             # Get storage statistics
@@ -59,6 +63,12 @@ packages/server/src/
 │   │   ├── getFlakyTests()             # Flaky test detection
 │   │   ├── getTestTimeline()           # Daily aggregated stats
 │   │   └── rerunTest()                 # Rerun specific test
+│   │
+│   ├── note.service.ts         # Test notes business logic (✨ v1.2.0)
+│   │   ├── saveNote()                  # Save/update note with validation
+│   │   │   └── Validation: trim, empty check, 1000 char max
+│   │   ├── getNote()                   # Get note by testId
+│   │   └── deleteNote()                # Delete note by testId
 │   │
 │   ├── __tests__/              # Service layer tests (6 test files, part of 30 total test files, 1,279 tests)
 │   ├── playwright.service.ts   # Playwright integration
@@ -83,6 +93,11 @@ packages/server/src/
 │   │   ├── getFlakyTests()             # SQL: GROUP BY testId, calculate failure rate
 │   │   └── getTestTimeline()           # SQL: DATE grouping for daily stats
 │   │
+│   ├── note.repository.ts      # Test notes CRUD (✨ v1.2.0)
+│   │   ├── saveNote()                  # INSERT OR REPLACE note
+│   │   ├── getNote()                   # SELECT note by testId
+│   │   └── deleteNote()                # DELETE note by testId
+│   │
 │   ├── __tests__/              # Repository layer tests
 │   │
 │   ├── run.repository.ts       # Test run CRUD
@@ -97,6 +112,7 @@ packages/server/src/
 │
 ├── routes/                      # Route definitions
 │   ├── test.routes.ts          # Test API routes with dependency injection
+│   ├── note.routes.ts          # Test notes API routes (✨ v1.2.0)
 │   ├── run.routes.ts           # Run API routes
 │   ├── storage.routes.ts       # Storage statistics routes (✨ v1.0.4)
 │   └── auth.routes.ts          # Authentication routes
@@ -157,7 +173,12 @@ packages/web/src/
 │   │   │   │   ├── TestDetailHeader.tsx  # Modal header (42 lines)
 │   │   │   │   ├── TestDetailTabs.tsx    # Tab navigation (47 lines)
 │   │   │   │   ├── TestOverviewTab.tsx   # Overview + attachments (162 lines)
-│   │   │   │   └── TestStepsTab.tsx      # Test steps display (49 lines)
+│   │   │   │   ├── TestStepsTab.tsx      # Test steps display (49 lines)
+│   │   │   │   └── TestNoteEditor.tsx    # Test notes editor (✨ v1.2.0)
+│   │   │   │       ├── Add/Edit/Delete note functionality
+│   │   │   │       ├── Character counter (1000 max)
+│   │   │   │       ├── Loading states and error handling
+│   │   │   │       └── Integrated with TestOverviewTab
 │   │   │   │
 │   │   │   └── history/                  # Execution history components
 │   │   │       ├── ExecutionSidebar.tsx  # Always-visible history panel
@@ -201,7 +222,11 @@ packages/web/src/
 │   │   │
 │   │   ├── utils/                        # Helper functions
 │   │   │   ├── formatters.ts            # formatDuration, formatDate, formatBytes (✨ v1.0.4), getStatusIcon
-│   │   │   └── attachmentHelpers.ts     # getAttachmentIcon, openTraceViewer
+│   │   │   ├── attachmentHelpers.ts     # getAttachmentIcon, openTraceViewer
+│   │   │   └── linkify.util.ts          # URL detection and text truncation (✨ v1.2.0)
+│   │   │       ├── parseLinksInText()    # Parse text and identify URLs
+│   │   │       ├── containsLinks()       # Check if text contains URLs
+│   │   │       └── truncateText()        # Truncate with word boundaries
 │   │   │
 │   │   └── constants/                    # Constants and enums
 │   │       ├── TEST_STATUS_ICONS
@@ -282,7 +307,12 @@ packages/web/src/
         ├── atoms/                       # Basic building blocks
         │   ├── Button.tsx              # Primary button component
         │   ├── StatusIcon.tsx          # Test status icon
-        │   └── LoadingSpinner.tsx      # Loading indicator
+        │   ├── LoadingSpinner.tsx      # Loading indicator
+        │   └── LinkifiedText.tsx       # URL linkification component (✨ v1.2.0)
+        │       ├── Auto-detects URLs (https://, http://, www.)
+        │       ├── Renders clickable links with target="_blank"
+        │       ├── Supports custom className and linkClassName
+        │       └── Used in TestRow and TestNoteEditor
         │
         └── molecules/                   # Simple combinations
             ├── Card.tsx                # Card container
@@ -536,6 +566,70 @@ packages/web/src/features/dashboard/components/settings/SettingsStorageSection.t
 ```
 packages/web/src/features/tests/utils/formatters.ts
   → formatBytes(bytes, decimals)  # Converts bytes to KB/MB/GB/TB
+```
+
+---
+
+### "Where are test notes handled?"
+
+**✨ New in v1.2.0**
+
+**Backend (Repository Pattern):**
+
+```
+packages/server/src/controllers/note.controller.ts
+  → getNote(), saveNote(), deleteNote()
+
+packages/server/src/services/note.service.ts
+  → Business logic + validation (trim, empty check, 1000 char max)
+
+packages/server/src/repositories/note.repository.ts
+  → Database operations (INSERT OR REPLACE, SELECT, DELETE)
+```
+
+**Frontend Components:**
+
+```
+packages/web/src/features/tests/components/testDetail/TestNoteEditor.tsx
+  → Main editor component with Add/Edit/Delete
+
+packages/web/src/components/atoms/LinkifiedText.tsx
+  → URL linkification component (auto-detects and renders clickable links)
+
+packages/web/src/features/tests/components/TestRow.tsx
+  → Displays truncated note preview (50 chars) with 💬 icon
+```
+
+**Utilities:**
+
+```
+packages/web/src/utils/linkify.util.ts
+  → parseLinksInText()   # Parse text and identify URLs
+  → truncateText()        # Truncate with word boundaries
+  → containsLinks()       # Check if text contains URLs
+```
+
+**API Endpoints:**
+
+```
+GET    /api/tests/:testId/notes      # Get note
+POST   /api/tests/:testId/notes      # Save/update note
+DELETE /api/tests/:testId/notes      # Delete note
+```
+
+**Database:**
+
+```
+packages/server/src/database/schema.sql
+  → test_notes table (testId, content, createdAt, updatedAt)
+  → Automatic timestamp update trigger
+```
+
+**Documentation:**
+
+```
+docs/features/TEST_NOTES.md          # Complete feature documentation
+docs/API_REFERENCE.md                # API endpoints documentation
 ```
 
 ---

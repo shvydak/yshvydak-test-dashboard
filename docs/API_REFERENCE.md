@@ -465,6 +465,210 @@ Rerun a specific test by ID.
 }
 ```
 
+## Test Notes
+
+### GET /api/tests/:testId/notes
+
+**✨ New in v1.2.0** - Get note for a specific test.
+
+**Description**: Retrieves the note content associated with a test. Notes are stored at the test level and persist across multiple executions.
+
+**Path Parameters:**
+
+- `testId` (required) - The unique test identifier (e.g., `test-66jqtq`)
+
+**Example Request:**
+
+```http
+GET /api/tests/test-66jqtq/notes
+Authorization: Bearer {jwt-token}
+```
+
+**Response (200 - Success with note):**
+
+```json
+{
+    "success": true,
+    "data": {
+        "testId": "test-66jqtq",
+        "content": "This test is flaky due to timing issues.\nKnown bug: https://github.com/example/repo/issues/123",
+        "createdAt": "2024-11-01T10:00:00.000Z",
+        "updatedAt": "2024-11-02T14:30:00.000Z"
+    }
+}
+```
+
+**Response (200 - Success with no note):**
+
+```json
+{
+    "success": true,
+    "data": null
+}
+```
+
+**Response (500 - Server Error):**
+
+```json
+{
+    "success": false,
+    "error": "Failed to get note"
+}
+```
+
+**Notes:**
+
+- Returns `null` if no note exists for the test
+- Note content supports URLs (auto-detected and made clickable in UI)
+- Maximum 1000 characters per note
+- Timestamps track creation and last update time
+
+### POST /api/tests/:testId/notes
+
+**✨ New in v1.2.0** - Save or update note for a specific test.
+
+**Description**: Creates or updates a note for a test. If a note already exists, it will be updated with new content and timestamp.
+
+**Path Parameters:**
+
+- `testId` (required) - The unique test identifier (e.g., `test-66jqtq`)
+
+**Request Body:**
+
+```json
+{
+    "content": "This test is flaky due to timing issues.\nKnown bug: https://github.com/example/repo/issues/123"
+}
+```
+
+**Validation Rules:**
+
+- `content` must be a string
+- Content cannot be empty after trimming
+- Maximum 1000 characters
+- Leading/trailing whitespace is trimmed automatically
+
+**Example Request:**
+
+```http
+POST /api/tests/test-66jqtq/notes
+Authorization: Bearer {jwt-token}
+Content-Type: application/json
+
+{
+    "content": "Test note with URL: https://example.com/issue/123"
+}
+```
+
+**Response (200 - Success):**
+
+```json
+{
+    "success": true,
+    "data": {
+        "message": "Note saved successfully"
+    }
+}
+```
+
+**Response (400 - Invalid Content):**
+
+```json
+{
+    "success": false,
+    "message": "Content must be a string",
+    "error": "Invalid content"
+}
+```
+
+**Response (400 - Validation Error):**
+
+```json
+{
+    "success": false,
+    "error": "Note content cannot be empty"
+}
+```
+
+or
+
+```json
+{
+    "success": false,
+    "error": "Note content exceeds maximum length of 1000 characters"
+}
+```
+
+**Response (500 - Server Error):**
+
+```json
+{
+    "success": false,
+    "error": "Failed to save note"
+}
+```
+
+**Notes:**
+
+- Content is trimmed before validation
+- Special characters and URLs are fully supported
+- Multiline content is preserved
+- Updates `updatedAt` timestamp on each save
+
+### DELETE /api/tests/:testId/notes
+
+**✨ New in v1.2.0** - Delete note for a specific test.
+
+**Description**: Permanently deletes the note associated with a test. This action cannot be undone.
+
+**Path Parameters:**
+
+- `testId` (required) - The unique test identifier (e.g., `test-66jqtq`)
+
+**Example Request:**
+
+```http
+DELETE /api/tests/test-66jqtq/notes
+Authorization: Bearer {jwt-token}
+```
+
+**Response (200 - Success):**
+
+```json
+{
+    "success": true,
+    "message": "Note deleted successfully"
+}
+```
+
+**Response (500 - Server Error):**
+
+```json
+{
+    "success": false,
+    "error": "Failed to delete note"
+}
+```
+
+**Notes:**
+
+- Deletion succeeds even if no note exists (idempotent)
+- Permanently removes note from database
+- Does not affect test execution history or results
+
+**Use Cases:**
+
+- Cleaning up outdated notes
+- Removing incorrect information
+- Resetting note content
+
+**Related Features:**
+
+- See [Test Notes Documentation](features/TEST_NOTES.md) for detailed feature description
+- Notes displayed in Test Detail Modal (Overview tab)
+- Truncated note preview (50 chars) shown in Test Row
+- URLs in notes are automatically converted to clickable links
+
 ## Test Information
 
 ### GET /api/tests/:id/history

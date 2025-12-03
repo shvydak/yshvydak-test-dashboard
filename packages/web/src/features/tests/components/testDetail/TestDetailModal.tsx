@@ -7,6 +7,7 @@ import {useTestExecutionHistory} from '../../hooks/useTestExecutionHistory'
 import {useTestsStore} from '../../store/testsStore'
 import {useWebSocket} from '../../../../hooks/useWebSocket'
 import {getWebSocketUrl} from '@features/authentication/utils'
+import {noteService} from '../../../../services/note.service'
 import {ModalBackdrop, ConfirmationDialog} from '@shared/components/molecules'
 import {TestDetailHeader} from './TestDetailHeader'
 import {TestDetailTabs} from './TestDetailTabs'
@@ -161,6 +162,26 @@ export function TestDetailModal({test, isOpen, onClose}: TestDetailModalProps) {
         setExecutionToDelete(null)
     }
 
+    const handleSaveNote = async (note: string) => {
+        if (!test?.testId) return
+
+        await noteService.saveNote(test.testId, note)
+
+        // Invalidate tests cache to refetch with updated note
+        queryClient.invalidateQueries({queryKey: ['tests']})
+        refetchHistory()
+    }
+
+    const handleDeleteNote = async () => {
+        if (!test?.testId) return
+
+        await noteService.deleteNote(test.testId)
+
+        // Invalidate tests cache to refetch with updated note
+        queryClient.invalidateQueries({queryKey: ['tests']})
+        refetchHistory()
+    }
+
     if (!isOpen || !test) return null
 
     return (
@@ -192,6 +213,8 @@ export function TestDetailModal({test, isOpen, onClose}: TestDetailModalProps) {
                                     attachmentsLoading={loading}
                                     attachmentsError={error}
                                     onAttachmentsError={setError}
+                                    onSaveNote={handleSaveNote}
+                                    onDeleteNote={handleDeleteNote}
                                 />
                             )}
 

@@ -11,6 +11,7 @@ import {RunRepository} from '../repositories/run.repository'
 import {PlaywrightService} from './playwright.service'
 import {WebSocketService} from './websocket.service'
 import {AttachmentService} from './attachment.service'
+import {NoteService} from './note.service'
 import {Logger} from '../utils/logger.util'
 import {FileUtil} from '../utils/file.util'
 import {activeProcessesTracker} from './activeProcesses.service'
@@ -21,7 +22,8 @@ export class TestService implements ITestService {
         private runRepository: RunRepository,
         private playwrightService: PlaywrightService,
         private websocketService: WebSocketService,
-        private attachmentService: AttachmentService
+        private attachmentService: AttachmentService,
+        private noteService: NoteService
     ) {}
 
     async discoverTests(): Promise<TestDiscoveryResult> {
@@ -101,6 +103,13 @@ export class TestService implements ITestService {
             } catch (error) {
                 Logger.error(`Failed to delete attachments for execution ${execution.id}`, error)
             }
+        }
+
+        // Delete test note if exists
+        try {
+            await this.noteService.deleteNote(testId)
+        } catch (error) {
+            Logger.error(`Failed to delete note for test ${testId}`, error)
         }
 
         // Delete all test_results records (CASCADE will delete attachment records)

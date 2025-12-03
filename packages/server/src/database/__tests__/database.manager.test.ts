@@ -25,6 +25,7 @@ describe('DatabaseManager', () => {
                 totalRuns: 0,
                 totalTests: 0,
                 totalAttachments: 0,
+                totalNotes: 0,
             })
 
             testDb.close()
@@ -632,12 +633,13 @@ describe('DatabaseManager', () => {
                 totalRuns: 0,
                 totalTests: 0,
                 totalAttachments: 0,
+                totalNotes: 0,
             })
         })
     })
 
     describe('Data Management', () => {
-        it('should clear all data', async () => {
+        it('should clear all data including test notes', async () => {
             // Create sample data
             const runId = randomUUID()
             await db.createTestRun({
@@ -650,10 +652,39 @@ describe('DatabaseManager', () => {
                 duration: 1000,
             })
 
+            // Create a test result
+            const testId = 'test-123'
+            const testResult: TestResultData = {
+                id: randomUUID(),
+                runId,
+                testId,
+                name: 'Test with note',
+                filePath: '/tests/test.spec.ts',
+                status: 'passed',
+                duration: 100,
+            }
+            await db.saveTestResult(testResult)
+
+            // Create a test note
+            await db.execute('INSERT INTO test_notes (test_id, content) VALUES (?, ?)', [
+                testId,
+                'Test note content',
+            ])
+
+            // Verify data exists
+            let stats = await db.getDataStats()
+            expect(stats.totalRuns).toBe(1)
+            expect(stats.totalTests).toBe(1)
+            expect(stats.totalNotes).toBe(1)
+
+            // Clear all data
             await db.clearAllData()
 
-            const stats = await db.getDataStats()
+            // Verify all data is cleared including notes
+            stats = await db.getDataStats()
             expect(stats.totalRuns).toBe(0)
+            expect(stats.totalTests).toBe(0)
+            expect(stats.totalNotes).toBe(0)
         })
 
         it('should cleanup old test runs', async () => {

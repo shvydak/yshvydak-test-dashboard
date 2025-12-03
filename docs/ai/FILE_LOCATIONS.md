@@ -145,7 +145,7 @@ packages/web/src/
 │   │   ├── components/
 │   │   │   ├── TestsList.tsx              # Main test list container
 │   │   │   ├── TestsListFilters.tsx       # Filters + "Run All Tests" button
-│   │   │   ├── TestsTableView.tsx         # Table/grouped view
+│   │   │   ├── TestsGroupedView.tsx       # Grouped view by file path
 │   │   │   ├── TestRow.tsx                # Individual test row with rerun
 │   │   │   ├── TestGroupHeader.tsx        # Collapsible group header
 │   │   │   │
@@ -478,7 +478,7 @@ packages/web/src/features/dashboard/components/Dashboard.tsx
 ```
 packages/web/src/features/tests/components/TestsListFilters.tsx
   → ActionButton with "Run All Tests" text
-  → Left side, before ViewModeToggle
+  → Left side, with Expand All/Collapse All buttons
 ```
 
 **Why moved here:**

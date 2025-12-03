@@ -1,7 +1,7 @@
 import {useState, useEffect, useRef} from 'react'
 import {useSearchParams} from 'react-router-dom'
 import {TestResult} from '@yshvydak/core'
-import {ViewMode, LoadingSpinner} from '@shared/components'
+import {LoadingSpinner} from '@shared/components'
 import {useTestsStore} from '../store/testsStore'
 import {useTestFilters} from '../hooks'
 import {FilterKey, FILTER_OPTIONS} from '../constants'
@@ -26,7 +26,6 @@ export default function TestsList({
     const {tests, error} = useTestsStore()
     const [searchParams, setSearchParams] = useSearchParams()
     const [searchQuery, setSearchQuery] = useState('')
-    const [viewMode, setViewMode] = useState<ViewMode>('grouped')
     const [detailModalOpen, setDetailModalOpen] = useState(false)
     const [detailModalTest, setDetailModalTest] = useState<TestResult | null>(null)
     const hasProcessedUrlRef = useRef(false)
@@ -173,15 +172,12 @@ export default function TestsList({
                 filter={filter}
                 onFilterChange={handleFilterChange}
                 counts={counts}
-                viewMode={viewMode}
-                onViewModeChange={setViewMode}
                 searchQuery={searchQuery}
                 onSearchChange={setSearchQuery}
             />
 
             <TestsContent
                 tests={filteredTests}
-                viewMode={viewMode}
                 selectedTest={selectedTest}
                 onTestSelect={openTestDetail}
                 onTestRerun={onTestRerun}

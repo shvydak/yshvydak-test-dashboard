@@ -1,7 +1,6 @@
 export {default as TestsList} from './TestsList'
 export {TestRow} from './TestRow'
 export {TestsTable} from './TestsTable'
-export {TestsTableView} from './TestsTableView'
 export {TestsGroupedView} from './TestsGroupedView'
 export {TestGroup} from './TestGroup'
 export {TestGroupHeader} from './TestGroupHeader'

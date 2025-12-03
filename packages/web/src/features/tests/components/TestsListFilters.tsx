@@ -1,4 +1,4 @@
-import {FilterButtonGroup, ViewModeToggle, ViewMode, SearchInput, Button} from '@shared/components'
+import {FilterButtonGroup, SearchInput, Button} from '@shared/components'
 import {FilterKey, FILTER_OPTIONS} from '../constants'
 import {useTestsStore} from '../store/testsStore'
 
@@ -12,8 +12,6 @@ export interface TestsListFiltersProps {
         skipped: number
         pending: number
     }
-    viewMode: ViewMode
-    onViewModeChange: (mode: ViewMode) => void
     searchQuery: string
     onSearchChange: (query: string) => void
     onExpandAll?: () => void
@@ -24,8 +22,6 @@ export function TestsListFilters({
     filter,
     onFilterChange,
     counts,
-    viewMode,
-    onViewModeChange,
     searchQuery,
     onSearchChange,
     onExpandAll,
@@ -50,9 +46,7 @@ export function TestsListFilters({
                     {isRunningAllTests ? 'Running...' : '▶️ Run All Tests'}
                 </Button>
 
-                <ViewModeToggle value={viewMode} onChange={onViewModeChange} />
-
-                {viewMode === 'grouped' && onExpandAll && onCollapseAll && (
+                {onExpandAll && onCollapseAll && (
                     <div className="flex space-x-2">
                         <button
                             onClick={onExpandAll}

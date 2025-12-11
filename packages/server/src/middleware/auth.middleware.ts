@@ -49,10 +49,14 @@ export function createAuthMiddleware(authService: AuthService) {
             }
 
             const authHeader = req.headers.authorization as string
+            const queryToken = req.query?.token as string
 
             // JWT authentication (for browser users)
-            if (authHeader) {
-                const tokenResult = await authService.verifyJWT(authHeader)
+            // Support both Authorization header and ?token= query parameter
+            // Query parameter is needed for window.open() which can't set headers
+            if (authHeader || queryToken) {
+                const tokenToVerify = authHeader || `Bearer ${queryToken}`
+                const tokenResult = await authService.verifyJWT(tokenToVerify)
 
                 if (tokenResult.valid && tokenResult.user) {
                     req.authType = 'jwt'
@@ -75,6 +79,7 @@ export function createAuthMiddleware(authService: AuthService) {
                 `No authentication provided for protected endpoint: ${req.method} ${req.path}`
             )
             ResponseHelper.unauthorized(res, 'Authentication required')
+            return
         } catch (error) {
             Logger.error('Authentication middleware error', error)
             ResponseHelper.serverError(res, 'Authentication service error')

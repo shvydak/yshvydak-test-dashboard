@@ -1,5 +1,12 @@
 # @yshvydak/test-dashboard-server
 
+## 1.3.1
+
+### Patch Changes
+
+- fix: logs attachments download and view
+    - enhance attachment handling with new URL building functions and improved authentication flow
+
 ## 1.3.0
 
 ### Minor Changes

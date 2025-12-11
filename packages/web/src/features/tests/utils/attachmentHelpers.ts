@@ -2,6 +2,33 @@ import {config} from '@config/environment.config'
 import {createProtectedFileURL, getAuthToken} from '@features/authentication/utils/authFetch'
 import {AttachmentWithBlobURL} from '../types/attachment.types'
 
+/**
+ * Build a full URL for an attachment by safely joining base URL and attachment path
+ * Handles leading/trailing slashes to prevent double slashes
+ */
+export function buildAttachmentUrl(baseUrl: string, attachmentUrl: string): string {
+    const cleanPath = attachmentUrl.startsWith('/') ? attachmentUrl : `/${attachmentUrl}`
+    const cleanBaseUrl = baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl
+    return `${cleanBaseUrl}${cleanPath}`
+}
+
+/**
+ * Build an authenticated URL for attachment with token in query parameter
+ * Used as fallback when blob URL is not available for inline preview
+ * Note: Token will be visible in DOM, use blob URLs when possible
+ */
+export function buildAuthenticatedAttachmentUrl(
+    baseUrl: string,
+    attachmentUrl: string
+): string | null {
+    const token = getAuthToken()
+    if (!token) {
+        return null
+    }
+    const attachmentPath = `${attachmentUrl}?token=${encodeURIComponent(token)}`
+    return buildAttachmentUrl(baseUrl, attachmentPath)
+}
+
 export function getAttachmentIcon(type: string): string {
     switch (type) {
         case 'video':
@@ -55,10 +82,32 @@ export async function openTraceViewer(
             return
         }
 
-        const traceURL = `${config.api.serverUrl}/api/tests/traces/${attachment.id}?token=${encodeURIComponent(token)}`
+        const tracePath = `/api/tests/traces/${attachment.id}?token=${encodeURIComponent(token)}`
+        const traceURL = buildAttachmentUrl(config.api.serverUrl, tracePath)
         window.open(`https://trace.playwright.dev/?trace=${encodeURIComponent(traceURL)}`, '_blank')
     } catch (error) {
         console.error('Failed to open trace viewer:', error)
         onError('Failed to open trace viewer')
+    }
+}
+
+export async function openAttachmentInNewWindow(
+    attachment: AttachmentWithBlobURL,
+    onError: (error: string) => void
+): Promise<void> {
+    try {
+        const token = getAuthToken()
+        if (!token) {
+            onError('Authentication required to view attachment')
+            return
+        }
+
+        // Add token query parameter to attachment URL
+        const attachmentPath = `${attachment.url}?token=${encodeURIComponent(token)}`
+        const attachmentURL = buildAttachmentUrl(config.api.serverUrl, attachmentPath)
+        window.open(attachmentURL, '_blank')
+    } catch (error) {
+        console.error('Failed to open attachment:', error)
+        onError('Failed to open attachment')
     }
 }

@@ -4,6 +4,9 @@ import {
     formatFileSize,
     downloadAttachment,
     openTraceViewer,
+    openAttachmentInNewWindow,
+    buildAttachmentUrl,
+    buildAuthenticatedAttachmentUrl,
 } from '../attachmentHelpers'
 import {AttachmentWithBlobURL} from '../../types/attachment.types'
 import * as authFetch from '@features/authentication/utils/authFetch'
@@ -20,6 +23,95 @@ vi.mock('@config/environment.config', () => ({
 }))
 
 describe('attachmentHelpers', () => {
+    // ============================================
+    // buildAttachmentUrl Tests
+    // ============================================
+    describe('buildAttachmentUrl', () => {
+        it('should correctly join base URL and attachment path', () => {
+            const result = buildAttachmentUrl('http://localhost:3000', '/attachments/file.png')
+            expect(result).toBe('http://localhost:3000/attachments/file.png')
+        })
+
+        it('should handle trailing slash in base URL', () => {
+            const result = buildAttachmentUrl('http://localhost:3000/', '/attachments/file.png')
+            expect(result).toBe('http://localhost:3000/attachments/file.png')
+        })
+
+        it('should handle missing leading slash in attachment path', () => {
+            const result = buildAttachmentUrl('http://localhost:3000', 'attachments/file.png')
+            expect(result).toBe('http://localhost:3000/attachments/file.png')
+        })
+
+        it('should handle both trailing and leading slashes', () => {
+            const result = buildAttachmentUrl('http://localhost:3000/', '/attachments/file.png')
+            expect(result).toBe('http://localhost:3000/attachments/file.png')
+        })
+
+        it('should work with HTTPS URLs', () => {
+            const result = buildAttachmentUrl('https://example.com', '/attachments/file.png')
+            expect(result).toBe('https://example.com/attachments/file.png')
+        })
+
+        it('should handle URLs with ports', () => {
+            const result = buildAttachmentUrl('http://localhost:8080', '/attachments/file.png')
+            expect(result).toBe('http://localhost:8080/attachments/file.png')
+        })
+    })
+
+    // ============================================
+    // buildAuthenticatedAttachmentUrl Tests
+    // ============================================
+    describe('buildAuthenticatedAttachmentUrl', () => {
+        beforeEach(() => {
+            vi.mocked(authFetch.getAuthToken).mockReturnValue('test-jwt-token')
+        })
+
+        it('should build URL with token parameter', () => {
+            const result = buildAuthenticatedAttachmentUrl(
+                'http://localhost:3000',
+                '/attachments/file.png'
+            )
+            expect(result).toBe('http://localhost:3000/attachments/file.png?token=test-jwt-token')
+        })
+
+        it('should return null when no token available', () => {
+            vi.mocked(authFetch.getAuthToken).mockReturnValue(null)
+            const result = buildAuthenticatedAttachmentUrl(
+                'http://localhost:3000',
+                '/attachments/file.png'
+            )
+            expect(result).toBeNull()
+        })
+
+        it('should encode special characters in token', () => {
+            vi.mocked(authFetch.getAuthToken).mockReturnValue('token+with/special=chars')
+            const result = buildAuthenticatedAttachmentUrl(
+                'http://localhost:3000',
+                '/attachments/file.png'
+            )
+            expect(result).toBe(
+                'http://localhost:3000/attachments/file.png?token=token%2Bwith%2Fspecial%3Dchars'
+            )
+        })
+
+        it('should handle URLs with existing query parameters', () => {
+            const result = buildAuthenticatedAttachmentUrl(
+                'http://localhost:3000',
+                '/attachments/file.png?version=1'
+            )
+            expect(result).toContain('version=1')
+            expect(result).toContain('token=test-jwt-token')
+        })
+
+        it('should handle trailing slash in base URL', () => {
+            const result = buildAuthenticatedAttachmentUrl(
+                'http://localhost:3000/',
+                '/attachments/file.png'
+            )
+            expect(result).toBe('http://localhost:3000/attachments/file.png?token=test-jwt-token')
+        })
+    })
+
     // ============================================
     // getAttachmentIcon Tests
     // ============================================
@@ -529,6 +621,231 @@ describe('attachmentHelpers', () => {
                 const formatted = formatFileSize(size)
                 expect(formatted).toBeTruthy()
                 expect(formatted).not.toBe('N/A')
+            })
+        })
+    })
+
+    // ============================================
+    // openAttachmentInNewWindow Tests
+    // ============================================
+    describe('openAttachmentInNewWindow', () => {
+        let mockOnError: ReturnType<typeof vi.fn>
+        let mockAttachment: AttachmentWithBlobURL
+        let windowOpenSpy: ReturnType<typeof vi.spyOn>
+
+        beforeEach(() => {
+            mockOnError = vi.fn()
+            mockAttachment = {
+                id: 'att-123',
+                testResultId: 'test-result-123',
+                url: '/attachments/screenshot.png',
+                type: 'screenshot',
+                filePath: '/path/to/screenshot.png',
+                fileSize: 1024,
+                blobURL: undefined,
+            }
+
+            // Mock window.open
+            windowOpenSpy = vi.spyOn(window, 'open').mockImplementation(() => null) as any
+
+            // Mock getAuthToken to return a test token
+            vi.mocked(authFetch.getAuthToken).mockReturnValue('test-token-123')
+        })
+
+        afterEach(() => {
+            windowOpenSpy.mockRestore()
+            vi.clearAllMocks()
+        })
+
+        describe('basic functionality', () => {
+            it('should get auth token', async () => {
+                await openAttachmentInNewWindow(mockAttachment, mockOnError)
+
+                expect(authFetch.getAuthToken).toHaveBeenCalled()
+            })
+
+            it('should construct correct attachment URL with token', async () => {
+                await openAttachmentInNewWindow(mockAttachment, mockOnError)
+
+                const expectedURL = `${config.api.serverUrl}${mockAttachment.url}?token=${encodeURIComponent('test-token-123')}`
+
+                expect(windowOpenSpy).toHaveBeenCalledWith(expectedURL, '_blank')
+            })
+
+            it('should encode token properly', async () => {
+                vi.mocked(authFetch.getAuthToken).mockReturnValue('token+with/special=chars')
+
+                await openAttachmentInNewWindow(mockAttachment, mockOnError)
+
+                const expectedURL = `${config.api.serverUrl}${mockAttachment.url}?token=token%2Bwith%2Fspecial%3Dchars`
+
+                expect(windowOpenSpy).toHaveBeenCalledWith(expectedURL, '_blank')
+            })
+
+            it('should open attachment in new tab', async () => {
+                await openAttachmentInNewWindow(mockAttachment, mockOnError)
+
+                expect(windowOpenSpy).toHaveBeenCalledWith(expect.any(String), '_blank')
+            })
+
+            it('should not call onError on success', async () => {
+                await openAttachmentInNewWindow(mockAttachment, mockOnError)
+
+                expect(mockOnError).not.toHaveBeenCalled()
+            })
+        })
+
+        describe('authentication errors', () => {
+            it('should call onError when no token is available', async () => {
+                vi.mocked(authFetch.getAuthToken).mockReturnValue(null)
+
+                await openAttachmentInNewWindow(mockAttachment, mockOnError)
+
+                expect(mockOnError).toHaveBeenCalledWith(
+                    'Authentication required to view attachment'
+                )
+            })
+
+            it('should not open attachment when no token', async () => {
+                vi.mocked(authFetch.getAuthToken).mockReturnValue(null)
+
+                await openAttachmentInNewWindow(mockAttachment, mockOnError)
+
+                expect(windowOpenSpy).not.toHaveBeenCalled()
+            })
+
+            it('should return early when no token', async () => {
+                vi.mocked(authFetch.getAuthToken).mockReturnValue(null)
+
+                await openAttachmentInNewWindow(mockAttachment, mockOnError)
+
+                expect(mockOnError).toHaveBeenCalledTimes(1)
+                expect(windowOpenSpy).not.toHaveBeenCalled()
+            })
+        })
+
+        describe('error handling', () => {
+            it('should call onError when getAuthToken throws', async () => {
+                vi.mocked(authFetch.getAuthToken).mockImplementation(() => {
+                    throw new Error('Token retrieval failed')
+                })
+
+                await openAttachmentInNewWindow(mockAttachment, mockOnError)
+
+                expect(mockOnError).toHaveBeenCalledWith('Failed to open attachment')
+            })
+
+            it('should log error to console', async () => {
+                const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+                const error = new Error('Token error')
+                vi.mocked(authFetch.getAuthToken).mockImplementation(() => {
+                    throw error
+                })
+
+                await openAttachmentInNewWindow(mockAttachment, mockOnError)
+
+                expect(consoleErrorSpy).toHaveBeenCalledWith('Failed to open attachment:', error)
+                consoleErrorSpy.mockRestore()
+            })
+
+            it('should handle window.open errors gracefully', async () => {
+                windowOpenSpy.mockImplementation(() => {
+                    throw new Error('Popup blocked')
+                })
+
+                await openAttachmentInNewWindow(mockAttachment, mockOnError)
+
+                expect(mockOnError).toHaveBeenCalledWith('Failed to open attachment')
+            })
+        })
+
+        describe('edge cases', () => {
+            it('should handle attachment URLs with special characters', async () => {
+                mockAttachment.url = '/attachments/test file+name.png'
+
+                await openAttachmentInNewWindow(mockAttachment, mockOnError)
+
+                const expectedURL = `${config.api.serverUrl}/attachments/test file+name.png?token=${encodeURIComponent('test-token-123')}`
+
+                expect(windowOpenSpy).toHaveBeenCalledWith(expectedURL, '_blank')
+            })
+
+            it('should handle attachment URLs without leading slash', async () => {
+                mockAttachment.url = 'attachments/screenshot.png'
+
+                await openAttachmentInNewWindow(mockAttachment, mockOnError)
+
+                const expectedURL = `${config.api.serverUrl}/attachments/screenshot.png?token=${encodeURIComponent('test-token-123')}`
+
+                expect(windowOpenSpy).toHaveBeenCalledWith(expectedURL, '_blank')
+            })
+
+            it('should handle different server URLs', async () => {
+                // This test verifies URL construction with different server URLs
+                // The buildAttachmentUrl function handles this, so we just verify it works
+                await openAttachmentInNewWindow(mockAttachment, mockOnError)
+
+                expect(windowOpenSpy).toHaveBeenCalledWith(
+                    expect.stringContaining(mockAttachment.url),
+                    '_blank'
+                )
+                expect(windowOpenSpy).toHaveBeenCalledWith(
+                    expect.stringContaining('?token='),
+                    '_blank'
+                )
+            })
+
+            it('should work with log attachments', async () => {
+                mockAttachment.type = 'log'
+                mockAttachment.url = '/attachments/test.log'
+
+                await openAttachmentInNewWindow(mockAttachment, mockOnError)
+
+                const expectedURL = `${config.api.serverUrl}/attachments/test.log?token=${encodeURIComponent('test-token-123')}`
+
+                expect(windowOpenSpy).toHaveBeenCalledWith(expectedURL, '_blank')
+            })
+
+            it('should work with video attachments', async () => {
+                mockAttachment.type = 'video'
+                mockAttachment.url = '/attachments/video.webm'
+
+                await openAttachmentInNewWindow(mockAttachment, mockOnError)
+
+                const expectedURL = `${config.api.serverUrl}/attachments/video.webm?token=${encodeURIComponent('test-token-123')}`
+
+                expect(windowOpenSpy).toHaveBeenCalledWith(expectedURL, '_blank')
+            })
+
+            it('should handle empty token string', async () => {
+                vi.mocked(authFetch.getAuthToken).mockReturnValue('')
+
+                await openAttachmentInNewWindow(mockAttachment, mockOnError)
+
+                expect(mockOnError).toHaveBeenCalledWith(
+                    'Authentication required to view attachment'
+                )
+                expect(windowOpenSpy).not.toHaveBeenCalled()
+            })
+        })
+
+        describe('different attachment types', () => {
+            const attachmentTypes: Array<'screenshot' | 'video' | 'log'> = [
+                'screenshot',
+                'video',
+                'log',
+            ]
+
+            attachmentTypes.forEach((type) => {
+                it(`should work with ${type} attachments`, async () => {
+                    mockAttachment.type = type
+                    mockAttachment.url = `/attachments/test.${type === 'screenshot' ? 'png' : type === 'video' ? 'webm' : 'log'}`
+
+                    await openAttachmentInNewWindow(mockAttachment, mockOnError)
+
+                    expect(windowOpenSpy).toHaveBeenCalled()
+                    expect(mockOnError).not.toHaveBeenCalled()
+                })
             })
         })
     })

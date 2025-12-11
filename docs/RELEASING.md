@@ -121,6 +121,7 @@ git push origin develop --follow-tags
 ## ⚠️ Important Rules
 
 ### ✅ DO:
+
 - **ALWAYS update server AND web together** (same version, same type)
 - Create changeset for functional changes
 - Use `npm run version` to update versions (never manually)
@@ -128,6 +129,7 @@ git push origin develop --follow-tags
 - Sync develop after merging to main
 
 ### ❌ DON'T:
+
 - Don't manually edit `package.json` versions (use `npm run version`)
 - Don't manually edit `CHANGELOG.md` (changesets do it)
 - Don't create different versions for server/web/core
@@ -139,16 +141,19 @@ git push origin develop --follow-tags
 ## 📝 Changeset Guidelines
 
 ### When to create:
+
 - ✅ New feature
 - ✅ Bug fix
 - ✅ Breaking change
 
 ### When to skip:
+
 - ❌ Documentation only
 - ❌ Tests only (no functional changes)
 - ❌ Routine tasks (chore)
 
 ### Summary format:
+
 ```
 Add test notes feature for annotating tests
 
@@ -185,6 +190,7 @@ npm login
 ## 🎯 Version Synchronization
 
 **Dashboard packages MUST have identical versions:**
+
 ```
 server:   1.4.0 ✅
 web:      1.4.0 ✅

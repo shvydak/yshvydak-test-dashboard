@@ -1,10 +1,10 @@
-import {config} from '@config/environment.config'
 import {AttachmentWithBlobURL} from '../../types/attachment.types'
 import {
     getAttachmentIcon,
     formatFileSize,
     downloadAttachment,
     openTraceViewer,
+    openAttachmentInNewWindow,
 } from '../../utils/attachmentHelpers'
 import {AttachmentPreview} from './AttachmentPreview'
 
@@ -38,9 +38,7 @@ export function AttachmentItem({attachment, onError}: AttachmentItemProps) {
                     )}
                     {attachment.type === 'log' && (
                         <button
-                            onClick={() =>
-                                window.open(`${config.api.serverUrl}/${attachment.url}`, '_blank')
-                            }
+                            onClick={() => openAttachmentInNewWindow(attachment, onError)}
                             className="px-3 py-1 bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 rounded-md text-sm hover:bg-blue-200 dark:hover:bg-blue-800 transition-colors">
                             👁️ View
                         </button>

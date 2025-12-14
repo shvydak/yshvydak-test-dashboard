@@ -1,5 +1,11 @@
 # @yshvydak/core
 
+## 1.3.2
+
+### Patch Changes
+
+- feat: Added show/hide password functionality with an eye icon to toggle password visibility.
+
 ## 1.3.1
 
 ### Patch Changes

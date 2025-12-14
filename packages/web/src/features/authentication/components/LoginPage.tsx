@@ -1,6 +1,7 @@
-import {useState, useEffect, type ChangeEvent, type FormEvent} from 'react'
 import {config} from '@config/environment.config'
+import {PasswordInput} from '@/shared/components/molecules'
 import {applyThemeMode, type ThemeMode} from '@/hooks/useTheme'
+import {useState, useEffect, type ChangeEvent, type FormEvent} from 'react'
 
 interface LoginFormData {
     email: string
@@ -130,25 +131,18 @@ export default function LoginPage() {
                             />
                         </div>
 
-                        <div>
-                            <label
-                                htmlFor="password"
-                                className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                                Password
-                            </label>
-                            <input
-                                id="password"
-                                name="password"
-                                type="password"
-                                autoComplete="current-password"
-                                required
-                                value={formData.password}
-                                onChange={handleInputChange}
-                                className="mt-1 appearance-none relative block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 placeholder-gray-500 dark:placeholder-gray-400 text-gray-900 dark:text-white dark:bg-gray-800 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
-                                placeholder="Enter your password"
-                                disabled={isLoading}
-                            />
-                        </div>
+                        <PasswordInput
+                            id="password"
+                            name="password"
+                            label="Password"
+                            autoComplete="current-password"
+                            required
+                            value={formData.password}
+                            onChange={handleInputChange}
+                            placeholder="Enter your password"
+                            disabled={isLoading}
+                            fullWidth
+                        />
                     </div>
 
                     {error && (

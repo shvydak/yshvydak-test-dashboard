@@ -50,9 +50,7 @@ export function Input({
                 />
 
                 {icon && iconPosition === 'right' && (
-                    <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
-                        {icon}
-                    </div>
+                    <div className="absolute inset-y-0 right-0 flex items-center pr-3">{icon}</div>
                 )}
             </div>
 

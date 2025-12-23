@@ -170,7 +170,336 @@ packages/web/src/features/{feature-name}/
 
 ---
 
-### 4️⃣ VALIDATION PHASE (MANDATORY)
+### 3️⃣-B TEST GAP DETECTION (PROACTIVE CHECK)
+
+**After code implementation, BEFORE agents, check if tests are needed:**
+
+#### Quick Test Coverage Analysis
+
+**Ask yourself:**
+
+1. **New Service Methods?**
+   - Did I add new methods to services?
+   - Are they unit tested?
+
+2. **New API Endpoints?**
+   - Did I add new routes (GET/POST/PUT/DELETE)?
+   - Are they integration tested?
+
+3. **New UI Components?**
+   - Did I create new React components?
+   - Are they component tested?
+
+4. **Edge Cases?**
+   - Error handling tested?
+   - Null/undefined cases tested?
+   - Boundary conditions tested?
+
+**If ANY answer is "NO" → suggest adding tests:**
+
+```
+⚠️ Test Coverage Gap Detected
+
+New code without tests:
+
+1. CsvExportService.generateReport() (new method)
+   Missing tests:
+   - ✗ should generate CSV with correct headers
+   - ✗ should handle empty data
+   - ✗ should format dates correctly
+
+2. POST /api/tests/export-csv (new endpoint)
+   Missing integration test for endpoint
+
+3. Edge cases not covered:
+   - ✗ What if data is null?
+   - ✗ What if headers are missing?
+
+Recommendation: Add tests BEFORE validation
+  This ensures coverage-agent will pass.
+
+Add missing tests now? (yes/no/later)
+  - yes: Write tests immediately
+  - no: Skip tests (not recommended)
+  - later: Add to TODO, continue for now
+```
+
+**If user says "yes":**
+
+1. Write missing tests
+2. Run `npm test` to verify
+3. Continue to agent phase
+
+**If user says "later":**
+
+```
+👍 Added to TODO: Write tests for CsvExportService
+
+Note: coverage-agent will likely report gaps.
+Continuing to agent phase...
+```
+
+**If ALL tests already exist:**
+
+```
+✅ Test coverage looks good!
+
+Detected tests for:
+  ✓ CsvExportService.generateReport() (3 tests)
+  ✓ POST /api/tests/export-csv (integration test)
+  ✓ Edge cases covered (null, empty, errors)
+
+Proceeding to agent phase...
+```
+
+---
+
+### 4️⃣ POST-DEVELOPMENT AGENT PHASE (SMART RECOMMENDATION)
+
+**After development is complete, analyze the task type and recommend appropriate agents.**
+
+#### Step 1: Detect Task Type
+
+Analyze what was done:
+
+- **New Feature**: Added new endpoint, service, or significant functionality
+- **Bug Fix**: Fixed existing functionality without adding new features
+- **Refactoring**: Restructured code, moved files, changed architecture
+- **UI Changes**: Modified only frontend components/styling
+- **Tests**: Added/updated tests only
+- **Documentation**: Modified only .md files
+
+#### Step 2: Recommend Agents Based on Task Type
+
+**Recommendation Matrix:**
+
+| Task Type | validation-agent | coverage-agent | documentation-agent | Reason |
+|-----------|------------------|----------------|---------------------|--------|
+| **New Feature** | ✅ Required | ✅ Required | ✅ Required | Full validation needed |
+| **Bug Fix** | ✅ Required | ⚠️ Optional | ❌ Skip | Docs don't change |
+| **Refactoring** | ✅ Required | ⚠️ Optional | ⚠️ If API changed | Depends on scope |
+| **UI Changes** | ✅ Required | ❌ Skip | ❌ Skip | UI coverage not critical |
+| **Tests** | ✅ Required | ✅ Required | ❌ Skip | Check new coverage |
+| **Documentation** | ❌ Skip | ❌ Skip | ❌ Skip | No code changed |
+
+**Present recommendation to user:**
+
+```
+✅ Development complete!
+
+📦 Post-development checks recommended:
+
+Task type detected: New Feature
+
+Recommended agents:
+  ✅ validation-agent  (Required)
+     → Runs: format, type-check, lint, test, build
+     → Ensures code quality and all tests pass
+
+  ✅ coverage-agent  (Required)
+     → Analyzes test coverage vs targets
+     → Identifies gaps in new code
+
+  ✅ documentation-agent  (Required)
+     → Detects needed doc updates
+     → Checks Context7-MCP for dependencies
+
+Run all agents now? (yes/no/skip/customize)
+  - yes: Run all recommended agents in parallel
+  - no: Skip all agents (manual validation)
+  - skip: Skip for now, remind before commit
+  - customize: Choose which agents to run
+```
+
+#### Step 3: Execute Selected Agents
+
+**If user chooses "yes" (recommended):**
+
+Launch all agents in PARALLEL using a single message:
+
+```typescript
+// Launch all three agents simultaneously
+Task({ subagent_type: 'validation-agent', description: 'Run code validation' })
+Task({ subagent_type: 'coverage-agent', description: 'Analyze test coverage' })
+Task({ subagent_type: 'documentation-agent', description: 'Check doc updates' })
+```
+
+Wait for all agents to complete, then consolidate results:
+
+```
+📊 Post-Development Agent Results
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ Validation Agent
+   All checks passed (format, type-check, lint, test, build)
+
+✅ Coverage Agent
+   All packages meet targets (Reporter: 92%, Server: 83%, Web: 74%)
+
+⚠️ Documentation Agent
+   2 updates recommended (see details below)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Documentation updates needed:
+  1. docs/API_REFERENCE.md - New endpoint
+  2. docs/features/CSV_EXPORT.md - New feature
+
+Update documentation? (yes/no/later)
+```
+
+**If user chooses "customize":**
+
+```
+Select agents to run:
+  [✓] validation-agent
+  [ ] coverage-agent
+  [✓] documentation-agent
+
+Which agents? (validation,coverage,documentation or all/none)
+```
+
+**If user chooses "no" or "skip":**
+
+```
+👍 Skipping post-development agents
+
+Note: Manual validation required before commit:
+  - npm run format
+  - npm run type-check
+  - npm run lint:fix
+  - npm test
+  - npm run build
+
+You can run agents later with:
+  @validation-agent
+  @coverage-agent
+  @documentation-agent
+```
+
+---
+
+### 5️⃣ ARCHITECTURE REVIEW (FINAL CHECK)
+
+**After ALL agents complete (or manual validation), run architecture review:**
+
+**Always suggest architecture review for:**
+- ✅ New features
+- ✅ Refactoring
+- ✅ Bug fixes (if significant changes)
+- ❌ Skip for: documentation-only changes, trivial fixes
+
+**Present to user:**
+
+```
+🏗️ Final Step: Architecture Review
+
+This will check:
+  ✓ No unnecessary/dead code created
+  ✓ No duplicated logic
+  ✓ Repository Pattern followed
+  ✓ DRY principle applied
+  ✓ Project structure maintained
+  ✓ Best practices followed
+
+Run architecture review? (yes/no/skip)
+  - yes: Launch architecture-review-agent
+  - no: Skip review (proceed to finish)
+  - skip: Skip for now, remind before commit
+```
+
+**If user says "yes":**
+
+```typescript
+// Launch architecture review agent
+Task({
+  subagent_type: 'architecture-review-agent',
+  description: 'Review code architecture and quality'
+})
+```
+
+**Wait for agent to complete, then show consolidated result:**
+
+```
+🏗️ Architecture Review Complete
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Status: ✅ All Good
+
+✅ Repository Pattern: Compliant
+✅ Dead Code: None detected
+✅ Duplicated Code: None detected
+✅ File Structure: Compliant
+✅ Best Practices: All followed
+✅ Test ID Generation: Consistent
+
+Excellent work! Ready to commit.
+```
+
+**OR if issues found:**
+
+```
+🏗️ Architecture Review Complete
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Status: ⚠️ Issues Found
+
+Critical Issues: 1
+  • Repository Pattern violation in csv-export.service.ts:45
+
+Warnings: 3
+  • Duplicated WebSocket URL logic (3 files)
+  • Dead code: 2 unused imports
+  • Generic error message in csv-export.service.ts:78
+
+Good Practices: 4
+  ✓ DRY principle followed
+  ✓ Type safety maintained
+  ✓ Feature structure correct
+  ✓ Test ID generation consistent
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Recommendation: Fix 1 critical + 3 warnings before commit
+
+Fix issues? (yes/no/selective)
+  - yes: Fix all automatically
+  - no: Skip fixes (not recommended for critical)
+  - selective: Choose which to fix
+```
+
+**If user chooses to fix issues:**
+
+1. Agent applies fixes
+2. Re-run validation-agent to ensure fixes didn't break anything
+3. Show final status
+
+```
+✅ All issues fixed!
+
+Re-ran validation: All checks passed
+
+Ready to commit!
+```
+
+**If user skips review:**
+
+```
+👍 Skipped architecture review
+
+Note: You can run it later with @architecture-review-agent
+
+Proceeding to finish...
+```
+
+---
+
+### 4️⃣-B MANUAL VALIDATION (FALLBACK)
+
+**ONLY if user skips agents, run validation manually in main chat:**
 
 **Run ALL commands sequentially:**
 
@@ -202,101 +531,6 @@ If ANY command fails:
 
 All validation checks passed!
 ```
-
----
-
-### 5️⃣ TEST COVERAGE CHECK
-
-**Analyze if tests need to be added/updated:**
-
-**Check:**
-
-- ✅ New service methods have unit tests?
-- ✅ New API endpoints have integration tests?
-- ✅ New UI components have tests?
-- ✅ Edge cases covered?
-- ✅ Coverage targets met? (Reporter: 90%+, Server: 80%+, Web: 70%+)
-
-**If gaps found:**
-
-```
-⚠️ Test coverage gaps detected:
-
-
-
-Coverage: 75% (target: 80%+ for server)
-
-Shall I add tests now? (yes/no/later)
-```
-
-**If user says yes:**
-
-- Write missing tests
-- Run `npm test` again
-- Verify coverage improved
-
----
-
-### 6️⃣ DOCUMENTATION CHECK
-
-**Apply rules from docs/ai/DOCUMENTATION_UPDATE_RULES.md:**
-
-**P0 (Critical) - ALWAYS suggest:**
-
-- ✅ New REST endpoint → docs/API_REFERENCE.md
-- ✅ New WebSocket event → docs/API_REFERENCE.md
-- ✅ Breaking change → Migration guide + all relevant docs
-- ✅ Dependency added/updated → Check Context7-MCP FIRST (mandatory)
-
-**P1 (High) - Suggest immediately:**
-
-- ✅ API contract change → docs/API_REFERENCE.md
-- ✅ Files moved → docs/ai/FILE_LOCATIONS.md
-- ✅ New architecture layer → docs/ARCHITECTURE.md
-
-**P2 (Medium) - Suggest at end:**
-
-- ✅ New significant feature → docs/features/FEATURE_NAME.md
-- ✅ New env variable → docs/CONFIGURATION.md
-- ✅ New key component → docs/ai/FILE_LOCATIONS.md
-
-**P3 (Low) - Don't suggest:**
-
-- ❌ Bug fixes (internal)
-- ❌ UI styling
-- ❌ Refactoring (if public API unchanged)
-- ❌ Typo fixes
-
-**Format:**
-
-```
-📝 Documentation updates recommended:
-
-P1 (High Priority):
-1. docs/API_REFERENCE.md
-   Reason: New endpoint POST /api/tests/rerun-bulk
-   Section: "Test Endpoints"
-
-P2 (Medium Priority):
-2. docs/features/BULK_TEST_RERUN.md (new file)
-   Reason: Significant user-facing feature
-   Content: Feature overview, usage, implementation details
-
-Update now? (yes/no/later)
-```
-
-**If user says yes:**
-
-- Update the documents
-- Confirm: "✅ Updated [file names]"
-
-**If user says no:**
-
-- Acknowledge: "👍 Skipping documentation updates"
-
-**If user says later:**
-
-- Acknowledge: "👍 I'll remind you before any git operations"
 
 ---
 
@@ -332,17 +566,31 @@ Update now? (yes/no/later)
 - ✅ Use existing utilities (check before creating new)
 - ✅ Feature-based structure for frontend
 
+**Test Coverage:**
+
+- ✅ Check for test gaps BEFORE running agents (Step 3️⃣-B)
+- ✅ Suggest adding tests for new methods/endpoints/components
+- ✅ Verify edge cases are covered
+
 **Validation:**
 
-- ✅ Run ALL 5 commands (format/type-check/lint/test/build)
+- ✅ Recommend appropriate agents based on task type
+- ✅ Launch agents in PARALLEL when possible
+- ✅ Consolidate agent results into single report
 - ✅ Fix errors before proceeding
-- ✅ Report results to user
 
 **Documentation:**
 
-- ✅ Check DOCUMENTATION_UPDATE_RULES.md at end
+- ✅ Check DOCUMENTATION_UPDATE_RULES.md via documentation-agent
 - ✅ Suggest updates based on priority
 - ✅ Ask user before updating (yes/no/later)
+
+**Architecture Review:**
+
+- ✅ Suggest architecture review for non-trivial changes (Step 5️⃣)
+- ✅ Check for dead code, duplicates, pattern violations
+- ✅ Verify Test ID generation consistency (CRITICAL)
+- ✅ Offer to fix issues automatically
 
 ### ❌ NEVER:
 
@@ -464,15 +712,42 @@ Ready to start? (yes/use defaults)
 ## Success Criteria
 
 **A successful session includes:**
-✅ Complete research with agents
+
+**Phase 1: Research & Planning**
+✅ Complete research with Explore agents (parallel)
 ✅ Clear plan presented to user
 ✅ Only critical questions asked
+✅ DRY principle check (reuse vs new code justification)
+
+**Phase 2: Development**
 ✅ Repository Pattern followed
 ✅ TodoWrite progress tracking
+✅ Code follows project architecture
+
+**Phase 3: Test Gap Detection**
+✅ Proactive test gap detection (before agents)
+✅ Missing tests identified and written
+✅ Edge cases covered
+
+**Phase 4: Agent Validation**
+✅ Appropriate agents recommended (smart detection)
+✅ All agents executed (parallel when possible)
+✅ Agent results consolidated
 ✅ All validation checks passed
-✅ Test coverage analyzed
-✅ Documentation check completed
-✅ User knows what was done and what needs attention
+✅ Test coverage meets targets
+✅ Documentation updates identified
+
+**Phase 5: Architecture Review**
+✅ Architecture review suggested (for non-trivial changes)
+✅ Dead code detected and removed
+✅ Duplicated logic identified and refactored
+✅ Pattern violations caught and fixed
+✅ Test ID generation consistency verified
+
+**Final State**
+✅ User knows what was done
+✅ User knows what needs attention
+✅ Ready to commit (all checks passed)
 
 **User experience:**
 
@@ -480,4 +755,5 @@ Ready to start? (yes/use defaults)
 - Minimal back-and-forth questions
 - Transparent progress (TodoWrite)
 - Complete solution (code + tests + docs)
-- Confidence (validation passed)
+- High code quality (architecture review)
+- Confidence (all validations passed)

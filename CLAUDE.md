@@ -86,12 +86,15 @@ For rapid feature development with automated workflow, use the custom agent:
 
 **The agent automatically:**
 
-- 🔍 Researches existing implementation (parallel Explore agents)
-- 📋 Presents plan + asks only critical questions
-- 💻 Develops following Repository Pattern + best practices
-- 🧪 Runs validation (format/type-check/lint/test/build)
-- 📊 Checks test coverage
-- 📝 Checks documentation updates (DOCUMENTATION_UPDATE_RULES.md)
+- 🔍 **Research:** Parallel Explore agents gather context
+- 📋 **Planning:** Presents plan + asks only critical questions
+- 💻 **Development:** Implements following Repository Pattern + best practices
+- 🧪 **Test Gap Detection:** Proactively identifies missing tests
+- 🤖 **Smart Validation:** Recommends & runs specialized agents:
+  - `validation-agent`: format, type-check, lint, test, build (parallel)
+  - `coverage-agent`: test coverage analysis vs targets
+  - `documentation-agent`: doc updates + Context7-MCP checks
+- 🏗️ **Architecture Review:** Detects dead code, duplicates, pattern violations
 
 **Examples:**
 
@@ -101,6 +104,7 @@ For rapid feature development with automated workflow, use the custom agent:
 @vibe refactor WebSocket logic
 ```
 
+**Full workflow guide:** [docs/ai/AGENT_WORKFLOW.md](docs/ai/AGENT_WORKFLOW.md)
 **Agent definition:** `.claude/agents/vibe.md` (customizable)
 
 ---
@@ -220,15 +224,19 @@ cd packages/reporter && npm run dev   # Reporter watch
 - ALWAYS check before changing dependency configuration
 - Get latest docs, breaking changes, migration guides
 
-**Complete Development Checklist** (MANDATORY after ANY code changes):
+**Complete Development Checklist** (Automated via agents):
 
+Vibe agent automatically runs these checks through specialized agents:
 1. ✨ `npm run format` - Format all files with Prettier
 2. 🔍 `npm run type-check` - Verify TypeScript
 3. 🎨 `npm run lint:fix` - Fix linting issues
 4. ✅ `npm test` - Run all tests (update affected tests if needed)
 5. 📦 `npm run build` - Ensure build succeeds
 
-**IMPORTANT**: Never skip this checklist during vibe coding sessions!
+**Run via:** `@validation-agent` (or automatically when using `@vibe`)
+**Manual fallback:** If agents skipped, run commands manually
+
+**IMPORTANT**: These checks are MANDATORY after ANY code changes!
 
 ### ❌ DON'T:
 
@@ -255,6 +263,7 @@ cd packages/reporter && npm run dev   # Reporter watch
 
 ### AI Deep Dive
 
+- [docs/ai/AGENT_WORKFLOW.md](docs/ai/AGENT_WORKFLOW.md) - Agent-based workflow guide
 - [docs/ai/ANTI_PATTERNS.md](docs/ai/ANTI_PATTERNS.md) - Code examples
 - [docs/ai/FILE_LOCATIONS.md](docs/ai/FILE_LOCATIONS.md) - Full structure
 - [docs/ai/CONCEPT_MAP.md](docs/ai/CONCEPT_MAP.md) - Detailed flows

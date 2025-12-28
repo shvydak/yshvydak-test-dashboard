@@ -20,6 +20,7 @@ export const FILTER_OPTIONS = [
     {key: 'failed', label: 'Failed'},
     {key: 'skipped', label: 'Skipped'},
     {key: 'pending', label: 'Pending'},
+    {key: 'noted', label: 'Noted'},
 ] as const
 
 export type FilterKey = (typeof FILTER_OPTIONS)[number]['key']

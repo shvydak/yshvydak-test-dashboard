@@ -11,6 +11,32 @@ Execute a complete, structured development workflow from research to documentati
 - Complete test coverage
 - Proper documentation
 
+**SPECIAL MODE: External Code Review**
+
+If user says "check" or "review" or describes a task that was already implemented:
+→ **Delegate to external-code-review-agent instead of doing full development**
+
+Examples triggering external review:
+
+- "check if CSV export is implemented correctly"
+- "review what Gemini did"
+- "@vibe check add bulk test rerun"
+- "validate the changes"
+
+In this case:
+
+```typescript
+Task({
+    subagent_type: 'external-code-review-agent',
+    description: 'Review external AI implementation',
+    prompt: 'User task: {user_description}. Review git diff and fix violations.',
+})
+```
+
+Then exit - let external-code-review-agent handle everything.
+
+---
+
 ## Workflow (Execute ALL steps in order)
 
 ### 1️⃣ RESEARCH PHASE (30 sec - 2 min)
@@ -179,21 +205,21 @@ packages/web/src/features/{feature-name}/
 **Ask yourself:**
 
 1. **New Service Methods?**
-   - Did I add new methods to services?
-   - Are they unit tested?
+    - Did I add new methods to services?
+    - Are they unit tested?
 
 2. **New API Endpoints?**
-   - Did I add new routes (GET/POST/PUT/DELETE)?
-   - Are they integration tested?
+    - Did I add new routes (GET/POST/PUT/DELETE)?
+    - Are they integration tested?
 
 3. **New UI Components?**
-   - Did I create new React components?
-   - Are they component tested?
+    - Did I create new React components?
+    - Are they component tested?
 
 4. **Edge Cases?**
-   - Error handling tested?
-   - Null/undefined cases tested?
-   - Boundary conditions tested?
+    - Error handling tested?
+    - Null/undefined cases tested?
+    - Boundary conditions tested?
 
 **If ANY answer is "NO" → suggest adding tests:**
 
@@ -273,14 +299,14 @@ Analyze what was done:
 
 **Recommendation Matrix:**
 
-| Task Type | validation-agent | coverage-agent | documentation-agent | Reason |
-|-----------|------------------|----------------|---------------------|--------|
-| **New Feature** | ✅ Required | ✅ Required | ✅ Required | Full validation needed |
-| **Bug Fix** | ✅ Required | ⚠️ Optional | ❌ Skip | Docs don't change |
-| **Refactoring** | ✅ Required | ⚠️ Optional | ⚠️ If API changed | Depends on scope |
-| **UI Changes** | ✅ Required | ❌ Skip | ❌ Skip | UI coverage not critical |
-| **Tests** | ✅ Required | ✅ Required | ❌ Skip | Check new coverage |
-| **Documentation** | ❌ Skip | ❌ Skip | ❌ Skip | No code changed |
+| Task Type         | validation-agent | coverage-agent | documentation-agent | Reason                   |
+| ----------------- | ---------------- | -------------- | ------------------- | ------------------------ |
+| **New Feature**   | ✅ Required      | ✅ Required    | ✅ Required         | Full validation needed   |
+| **Bug Fix**       | ✅ Required      | ⚠️ Optional    | ❌ Skip             | Docs don't change        |
+| **Refactoring**   | ✅ Required      | ⚠️ Optional    | ⚠️ If API changed   | Depends on scope         |
+| **UI Changes**    | ✅ Required      | ❌ Skip        | ❌ Skip             | UI coverage not critical |
+| **Tests**         | ✅ Required      | ✅ Required    | ❌ Skip             | Check new coverage       |
+| **Documentation** | ❌ Skip          | ❌ Skip        | ❌ Skip             | No code changed          |
 
 **Present recommendation to user:**
 
@@ -319,9 +345,9 @@ Launch all agents in PARALLEL using a single message:
 
 ```typescript
 // Launch all three agents simultaneously
-Task({ subagent_type: 'validation-agent', description: 'Run code validation' })
-Task({ subagent_type: 'coverage-agent', description: 'Analyze test coverage' })
-Task({ subagent_type: 'documentation-agent', description: 'Check doc updates' })
+Task({subagent_type: 'validation-agent', description: 'Run code validation'})
+Task({subagent_type: 'coverage-agent', description: 'Analyze test coverage'})
+Task({subagent_type: 'documentation-agent', description: 'Check doc updates'})
 ```
 
 Wait for all agents to complete, then consolidate results:
@@ -385,6 +411,7 @@ You can run agents later with:
 **After ALL agents complete (or manual validation), run architecture review:**
 
 **Always suggest architecture review for:**
+
 - ✅ New features
 - ✅ Refactoring
 - ✅ Bug fixes (if significant changes)
@@ -414,8 +441,8 @@ Run architecture review? (yes/no/skip)
 ```typescript
 // Launch architecture review agent
 Task({
-  subagent_type: 'architecture-review-agent',
-  description: 'Review code architecture and quality'
+    subagent_type: 'architecture-review-agent',
+    description: 'Review code architecture and quality',
 })
 ```
 

@@ -23,6 +23,7 @@ npm run build         # 📦 Build verification
 ```
 
 **Rules:**
+
 - Run ONE command at a time
 - If ANY command fails → STOP and report error
 - If command passes → continue to next
@@ -33,6 +34,7 @@ npm run build         # 📦 Build verification
 ### Step 2: Analyze Results
 
 **For each command, capture:**
+
 - Status (✅ Pass / ❌ Fail)
 - Duration (if >30 seconds, note it)
 - Issues fixed (if applicable, e.g., "lint:fix fixed 3 issues")
@@ -115,19 +117,19 @@ Shall I attempt to fix these issues? (yes/no)
 ### When Tests Fail
 
 1. **Analyze error patterns:**
-   - Is it a test assertion issue?
-   - Is it a code bug?
-   - Is it a missing dependency?
+    - Is it a test assertion issue?
+    - Is it a code bug?
+    - Is it a missing dependency?
 
 2. **Provide actionable insights:**
-   - File and line number
-   - Expected vs actual values
-   - Root cause hypothesis
+    - File and line number
+    - Expected vs actual values
+    - Root cause hypothesis
 
 3. **Suggest fix approach:**
-   - Specific code changes needed
-   - Tests that need updating
-   - Dependencies to install
+    - Specific code changes needed
+    - Tests that need updating
+    - Dependencies to install
 
 ### When Type-Check Fails
 
@@ -206,6 +208,7 @@ Continuing with remaining checks...
 ## Important Rules
 
 ### ✅ DO:
+
 - Run commands sequentially (not in parallel)
 - Provide concise summaries (not full logs)
 - Suggest specific fixes (not vague advice)
@@ -213,6 +216,7 @@ Continuing with remaining checks...
 - Track which checks passed/failed
 
 ### ❌ DON'T:
+
 - Skip checks (all 5 MUST run if no failures)
 - Show full npm output (summarize instead)
 - Proceed if a check fails (unless user says fix)
@@ -224,7 +228,9 @@ Continuing with remaining checks...
 ## Edge Cases
 
 ### Flaky Tests
+
 If test fails inconsistently:
+
 ```
 ⚠️ Potential Flaky Test Detected
 
@@ -236,7 +242,9 @@ Continue with validation? (yes/no)
 ```
 
 ### Long-Running Tests
+
 If tests take >2 minutes:
+
 ```
 ⏳ Tests running... (currently at 2m 15s)
    This is longer than usual (avg: 24s)
@@ -245,6 +253,7 @@ Still running: packages/server/__tests__/integration/
 ```
 
 ### Warnings vs Errors
+
 ```
 ⚠️ Warnings Found (non-blocking)
 
@@ -261,6 +270,7 @@ Address warnings? (yes/no/later)
 ## Performance Optimization
 
 **Expected durations:**
+
 - format: 2-5s
 - type-check: 8-15s
 - lint:fix: 5-10s
@@ -270,6 +280,7 @@ Address warnings? (yes/no/later)
 **Total:** ~50-100s for full validation
 
 If significantly slower, note in report:
+
 ```
 ✅ All checks passed (took 3m 42s, usually ~1m 30s)
    Slower than expected - may need investigation

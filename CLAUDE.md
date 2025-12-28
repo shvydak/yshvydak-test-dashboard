@@ -91,9 +91,9 @@ For rapid feature development with automated workflow, use the custom agent:
 - 💻 **Development:** Implements following Repository Pattern + best practices
 - 🧪 **Test Gap Detection:** Proactively identifies missing tests
 - 🤖 **Smart Validation:** Recommends & runs specialized agents:
-  - `validation-agent`: format, type-check, lint, test, build (parallel)
-  - `coverage-agent`: test coverage analysis vs targets
-  - `documentation-agent`: doc updates + Context7-MCP checks
+    - `validation-agent`: format, type-check, lint, test, build (parallel)
+    - `coverage-agent`: test coverage analysis vs targets
+    - `documentation-agent`: doc updates + Context7-MCP checks
 - 🏗️ **Architecture Review:** Detects dead code, duplicates, pattern violations
 
 **Examples:**
@@ -227,6 +227,7 @@ cd packages/reporter && npm run dev   # Reporter watch
 **Complete Development Checklist** (Automated via agents):
 
 Vibe agent automatically runs these checks through specialized agents:
+
 1. ✨ `npm run format` - Format all files with Prettier
 2. 🔍 `npm run type-check` - Verify TypeScript
 3. 🎨 `npm run lint:fix` - Fix linting issues

@@ -16,6 +16,7 @@ export interface UseTestFiltersReturn {
         failed: number
         skipped: number
         pending: number
+        noted: number
     }
 }
 
@@ -26,6 +27,22 @@ export function useTestFilters({
 }: UseTestFiltersProps): UseTestFiltersReturn {
     const filteredTests = useMemo(() => {
         return tests.filter((test) => {
+            // Handle 'noted' filter - show only tests with notes
+            if (filter === 'noted') {
+                const hasNote = test.note && test.note.content && test.note.content.trim() !== ''
+
+                const searchMatch =
+                    !searchQuery ||
+                    (test.name && test.name.toLowerCase().includes(searchQuery.toLowerCase())) ||
+                    (test.filePath &&
+                        test.filePath.toLowerCase().includes(searchQuery.toLowerCase())) ||
+                    (test.errorMessage &&
+                        test.errorMessage.toLowerCase().includes(searchQuery.toLowerCase()))
+
+                return hasNote && searchMatch
+            }
+
+            // Handle other filters (all, passed, failed, skipped, pending)
             const statusMatch = filter === 'all' || test.status === filter
 
             const searchMatch =
@@ -47,6 +64,8 @@ export function useTestFilters({
             failed: tests.filter((t) => t.status === 'failed').length,
             skipped: tests.filter((t) => t.status === 'skipped').length,
             pending: tests.filter((t) => t.status === 'pending').length,
+            noted: tests.filter((t) => t.note && t.note.content && t.note.content.trim() !== '')
+                .length,
         }),
         [tests]
     )

@@ -11,6 +11,7 @@ export interface TestsListFiltersProps {
         failed: number
         skipped: number
         pending: number
+        noted: number
     }
     searchQuery: string
     onSearchChange: (query: string) => void

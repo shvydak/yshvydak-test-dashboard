@@ -1,7 +1,7 @@
 # Test Notes Feature
 
 **Status:** ✅ Implemented (December 2024)
-**Version:** 1.2.0
+**Version:** 1.3.0 (Updated with filter support)
 
 ## Overview
 
@@ -50,6 +50,14 @@ The Test Notes feature allows users to add, edit, and delete notes for individua
 - Loading states during save/delete operations
 - Error handling with user-friendly messages
 
+### 6. **Filter by Notes**
+
+- Dedicated "Noted" filter in test list
+- Shows only tests that have notes attached
+- Count badge displays number of noted tests
+- Works seamlessly with search functionality
+- Helps quickly identify documented tests and issues
+
 ## User Interface
 
 ### Test Row (Table View)
@@ -65,6 +73,14 @@ The Test Notes feature allows users to add, edit, and delete notes for individua
 - Edit mode with textarea and character counter
 - View mode with clickable links
 - Clean empty state when no note exists
+
+### Filter View (Test List)
+
+- "Noted" filter button in FilterButtonGroup
+- Shows count of tests with notes (e.g., "Noted (5)")
+- Filters tests to show only those with non-empty notes
+- Combines with search query for refined filtering
+- Visual indicator matches other status filters (All, Passed, Failed, etc.)
 
 ## Technical Architecture
 
@@ -130,6 +146,8 @@ Controller → Service → Repository → Database
 - `LinkifiedText.tsx` - URL linkification component
 - `linkify.util.ts` - URL parsing and text truncation
 - `note.service.ts` - API integration
+- `useTestFilters.ts` - Filtering logic including "Noted" filter
+- `constants.ts` - Filter options including "noted" key
 
 ### Type Definitions
 
@@ -177,6 +195,28 @@ API endpoint: http://api.example.com/v1/tests
 ```
 
 All URLs open in a new tab with `rel="noopener noreferrer"` for security.
+
+### Filtering Tests with Notes
+
+1. Click "Noted" filter button in test list header
+2. View only tests that have notes attached
+3. Count badge shows total number of noted tests (e.g., "Noted (5)")
+4. Combine with search to find specific noted tests
+
+**Use cases:**
+
+- Quickly review all documented test issues
+- Find tests with tracking links
+- Review flaky tests with notes
+- Audit test documentation coverage
+- Identify tests requiring attention
+
+**Example workflow:**
+
+1. Click "Noted" filter → Shows 12 tests with notes
+2. Search for "flaky" → Narrows to 3 flaky tests with documentation
+3. Click test → Review note and attached bug tracking link
+4. Take action based on documented issue
 
 ### Editing a Note
 
@@ -264,7 +304,13 @@ All URLs open in a new tab with `rel="noopener noreferrer"` for security.
     - Validation and error states
     - Loading states
 
-**Total:** 190+ unit tests
+- ✅ `useTestFilters.test.ts` - 19+ tests
+    - Filter by noted status
+    - Count tests with notes
+    - Combine with search functionality
+    - Edge cases (empty notes, no notes)
+
+**Total:** 209+ unit tests
 
 ### Running Tests
 
@@ -353,6 +399,13 @@ Potential improvements (not currently implemented):
 3. No impact on existing test data
 4. Backwards compatible with old data
 
+### v1.3.0 - Filter Enhancement
+
+1. No database changes required
+2. New "Noted" filter automatically available in UI
+3. Filter logic implemented client-side
+4. Backwards compatible with v1.2.0
+
 ### API Changes
 
 - New endpoints: `/api/tests/:testId/notes`
@@ -384,11 +437,12 @@ Potential improvements (not currently implemented):
 ## Resources
 
 - **Implementation**: [@/features/tests/components/testDetail/TestNoteEditor.tsx](../../packages/web/src/features/tests/components/testDetail/TestNoteEditor.tsx)
+- **Filter Logic**: [@/features/tests/hooks/useTestFilters.ts](../../packages/web/src/features/tests/hooks/useTestFilters.ts)
 - **API Controller**: [@/controllers/note.controller.ts](../../packages/server/src/controllers/note.controller.ts)
 - **Database Schema**: [@/database/schema.sql](../../packages/server/src/database/schema.sql)
 - **Tests**: See `__tests__` directories in respective packages
 
 ---
 
-**Last Updated:** December 2024
+**Last Updated:** December 28, 2025 (v1.3.0 - Added filter support)
 **Maintained by:** Yurii Shvydak

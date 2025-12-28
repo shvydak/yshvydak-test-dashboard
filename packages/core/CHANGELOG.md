@@ -1,5 +1,11 @@
 # @yshvydak/core
 
+## 1.4.0
+
+### Minor Changes
+
+    - Improved the Test Notes feature with a new filter option to display tests with notes, enhancing usability and documentation tracking.
+
 ## 1.3.2
 
 ### Patch Changes

@@ -19,6 +19,7 @@ Read: docs/ai/DOCUMENTATION_UPDATE_RULES.md
 ```
 
 This file defines:
+
 - P0 (Critical): Breaking changes, dependency changes
 - P1 (High): Public API changes, file movements
 - P2 (Medium): New features, new components
@@ -31,20 +32,20 @@ This file defines:
 **You will be given context about recent changes. Analyze:**
 
 1. **Code changes:**
-   - New files created
-   - Modified files
-   - Deleted/moved files
-   - New endpoints, services, components
+    - New files created
+    - Modified files
+    - Deleted/moved files
+    - New endpoints, services, components
 
 2. **Dependency changes:**
-   - npm install/update commands
-   - package.json modifications
-   - Config file changes
+    - npm install/update commands
+    - package.json modifications
+    - Config file changes
 
 3. **Breaking changes:**
-   - API contract changes
-   - Algorithm changes (e.g., testId generation)
-   - Migration required
+    - API contract changes
+    - Algorithm changes (e.g., testId generation)
+    - Migration required
 
 ---
 
@@ -53,6 +54,7 @@ This file defines:
 ### P0 (Critical) - MUST Update
 
 **Breaking Changes:**
+
 ```
 🚨 CRITICAL: Breaking change detected
 
@@ -79,6 +81,7 @@ Proceed with updates? (yes/no)
 ```
 
 **Dependency Changes:**
+
 ```
 ⚠️ Dependency change detected!
 
@@ -105,6 +108,7 @@ Proceed with installation? (yes/update-version/cancel)
 ### P1 (High Priority) - Suggest Immediately
 
 **New REST Endpoint:**
+
 ```
 📝 Documentation update recommended (High Priority)
 
@@ -136,6 +140,7 @@ Update now? (yes/no/later)
 ```
 
 **Files Moved:**
+
 ```
 📝 Documentation update recommended (High Priority)
 
@@ -156,6 +161,7 @@ Update now? (yes/no/later)
 ```
 
 **API Contract Change:**
+
 ```
 📝 Documentation update recommended (High Priority)
 
@@ -177,6 +183,7 @@ Update now? (yes/no/later)
 ### P2 (Medium Priority) - Suggest at End
 
 **New Feature:**
+
 ```
 📝 Documentation update recommended (Medium Priority)
 
@@ -200,6 +207,7 @@ Update now? (yes/no/later)
 ```
 
 **New Env Variable:**
+
 ```
 📝 Documentation update recommended (Medium Priority)
 
@@ -225,6 +233,7 @@ Update now? (yes/no/later)
 ```
 
 **New Key Component:**
+
 ```
 📝 Documentation update recommended (Medium Priority)
 
@@ -242,6 +251,7 @@ Update now? (yes/no/later)
 ### P3 (Low Priority) - Don't Suggest
 
 **Internal Bug Fix:**
+
 ```
 ✅ No documentation updates needed
 
@@ -252,6 +262,7 @@ No action required.
 ```
 
 **UI Styling:**
+
 ```
 ✅ No documentation updates needed
 
@@ -360,12 +371,13 @@ Pending updates:
 
 1. **Pause and check Context7-MCP FIRST**
 2. **Get latest docs:**
-   - Latest version
-   - Breaking changes
-   - Best practices
-   - Migration notes
+    - Latest version
+    - Breaking changes
+    - Best practices
+    - Migration notes
 
 3. **Report findings:**
+
 ```
 📚 Context7-MCP Check Complete
 
@@ -411,6 +423,7 @@ Proceed? (yes/no)
 ## Important Rules
 
 ### ✅ DO:
+
 - **Always read DOCUMENTATION_UPDATE_RULES.md first**
 - **Check Context7-MCP for ALL dependency changes** (P0 priority)
 - Prioritize by P0 > P1 > P2 (ignore P3)
@@ -419,6 +432,7 @@ Proceed? (yes/no)
 - Group related updates (same file)
 
 ### ❌ DON'T:
+
 - Suggest docs for internal changes (bug fixes, refactoring)
 - Suggest docs for UI styling
 - Skip Context7-MCP check for dependencies
@@ -431,16 +445,16 @@ Proceed? (yes/no)
 
 **Quick lookup table:**
 
-| Pattern | Detection | Priority | Doc File |
-|---------|-----------|----------|----------|
-| `router.{method}('/api/...')` | New endpoint | P1 | API_REFERENCE.md |
-| `socket.emit('event:name')` | New WebSocket event | P1 | API_REFERENCE.md |
-| `git mv`, file path changes | Files moved | P1 | FILE_LOCATIONS.md |
-| `npm install`, package.json | Dependency change | P0 | Context7-MCP check |
-| `// BREAKING CHANGE:` | Breaking change | P0 | All relevant docs |
-| New feature flag | New feature | P2 | features/*.md |
-| `.env.example` change | New env var | P2 | CONFIGURATION.md |
-| New service/controller | New component | P2 | FILE_LOCATIONS.md |
+| Pattern                       | Detection           | Priority | Doc File           |
+| ----------------------------- | ------------------- | -------- | ------------------ |
+| `router.{method}('/api/...')` | New endpoint        | P1       | API_REFERENCE.md   |
+| `socket.emit('event:name')`   | New WebSocket event | P1       | API_REFERENCE.md   |
+| `git mv`, file path changes   | Files moved         | P1       | FILE_LOCATIONS.md  |
+| `npm install`, package.json   | Dependency change   | P0       | Context7-MCP check |
+| `// BREAKING CHANGE:`         | Breaking change     | P0       | All relevant docs  |
+| New feature flag              | New feature         | P2       | features/\*.md     |
+| `.env.example` change         | New env var         | P2       | CONFIGURATION.md   |
+| New service/controller        | New component       | P2       | FILE_LOCATIONS.md  |
 
 ---
 
@@ -457,6 +471,7 @@ Proceed? (yes/no)
 ```
 
 **Don't spam with:**
+
 - Full file contents
 - Line-by-line diffs
 - Multiple confirmation prompts

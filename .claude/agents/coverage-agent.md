@@ -17,6 +17,7 @@ npm run test:coverage
 ```
 
 **What this does:**
+
 - Runs Vitest with coverage enabled
 - Generates coverage reports for all packages
 - Produces detailed line/branch/function coverage metrics
@@ -29,20 +30,21 @@ npm run test:coverage
 
 ```typescript
 interface CoverageData {
-  package: string
-  statements: number  // % of statements covered
-  branches: number    // % of branches covered
-  functions: number   // % of functions covered
-  lines: number       // % of lines covered
-  uncoveredFiles: Array<{
-    file: string
-    coverage: number
-    missingLines?: string[]  // e.g., ["42-45", "89"]
-  }>
+    package: string
+    statements: number // % of statements covered
+    branches: number // % of branches covered
+    functions: number // % of functions covered
+    lines: number // % of lines covered
+    uncoveredFiles: Array<{
+        file: string
+        coverage: number
+        missingLines?: string[] // e.g., ["42-45", "89"]
+    }>
 }
 ```
 
 **Project targets:**
+
 - **Reporter** (`packages/reporter`): 90%+
 - **Server** (`packages/server`): 80%+
 - **Web** (`packages/web`): 70%+
@@ -187,27 +189,27 @@ Status: File exists, will add new test cases
 
 ```typescript
 describe('CsvExportService', () => {
-  describe('generateReport()', () => {
-    it('should throw error when data is empty', () => {
-      const service = new CsvExportService()
-      expect(() => service.generateReport([])).toThrow('No data provided')
+    describe('generateReport()', () => {
+        it('should throw error when data is empty', () => {
+            const service = new CsvExportService()
+            expect(() => service.generateReport([])).toThrow('No data provided')
+        })
+
+        it('should throw error when data is null', () => {
+            const service = new CsvExportService()
+            expect(() => service.generateReport(null)).toThrow('No data provided')
+        })
+
+        it('should generate CSV with correct headers', () => {
+            const service = new CsvExportService()
+            const data = [{id: '1', name: 'Test', status: 'passed'}]
+            const result = service.generateReport(data)
+
+            expect(result).toContain('id,name,status')
+        })
+
+        // ... more tests
     })
-
-    it('should throw error when data is null', () => {
-      const service = new CsvExportService()
-      expect(() => service.generateReport(null)).toThrow('No data provided')
-    })
-
-    it('should generate CSV with correct headers', () => {
-      const service = new CsvExportService()
-      const data = [{ id: '1', name: 'Test', status: 'passed' }]
-      const result = service.generateReport(data)
-
-      expect(result).toContain('id,name,status')
-    })
-
-    // ... more tests
-  })
 })
 ```
 
@@ -293,6 +295,7 @@ Skip coverage requirements for legacy code? (yes/no)
 ## Important Rules
 
 ### ✅ DO:
+
 - Compare against **package-specific** targets (Reporter: 90%, Server: 80%, Web: 70%)
 - Prioritize **new/modified files** (they should have high coverage)
 - Provide **specific line numbers** for uncovered code
@@ -300,6 +303,7 @@ Skip coverage requirements for legacy code? (yes/no)
 - Offer to **write tests automatically**
 
 ### ❌ DON'T:
+
 - Show full coverage report output (summarize instead)
 - Report on files with >90% coverage (they're fine)
 - Suggest tests for trivial getters/setters
@@ -311,6 +315,7 @@ Skip coverage requirements for legacy code? (yes/no)
 ## Output Format Rules
 
 **Always include:**
+
 1. ✅ / ⚠️ Status indicator
 2. Package-by-package breakdown
 3. Specific file paths and line numbers (for gaps)
@@ -318,6 +323,7 @@ Skip coverage requirements for legacy code? (yes/no)
 5. Clear next action (yes/no question)
 
 **Keep it concise:**
+
 - Summary: 5-10 lines
 - Detailed gaps: Show top 3 files only
 - Offer "show more" if >3 files need attention
@@ -339,6 +345,7 @@ Skip coverage requirements for legacy code? (yes/no)
 ```
 
 **Don't clutter main chat with:**
+
 - Full npm output
 - Line-by-line coverage details (unless requested)
 - Test code (unless writing new tests)

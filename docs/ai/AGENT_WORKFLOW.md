@@ -66,16 +66,20 @@ Quick reference for the new agent-based vibe coding workflow.
 ### Core Validation Agents
 
 #### `@validation-agent`
+
 **What it does:**
+
 - Runs: `npm run format`, `npm run type-check`, `npm run lint:fix`, `npm test`, `npm run build`
 - Reports concise summary (not full logs)
 - Offers to fix errors automatically
 
 **When to use:**
+
 - ✅ Every task (required)
 - ✅ Before commit
 
 **Example output:**
+
 ```
 ✅ Validation Complete
   ✅ format - Passed
@@ -88,19 +92,23 @@ Quick reference for the new agent-based vibe coding workflow.
 ---
 
 #### `@coverage-agent`
+
 **What it does:**
+
 - Runs `npm run test:coverage`
 - Compares against targets (Reporter: 90%, Server: 80%, Web: 70%)
 - Identifies specific gaps with line numbers
 - Suggests tests to write
 
 **When to use:**
+
 - ✅ New features
 - ✅ New service methods
 - ⚠️ Optional for bug fixes
 - ❌ Skip for UI-only changes
 
 **Example output:**
+
 ```
 📊 Coverage Analysis Complete
 
@@ -119,13 +127,16 @@ Shall I help write these tests? (yes/no)
 ---
 
 #### `@documentation-agent`
+
 **What it does:**
+
 - Reads `DOCUMENTATION_UPDATE_RULES.md`
 - Detects what docs need updating (P0/P1/P2)
 - Checks Context7-MCP for dependency changes (MANDATORY)
 - Offers to update docs automatically
 
 **When to use:**
+
 - ✅ New features
 - ✅ API changes
 - ✅ Dependency changes (CRITICAL)
@@ -133,6 +144,7 @@ Shall I help write these tests? (yes/no)
 - ❌ Skip for bug fixes/UI changes
 
 **Example output:**
+
 ```
 📝 Documentation Agent Report
 
@@ -150,7 +162,9 @@ Update now? (yes/no/later)
 ---
 
 #### `@architecture-review-agent`
+
 **What it does:**
+
 - Detects dead code (unused imports, functions, commented code)
 - Detects duplicated logic (copy-paste patterns)
 - Verifies Repository Pattern compliance
@@ -158,12 +172,14 @@ Update now? (yes/no/later)
 - Validates best practices
 
 **When to use:**
+
 - ✅ New features
 - ✅ Refactoring
 - ✅ Significant bug fixes
 - ❌ Skip for trivial fixes/docs-only
 
 **Example output:**
+
 ```
 🏗️ Architecture Review Complete
 
@@ -195,6 +211,7 @@ Fix issues? (yes/no/selective)
 ```
 
 **Vibe will automatically:**
+
 1. ✅ Research with Explore agents (parallel)
 2. ✅ Present plan
 3. ✅ Implement code
@@ -206,6 +223,7 @@ Fix issues? (yes/no/selective)
 9. ✅ Fix any issues found
 
 **Your interaction:**
+
 ```
 Vibe: Run all agents now? (yes/no/skip/customize)
 You: yes
@@ -243,10 +261,12 @@ Vibe: ✅ All checks passed! Ready to commit.
 ```
 
 **Vibe will automatically:**
+
 1. ✅ Fix the bug
 2. ✅ Recommend only validation-agent (skip coverage/docs)
 
 **Your interaction:**
+
 ```
 Vibe: Task type detected: Bug Fix
 
@@ -271,6 +291,7 @@ Vibe: ✅ Validation passed!
 ```
 
 **Your interaction:**
+
 ```
 Vibe: Run all agents now? (yes/no/skip/customize)
 You: customize
@@ -309,12 +330,12 @@ If you want to run agents independently:
 
 ## ⏱️ Performance Improvements
 
-| Aspect | Before (inline) | After (agents) | Improvement |
-|--------|-----------------|----------------|-------------|
-| **Speed** | 6-8 min (sequential) | 2-3 min (parallel) | **2.5-3x faster** |
-| **Tokens** | ~13,000 per task | ~500 per task | **95% reduction** |
-| **Context** | Cluttered with logs | Clean summaries | **Much cleaner** |
-| **Flexibility** | All or nothing | Smart recommendations | **More flexible** |
+| Aspect          | Before (inline)      | After (agents)        | Improvement       |
+| --------------- | -------------------- | --------------------- | ----------------- |
+| **Speed**       | 6-8 min (sequential) | 2-3 min (parallel)    | **2.5-3x faster** |
+| **Tokens**      | ~13,000 per task     | ~500 per task         | **95% reduction** |
+| **Context**     | Cluttered with logs  | Clean summaries       | **Much cleaner**  |
+| **Flexibility** | All or nothing       | Smart recommendations | **More flexible** |
 
 ---
 
@@ -322,20 +343,21 @@ If you want to run agents independently:
 
 Vibe automatically detects task type and recommends appropriate agents:
 
-| Task Type | validation | coverage | documentation | Example |
-|-----------|-----------|----------|---------------|---------|
-| **New Feature** | ✅ Required | ✅ Required | ✅ Required | Add CSV export |
-| **Bug Fix** | ✅ Required | ⚠️ Optional | ❌ Skip | Fix download bug |
-| **Refactoring** | ✅ Required | ⚠️ Optional | ⚠️ If API changed | Restructure services |
-| **UI Changes** | ✅ Required | ❌ Skip | ❌ Skip | Update button styles |
-| **Tests** | ✅ Required | ✅ Required | ❌ Skip | Add unit tests |
-| **Documentation** | ❌ Skip | ❌ Skip | ❌ Skip | Update README |
+| Task Type         | validation  | coverage    | documentation     | Example              |
+| ----------------- | ----------- | ----------- | ----------------- | -------------------- |
+| **New Feature**   | ✅ Required | ✅ Required | ✅ Required       | Add CSV export       |
+| **Bug Fix**       | ✅ Required | ⚠️ Optional | ❌ Skip           | Fix download bug     |
+| **Refactoring**   | ✅ Required | ⚠️ Optional | ⚠️ If API changed | Restructure services |
+| **UI Changes**    | ✅ Required | ❌ Skip     | ❌ Skip           | Update button styles |
+| **Tests**         | ✅ Required | ✅ Required | ❌ Skip           | Add unit tests       |
+| **Documentation** | ❌ Skip     | ❌ Skip     | ❌ Skip           | Update README        |
 
 ---
 
 ## 🔧 Configuration
 
 All agents are defined in:
+
 ```
 .claude/agents/
 ├── vibe.md                        # Main workflow orchestrator
@@ -350,12 +372,14 @@ All agents are defined in:
 ## 💡 Best Practices
 
 ### ✅ DO:
+
 - Say "yes" to agent suggestions (they're optimized for your workflow)
 - Run architecture review for non-trivial changes
 - Let agents fix issues automatically (they know the patterns)
 - Use "customize" if you know exactly what you need
 
 ### ❌ DON'T:
+
 - Skip validation-agent (it's always required)
 - Skip architecture review for new features
 - Say "no" to test gap detection (fix it early)
@@ -376,6 +400,7 @@ A: Use "selective" option to choose which fixes to apply.
 
 **Q: How do I see full logs?**
 A: Agents show summaries. For full logs, run commands manually:
+
 ```bash
 npm test
 npm run type-check
@@ -386,6 +411,7 @@ npm run type-check
 ## 📊 Typical Session Timeline
 
 **New Feature (~5-7 minutes total):**
+
 ```
 0:00 - User: @vibe add CSV export
 0:30 - Vibe: Research complete (parallel agents)
@@ -402,6 +428,7 @@ npm run type-check
 ```
 
 **Bug Fix (~3-4 minutes total):**
+
 ```
 0:00 - User: @vibe fix bug
 1:00 - Vibe: Bug fixed

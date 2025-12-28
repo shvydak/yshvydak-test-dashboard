@@ -94,11 +94,13 @@ Write these tests? (yes/no/later)
 Always end reports with a clear action question using one of these formats:
 
 ### Standard Options:
+
 - `(yes/no)` - Binary choice
 - `(yes/no/later)` - Can postpone decision
 - `(yes/no/skip)` - Can skip permanently
 
 ### Multi-Choice Options:
+
 - `(yes/no/selective)` - Can choose which issues to fix
 - `(1/2/3)` - Numbered options
 - `(yes/update-version/cancel)` - Custom options
@@ -115,9 +117,10 @@ Update now? (yes/no/later)
 
 ```markdown
 What would you like to do? (1/2/3)
-  1. Revert to identical algorithm
-  2. Create migration guide
-  3. Cancel changes
+
+1. Revert to identical algorithm
+2. Create migration guide
+3. Cancel changes
 ```
 
 ---
@@ -125,6 +128,7 @@ What would you like to do? (1/2/3)
 ## Conciseness Rules
 
 ### ✅ DO:
+
 - Keep status line under 100 characters
 - Use tables for structured data
 - Show top 3 priorities max (offer "show more")
@@ -132,6 +136,7 @@ What would you like to do? (1/2/3)
 - End with clear action question
 
 ### ❌ DON'T:
+
 - Include raw command output (summarize instead)
 - Show more than 5 detailed items without pagination
 - Overwhelm with information (prioritize critical issues)
@@ -140,6 +145,7 @@ What would you like to do? (1/2/3)
 ---
 
 **Used by:**
+
 - validation-agent.md
 - coverage-agent.md
 - documentation-agent.md

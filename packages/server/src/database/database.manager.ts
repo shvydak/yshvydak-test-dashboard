@@ -414,10 +414,19 @@ export class DatabaseManager {
             await this.run(`DELETE FROM ${table}`)
         }
 
-        // Reset auto-increment counters if using them
-        await this.run('VACUUM')
+        // Compact database after clearing
+        await this.compactDatabase()
 
         console.log('✅ All data cleared from database')
+    }
+
+    async compactDatabase(): Promise<void> {
+        // Reclaim unused space and compact database file
+        await this.run('VACUUM')
+
+        // Checkpoint WAL file to physically shrink database files on disk
+        // TRUNCATE mode applies changes and truncates WAL/SHM files to minimal size
+        await this.run('PRAGMA wal_checkpoint(TRUNCATE)')
     }
 
     async getDataStats(): Promise<any> {

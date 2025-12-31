@@ -39,6 +39,17 @@ Then exit - let external-code-review-agent handle everything.
 
 ## Workflow (Execute ALL steps in order)
 
+**⚠️ CRITICAL: This workflow is MANDATORY - you MUST execute ALL steps in sequence:**
+
+1. ✅ Research Phase → 2. ✅ Understanding & Questions → 3. ✅ Development → 3-B. ✅ Test Gap Detection → 4. ✅ Post-Development Agents → 5. ✅ Architecture Review
+
+**Enforcement Rules:**
+
+- ❌ NEVER skip Step 2 plan presentation - user MUST see "Found:/Plan:/Ready to start?" format
+- ❌ NEVER skip Step 3-B test gap detection - you MUST check before recommending agents
+- ❌ NEVER skip Step 4 agent recommendation - you MUST present recommendation matrix
+- ✅ User can choose to skip agents, but YOU must present the options first
+
 ### 1️⃣ RESEARCH PHASE (30 sec - 2 min)
 
 **ALWAYS launch 2-3 Task agents in PARALLEL to gather context:**
@@ -83,7 +94,9 @@ Task({
 
 ### 2️⃣ UNDERSTANDING & QUESTIONS
 
-**After agents complete, present findings to user:**
+**⚠️ MANDATORY: After agents complete, you MUST present findings to user in EXACTLY this format:**
+
+**YOU MUST NOT skip this step. User MUST see the full plan before you proceed to development.**
 
 ```
 ✅ Research complete!
@@ -122,6 +135,15 @@ Ready to start? (yes/use defaults)
 - ✅ Base questions on agent findings, not assumptions
 - ❌ Don't ask about things agents already answered
 - ❌ Don't ask unnecessary implementation details
+
+**⚠️ CHECKPOINT: Before proceeding to Step 3, verify you presented:**
+
+- ✅ "Found:" section with agent summaries
+- ✅ "Plan:" section with step-by-step details
+- ✅ "DRY Principle Check:" section with reuse justification
+- ✅ "Ready to start?" question to user
+
+**If you skipped the formatted plan, STOP and present it now.**
 
 ---
 
@@ -196,9 +218,11 @@ packages/web/src/features/{feature-name}/
 
 ---
 
-### 3️⃣-B TEST GAP DETECTION (PROACTIVE CHECK)
+### 3️⃣-B TEST GAP DETECTION (MANDATORY PROACTIVE CHECK)
 
-**After code implementation, BEFORE agents, check if tests are needed:**
+**⚠️ CRITICAL: After code implementation, you MUST run this analysis BEFORE proceeding to Step 4.**
+
+**DO NOT recommend agents until you complete this test gap detection.**
 
 #### Quick Test Coverage Analysis
 
@@ -278,11 +302,23 @@ Detected tests for:
 Proceeding to agent phase...
 ```
 
+**⚠️ CHECKPOINT: Before proceeding to Step 4, verify you completed test gap analysis:**
+
+- ✅ Checked new service methods
+- ✅ Checked new API endpoints
+- ✅ Checked new UI components
+- ✅ Checked edge cases
+- ✅ Presented gap detection results to user (or confirmed all tests exist)
+
+**If you skipped test gap detection, STOP and run the Quick Test Coverage Analysis now.**
+
 ---
 
-### 4️⃣ POST-DEVELOPMENT AGENT PHASE (SMART RECOMMENDATION)
+### 4️⃣ POST-DEVELOPMENT AGENT PHASE (MANDATORY SMART RECOMMENDATION)
 
-**After development is complete, analyze the task type and recommend appropriate agents.**
+**⚠️ CRITICAL: After development is complete, you MUST analyze the task type and present agent recommendations to user.**
+
+**YOU MUST NOT skip this step. Even if you think agents aren't needed, present the recommendation matrix and let USER decide to skip.**
 
 #### Step 1: Detect Task Type
 
@@ -403,6 +439,14 @@ You can run agents later with:
   @coverage-agent
   @documentation-agent
 ```
+
+**⚠️ CHECKPOINT: Before proceeding to Step 5, verify you completed:**
+
+- ✅ Detected task type (New Feature/Bug Fix/Refactoring/etc.)
+- ✅ Showed recommendation matrix to user
+- ✅ User made explicit choice (yes/no/skip/customize)
+
+**If you skipped Step 4 entirely, STOP and go back to present the recommendations.**
 
 ---
 

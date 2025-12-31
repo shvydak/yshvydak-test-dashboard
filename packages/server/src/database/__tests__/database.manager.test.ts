@@ -1,6 +1,9 @@
 import {describe, it, expect, beforeEach, afterEach} from 'vitest'
 import {DatabaseManager, TestRunData, TestResultData, AttachmentData} from '../database.manager'
 import {randomUUID} from 'crypto'
+import fs from 'fs'
+import path from 'path'
+import os from 'os'
 
 describe('DatabaseManager', () => {
     let db: DatabaseManager
@@ -862,6 +865,86 @@ describe('DatabaseManager', () => {
 
             const runs = await db.getAllTestRuns(20)
             expect(runs).toHaveLength(10)
+        })
+    })
+
+    describe('WAL Checkpoint on clearAllData()', () => {
+        it('should truncate WAL files after clearing data (file-based database)', async () => {
+            // Create temporary directory for test database
+            const tempDir = path.join(os.tmpdir(), `test-db-${randomUUID()}`)
+            fs.mkdirSync(tempDir, {recursive: true})
+
+            const fileDb = new DatabaseManager(tempDir)
+            await fileDb.initialize()
+
+            try {
+                // Create significant amount of test data to generate WAL entries
+                const runId = randomUUID()
+                await fileDb.createTestRun({
+                    id: runId,
+                    status: 'completed',
+                    totalTests: 50,
+                    passedTests: 40,
+                    failedTests: 10,
+                    skippedTests: 0,
+                    duration: 5000,
+                })
+
+                // Create many test results to ensure WAL file grows
+                for (let i = 0; i < 50; i++) {
+                    await fileDb.saveTestResult({
+                        id: randomUUID(),
+                        runId,
+                        testId: `test-${i}`,
+                        name: `Test ${i}`,
+                        filePath: `/tests/test-${i}.spec.ts`,
+                        status: i % 5 === 0 ? 'failed' : 'passed',
+                        duration: 100 + i,
+                        errorMessage: i % 5 === 0 ? 'Test failed' : undefined,
+                    })
+                }
+
+                // Get database file paths
+                const dbPath = path.join(tempDir, 'test-results.db')
+                const walPath = `${dbPath}-wal`
+                const shmPath = `${dbPath}-shm`
+
+                // Verify files exist and have size
+                const sizeBeforeDb = fs.existsSync(dbPath) ? fs.statSync(dbPath).size : 0
+                const sizeBeforeWal = fs.existsSync(walPath) ? fs.statSync(walPath).size : 0
+                const sizeBeforeSHM = fs.existsSync(shmPath) ? fs.statSync(shmPath).size : 0
+
+                expect(sizeBeforeDb).toBeGreaterThan(0)
+                // WAL or SHM files may exist depending on SQLite write patterns
+                const totalSizeBefore = sizeBeforeDb + sizeBeforeWal + sizeBeforeSHM
+
+                // Clear all data (should run VACUUM + PRAGMA wal_checkpoint(TRUNCATE))
+                await fileDb.clearAllData()
+
+                // Verify data is cleared
+                const stats = await fileDb.getDataStats()
+                expect(stats.totalRuns).toBe(0)
+                expect(stats.totalTests).toBe(0)
+
+                // Check file sizes after clear
+                const sizeAfterDb = fs.existsSync(dbPath) ? fs.statSync(dbPath).size : 0
+                const sizeAfterWal = fs.existsSync(walPath) ? fs.statSync(walPath).size : 0
+                const sizeAfterSHM = fs.existsSync(shmPath) ? fs.statSync(shmPath).size : 0
+
+                const totalSizeAfter = sizeAfterDb + sizeAfterWal + sizeAfterSHM
+
+                // Database should shrink significantly (expect at least 80% reduction)
+                // After VACUUM + checkpoint, only schema structure remains
+                expect(totalSizeAfter).toBeLessThan(totalSizeBefore * 0.2)
+
+                // Database should be minimal size (just schema + indexes)
+                // Typical empty schema size is 32-150 KB depending on indexes
+                expect(totalSizeAfter).toBeLessThan(150 * 1024) // Less than 150 KB
+            } finally {
+                // Cleanup
+                fileDb.close()
+                fs.rmSync(tempDir, {recursive: true, force: true})
+            }
         })
     })
 })

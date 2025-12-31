@@ -17,6 +17,10 @@ import {TestRepository} from '../test.repository'
 import {AttachmentRepository} from '../attachment.repository'
 import {DatabaseManager} from '../../database/database.manager'
 import {TestResultData, AttachmentData} from '../../types/database.types'
+import {randomUUID} from 'crypto'
+import fs from 'fs'
+import path from 'path'
+import os from 'os'
 
 describe('TestRepository - Core Functionality', () => {
     let repository: TestRepository
@@ -1252,6 +1256,176 @@ describe('TestRepository - Core Functionality', () => {
             const result = await repository.getTestResult(validId)
             expect(result).toBeDefined()
             expect(result?.id).toBe(validId)
+        })
+    })
+
+    describe('Database Compaction on Delete', () => {
+        it('should compact database after deleteByExecutionId (file-based database)', async () => {
+            // Use file-based database for this test to verify VACUUM + WAL checkpoint
+            const tempDir = path.join(os.tmpdir(), `test-db-compact-${randomUUID()}`)
+            fs.mkdirSync(tempDir, {recursive: true})
+
+            const fileDbManager = new DatabaseManager(tempDir)
+            await fileDbManager.initialize()
+
+            const fileRepository = new TestRepository(fileDbManager)
+
+            try {
+                // Create a test run
+                const runId = randomUUID()
+                await fileDbManager.createTestRun({
+                    id: runId,
+                    status: 'completed',
+                    totalTests: 20,
+                    passedTests: 18,
+                    failedTests: 2,
+                    skippedTests: 0,
+                    duration: 5000,
+                })
+
+                // Create 20 test results with significant data
+                const executionIds: string[] = []
+                for (let i = 0; i < 20; i++) {
+                    const id = await fileRepository.saveTestResult(
+                        createTestResult(`test-${i}`, i % 5 === 0 ? 'failed' : 'passed', {
+                            runId,
+                        })
+                    )
+                    executionIds.push(id)
+                }
+
+                // Get database file paths
+                const dbPath = path.join(tempDir, 'test-results.db')
+                const walPath = `${dbPath}-wal`
+                const shmPath = `${dbPath}-shm`
+
+                // Record size before deletion
+                const sizeBeforeDb = fs.existsSync(dbPath) ? fs.statSync(dbPath).size : 0
+                const sizeBeforeWal = fs.existsSync(walPath) ? fs.statSync(walPath).size : 0
+                const sizeBeforeSHM = fs.existsSync(shmPath) ? fs.statSync(shmPath).size : 0
+                const totalSizeBefore = sizeBeforeDb + sizeBeforeWal + sizeBeforeSHM
+
+                expect(totalSizeBefore).toBeGreaterThan(0)
+
+                // Delete one execution (should trigger compaction)
+                await fileRepository.deleteByExecutionId(executionIds[0])
+
+                // Verify deletion
+                const result = await fileRepository.getTestResult(executionIds[0])
+                expect(result).toBeNull()
+
+                // Check size after deletion
+                const sizeAfterDb = fs.existsSync(dbPath) ? fs.statSync(dbPath).size : 0
+                const sizeAfterWal = fs.existsSync(walPath) ? fs.statSync(walPath).size : 0
+                const sizeAfterSHM = fs.existsSync(shmPath) ? fs.statSync(shmPath).size : 0
+                const totalSizeAfter = sizeAfterDb + sizeAfterWal + sizeAfterSHM
+
+                // Database should be smaller or approximately same size
+                // (compaction may not reduce size significantly for single deletion,
+                // but VACUUM should run successfully without errors)
+                expect(totalSizeAfter).toBeLessThanOrEqual(totalSizeBefore)
+
+                // The database should still have data (19 remaining executions)
+                const remaining = await fileRepository.getAllTests({})
+                expect(remaining.length).toBeGreaterThan(0)
+            } finally {
+                // Cleanup
+                fileDbManager.close()
+                fs.rmSync(tempDir, {recursive: true, force: true})
+            }
+        })
+
+        it('should compact database after deleteByTestId (file-based database)', async () => {
+            // Use file-based database for this test
+            const tempDir = path.join(os.tmpdir(), `test-db-compact-${randomUUID()}`)
+            fs.mkdirSync(tempDir, {recursive: true})
+
+            const fileDbManager = new DatabaseManager(tempDir)
+            await fileDbManager.initialize()
+
+            const fileRepository = new TestRepository(fileDbManager)
+
+            try {
+                // Create test runs
+                const runId1 = randomUUID()
+                const runId2 = randomUUID()
+
+                await fileDbManager.createTestRun({
+                    id: runId1,
+                    status: 'completed',
+                    totalTests: 10,
+                    passedTests: 10,
+                    failedTests: 0,
+                    skippedTests: 0,
+                    duration: 2000,
+                })
+
+                await fileDbManager.createTestRun({
+                    id: runId2,
+                    status: 'completed',
+                    totalTests: 10,
+                    passedTests: 10,
+                    failedTests: 0,
+                    skippedTests: 0,
+                    duration: 2000,
+                })
+
+                // Create multiple executions for testId "test-to-delete"
+                const testIdToDelete = 'test-to-delete'
+                for (let i = 0; i < 10; i++) {
+                    await fileRepository.saveTestResult(
+                        createTestResult(testIdToDelete, 'passed', {
+                            runId: i % 2 === 0 ? runId1 : runId2,
+                        })
+                    )
+                }
+
+                // Create executions for other tests
+                for (let i = 0; i < 10; i++) {
+                    await fileRepository.saveTestResult(
+                        createTestResult(`test-keep-${i}`, 'passed', {runId: runId1})
+                    )
+                }
+
+                // Get database file paths
+                const dbPath = path.join(tempDir, 'test-results.db')
+                const walPath = `${dbPath}-wal`
+                const shmPath = `${dbPath}-shm`
+
+                // Record size before deletion
+                const sizeBeforeDb = fs.existsSync(dbPath) ? fs.statSync(dbPath).size : 0
+                const sizeBeforeWal = fs.existsSync(walPath) ? fs.statSync(walPath).size : 0
+                const sizeBeforeSHM = fs.existsSync(shmPath) ? fs.statSync(shmPath).size : 0
+                const totalSizeBefore = sizeBeforeDb + sizeBeforeWal + sizeBeforeSHM
+
+                expect(totalSizeBefore).toBeGreaterThan(0)
+
+                // Delete all executions for testId (should trigger compaction)
+                const deletedCount = await fileRepository.deleteByTestId(testIdToDelete)
+                expect(deletedCount).toBe(10)
+
+                // Verify deletion
+                const deleted = await fileRepository.getTestResultsByTestId(testIdToDelete)
+                expect(deleted).toHaveLength(0)
+
+                // Check size after deletion
+                const sizeAfterDb = fs.existsSync(dbPath) ? fs.statSync(dbPath).size : 0
+                const sizeAfterWal = fs.existsSync(walPath) ? fs.statSync(walPath).size : 0
+                const sizeAfterSHM = fs.existsSync(shmPath) ? fs.statSync(shmPath).size : 0
+                const totalSizeAfter = sizeAfterDb + sizeAfterWal + sizeAfterSHM
+
+                // Database should shrink after deleting 10 executions
+                // Expect at least some reduction (may not be dramatic due to SQLite page management)
+                expect(totalSizeAfter).toBeLessThan(totalSizeBefore)
+
+                // The database should still have data (other tests remain)
+                const remaining = await fileRepository.getAllTests({})
+                expect(remaining.length).toBeGreaterThan(0)
+            } finally {
+                // Cleanup
+                fileDbManager.close()
+                fs.rmSync(tempDir, {recursive: true, force: true})
+            }
         })
     })
 })

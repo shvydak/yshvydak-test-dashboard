@@ -106,6 +106,10 @@ export class TestRepository extends BaseRepository implements ITestRepository {
         const result = await this.dbManager.execute(`DELETE FROM test_results WHERE test_id = ?`, [
             testId,
         ])
+
+        // Compact database to reclaim space after deletion
+        await this.dbManager.compactDatabase()
+
         return result.changes || 0
     }
 
@@ -113,6 +117,10 @@ export class TestRepository extends BaseRepository implements ITestRepository {
         const result = await this.dbManager.execute(`DELETE FROM test_results WHERE id = ?`, [
             executionId,
         ])
+
+        // Compact database to reclaim space after deletion
+        await this.dbManager.compactDatabase()
+
         return result.changes || 0
     }
 

@@ -1,6 +1,6 @@
 {
     "name": "@yshvydak/web",
-    "version": "1.4.0",
+    "version": "1.4.1",
     "type": "module",
     "description": "Frontend web application for yshvydak-test-dashboard",
     "main": "dist/index.js",

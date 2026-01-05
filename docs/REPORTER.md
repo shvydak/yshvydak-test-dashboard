@@ -91,6 +91,7 @@ The Dashboard looks for the reporter in this order:
 - ✅ **RunId Synchronization** - Dashboard passes RUN_ID to reporter via environment variables
 - ✅ **Real-time Updates** - WebSocket integration for live monitoring
 - ✅ **Attachment Management** - Automatic video/screenshot/trace copying
+- ✅ **Per-test Console Output (Node stdout/stderr)** - Captures `console.log/error/warn` from tests and stores it in test result metadata for display in the Dashboard
 - ✅ **Error Context** - Enhanced error reporting with code snippets
 - ✅ **Health Checks** - Built-in diagnostics and connectivity validation
 - ✅ **Silent Mode** - Programmatic usage without console output

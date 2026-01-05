@@ -6,6 +6,7 @@ export interface TestResult {
     status: 'passed' | 'failed' | 'skipped' | 'pending'
     duration: number
     errorMessage?: string
+    metadata?: TestMetadata
     timestamp?: string | null
     created_at?: string
     createdAt?: string
@@ -15,6 +16,24 @@ export interface TestResult {
     steps?: TestStep[]
     attachments?: Attachment[]
     note?: TestNote
+}
+
+export type ConsoleEntryType = 'stdout' | 'stderr'
+
+export interface ConsoleEntry {
+    type: ConsoleEntryType
+    text: string
+    timestamp: string
+}
+
+export interface TestMetadata {
+    steps?: TestStep[]
+    console?: {
+        entries: ConsoleEntry[]
+        truncated?: boolean
+    }
+    // Allow forward-compatible extra metadata without breaking consumers
+    [key: string]: unknown
 }
 
 export interface TestNote {

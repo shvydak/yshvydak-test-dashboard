@@ -246,6 +246,29 @@ describe('YShvydakReporter - Integration Tests', () => {
             reporter = new YShvydakReporter()
         })
 
+        it('should include captured stdout/stderr in metadata.console', () => {
+            const testCase = createMockTestCase('should log output', 'passed')
+            const result = createMockTestResult('passed', {duration: 100})
+
+            reporter.onStdOut('hello from stdout\n', testCase, result)
+            reporter.onStdErr('oops from stderr\n', testCase, result)
+            reporter.onTestEnd(testCase, result)
+
+            const callBody = JSON.parse(mockFetch.mock.calls[0][1].body)
+            expect(callBody.metadata.console.entries).toEqual(
+                expect.arrayContaining([
+                    expect.objectContaining({
+                        type: 'stdout',
+                        text: expect.stringContaining('hello'),
+                    }),
+                    expect.objectContaining({
+                        type: 'stderr',
+                        text: expect.stringContaining('oops'),
+                    }),
+                ])
+            )
+        })
+
         it('should send test result to API on test completion', () => {
             const testCase = createMockTestCase('should pass', 'passed')
             const result = createMockTestResult('passed', {duration: 1500})

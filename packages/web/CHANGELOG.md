@@ -1,5 +1,11 @@
 # @yshvydak/web
 
+## 1.5.0
+
+### Minor Changes
+
+- Console log messages display in the test modal window
+
 ## 1.4.1
 
 ### Patch Changes

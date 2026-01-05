@@ -678,6 +678,11 @@ console.log('Running tests:', progress?.runningTests)
     - Display: Real-time logs in expandable section
     - Requires: WebSocket stdout streaming
 
+✅ **Implemented (stored output, not live streaming):**
+
+- The reporter captures **per-test Node stdout/stderr** (e.g. `console.log/error/warn`) and stores it in the test result `metadata`.
+- Dashboard displays it in the Test Detail modal **under the Trace attachment card** as “Test Output”.
+
 5. **Progress Notifications**
     - Desktop notifications for long-running suites
     - Display: "Test suite 80% complete"

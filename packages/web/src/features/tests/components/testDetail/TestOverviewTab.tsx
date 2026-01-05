@@ -3,6 +3,7 @@ import {LoadingSpinner} from '@shared/components'
 import {AttachmentWithBlobURL} from '../../types/attachment.types'
 import {AttachmentItem} from './AttachmentItem'
 import {TestNoteEditor} from './TestNoteEditor'
+import {TestConsoleOutput} from './TestConsoleTab'
 import {formatErrorLines} from '../../../../utils/errorFormatter'
 import {formatDuration} from '../../utils/formatters'
 
@@ -25,6 +26,10 @@ export function TestOverviewTab({
     onSaveNote,
     onDeleteNote,
 }: TestOverviewTabProps) {
+    const hasConsoleOutput = (test.metadata?.console?.entries?.length ?? 0) > 0
+    const hasTraceAttachment = attachments.some((a) => a.type === 'trace')
+    const shouldShowTestOutput = hasConsoleOutput && hasTraceAttachment
+
     return (
         <div className="space-y-6">
             {/* Attachments Section */}
@@ -74,13 +79,28 @@ export function TestOverviewTab({
 
                 {!attachmentsLoading && !attachmentsError && attachments.length > 0 && (
                     <div className="grid grid-cols-1 gap-4">
-                        {attachments.map((attachment) => (
-                            <AttachmentItem
-                                key={attachment.id}
-                                attachment={attachment}
-                                onError={onAttachmentsError}
-                            />
-                        ))}
+                        {attachments.map((attachment) => {
+                            const isTrace = attachment.type === 'trace'
+
+                            return (
+                                <div key={attachment.id} className="space-y-4">
+                                    <AttachmentItem
+                                        attachment={attachment}
+                                        onError={onAttachmentsError}
+                                    />
+
+                                    {/* Render console output directly under Trace item (requested DOM placement) */}
+                                    {shouldShowTestOutput && isTrace && (
+                                        <div className="space-y-2">
+                                            <div className="text-xs font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wide">
+                                                Test Output
+                                            </div>
+                                            <TestConsoleOutput test={test} />
+                                        </div>
+                                    )}
+                                </div>
+                            )
+                        })}
                     </div>
                 )}
             </div>

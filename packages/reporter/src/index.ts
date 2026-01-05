@@ -22,6 +22,14 @@ interface TestStep {
     error?: string
 }
 
+type ConsoleEntryType = 'stdout' | 'stderr'
+
+interface ConsoleEntry {
+    type: ConsoleEntryType
+    text: string
+    timestamp: string
+}
+
 interface YShvydakTestResult {
     id: string
     testId: string
@@ -40,6 +48,10 @@ interface YShvydakTestResult {
     }>
     metadata?: {
         steps?: TestStep[]
+        console?: {
+            entries: ConsoleEntry[]
+            truncated?: boolean
+        }
     }
 }
 
@@ -79,6 +91,10 @@ class YShvydakReporter implements Reporter {
     private results: YShvydakTestResult[] = []
     private startTime: number = 0
     private apiBaseUrl: string
+    private readonly consoleEntriesByResult = new WeakMap<TestResult, ConsoleEntry[]>()
+    private readonly consoleWasTruncatedByResult = new WeakMap<TestResult, boolean>()
+    private static readonly MAX_CONSOLE_LINES = 500
+    private static readonly MAX_CONSOLE_CHARS = 200_000
 
     constructor() {
         // Get the base URL from environment variables
@@ -106,6 +122,14 @@ class YShvydakReporter implements Reporter {
 
         // Setup cleanup handlers for unexpected termination
         this.setupCleanupHandlers()
+    }
+
+    onStdOut(chunk: string | Buffer, test?: TestCase, result?: TestResult) {
+        this.captureConsoleChunk('stdout', chunk, test, result)
+    }
+
+    onStdErr(chunk: string | Buffer, test?: TestCase, result?: TestResult) {
+        this.captureConsoleChunk('stderr', chunk, test, result)
     }
 
     onBegin(_config: FullConfig, suite: Suite) {
@@ -158,6 +182,9 @@ class YShvydakReporter implements Reporter {
               }))
             : []
 
+        const consoleEntries = this.consoleEntriesByResult.get(result) || []
+        const consoleTruncated = this.consoleWasTruncatedByResult.get(result) || false
+
         const testResult: YShvydakTestResult = {
             id: uuidv4(),
             testId,
@@ -172,6 +199,10 @@ class YShvydakReporter implements Reporter {
             attachments: this.processAttachments(result.attachments),
             metadata: {
                 steps: steps.length > 0 ? steps : undefined,
+                console:
+                    consoleEntries.length > 0
+                        ? {entries: consoleEntries, truncated: consoleTruncated || undefined}
+                        : undefined,
             },
         }
 
@@ -183,6 +214,54 @@ class YShvydakReporter implements Reporter {
         console.log(
             `${this.getStatusIcon(testResult.status)} ${testResult.name} (${testResult.duration}ms)`
         )
+    }
+
+    private captureConsoleChunk(
+        type: ConsoleEntryType,
+        chunk: string | Buffer,
+        _test?: TestCase,
+        result?: TestResult
+    ) {
+        // We only store per-test output when Playwright provides the TestResult object.
+        // Global output (no result) is ignored to avoid polluting individual test logs.
+        if (!result) return
+
+        const text = typeof chunk === 'string' ? chunk : chunk.toString('utf-8')
+        if (!text) return
+
+        const entries = this.consoleEntriesByResult.get(result) || []
+        const lines = text.split(/\r?\n/)
+
+        // Preserve trailing newline behavior: split() drops the delimiter; re-add '\n' for all but last line
+        for (let i = 0; i < lines.length; i++) {
+            const line = lines[i]
+            if (line === '' && i === lines.length - 1) continue
+
+            const entryText = i < lines.length - 1 ? `${line}\n` : line
+            entries.push({
+                type,
+                text: entryText,
+                timestamp: new Date().toISOString(),
+            })
+        }
+
+        // Trim by line count
+        let truncated = false
+        while (entries.length > YShvydakReporter.MAX_CONSOLE_LINES) {
+            entries.shift()
+            truncated = true
+        }
+
+        // Trim by total size
+        let totalChars = entries.reduce((acc, e) => acc + e.text.length, 0)
+        while (totalChars > YShvydakReporter.MAX_CONSOLE_CHARS && entries.length > 0) {
+            const removed = entries.shift()!
+            totalChars -= removed.text.length
+            truncated = true
+        }
+
+        this.consoleEntriesByResult.set(result, entries)
+        if (truncated) this.consoleWasTruncatedByResult.set(result, true)
     }
 
     async onEnd(result: FullResult) {

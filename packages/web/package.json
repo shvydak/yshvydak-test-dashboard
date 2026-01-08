@@ -27,7 +27,7 @@
     "license": "MIT",
     "dependencies": {
         "@tanstack/react-query": "^5.8.4",
-        "@yshvydak/core": "file:../core",
+        "@yshvydak/core": "^1.5.0",
         "react": "^18.2.0",
         "react-dom": "^18.2.0",
         "react-router-dom": "^6.30.1",

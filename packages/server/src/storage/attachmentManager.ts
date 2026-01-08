@@ -2,7 +2,7 @@ import fs from 'fs'
 import path from 'path'
 import {v4 as uuidv4} from 'uuid'
 
-export type AttachmentType = 'video' | 'screenshot' | 'trace' | 'log'
+export type AttachmentType = 'video' | 'screenshot' | 'trace' | 'log' | 'note-image'
 
 export interface AttachmentMetadata {
     id: string
@@ -36,6 +36,14 @@ export class AttachmentManager {
             fs.mkdirSync(testDir, {recursive: true})
         }
         return testDir
+    }
+
+    private ensureNoteDirectory(testId: string): string {
+        const noteDir = path.join(this.attachmentsDir, 'notes', testId)
+        if (!fs.existsSync(noteDir)) {
+            fs.mkdirSync(noteDir, {recursive: true})
+        }
+        return noteDir
     }
 
     private getMimeType(filePath: string): string {
@@ -76,6 +84,7 @@ export class AttachmentManager {
             screenshot: '.png',
             trace: '.zip',
             log: '.log',
+            'note-image': '.png',
         }
 
         return `${type}-${timestamp}-${random}${extensions[type] || '.txt'}`
@@ -213,6 +222,86 @@ export class AttachmentManager {
         // Remove the directory
         await fs.promises.rmdir(testDir)
         console.log(`Deleted ${deletedCount} attachments for test ${testResultId}`)
+
+        return deletedCount
+    }
+
+    // Save note image
+    async saveNoteImage(
+        buffer: Buffer,
+        testId: string,
+        fileName?: string
+    ): Promise<AttachmentMetadata> {
+        const noteDir = this.ensureNoteDirectory(testId)
+        const finalFileName = fileName || this.generateFileName('note-image')
+        const filePath = path.join(noteDir, finalFileName)
+
+        // Write buffer to file
+        await fs.promises.writeFile(filePath, buffer)
+
+        const mimeType = this.getMimeType(filePath)
+
+        const metadata: AttachmentMetadata = {
+            id: uuidv4(),
+            testResultId: testId, // Using testId for note images
+            type: 'note-image',
+            fileName: finalFileName,
+            filePath,
+            fileSize: buffer.length,
+            mimeType,
+            url: `/attachments/notes/${testId}/${finalFileName}`,
+        }
+
+        console.log(`Saved note image: ${filePath}`)
+        return metadata
+    }
+
+    // Delete note image
+    async deleteNoteImage(testId: string, fileName: string): Promise<boolean> {
+        const filePath = path.join(this.attachmentsDir, 'notes', testId, fileName)
+
+        if (fs.existsSync(filePath)) {
+            await fs.promises.unlink(filePath)
+            console.log(`Deleted note image: ${filePath}`)
+
+            // Check if note directory is empty and remove it
+            const noteDir = path.join(this.attachmentsDir, 'notes', testId)
+            try {
+                const files = await fs.promises.readdir(noteDir)
+                if (files.length === 0) {
+                    await fs.promises.rmdir(noteDir)
+                    console.log(`Removed empty note directory: ${noteDir}`)
+                }
+            } catch {
+                // Directory might not be empty or might not exist, ignore
+            }
+
+            return true
+        }
+
+        return false
+    }
+
+    // Delete all images for a note
+    async deleteNoteImages(testId: string): Promise<number> {
+        const noteDir = path.join(this.attachmentsDir, 'notes', testId)
+
+        if (!fs.existsSync(noteDir)) {
+            return 0
+        }
+
+        const files = await fs.promises.readdir(noteDir)
+        let deletedCount = 0
+
+        for (const file of files) {
+            const filePath = path.join(noteDir, file)
+            await fs.promises.unlink(filePath)
+            deletedCount++
+        }
+
+        // Remove the directory
+        await fs.promises.rmdir(noteDir)
+        console.log(`Deleted ${deletedCount} note images for test ${testId}`)
 
         return deletedCount
     }

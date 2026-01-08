@@ -1,10 +1,14 @@
 import {describe, it, expect, beforeEach, vi} from 'vitest'
 import {NoteService} from '../note.service'
 import {NoteRepository, TestNote} from '../../repositories/note.repository'
+import {NoteImageRepository} from '../../repositories/noteImage.repository'
+import {AttachmentManager} from '../../storage/attachmentManager'
 
 describe('NoteService', () => {
     let noteService: NoteService
     let mockNoteRepository: NoteRepository
+    let mockNoteImageRepository: NoteImageRepository
+    let mockAttachmentManager: AttachmentManager
 
     beforeEach(() => {
         mockNoteRepository = {
@@ -13,7 +17,23 @@ describe('NoteService', () => {
             deleteNote: vi.fn(),
         } as unknown as NoteRepository
 
-        noteService = new NoteService(mockNoteRepository)
+        mockNoteImageRepository = {
+            saveImage: vi.fn(),
+            getImages: vi.fn().mockResolvedValue([]),
+            deleteImage: vi.fn(),
+            deleteImages: vi.fn(),
+        } as unknown as NoteImageRepository
+
+        mockAttachmentManager = {
+            deleteNoteImage: vi.fn(),
+            deleteNoteImages: vi.fn(),
+        } as unknown as AttachmentManager
+
+        noteService = new NoteService(
+            mockNoteRepository,
+            mockNoteImageRepository,
+            mockAttachmentManager
+        )
     })
 
     describe('saveNote()', () => {

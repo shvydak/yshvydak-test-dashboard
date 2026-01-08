@@ -489,6 +489,48 @@ export class DatabaseManager {
         await this.run(sql, [testId])
     }
 
+    // Note Images
+    async saveNoteImage(imageData: {
+        id: string
+        testId: string
+        fileName: string
+        filePath: string
+        fileSize: number
+        mimeType?: string
+        url: string
+        position: number
+    }): Promise<void> {
+        const sql = `
+            INSERT INTO note_images (id, test_id, file_name, file_path, file_size, mime_type, url, position)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        `
+        await this.run(sql, [
+            imageData.id,
+            imageData.testId,
+            imageData.fileName,
+            imageData.filePath,
+            imageData.fileSize,
+            imageData.mimeType || null,
+            imageData.url,
+            imageData.position,
+        ])
+    }
+
+    async getNoteImages(testId: string): Promise<any[]> {
+        const sql = 'SELECT * FROM note_images WHERE test_id = ? ORDER BY position ASC'
+        return this.all(sql, [testId])
+    }
+
+    async deleteNoteImage(id: string): Promise<void> {
+        const sql = 'DELETE FROM note_images WHERE id = ?'
+        await this.run(sql, [id])
+    }
+
+    async deleteNoteImages(testId: string): Promise<void> {
+        const sql = 'DELETE FROM note_images WHERE test_id = ?'
+        await this.run(sql, [testId])
+    }
+
     close(): void {
         this.db.close((error) => {
             if (error) {

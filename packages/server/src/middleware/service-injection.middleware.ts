@@ -5,6 +5,7 @@ import {RunRepository} from '../repositories/run.repository'
 import {AttachmentRepository} from '../repositories/attachment.repository'
 import {StorageRepository} from '../repositories/storage.repository'
 import {NoteRepository} from '../repositories/note.repository'
+import {NoteImageRepository} from '../repositories/noteImage.repository'
 import {TestService} from '../services/test.service'
 import {PlaywrightService} from '../services/playwright.service'
 import {WebSocketService} from '../services/websocket.service'
@@ -47,6 +48,7 @@ export async function createServiceContainer(): Promise<ServiceContainer> {
     const attachmentRepository = new AttachmentRepository(dbManager)
     const storageRepository = new StorageRepository(dbManager, attachmentManager)
     const noteRepository = new NoteRepository(dbManager)
+    const noteImageRepository = new NoteImageRepository(dbManager)
 
     // Initialize services
     const websocketService = new WebSocketService()
@@ -54,7 +56,7 @@ export async function createServiceContainer(): Promise<ServiceContainer> {
     const attachmentService = new AttachmentService(attachmentRepository)
     const storageService = new StorageService(storageRepository)
     const authService = new AuthService()
-    const noteService = new NoteService(noteRepository)
+    const noteService = new NoteService(noteRepository, noteImageRepository, attachmentManager)
     const testService = new TestService(
         testRepository,
         runRepository,

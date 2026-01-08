@@ -41,6 +41,19 @@ export interface TestNote {
     content: string
     createdAt: string
     updatedAt: string
+    images?: NoteImage[]
+}
+
+export interface NoteImage {
+    id: string
+    testId: string
+    fileName: string
+    filePath: string
+    fileSize: number
+    mimeType?: string
+    url: string
+    position: number
+    createdAt: string
 }
 
 export interface TestStep {

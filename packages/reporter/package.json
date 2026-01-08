@@ -56,6 +56,7 @@
         "access": "public"
     },
     "dependencies": {
+        "@yshvydak/core": "^1.5.0",
         "dotenv": "^17.2.3",
         "uuid": "^9.0.1"
     },

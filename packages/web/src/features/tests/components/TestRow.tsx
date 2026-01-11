@@ -1,9 +1,15 @@
+import React, {useState, useEffect} from 'react'
 import {TestResult} from '@yshvydak/core'
 import {StatusBadge, ActionButton, LoadingSpinner, Badge} from '@shared/components'
 import {formatDuration, formatLastRun} from '../utils'
 import {useTestsStore} from '../store/testsStore'
 import {LinkifiedText} from '@/components/atoms/LinkifiedText'
 import {truncateText} from '@/utils/linkify.util'
+import {useNoteImages} from '../hooks/useNoteImages'
+import {parseNoteContent} from '@/utils/noteContent.util'
+import {createProtectedFileURL} from '@features/authentication/utils/authFetch'
+import {config} from '@config/environment.config'
+import {NoteImage} from '@yshvydak/core'
 
 export interface TestRowProps {
     test: TestResult
@@ -16,6 +22,12 @@ export function TestRow({test, selected, onSelect, onRerun}: TestRowProps) {
     const {runningTests, getIsAnyTestRunning, activeProgress} = useTestsStore()
     const isAnyTestRunning = getIsAnyTestRunning()
 
+    // Load note images for this test
+    const {images: noteImages} = useNoteImages(
+        test.note?.content ? test.testId : null,
+        !!test.note?.content
+    )
+
     // Find if this test is currently running in the active progress
     const runningInfo = activeProgress?.runningTests.find((t) => t.testId === test.testId)
 
@@ -23,6 +35,9 @@ export function TestRow({test, selected, onSelect, onRerun}: TestRowProps) {
     // 1. runningTests Set (for single test reruns)
     // 2. activeProgress.runningTests (for group/all runs)
     const isRunning = runningTests.has(test.id) || !!runningInfo
+
+    // Parse note content to extract images
+    const noteParts = test.note?.content ? parseNoteContent(test.note.content, noteImages) : []
 
     return (
         <tr
@@ -52,12 +67,29 @@ export function TestRow({test, selected, onSelect, onRerun}: TestRowProps) {
                     </div>
                 )}
                 {!runningInfo && test.note?.content && (
-                    <div className="text-xs text-gray-600 dark:text-gray-400 mt-1 truncate max-w-xs flex items-center gap-1">
+                    <div className="text-xs text-gray-600 dark:text-gray-400 mt-1 max-w-xs flex items-center gap-1 flex-wrap">
                         <span>💬</span>
-                        <LinkifiedText
-                            text={truncateText(test.note.content, 50)}
-                            className="truncate"
-                        />
+                        {noteParts.map((part, index) => {
+                            if (part.type === 'image' && part.image) {
+                                return (
+                                    <NoteImageMiniThumbnail
+                                        key={`img-${part.imageId}-${index}`}
+                                        image={part.image}
+                                    />
+                                )
+                            }
+                            // Show all text parts, but truncate each one
+                            if (part.type === 'text' && part.content.trim()) {
+                                return (
+                                    <LinkifiedText
+                                        key={`text-${index}`}
+                                        text={truncateText(part.content, 50)}
+                                        className="truncate"
+                                    />
+                                )
+                            }
+                            return null
+                        })}
                     </div>
                 )}
             </td>
@@ -83,5 +115,54 @@ export function TestRow({test, selected, onSelect, onRerun}: TestRowProps) {
                 </ActionButton>
             </td>
         </tr>
+    )
+}
+
+// Small thumbnail component for table rows (16x16px)
+function NoteImageMiniThumbnail({image}: {image: NoteImage}) {
+    const [imageUrl, setImageUrl] = useState<string | null>(null)
+    const [loading, setLoading] = useState(true)
+
+    useEffect(() => {
+        let isMounted = true
+
+        const loadImage = async () => {
+            try {
+                const url = await createProtectedFileURL(image.url, config.api.serverUrl)
+                if (isMounted) {
+                    setImageUrl(url)
+                    setLoading(false)
+                }
+            } catch {
+                if (isMounted) {
+                    setLoading(false)
+                }
+            }
+        }
+
+        loadImage()
+
+        return () => {
+            isMounted = false
+            if (imageUrl) {
+                URL.revokeObjectURL(imageUrl)
+            }
+        }
+    }, [image.url])
+
+    if (loading || !imageUrl) {
+        return (
+            <span className="inline-block w-4 h-4 bg-gray-200 dark:bg-gray-700 rounded border border-gray-300 dark:border-gray-600" />
+        )
+    }
+
+    return (
+        <img
+            src={imageUrl}
+            alt=""
+            className="inline-block w-4 h-4 rounded border border-gray-300 dark:border-gray-600 object-cover"
+            style={{verticalAlign: 'middle'}}
+            onClick={(e) => e.stopPropagation()}
+        />
     )
 }

@@ -66,12 +66,18 @@ export function NoteImageLightbox({image, isOpen, onClose}: NoteImageLightboxPro
         <>
             <div
                 className="fixed inset-0 z-[55] bg-black/50 backdrop-blur-md"
-                onClick={onClose}
+                onClick={(e) => {
+                    e.stopPropagation()
+                    onClose()
+                }}
                 aria-hidden="true"
             />
             <div
                 className="fixed inset-0 z-[60] flex items-center justify-center p-4 pointer-events-none"
-                onClick={onClose}
+                onClick={(e) => {
+                    e.stopPropagation()
+                    onClose()
+                }}
                 role="dialog"
                 aria-modal="true"
                 aria-label="Image preview">
@@ -80,7 +86,10 @@ export function NoteImageLightbox({image, isOpen, onClose}: NoteImageLightboxPro
                     onClick={(e) => e.stopPropagation()}>
                     {/* Close button */}
                     <button
-                        onClick={onClose}
+                        onClick={(e) => {
+                            e.stopPropagation()
+                            onClose()
+                        }}
                         className="absolute -top-10 right-0 text-white hover:text-gray-300 transition-colors z-10"
                         aria-label="Close image preview">
                         <svg

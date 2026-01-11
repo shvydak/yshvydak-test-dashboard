@@ -1,5 +1,16 @@
 # @yshvydak/test-dashboard-server
 
+## 1.6.0
+
+### Minor Changes
+
+- feat: test notes image attachments support
+
+### Patch Changes
+
+- Updated dependencies
+    - @yshvydak/core@1.6.0
+
 ## 1.5.0
 
 ### Minor Changes

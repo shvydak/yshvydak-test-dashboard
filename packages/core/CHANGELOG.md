@@ -1,5 +1,11 @@
 # @yshvydak/core
 
+## 1.6.0
+
+### Minor Changes
+
+- feat: test notes image attachments support
+
 ## 1.5.0
 
 ### Minor Changes

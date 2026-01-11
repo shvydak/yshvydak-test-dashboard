@@ -43,6 +43,16 @@ export interface TestNoteData {
     content: string
 }
 
+export interface NoteImageData {
+    id: string
+    testId: string
+    fileName: string
+    filePath: string
+    fileSize: number
+    mimeType: string
+    url: string
+}
+
 export class DatabaseManager {
     private db!: sqlite3.Database
     private dbPath: string
@@ -408,7 +418,7 @@ export class DatabaseManager {
 
     async clearAllData(): Promise<void> {
         // Clear all data from all tables (cascading delete will handle related records)
-        const tables = ['test_runs', 'test_results', 'attachments', 'test_notes']
+        const tables = ['test_runs', 'test_results', 'attachments', 'test_notes', 'note_images']
 
         for (const table of tables) {
             await this.run(`DELETE FROM ${table}`)
@@ -486,6 +496,43 @@ export class DatabaseManager {
 
     async deleteTestNote(testId: string): Promise<void> {
         const sql = 'DELETE FROM test_notes WHERE test_id = ?'
+        await this.run(sql, [testId])
+    }
+
+    // Note Images
+    async saveNoteImage(imageData: NoteImageData): Promise<void> {
+        const sql = `
+            INSERT INTO note_images (id, test_id, file_name, file_path, file_size, mime_type, url)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        `
+        await this.run(sql, [
+            imageData.id,
+            imageData.testId,
+            imageData.fileName,
+            imageData.filePath,
+            imageData.fileSize,
+            imageData.mimeType,
+            imageData.url,
+        ])
+    }
+
+    async getNoteImages(testId: string): Promise<any[]> {
+        const sql = 'SELECT * FROM note_images WHERE test_id = ? ORDER BY created_at'
+        return await this.all(sql, [testId])
+    }
+
+    async getNoteImage(imageId: string): Promise<any> {
+        const sql = 'SELECT * FROM note_images WHERE id = ?'
+        return await this.get(sql, [imageId])
+    }
+
+    async deleteNoteImage(imageId: string): Promise<void> {
+        const sql = 'DELETE FROM note_images WHERE id = ?'
+        await this.run(sql, [imageId])
+    }
+
+    async deleteNoteImagesByTestId(testId: string): Promise<void> {
+        const sql = 'DELETE FROM note_images WHERE test_id = ?'
         await this.run(sql, [testId])
     }
 

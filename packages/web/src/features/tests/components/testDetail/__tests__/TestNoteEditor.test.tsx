@@ -1,22 +1,54 @@
 import {describe, it, expect, vi, beforeEach} from 'vitest'
 import {render, screen, fireEvent, waitFor} from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import {QueryClient, QueryClientProvider} from '@tanstack/react-query'
+import React from 'react'
 import {TestNoteEditor} from '../TestNoteEditor'
+import * as useNoteImagesModule from '../../../hooks/useNoteImages'
+
+// Mock useNoteImages hook
+vi.mock('../../../hooks/useNoteImages', () => ({
+    useNoteImages: vi.fn(),
+}))
 
 describe('TestNoteEditor', () => {
     const mockOnSave = vi.fn()
     const mockOnDelete = vi.fn()
     const testId = 'test-123'
+    let queryClient: QueryClient
 
     beforeEach(() => {
         mockOnSave.mockReset()
         mockOnDelete.mockReset()
         vi.clearAllMocks()
+
+        // Create a new QueryClient for each test to ensure isolation
+        queryClient = new QueryClient({
+            defaultOptions: {
+                queries: {retry: false},
+                mutations: {retry: false},
+            },
+        })
+
+        // Mock useNoteImages to return default values
+        vi.mocked(useNoteImagesModule.useNoteImages).mockReturnValue({
+            images: [],
+            loading: false,
+            error: null,
+            refetch: vi.fn(),
+        })
     })
+
+    // Wrapper component with QueryClientProvider
+    const wrapper = ({children}: {children: React.ReactNode}) => (
+        <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+    )
 
     describe('Initial Rendering', () => {
         it('should render "Add Note" button when no initial note', () => {
-            render(<TestNoteEditor testId={testId} onSave={mockOnSave} onDelete={mockOnDelete} />)
+            render(<TestNoteEditor testId={testId} onSave={mockOnSave} onDelete={mockOnDelete} />, {
+                wrapper,
+            })
 
             expect(screen.getByText('Test Notes')).toBeInTheDocument()
             expect(screen.getByText('Add Note')).toBeInTheDocument()
@@ -31,16 +63,19 @@ describe('TestNoteEditor', () => {
                     initialNote={note}
                     onSave={mockOnSave}
                     onDelete={mockOnDelete}
-                />
+                />,
+                {wrapper}
             )
 
             expect(screen.getByText(note)).toBeInTheDocument()
-            expect(screen.getByText('Edit')).toBeInTheDocument()
             expect(screen.getByText('Delete')).toBeInTheDocument()
+            // Edit button was removed - clicking note area opens edit mode
         })
 
         it('should not render textarea initially', () => {
-            render(<TestNoteEditor testId={testId} onSave={mockOnSave} onDelete={mockOnDelete} />)
+            render(<TestNoteEditor testId={testId} onSave={mockOnSave} onDelete={mockOnDelete} />, {
+                wrapper,
+            })
 
             expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
         })
@@ -49,7 +84,9 @@ describe('TestNoteEditor', () => {
     describe('Adding New Note', () => {
         it('should show textarea when "Add Note" is clicked', async () => {
             const user = userEvent.setup()
-            render(<TestNoteEditor testId={testId} onSave={mockOnSave} onDelete={mockOnDelete} />)
+            render(<TestNoteEditor testId={testId} onSave={mockOnSave} onDelete={mockOnDelete} />, {
+                wrapper,
+            })
 
             await user.click(screen.getByText('Add Note'))
 
@@ -63,7 +100,9 @@ describe('TestNoteEditor', () => {
             const noteContent = 'New test note'
             mockOnSave.mockResolvedValue(undefined)
 
-            render(<TestNoteEditor testId={testId} onSave={mockOnSave} onDelete={mockOnDelete} />)
+            render(<TestNoteEditor testId={testId} onSave={mockOnSave} onDelete={mockOnDelete} />, {
+                wrapper,
+            })
 
             await user.click(screen.getByText('Add Note'))
             await user.type(screen.getByRole('textbox'), noteContent)
@@ -76,7 +115,9 @@ describe('TestNoteEditor', () => {
 
         it('should show error when trying to save empty note', async () => {
             const user = userEvent.setup()
-            render(<TestNoteEditor testId={testId} onSave={mockOnSave} onDelete={mockOnDelete} />)
+            render(<TestNoteEditor testId={testId} onSave={mockOnSave} onDelete={mockOnDelete} />, {
+                wrapper,
+            })
 
             await user.click(screen.getByText('Add Note'))
 
@@ -89,7 +130,9 @@ describe('TestNoteEditor', () => {
             const user = userEvent.setup()
             mockOnSave.mockResolvedValue(undefined)
 
-            render(<TestNoteEditor testId={testId} onSave={mockOnSave} onDelete={mockOnDelete} />)
+            render(<TestNoteEditor testId={testId} onSave={mockOnSave} onDelete={mockOnDelete} />, {
+                wrapper,
+            })
 
             await user.click(screen.getByText('Add Note'))
             await user.type(screen.getByRole('textbox'), '  Test note  ')
@@ -102,7 +145,9 @@ describe('TestNoteEditor', () => {
 
         it('should cancel editing when "Cancel" is clicked', async () => {
             const user = userEvent.setup()
-            render(<TestNoteEditor testId={testId} onSave={mockOnSave} onDelete={mockOnDelete} />)
+            render(<TestNoteEditor testId={testId} onSave={mockOnSave} onDelete={mockOnDelete} />, {
+                wrapper,
+            })
 
             await user.click(screen.getByText('Add Note'))
             await user.type(screen.getByRole('textbox'), 'Some content')
@@ -115,7 +160,7 @@ describe('TestNoteEditor', () => {
     })
 
     describe('Editing Existing Note', () => {
-        it('should show textarea with existing note when "Edit" is clicked', async () => {
+        it('should show textarea with existing note when note area is clicked', async () => {
             const user = userEvent.setup()
             const existingNote = 'Existing note'
             render(
@@ -124,10 +169,12 @@ describe('TestNoteEditor', () => {
                     initialNote={existingNote}
                     onSave={mockOnSave}
                     onDelete={mockOnDelete}
-                />
+                />,
+                {wrapper}
             )
 
-            await user.click(screen.getByText('Edit'))
+            // Click on the note content area (not Edit button - it was removed)
+            await user.click(screen.getByText(existingNote))
 
             const textarea = screen.getByRole('textbox') as HTMLTextAreaElement
             expect(textarea.value).toBe(existingNote)
@@ -143,10 +190,12 @@ describe('TestNoteEditor', () => {
                     initialNote="Old note"
                     onSave={mockOnSave}
                     onDelete={mockOnDelete}
-                />
+                />,
+                {wrapper}
             )
 
-            await user.click(screen.getByText('Edit'))
+            // Click on note area to enter edit mode
+            await user.click(screen.getByText('Old note'))
             await user.clear(screen.getByRole('textbox'))
             await user.type(screen.getByRole('textbox'), 'Updated note')
             await user.click(screen.getByText('Save'))
@@ -165,10 +214,12 @@ describe('TestNoteEditor', () => {
                     initialNote={originalNote}
                     onSave={mockOnSave}
                     onDelete={mockOnDelete}
-                />
+                />,
+                {wrapper}
             )
 
-            await user.click(screen.getByText('Edit'))
+            // Click on note area to enter edit mode
+            await user.click(screen.getByText(originalNote))
             await user.clear(screen.getByRole('textbox'))
             await user.type(screen.getByRole('textbox'), 'Modified text')
             await user.click(screen.getByText('Cancel'))
@@ -190,7 +241,8 @@ describe('TestNoteEditor', () => {
                     initialNote="Note to delete"
                     onSave={mockOnSave}
                     onDelete={mockOnDelete}
-                />
+                />,
+                {wrapper}
             )
 
             await user.click(screen.getByText('Delete'))
@@ -210,7 +262,8 @@ describe('TestNoteEditor', () => {
                     initialNote="Note to delete"
                     onSave={mockOnSave}
                     onDelete={mockOnDelete}
-                />
+                />,
+                {wrapper}
             )
 
             await user.click(screen.getByText('Delete'))
@@ -231,7 +284,8 @@ describe('TestNoteEditor', () => {
                     initialNote="Note to delete"
                     onSave={mockOnSave}
                     onDelete={mockOnDelete}
-                />
+                />,
+                {wrapper}
             )
 
             await user.click(screen.getByText('Delete'))
@@ -243,7 +297,9 @@ describe('TestNoteEditor', () => {
     describe('Character Counter', () => {
         it('should show remaining characters', async () => {
             const user = userEvent.setup()
-            render(<TestNoteEditor testId={testId} onSave={mockOnSave} onDelete={mockOnDelete} />)
+            render(<TestNoteEditor testId={testId} onSave={mockOnSave} onDelete={mockOnDelete} />, {
+                wrapper,
+            })
 
             await user.click(screen.getByText('Add Note'))
 
@@ -252,7 +308,9 @@ describe('TestNoteEditor', () => {
 
         it('should update character count as user types', async () => {
             const user = userEvent.setup()
-            render(<TestNoteEditor testId={testId} onSave={mockOnSave} onDelete={mockOnDelete} />)
+            render(<TestNoteEditor testId={testId} onSave={mockOnSave} onDelete={mockOnDelete} />, {
+                wrapper,
+            })
 
             await user.click(screen.getByText('Add Note'))
             await user.type(screen.getByRole('textbox'), 'Test')
@@ -262,7 +320,9 @@ describe('TestNoteEditor', () => {
 
         it('should show warning color when less than 100 characters remaining', async () => {
             const user = userEvent.setup()
-            render(<TestNoteEditor testId={testId} onSave={mockOnSave} onDelete={mockOnDelete} />)
+            render(<TestNoteEditor testId={testId} onSave={mockOnSave} onDelete={mockOnDelete} />, {
+                wrapper,
+            })
 
             await user.click(screen.getByText('Add Note'))
             await user.type(screen.getByRole('textbox'), 'a'.repeat(950))
@@ -273,7 +333,9 @@ describe('TestNoteEditor', () => {
 
         it('should enforce maximum length of 1000 characters', async () => {
             const user = userEvent.setup()
-            render(<TestNoteEditor testId={testId} onSave={mockOnSave} onDelete={mockOnDelete} />)
+            render(<TestNoteEditor testId={testId} onSave={mockOnSave} onDelete={mockOnDelete} />, {
+                wrapper,
+            })
 
             await user.click(screen.getByText('Add Note'))
 
@@ -283,7 +345,9 @@ describe('TestNoteEditor', () => {
 
         it('should show error when exceeding max length', async () => {
             const user = userEvent.setup()
-            render(<TestNoteEditor testId={testId} onSave={mockOnSave} onDelete={mockOnDelete} />)
+            render(<TestNoteEditor testId={testId} onSave={mockOnSave} onDelete={mockOnDelete} />, {
+                wrapper,
+            })
 
             await user.click(screen.getByText('Add Note'))
 
@@ -303,7 +367,9 @@ describe('TestNoteEditor', () => {
             const errorMessage = 'Failed to save note'
             mockOnSave.mockRejectedValue(new Error(errorMessage))
 
-            render(<TestNoteEditor testId={testId} onSave={mockOnSave} onDelete={mockOnDelete} />)
+            render(<TestNoteEditor testId={testId} onSave={mockOnSave} onDelete={mockOnDelete} />, {
+                wrapper,
+            })
 
             await user.click(screen.getByText('Add Note'))
             await user.type(screen.getByRole('textbox'), 'Test note')
@@ -324,7 +390,8 @@ describe('TestNoteEditor', () => {
                     initialNote="Note"
                     onSave={mockOnSave}
                     onDelete={mockOnDelete}
-                />
+                />,
+                {wrapper}
             )
 
             await user.click(screen.getByText('Delete'))
@@ -338,7 +405,9 @@ describe('TestNoteEditor', () => {
             const user = userEvent.setup()
             mockOnSave.mockRejectedValue(new Error('Save error'))
 
-            render(<TestNoteEditor testId={testId} onSave={mockOnSave} onDelete={mockOnDelete} />)
+            render(<TestNoteEditor testId={testId} onSave={mockOnSave} onDelete={mockOnDelete} />, {
+                wrapper,
+            })
 
             await user.click(screen.getByText('Add Note'))
             await user.type(screen.getByRole('textbox'), 'Test')
@@ -358,7 +427,9 @@ describe('TestNoteEditor', () => {
             const user = userEvent.setup()
             mockOnSave.mockImplementation(() => new Promise((resolve) => setTimeout(resolve, 1000)))
 
-            render(<TestNoteEditor testId={testId} onSave={mockOnSave} onDelete={mockOnDelete} />)
+            render(<TestNoteEditor testId={testId} onSave={mockOnSave} onDelete={mockOnDelete} />, {
+                wrapper,
+            })
 
             await user.click(screen.getByText('Add Note'))
             await user.type(screen.getByRole('textbox'), 'Test note')
@@ -371,7 +442,9 @@ describe('TestNoteEditor', () => {
             const user = userEvent.setup()
             mockOnSave.mockImplementation(() => new Promise((resolve) => setTimeout(resolve, 1000)))
 
-            render(<TestNoteEditor testId={testId} onSave={mockOnSave} onDelete={mockOnDelete} />)
+            render(<TestNoteEditor testId={testId} onSave={mockOnSave} onDelete={mockOnDelete} />, {
+                wrapper,
+            })
 
             await user.click(screen.getByText('Add Note'))
             await user.type(screen.getByRole('textbox'), 'Test note')
@@ -383,7 +456,9 @@ describe('TestNoteEditor', () => {
 
         it('should disable Save button when note is empty', async () => {
             const user = userEvent.setup()
-            render(<TestNoteEditor testId={testId} onSave={mockOnSave} onDelete={mockOnDelete} />)
+            render(<TestNoteEditor testId={testId} onSave={mockOnSave} onDelete={mockOnDelete} />, {
+                wrapper,
+            })
 
             await user.click(screen.getByText('Add Note'))
 
@@ -394,7 +469,9 @@ describe('TestNoteEditor', () => {
     describe('Placeholder Text', () => {
         it('should show helpful placeholder in textarea', async () => {
             const user = userEvent.setup()
-            render(<TestNoteEditor testId={testId} onSave={mockOnSave} onDelete={mockOnDelete} />)
+            render(<TestNoteEditor testId={testId} onSave={mockOnSave} onDelete={mockOnDelete} />, {
+                wrapper,
+            })
 
             await user.click(screen.getByText('Add Note'))
 
@@ -405,7 +482,9 @@ describe('TestNoteEditor', () => {
 
     describe('Empty State Message', () => {
         it('should show message when no note exists and not editing', () => {
-            render(<TestNoteEditor testId={testId} onSave={mockOnSave} onDelete={mockOnDelete} />)
+            render(<TestNoteEditor testId={testId} onSave={mockOnSave} onDelete={mockOnDelete} />, {
+                wrapper,
+            })
 
             // Should show the "Add Note" button, not the empty state message
             expect(screen.getByText('Add Note')).toBeInTheDocument()

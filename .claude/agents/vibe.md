@@ -118,8 +118,7 @@ DRY Principle Check:
 - Justification for New Code: [If creating new endpoints/major functions, explain WHY existing ones CANNOT be modified. If this is empty, it implies full reuse.]
 
 Context7-MCP check:
-[If new/updated dependencies needed, check Context7-MCP for latest docs]
-- Package: X, Version: Y, Breaking changes: Z
+[If new/updated dependencies needed, check Context7-MCP tool for latest dependencies docs]
 
 Questions (ONLY critical ones - ask if ambiguity exists):
 - [Question 1: if multiple valid approaches]

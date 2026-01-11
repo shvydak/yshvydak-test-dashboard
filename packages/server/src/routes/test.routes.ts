@@ -1,12 +1,15 @@
 import {Router} from 'express'
 import {TestController} from '../controllers/test.controller'
 import {NoteController} from '../controllers/note.controller'
+import {NoteImageController} from '../controllers/noteImage.controller'
+import {uploadSingleImage} from '../middleware/upload.middleware'
 import {ServiceContainer} from '../middleware/service-injection.middleware'
 
 export function createTestRoutes(container: ServiceContainer): Router {
     const router = Router()
     const testController = new TestController(container.testService, container.authService)
     const noteController = new NoteController(container.noteService)
+    const noteImageController = new NoteImageController(container.noteImageService)
 
     // Test management endpoints
     router.post('/discovery', testController.discoverTests)
@@ -40,6 +43,11 @@ export function createTestRoutes(container: ServiceContainer): Router {
     router.get('/:testId/notes', noteController.getNote)
     router.post('/:testId/notes', noteController.saveNote)
     router.delete('/:testId/notes', noteController.deleteNote)
+
+    // Note image endpoints
+    router.post('/:testId/notes/images', uploadSingleImage, noteImageController.uploadImage)
+    router.get('/:testId/notes/images', noteImageController.getImages)
+    router.delete('/:testId/notes/images/:imageId', noteImageController.deleteImage)
 
     // Trace file endpoint (no auth middleware - JWT validation in controller)
     router.get('/traces/:attachmentId', testController.getTraceFile)

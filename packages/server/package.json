@@ -1,6 +1,6 @@
 {
     "name": "@yshvydak/test-dashboard-server",
-    "version": "1.5.0",
+    "version": "1.6.0",
     "description": "Backend server for yshvydak-test-dashboard",
     "main": "dist/index.js",
     "scripts": {
@@ -25,11 +25,13 @@
     "author": "Yurii Shvydak <y.shvydak@gmail.com>",
     "license": "MIT",
     "dependencies": {
-        "@yshvydak/core": "^1.5.0",
+        "@types/multer": "^2.0.0",
+        "@yshvydak/core": "^1.6.0",
         "cors": "^2.8.5",
         "dotenv": "^17.2.3",
         "express": "^4.18.0",
         "fast-jwt": "^6.0.2",
+        "multer": "^2.0.2",
         "sqlite3": "^5.1.6",
         "uuid": "^9.0.1",
         "ws": "^8.14.0"

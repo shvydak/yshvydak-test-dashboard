@@ -51,6 +51,10 @@ packages/server/src/
 │   │   ├── GET /api/tests/:testId/notes       # Get test note
 │   │   ├── POST /api/tests/:testId/notes      # Save/update test note
 │   │   └── DELETE /api/tests/:testId/notes    # Delete test note
+│   ├── noteImage.controller.ts # Test note images endpoints (✨ v1.3.0)
+│   │   ├── POST /api/tests/:testId/notes/images       # Upload image
+│   │   ├── GET /api/tests/:testId/notes/images        # Get all images
+│   │   └── DELETE /api/tests/:testId/notes/images/:imageId # Delete image
 │   ├── run.controller.ts       # Test run lifecycle
 │   ├── storage.controller.ts   # Storage statistics (✨ v1.0.4)
 │   │   └── GET /api/storage/stats             # Get storage statistics
@@ -68,7 +72,14 @@ packages/server/src/
 │   │   ├── saveNote()                  # Save/update note with validation
 │   │   │   └── Validation: trim, empty check, 1000 char max
 │   │   ├── getNote()                   # Get note by testId
-│   │   └── deleteNote()                # Delete note by testId
+│   │   └── deleteNote()                # Delete note by testId (also deletes images)
+│   │
+│   ├── noteImage.service.ts    # Test note images business logic (✨ v1.3.0)
+│   │   ├── uploadImage()               # Upload image with validation (max 5MB)
+│   │   ├── getImages()                 # Get all images for test
+│   │   ├── getImageById()              # Get single image by ID
+│   │   ├── deleteImage()               # Delete image by ID
+│   │   └── deleteImagesByTestId()      # Delete all images for test
 │   │
 │   ├── __tests__/              # Service layer tests (6 test files, part of 30 total test files, 1,279 tests)
 │   ├── playwright.service.ts   # Playwright integration
@@ -97,6 +108,13 @@ packages/server/src/
 │   │   ├── saveNote()                  # INSERT OR REPLACE note
 │   │   ├── getNote()                   # SELECT note by testId
 │   │   └── deleteNote()                # DELETE note by testId
+│   │
+│   ├── noteImage.repository.ts # Test note images CRUD (✨ v1.3.0)
+│   │   ├── saveImage()                 # INSERT image metadata
+│   │   ├── getImagesByTestId()         # SELECT all images for test
+│   │   ├── getImageById()              # SELECT image by ID
+│   │   ├── deleteImage()               # DELETE image by ID
+│   │   └── deleteImagesByTestId()      # DELETE all images for test
 │   │
 │   ├── __tests__/              # Repository layer tests
 │   │
@@ -129,12 +147,17 @@ packages/server/src/
 │   └── handlers/               # WebSocket event handlers
 │
 └── storage/                     # File storage management
-    └── attachmentManager.ts    # Attachment file operations
-        ├── copyPlaywrightAttachment()  # Copy to permanent storage
-        ├── deleteTestAttachments()     # Clean up test files
-        ├── generateFileName()          # {type}-{timestamp}-{random}.{ext}
-        ├── ensureTestDirectory()       # Create {OUTPUT_DIR}/attachments/{testResultId}/
-        └── generateUrl()               # Return /attachments/{testResultId}/{fileName}
+    ├── attachmentManager.ts    # Attachment file operations
+    │   ├── copyPlaywrightAttachment()  # Copy to permanent storage
+    │   ├── deleteTestAttachments()     # Clean up test files
+    │   ├── generateFileName()          # {type}-{timestamp}-{random}.{ext}
+    │   ├── ensureTestDirectory()       # Create {OUTPUT_DIR}/attachments/{testResultId}/
+    │   └── generateUrl()               # Return /attachments/{testResultId}/{fileName}
+    └── noteImageManager.ts     # Note image file operations (✨ v1.3.0)
+        ├── saveImage()                 # Save image buffer to {OUTPUT_DIR}/note-images/{testId}/
+        ├── deleteImage()               # Delete image file
+        ├── deleteImagesByTestId()      # Delete all images for test
+        └── generateUrl()               # Return /note-images/{testId}/{fileName}
 ```
 
 ---
@@ -174,11 +197,23 @@ packages/web/src/
 │   │   │   │   ├── TestDetailTabs.tsx    # Tab navigation (47 lines)
 │   │   │   │   ├── TestOverviewTab.tsx   # Overview + attachments (162 lines)
 │   │   │   │   ├── TestStepsTab.tsx      # Test steps display (49 lines)
-│   │   │   │   └── TestNoteEditor.tsx    # Test notes editor (✨ v1.2.0)
+│   │   │   │   ├── TestNoteEditor.tsx    # Test notes editor (✨ v1.2.0, updated v1.3.0)
 │   │   │   │       ├── Add/Edit/Delete note functionality
 │   │   │   │       ├── Character counter (1000 max)
 │   │   │   │       ├── Loading states and error handling
+│   │   │   │       ├── Drag & drop image support (✨ v1.3.0)
+│   │   │   │       ├── Paste image from clipboard (✨ v1.3.0)
 │   │   │   │       └── Integrated with TestOverviewTab
+│   │   │   │   ├── NoteContentRenderer.tsx # Render note with images (✨ v1.3.0)
+│   │   │   │       ├── Parse [IMAGE:image-id] markers
+│   │   │   │       ├── Render text and image thumbnails
+│   │   │   │       └── Lightbox integration
+│   │   │   │   ├── NoteImageThumbnail.tsx # Image thumbnail component (✨ v1.3.0)
+│   │   │   │       └── Clickable thumbnail with loading states
+│   │   │   │   └── NoteImageLightbox.tsx  # Full-size image modal (✨ v1.3.0)
+│   │   │   │       ├── Modal overlay with blur
+│   │   │   │       ├── Keyboard navigation (ESC to close)
+│   │   │   │       └── Click outside to close
 │   │   │   │
 │   │   │   └── history/                  # Execution history components
 │   │   │       ├── ExecutionSidebar.tsx  # Always-visible history panel
@@ -200,7 +235,9 @@ packages/web/src/
 │   │   │   │   └── refetch() for manual refresh
 │   │   │   ├── useTestFilters.ts         # Filter state management
 │   │   │   ├── useTestGroups.ts          # Group tests by file
-│   │   │   └── useTestSort.ts            # Sort tests
+│   │   │   ├── useTestSort.ts            # Sort tests
+│   │   │   └── useNoteImages.ts          # Fetch note images (✨ v1.3.0)
+│   │   │       └── React Query integration with caching
 │   │   │
 │   │   ├── store/                        # Zustand state management
 │   │   │   └── testsStore.ts            # Tests state + actions
@@ -223,10 +260,15 @@ packages/web/src/
 │   │   ├── utils/                        # Helper functions
 │   │   │   ├── formatters.ts            # formatDuration, formatDate, formatBytes (✨ v1.0.4), getStatusIcon
 │   │   │   ├── attachmentHelpers.ts     # getAttachmentIcon, openTraceViewer
-│   │   │   └── linkify.util.ts          # URL detection and text truncation (✨ v1.2.0)
-│   │   │       ├── parseLinksInText()    # Parse text and identify URLs
-│   │   │       ├── containsLinks()       # Check if text contains URLs
-│   │   │       └── truncateText()        # Truncate with word boundaries
+│   │   │   ├── linkify.util.ts          # URL detection and text truncation (✨ v1.2.0)
+│   │   │   │   ├── parseLinksInText()    # Parse text and identify URLs
+│   │   │   │   ├── containsLinks()       # Check if text contains URLs
+│   │   │   │   └── truncateText()        # Truncate with word boundaries
+│   │   │   └── noteContent.util.ts      # Note content parsing (✨ v1.3.0)
+│   │   │       ├── parseNoteContent()    # Parse text and [IMAGE:image-id] markers
+│   │   │       ├── insertImageMarker()   # Insert image marker at cursor position
+│   │   │       ├── extractImageIds()     # Extract all image IDs from content
+│   │   │       └── removeImageMarker()   # Remove image marker from content
 │   │   │
 │   │   └── constants/                    # Constants and enums
 │   │       ├── TEST_STATUS_ICONS
@@ -583,8 +625,17 @@ packages/server/src/controllers/note.controller.ts
 packages/server/src/services/note.service.ts
   → Business logic + validation (trim, empty check, 1000 char max)
 
+packages/server/src/services/noteImage.service.ts (✨ v1.3.0)
+  → Image upload, retrieval, deletion with validation (max 5MB)
+
 packages/server/src/repositories/note.repository.ts
   → Database operations (INSERT OR REPLACE, SELECT, DELETE)
+
+packages/server/src/repositories/noteImage.repository.ts (✨ v1.3.0)
+  → Image metadata CRUD operations
+
+packages/server/src/storage/noteImageManager.ts (✨ v1.3.0)
+  → Image file storage operations
 ```
 
 **Frontend Components:**
@@ -592,12 +643,32 @@ packages/server/src/repositories/note.repository.ts
 ```
 packages/web/src/features/tests/components/testDetail/TestNoteEditor.tsx
   → Main editor component with Add/Edit/Delete
+  → Drag & drop and paste image support (✨ v1.3.0)
+
+packages/web/src/features/tests/components/testDetail/NoteContentRenderer.tsx (✨ v1.3.0)
+  → Renders note content with text and image thumbnails
+
+packages/web/src/features/tests/components/testDetail/NoteImageThumbnail.tsx (✨ v1.3.0)
+  → Clickable image thumbnail component
+
+packages/web/src/features/tests/components/testDetail/NoteImageLightbox.tsx (✨ v1.3.0)
+  → Full-size image modal with keyboard navigation
 
 packages/web/src/components/atoms/LinkifiedText.tsx
   → URL linkification component (auto-detects and renders clickable links)
 
 packages/web/src/features/tests/components/TestRow.tsx
   → Displays truncated note preview (50 chars) with 💬 icon
+```
+
+**Frontend Services & Hooks:**
+
+```
+packages/web/src/services/noteImage.service.ts (✨ v1.3.0)
+  → API client for image upload, get, delete
+
+packages/web/src/features/tests/hooks/useNoteImages.ts (✨ v1.3.0)
+  → React Query hook for fetching note images
 ```
 
 **Utilities:**
@@ -607,6 +678,12 @@ packages/web/src/utils/linkify.util.ts
   → parseLinksInText()   # Parse text and identify URLs
   → truncateText()        # Truncate with word boundaries
   → containsLinks()       # Check if text contains URLs
+
+packages/web/src/features/tests/utils/noteContent.util.ts (✨ v1.3.0)
+  → parseNoteContent()    # Parse text and [IMAGE:image-id] markers
+  → insertImageMarker()   # Insert image marker at cursor position
+  → extractImageIds()     # Extract all image IDs from content
+  → removeImageMarker()   # Remove image marker from content
 ```
 
 **API Endpoints:**

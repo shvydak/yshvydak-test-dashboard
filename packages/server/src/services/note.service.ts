@@ -1,4 +1,5 @@
 import {NoteRepository, TestNote} from '../repositories/note.repository'
+import {INoteImageService} from './noteImage.service'
 import {Logger} from '../utils/logger.util'
 
 export interface INoteService {
@@ -8,7 +9,10 @@ export interface INoteService {
 }
 
 export class NoteService implements INoteService {
-    constructor(private noteRepository: NoteRepository) {}
+    constructor(
+        private noteRepository: NoteRepository,
+        private noteImageService?: INoteImageService
+    ) {}
 
     async saveNote(testId: string, content: string): Promise<void> {
         try {
@@ -43,6 +47,11 @@ export class NoteService implements INoteService {
 
     async deleteNote(testId: string): Promise<void> {
         try {
+            // Delete associated images first (if service is available)
+            if (this.noteImageService) {
+                await this.noteImageService.deleteImagesByTestId(testId)
+            }
+
             await this.noteRepository.deleteNote(testId)
             Logger.info(`Note deleted for test ${testId}`)
         } catch (error) {

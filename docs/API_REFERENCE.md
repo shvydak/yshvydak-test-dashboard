@@ -669,6 +669,236 @@ Authorization: Bearer {jwt-token}
 - Truncated note preview (50 chars) shown in Test Row
 - URLs in notes are automatically converted to clickable links
 
+## Test Note Images
+
+### POST /api/tests/:testId/notes/images
+
+**✨ New in v1.3.0** - Upload an image for a test note.
+
+**Description**: Uploads an image file to be embedded in a test note. Images are stored permanently and can be referenced in note content using `[IMAGE:image-id]` markers.
+
+**Path Parameters:**
+
+- `testId` (required) - The unique test identifier (e.g., `test-66jqtq`)
+
+**Request:**
+
+- **Content-Type**: `multipart/form-data`
+- **Body**: Form data with `image` field containing the image file
+
+**Validation Rules:**
+
+- File must be an image (MIME type starting with `image/`)
+- Maximum file size: 5MB
+- Supported formats: PNG, JPEG, GIF, WebP, etc. (any valid image format)
+
+**Example Request:**
+
+```http
+POST /api/tests/test-66jqtq/notes/images
+Authorization: Bearer {jwt-token}
+Content-Type: multipart/form-data
+
+[Form data with 'image' field]
+```
+
+**Response (200 - Success):**
+
+```json
+{
+    "success": true,
+    "data": {
+        "id": "img-abc123",
+        "testId": "test-66jqtq",
+        "fileName": "screenshot.png",
+        "fileSize": 245678,
+        "mimeType": "image/png",
+        "url": "/note-images/test-66jqtq/img-abc123.png",
+        "createdAt": "2025-01-15T10:30:00.000Z"
+    }
+}
+```
+
+**Response (400 - Bad Request):**
+
+```json
+{
+    "success": false,
+    "error": "Image file is required"
+}
+```
+
+or
+
+```json
+{
+    "success": false,
+    "error": "File must be an image"
+}
+```
+
+or
+
+```json
+{
+    "success": false,
+    "error": "Image size exceeds maximum of 5MB"
+}
+```
+
+**Response (500 - Server Error):**
+
+```json
+{
+    "success": false,
+    "error": "Failed to upload image"
+}
+```
+
+**Notes:**
+
+- Image is stored in `{OUTPUT_DIR}/note-images/{testId}/{imageId}.{ext}`
+- A placeholder note is automatically created if no note exists (required for foreign key)
+- Image ID can be embedded in note content using `[IMAGE:image-id]` syntax
+- Images are served statically via `/note-images` endpoint (JWT protected)
+
+### GET /api/tests/:testId/notes/images
+
+**✨ New in v1.3.0** - Get all images for a test note.
+
+**Description**: Retrieves all images associated with a test note.
+
+**Path Parameters:**
+
+- `testId` (required) - The unique test identifier (e.g., `test-66jqtq`)
+
+**Example Request:**
+
+```http
+GET /api/tests/test-66jqtq/notes/images
+Authorization: Bearer {jwt-token}
+```
+
+**Response (200 - Success):**
+
+```json
+{
+    "success": true,
+    "data": [
+        {
+            "id": "img-abc123",
+            "testId": "test-66jqtq",
+            "fileName": "screenshot.png",
+            "fileSize": 245678,
+            "mimeType": "image/png",
+            "url": "/note-images/test-66jqtq/img-abc123.png",
+            "createdAt": "2025-01-15T10:30:00.000Z"
+        },
+        {
+            "id": "img-xyz789",
+            "testId": "test-66jqtq",
+            "fileName": "error-log.png",
+            "fileSize": 189234,
+            "mimeType": "image/png",
+            "url": "/note-images/test-66jqtq/img-xyz789.png",
+            "createdAt": "2025-01-15T11:00:00.000Z"
+        }
+    ]
+}
+```
+
+**Response (200 - Success with no images):**
+
+```json
+{
+    "success": true,
+    "data": []
+}
+```
+
+**Response (400 - Bad Request):**
+
+```json
+{
+    "success": false,
+    "error": "Test ID is required"
+}
+```
+
+**Response (500 - Server Error):**
+
+```json
+{
+    "success": false,
+    "error": "Failed to get images"
+}
+```
+
+**Notes:**
+
+- Returns empty array if no images exist for the test
+- Images are ordered by creation date (oldest first)
+- URLs are relative paths that require JWT authentication to access
+
+### DELETE /api/tests/:testId/notes/images/:imageId
+
+**✨ New in v1.3.0** - Delete an image from a test note.
+
+**Description**: Permanently deletes an image associated with a test note. This action cannot be undone.
+
+**Path Parameters:**
+
+- `testId` (required) - The unique test identifier (e.g., `test-66jqtq`)
+- `imageId` (required) - The unique image identifier (e.g., `img-abc123`)
+
+**Example Request:**
+
+```http
+DELETE /api/tests/test-66jqtq/notes/images/img-abc123
+Authorization: Bearer {jwt-token}
+```
+
+**Response (200 - Success):**
+
+```json
+{
+    "success": true,
+    "data": {
+        "message": "Image deleted successfully"
+    }
+}
+```
+
+**Response (400 - Bad Request):**
+
+```json
+{
+    "success": false,
+    "error": "Image ID is required"
+}
+```
+
+**Response (500 - Server Error):**
+
+```json
+{
+    "success": false,
+    "error": "Failed to delete image"
+}
+```
+
+**Notes:**
+
+- Deletes both the database record and the physical file
+- If the image is referenced in note content (`[IMAGE:image-id]`), the marker remains but the image won't display
+- Empty directories are automatically cleaned up after deletion
+
+**Related Features:**
+
+- See [Test Notes Documentation](features/TEST_NOTES.md) for detailed feature description
+- Images can be embedded in notes using drag & drop or paste
+- Images display as thumbnails in notes and open in full size on click
+
 ## Test Information
 
 ### GET /api/tests/:id/history

@@ -43,6 +43,16 @@ export interface TestNote {
     updatedAt: string
 }
 
+export interface NoteImage {
+    id: string
+    testId: string
+    fileName: string
+    fileSize: number
+    mimeType: string
+    url: string
+    createdAt: string
+}
+
 export interface TestStep {
     title: string
     duration: number

@@ -36,6 +36,11 @@ export async function createApp() {
         authMiddleware,
         express.static(path.join(config.storage.outputDir, 'attachments'))
     )
+    app.use(
+        '/note-images',
+        authMiddleware,
+        express.static(path.join(config.storage.outputDir, 'note-images'))
+    )
 
     // Serve test-results from the configured Playwright project directory - also protected
     app.use(

@@ -1,7 +1,7 @@
 # Test Notes Feature
 
 **Status:** ✅ Implemented (December 2024)
-**Version:** 1.3.0 (Updated with filter support)
+**Version:** 1.3.0 (Updated with filter support and image support)
 
 ## Overview
 
@@ -28,6 +28,13 @@ The Test Notes feature allows users to add, edit, and delete notes for individua
     - HTTPS URLs: `https://example.com`
     - HTTP URLs: `http://example.com`
     - WWW URLs: `www.example.com` (auto-prefixed with https://)
+- **Image Support** ✨ (v1.3.0): Embed images directly in notes
+    - Drag & drop images into the note editor
+    - Paste images from clipboard (e.g., screenshots)
+    - Images display as clickable thumbnails inline with text
+    - Click thumbnail to view full-size image in lightbox modal
+    - Maximum file size: 5MB per image
+    - Supported formats: PNG, JPEG, GIF, WebP, and other image formats
 - **Special Characters**: Full support for special characters and emojis
 - **Multiline Support**: Preserves line breaks and formatting
 
@@ -46,8 +53,10 @@ The Test Notes feature allows users to add, edit, and delete notes for individua
 ### 5. **User-Friendly Interface**
 
 - Add/Edit/Delete operations with clear UI
+- Click note area to edit (no separate Edit button needed)
 - Confirmation dialog before deletion
 - Loading states during save/delete operations
+- Visual feedback for drag & drop image uploads
 - Error handling with user-friendly messages
 
 ### 6. **Filter by Notes**
@@ -71,7 +80,9 @@ The Test Notes feature allows users to add, edit, and delete notes for individua
 - Full note editor in the Overview tab
 - Positioned next to "Attachments" heading
 - Edit mode with textarea and character counter
-- View mode with clickable links
+- Drag & drop or paste images directly into textarea
+- View mode with clickable links and image thumbnails
+- Click image thumbnail to view full size in lightbox
 - Clean empty state when no note exists
 
 ### Filter View (Test List)
@@ -100,6 +111,19 @@ CREATE TRIGGER IF NOT EXISTS update_test_notes_updated_at
 BEGIN
     UPDATE test_notes SET updated_at = CURRENT_TIMESTAMP WHERE test_id = NEW.test_id;
 END;
+
+CREATE TABLE IF NOT EXISTS note_images (
+    id TEXT PRIMARY KEY,
+    test_id TEXT NOT NULL REFERENCES test_notes(test_id) ON DELETE CASCADE,
+    file_name TEXT NOT NULL,
+    file_path TEXT NOT NULL,
+    file_size INTEGER DEFAULT 0,
+    mime_type TEXT NOT NULL,
+    url TEXT NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_note_images_test_id ON note_images(test_id);
 ```
 
 ### API Endpoints
@@ -126,6 +150,23 @@ DELETE /api/tests/:testId/notes
 Response: { success: true, message: "Note deleted successfully" }
 ```
 
+**Image Endpoints** ✨ (v1.3.0):
+
+```
+POST /api/tests/:testId/notes/images
+Content-Type: multipart/form-data
+Body: FormData with 'image' field
+Response: { success: true, data: NoteImage }
+
+GET /api/tests/:testId/notes/images
+Response: { success: true, data: NoteImage[] }
+
+DELETE /api/tests/:testId/notes/images/:imageId
+Response: { success: true, data: { message: "Image deleted successfully" } }
+```
+
+See [API Reference](../../API_REFERENCE.md#test-note-images) for detailed endpoint documentation.
+
 ### Architecture Pattern
 
 Follows the project's Repository Pattern:
@@ -139,19 +180,29 @@ Controller → Service → Repository → Database
 - `note.controller.ts` - Request handling and validation
 - `note.service.ts` - Business logic and validation
 - `note.repository.ts` - Database operations
+- `noteImage.controller.ts` ✨ (v1.3.0) - Image upload/retrieval/deletion
+- `noteImage.service.ts` ✨ (v1.3.0) - Image business logic and validation
+- `noteImage.repository.ts` ✨ (v1.3.0) - Image metadata database operations
+- `noteImageManager.ts` ✨ (v1.3.0) - Image file storage operations
 
 **Frontend:**
 
-- `TestNoteEditor.tsx` - Main editor component
+- `TestNoteEditor.tsx` - Main editor component with drag & drop/paste support
+- `NoteContentRenderer.tsx` ✨ (v1.3.0) - Renders note with text and images
+- `NoteImageThumbnail.tsx` ✨ (v1.3.0) - Image thumbnail component
+- `NoteImageLightbox.tsx` ✨ (v1.3.0) - Full-size image modal
 - `LinkifiedText.tsx` - URL linkification component
 - `linkify.util.ts` - URL parsing and text truncation
+- `noteContent.util.ts` ✨ (v1.3.0) - Note content parsing with image markers
 - `note.service.ts` - API integration
+- `noteImage.service.ts` ✨ (v1.3.0) - Image API integration
+- `useNoteImages.ts` ✨ (v1.3.0) - React Query hook for images
 - `useTestFilters.ts` - Filtering logic including "Noted" filter
 - `constants.ts` - Filter options including "noted" key
 
 ### Type Definitions
 
-**TypeScript Interface:**
+**TypeScript Interfaces:**
 
 ```typescript
 export interface TestNote {
@@ -161,11 +212,29 @@ export interface TestNote {
     updatedAt: string
 }
 
+export interface NoteImage {
+    id: string
+    testId: string
+    fileName: string
+    fileSize: number
+    mimeType: string
+    url: string
+    createdAt: string
+}
+
 export interface TestResult {
     // ... other fields
     note?: TestNote
 }
 ```
+
+**Note Content Format:**
+
+Images are embedded in note content using markers:
+
+- Format: `[IMAGE:image-id]`
+- Example: `"Check this screenshot: [IMAGE:img-abc123] for details"`
+- Markers are parsed and replaced with image thumbnails in the UI
 
 ## Usage Examples
 
@@ -196,6 +265,37 @@ API endpoint: http://api.example.com/v1/tests
 
 All URLs open in a new tab with `rel="noopener noreferrer"` for security.
 
+### Adding Images ✨ (v1.3.0)
+
+**Method 1: Drag & Drop**
+
+1. Open test detail modal and click on note area to edit
+2. Drag an image file from your computer into the textarea
+3. Image uploads automatically and appears as a thumbnail
+4. Image marker `[IMAGE:image-id]` is inserted at cursor position
+
+**Method 2: Paste from Clipboard**
+
+1. Open test detail modal and click on note area to edit
+2. Take a screenshot or copy an image to clipboard
+3. Paste (Ctrl+V / Cmd+V) into the textarea
+4. Image uploads automatically and appears as a thumbnail
+
+**Viewing Images:**
+
+- Images display as small clickable thumbnails inline with text
+- Click any thumbnail to open full-size image in lightbox modal
+- Press ESC or click outside to close lightbox
+- Images are stored permanently and persist across test runs
+
+**Example note with image:**
+
+```
+This test is flaky due to timing issues.
+Screenshot: [IMAGE:img-abc123]
+Known bug: https://github.com/example/repo/issues/123
+```
+
 ### Filtering Tests with Notes
 
 1. Click "Noted" filter button in test list header
@@ -220,9 +320,10 @@ All URLs open in a new tab with `rel="noopener noreferrer"` for security.
 
 ### Editing a Note
 
-1. Click "Edit" button next to existing note
+1. Click on the note area (no separate Edit button needed)
 2. Modify content in textarea
-3. Click "Save" to confirm or "Cancel" to revert
+3. Add images by dragging, dropping, or pasting
+4. Click "Save" to confirm or "Cancel" to revert
 
 ### Deleting a Note
 
@@ -388,7 +489,7 @@ Potential improvements (not currently implemented):
 5. **Search**: Search tests by note content
 6. **Export**: Include notes in test reports
 7. **Bulk Operations**: Add notes to multiple tests
-8. **Attachments**: Link files to notes
+8. **Image Editing**: Crop, resize, or annotate images
 
 ## Migration Notes
 
@@ -399,18 +500,28 @@ Potential improvements (not currently implemented):
 3. No impact on existing test data
 4. Backwards compatible with old data
 
-### v1.3.0 - Filter Enhancement
+### v1.3.0 - Filter Enhancement & Image Support
 
-1. No database changes required
+1. Database migration adds `note_images` table (automatic on startup)
 2. New "Noted" filter automatically available in UI
-3. Filter logic implemented client-side
-4. Backwards compatible with v1.2.0
+3. Image support added (drag & drop, paste from clipboard)
+4. Filter logic implemented client-side
+5. Backwards compatible with v1.2.0
 
 ### API Changes
+
+**v1.2.0:**
 
 - New endpoints: `/api/tests/:testId/notes`
 - No breaking changes to existing endpoints
 - TestResult interface extended (optional `note` field)
+
+**v1.3.0:**
+
+- New endpoints: `/api/tests/:testId/notes/images` (POST, GET, DELETE)
+- Static file serving: `/note-images` (JWT protected)
+- NoteImage interface added to core types
+- No breaking changes to existing endpoints
 
 ## Troubleshooting
 
@@ -434,15 +545,33 @@ Potential improvements (not currently implemented):
 3. Check if test was filtered out
 4. Verify testId matches
 
+### Image Not Uploading
+
+1. Check file size (max 5MB)
+2. Verify file is a valid image format
+3. Check browser console for errors
+4. Ensure network connection is stable
+
+### Image Not Displaying
+
+1. Verify image was uploaded successfully
+2. Check if image marker `[IMAGE:image-id]` is in note content
+3. Refresh note data
+4. Check browser console for image loading errors
+
 ## Resources
 
 - **Implementation**: [@/features/tests/components/testDetail/TestNoteEditor.tsx](../../packages/web/src/features/tests/components/testDetail/TestNoteEditor.tsx)
+- **Image Components**: [@/features/tests/components/testDetail/NoteContentRenderer.tsx](../../packages/web/src/features/tests/components/testDetail/NoteContentRenderer.tsx)
 - **Filter Logic**: [@/features/tests/hooks/useTestFilters.ts](../../packages/web/src/features/tests/hooks/useTestFilters.ts)
-- **API Controller**: [@/controllers/note.controller.ts](../../packages/server/src/controllers/note.controller.ts)
+- **Image Hook**: [@/features/tests/hooks/useNoteImages.ts](../../packages/web/src/features/tests/hooks/useNoteImages.ts)
+- **API Controllers**:
+    - [@/controllers/note.controller.ts](../../packages/server/src/controllers/note.controller.ts)
+    - [@/controllers/noteImage.controller.ts](../../packages/server/src/controllers/noteImage.controller.ts)
 - **Database Schema**: [@/database/schema.sql](../../packages/server/src/database/schema.sql)
 - **Tests**: See `__tests__` directories in respective packages
 
 ---
 
-**Last Updated:** December 28, 2025 (v1.3.0 - Added filter support)
+**Last Updated:** January 15, 2025 (v1.3.0 - Added filter support and image support)
 **Maintained by:** Yurii Shvydak

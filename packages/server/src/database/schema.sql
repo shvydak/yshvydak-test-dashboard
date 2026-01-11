@@ -53,6 +53,18 @@ CREATE TABLE IF NOT EXISTS test_notes (
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
+-- Note images (images embedded in test notes)
+CREATE TABLE IF NOT EXISTS note_images (
+    id TEXT PRIMARY KEY,
+    test_id TEXT NOT NULL REFERENCES test_notes(test_id) ON DELETE CASCADE,
+    file_name TEXT NOT NULL,
+    file_path TEXT NOT NULL,
+    file_size INTEGER DEFAULT 0,
+    mime_type TEXT NOT NULL,
+    url TEXT NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
 -- Indexes for better performance
 CREATE INDEX IF NOT EXISTS idx_test_runs_status ON test_runs(status);
 CREATE INDEX IF NOT EXISTS idx_test_runs_created_at ON test_runs(created_at);
@@ -66,6 +78,8 @@ CREATE INDEX IF NOT EXISTS idx_attachments_test_result_id ON attachments(test_re
 CREATE INDEX IF NOT EXISTS idx_attachments_type ON attachments(type);
 
 CREATE INDEX IF NOT EXISTS idx_test_notes_test_id ON test_notes(test_id);
+
+CREATE INDEX IF NOT EXISTS idx_note_images_test_id ON note_images(test_id);
 
 -- Triggers to update timestamps
 CREATE TRIGGER IF NOT EXISTS update_test_runs_timestamp 

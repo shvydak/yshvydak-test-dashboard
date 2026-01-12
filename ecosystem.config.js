@@ -1,3 +1,21 @@
+const fs = require('fs')
+const path = require('path')
+
+// Load .env manually to access variables in this config file
+const envPath = path.resolve(__dirname, '.env')
+let envVars = {}
+if (fs.existsSync(envPath)) {
+    const envContent = fs.readFileSync(envPath, 'utf8')
+    envContent.split('\n').forEach((line) => {
+        const match = line.match(/^([^#=]+)=(.*)$/)
+        if (match) {
+            const key = match[1].trim()
+            const value = match[2].trim().replace(/^["']|["']$/g, '')
+            envVars[key] = value
+        }
+    })
+}
+
 module.exports = {
     apps: [
         {
@@ -26,7 +44,7 @@ module.exports = {
             name: 'dashboard-web',
             cwd: './packages/web',
             script: 'npx',
-            args: 'vite preview --host 0.0.0.0 --port 3000',
+            args: `vite preview --host 0.0.0.0 --port ${envVars.VITE_PORT || '3000'}`,
             instances: 1,
             exec_mode: 'cluster',
             autorestart: true,

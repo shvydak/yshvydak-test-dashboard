@@ -43,7 +43,11 @@ export class WebSocketManager {
                 const authResult = await this.authenticateWebSocketConnection(request)
 
                 if (!authResult.isAuthenticated) {
-                    console.warn(`WebSocket authentication failed: ${authResult.message}`)
+                    // Only log warnings for actual security issues (invalid tokens), not for missing tokens
+                    // Missing tokens are expected when users haven't logged in yet
+                    if (authResult.isSecurityIssue) {
+                        console.warn(`WebSocket authentication failed: ${authResult.message}`)
+                    }
                     ws.close(1008, authResult.message || 'Authentication required')
                     return
                 }
@@ -115,10 +119,11 @@ export class WebSocketManager {
         isAuthenticated: boolean
         user?: {email: string; role: string}
         message?: string
+        isSecurityIssue?: boolean // Flag to distinguish missing token (expected) vs invalid token (security issue)
     }> {
         try {
             if (!request.url) {
-                return {isAuthenticated: false, message: 'No URL provided'}
+                return {isAuthenticated: false, message: 'No URL provided', isSecurityIssue: false}
             }
 
             // Parse URL to get query parameters
@@ -126,7 +131,12 @@ export class WebSocketManager {
             const token = url.searchParams.get('token')
 
             if (!token) {
-                return {isAuthenticated: false, message: 'No authentication token provided'}
+                // Missing token is expected behavior when users haven't logged in - not a security issue
+                return {
+                    isAuthenticated: false,
+                    message: 'No authentication token provided',
+                    isSecurityIssue: false,
+                }
             }
 
             // Verify JWT token
@@ -138,9 +148,11 @@ export class WebSocketManager {
                     user: result.user,
                 }
             } else {
+                // Invalid/expired token is a security issue - should be logged
                 return {
                     isAuthenticated: false,
                     message: result.message || 'Invalid authentication token',
+                    isSecurityIssue: true,
                 }
             }
         } catch (error) {
@@ -148,6 +160,7 @@ export class WebSocketManager {
             return {
                 isAuthenticated: false,
                 message: 'Authentication service error',
+                isSecurityIssue: true,
             }
         }
     }

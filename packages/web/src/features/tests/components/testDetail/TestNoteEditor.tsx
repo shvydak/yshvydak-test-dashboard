@@ -178,27 +178,6 @@ export const TestNoteEditor: React.FC<TestNoteEditorProps> = ({
 
     return (
         <div>
-            <div className="flex items-center justify-between mb-3">
-                <h4 className="text-sm font-medium text-gray-900 dark:text-white flex items-center gap-1">
-                    <span>💬</span>
-                    <span>Test Notes</span>
-                </h4>
-                {!isEditing && initialNote && (
-                    <Button variant="danger" size="sm" onClick={handleDelete} disabled={isSaving}>
-                        Delete
-                    </Button>
-                )}
-                {!isEditing && !initialNote && (
-                    <Button
-                        variant="secondary"
-                        size="sm"
-                        onClick={() => setIsEditing(true)}
-                        disabled={isSaving}>
-                        Add Note
-                    </Button>
-                )}
-            </div>
-
             {error && (
                 <div className="text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3 mb-3">
                     {error}
@@ -273,7 +252,7 @@ export const TestNoteEditor: React.FC<TestNoteEditorProps> = ({
             ) : initialNote ? (
                 <div
                     onClick={() => setIsEditing(true)}
-                    className="bg-gray-50 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-700 rounded-lg p-4 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-900/70 transition-colors">
+                    className="bg-gray-50 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-700 rounded-lg p-4 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-900/70 transition-colors relative">
                     {imagesLoading ? (
                         <div className="text-sm text-gray-500 dark:text-gray-400">
                             Loading images...
@@ -285,6 +264,18 @@ export const TestNoteEditor: React.FC<TestNoteEditorProps> = ({
                             className="text-sm text-gray-700 dark:text-gray-300"
                         />
                     )}
+                    <div className="absolute top-2 right-2">
+                        <Button
+                            variant="danger"
+                            size="sm"
+                            onClick={(e) => {
+                                e.stopPropagation()
+                                handleDelete()
+                            }}
+                            disabled={isSaving}>
+                            Delete
+                        </Button>
+                    </div>
                 </div>
             ) : (
                 <div

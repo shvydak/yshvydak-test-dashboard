@@ -45,14 +45,16 @@ describe('TestNoteEditor', () => {
     )
 
     describe('Initial Rendering', () => {
-        it('should render "Add Note" button when no initial note', () => {
+        it('should render placeholder when no initial note', () => {
             render(<TestNoteEditor testId={testId} onSave={mockOnSave} onDelete={mockOnDelete} />, {
                 wrapper,
             })
 
-            expect(screen.getByText('Test Notes')).toBeInTheDocument()
-            expect(screen.getByText('Add Note')).toBeInTheDocument()
-            expect(screen.queryByText('Edit')).not.toBeInTheDocument()
+            expect(
+                screen.getByText('No notes for this test. Click here to add one.')
+            ).toBeInTheDocument()
+            expect(screen.queryByText('Test Notes')).not.toBeInTheDocument()
+            expect(screen.queryByText('Add Note')).not.toBeInTheDocument()
         })
 
         it('should render note content when initial note exists', () => {
@@ -82,13 +84,13 @@ describe('TestNoteEditor', () => {
     })
 
     describe('Adding New Note', () => {
-        it('should show textarea when "Add Note" is clicked', async () => {
+        it('should show textarea when placeholder is clicked', async () => {
             const user = userEvent.setup()
             render(<TestNoteEditor testId={testId} onSave={mockOnSave} onDelete={mockOnDelete} />, {
                 wrapper,
             })
 
-            await user.click(screen.getByText('Add Note'))
+            await user.click(screen.getByText('No notes for this test. Click here to add one.'))
 
             expect(screen.getByRole('textbox')).toBeInTheDocument()
             expect(screen.getByText('Save')).toBeInTheDocument()
@@ -104,7 +106,7 @@ describe('TestNoteEditor', () => {
                 wrapper,
             })
 
-            await user.click(screen.getByText('Add Note'))
+            await user.click(screen.getByText('No notes for this test. Click here to add one.'))
             await user.type(screen.getByRole('textbox'), noteContent)
             await user.click(screen.getByText('Save'))
 
@@ -119,7 +121,7 @@ describe('TestNoteEditor', () => {
                 wrapper,
             })
 
-            await user.click(screen.getByText('Add Note'))
+            await user.click(screen.getByText('No notes for this test. Click here to add one.'))
 
             // Save button should be disabled when note is empty
             const saveButton = screen.getByText('Save')
@@ -134,7 +136,7 @@ describe('TestNoteEditor', () => {
                 wrapper,
             })
 
-            await user.click(screen.getByText('Add Note'))
+            await user.click(screen.getByText('No notes for this test. Click here to add one.'))
             await user.type(screen.getByRole('textbox'), '  Test note  ')
             await user.click(screen.getByText('Save'))
 
@@ -149,12 +151,14 @@ describe('TestNoteEditor', () => {
                 wrapper,
             })
 
-            await user.click(screen.getByText('Add Note'))
+            await user.click(screen.getByText('No notes for this test. Click here to add one.'))
             await user.type(screen.getByRole('textbox'), 'Some content')
             await user.click(screen.getByText('Cancel'))
 
             expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
-            expect(screen.getByText('Add Note')).toBeInTheDocument()
+            expect(
+                screen.getByText('No notes for this test. Click here to add one.')
+            ).toBeInTheDocument()
             expect(mockOnSave).not.toHaveBeenCalled()
         })
     })
@@ -301,7 +305,7 @@ describe('TestNoteEditor', () => {
                 wrapper,
             })
 
-            await user.click(screen.getByText('Add Note'))
+            await user.click(screen.getByText('No notes for this test. Click here to add one.'))
 
             expect(screen.getByText('1000 characters remaining')).toBeInTheDocument()
         })
@@ -312,7 +316,7 @@ describe('TestNoteEditor', () => {
                 wrapper,
             })
 
-            await user.click(screen.getByText('Add Note'))
+            await user.click(screen.getByText('No notes for this test. Click here to add one.'))
             await user.type(screen.getByRole('textbox'), 'Test')
 
             expect(screen.getByText('996 characters remaining')).toBeInTheDocument()
@@ -324,7 +328,7 @@ describe('TestNoteEditor', () => {
                 wrapper,
             })
 
-            await user.click(screen.getByText('Add Note'))
+            await user.click(screen.getByText('No notes for this test. Click here to add one.'))
             await user.type(screen.getByRole('textbox'), 'a'.repeat(950))
 
             const counter = screen.getByText('50 characters remaining')
@@ -337,7 +341,7 @@ describe('TestNoteEditor', () => {
                 wrapper,
             })
 
-            await user.click(screen.getByText('Add Note'))
+            await user.click(screen.getByText('No notes for this test. Click here to add one.'))
 
             const textarea = screen.getByRole('textbox') as HTMLTextAreaElement
             expect(textarea).toHaveAttribute('maxLength', '1000')
@@ -349,7 +353,7 @@ describe('TestNoteEditor', () => {
                 wrapper,
             })
 
-            await user.click(screen.getByText('Add Note'))
+            await user.click(screen.getByText('No notes for this test. Click here to add one.'))
 
             // Manually set value to exceed limit (bypassing maxLength attribute)
             const textarea = screen.getByRole('textbox') as HTMLTextAreaElement
@@ -371,7 +375,7 @@ describe('TestNoteEditor', () => {
                 wrapper,
             })
 
-            await user.click(screen.getByText('Add Note'))
+            await user.click(screen.getByText('No notes for this test. Click here to add one.'))
             await user.type(screen.getByRole('textbox'), 'Test note')
             await user.click(screen.getByText('Save'))
 
@@ -409,14 +413,14 @@ describe('TestNoteEditor', () => {
                 wrapper,
             })
 
-            await user.click(screen.getByText('Add Note'))
+            await user.click(screen.getByText('No notes for this test. Click here to add one.'))
             await user.type(screen.getByRole('textbox'), 'Test')
             await user.click(screen.getByText('Save'))
 
             await screen.findByText('Save error')
 
             await user.click(screen.getByText('Cancel'))
-            await user.click(screen.getByText('Add Note'))
+            await user.click(screen.getByText('No notes for this test. Click here to add one.'))
 
             expect(screen.queryByText('Save error')).not.toBeInTheDocument()
         })
@@ -431,7 +435,7 @@ describe('TestNoteEditor', () => {
                 wrapper,
             })
 
-            await user.click(screen.getByText('Add Note'))
+            await user.click(screen.getByText('No notes for this test. Click here to add one.'))
             await user.type(screen.getByRole('textbox'), 'Test note')
             await user.click(screen.getByText('Save'))
 
@@ -446,7 +450,7 @@ describe('TestNoteEditor', () => {
                 wrapper,
             })
 
-            await user.click(screen.getByText('Add Note'))
+            await user.click(screen.getByText('No notes for this test. Click here to add one.'))
             await user.type(screen.getByRole('textbox'), 'Test note')
             await user.click(screen.getByText('Save'))
 
@@ -460,7 +464,7 @@ describe('TestNoteEditor', () => {
                 wrapper,
             })
 
-            await user.click(screen.getByText('Add Note'))
+            await user.click(screen.getByText('No notes for this test. Click here to add one.'))
 
             expect(screen.getByText('Save')).toBeDisabled()
         })
@@ -473,7 +477,7 @@ describe('TestNoteEditor', () => {
                 wrapper,
             })
 
-            await user.click(screen.getByText('Add Note'))
+            await user.click(screen.getByText('No notes for this test. Click here to add one.'))
 
             const textarea = screen.getByRole('textbox') as HTMLTextAreaElement
             expect(textarea.placeholder).toContain('Add notes about this test')
@@ -481,13 +485,15 @@ describe('TestNoteEditor', () => {
     })
 
     describe('Empty State Message', () => {
-        it('should show message when no note exists and not editing', () => {
+        it('should show placeholder message when no note exists and not editing', () => {
             render(<TestNoteEditor testId={testId} onSave={mockOnSave} onDelete={mockOnDelete} />, {
                 wrapper,
             })
 
-            // Should show the "Add Note" button, not the empty state message
-            expect(screen.getByText('Add Note')).toBeInTheDocument()
+            // Should show the placeholder message
+            expect(
+                screen.getByText('No notes for this test. Click here to add one.')
+            ).toBeInTheDocument()
         })
     })
 })

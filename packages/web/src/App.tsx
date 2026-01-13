@@ -111,36 +111,35 @@ function App() {
 
     // Get JWT token for WebSocket connection with proper memoization
     const webSocketUrl = useMemo(() => {
-        // Only connect to WebSocket if we're authenticated AND not loading
-        if (isAuthenticated && !isLoading) {
-            // Try to get token directly from storage
-            try {
-                const authData = localStorage.getItem('_auth') || sessionStorage.getItem('_auth')
-                if (authData) {
-                    const parsedAuth = JSON.parse(authData)
-                    let token = null
-
-                    if (parsedAuth?.auth?.token) {
-                        token = parsedAuth.auth.token
-                    } else if (parsedAuth?.token) {
-                        token = parsedAuth.token
-                    }
-
-                    if (token) {
-                        return `${config.websocket.url}?token=${encodeURIComponent(token)}`
-                    }
-                }
-            } catch {
-                // Silent error handling
-            }
-        }
-
-        // Return null to prevent WebSocket connection when not ready
-        if (isLoading) {
+        // Don't connect to WebSocket if loading or not authenticated
+        if (isLoading || !isAuthenticated) {
             return null
         }
 
-        return config.websocket.url
+        // Only connect to WebSocket if we're authenticated
+        // Try to get token directly from storage
+        try {
+            const authData = localStorage.getItem('_auth') || sessionStorage.getItem('_auth')
+            if (authData) {
+                const parsedAuth = JSON.parse(authData)
+                let token = null
+
+                if (parsedAuth?.auth?.token) {
+                    token = parsedAuth.auth.token
+                } else if (parsedAuth?.token) {
+                    token = parsedAuth.token
+                }
+
+                if (token) {
+                    return `${config.websocket.url}?token=${encodeURIComponent(token)}`
+                }
+            }
+        } catch {
+            // Silent error handling
+        }
+
+        // Return null if no token found (shouldn't happen if authenticated, but safety check)
+        return null
     }, [isAuthenticated, isLoading])
 
     // WebSocket connection for live updates

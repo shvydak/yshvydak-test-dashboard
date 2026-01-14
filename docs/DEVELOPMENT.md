@@ -248,6 +248,123 @@ import { formatDuration, getStatusIcon } from '@features/tests/utils'
     - Includes TypeScript support and unused imports cleanup
     - Run `npm run lint:fix` to auto-fix linting issues
 
+## Logging Guidelines
+
+The project uses a centralized `Logger` utility (`packages/server/src/utils/logger.util.ts`) with environment-aware logging levels. This ensures production logs are clean and focused while development logs provide detailed debugging information.
+
+### Log Levels
+
+| Level      | Production | Development | Use Case                                  |
+| ---------- | ---------- | ----------- | ----------------------------------------- |
+| `critical` | ✅ Always  | ✅ Always   | Server startup, shutdown, critical events |
+| `error`    | ✅ Always  | ✅ Always   | Errors, exceptions, failures              |
+| `warn`     | ✅ Always  | ✅ Always   | Warnings, deprecated features, security   |
+| `info`     | ❌ No      | ✅ Yes      | General information, state changes        |
+| `success`  | ❌ No      | ✅ Yes      | Successful operations (verbose)           |
+| `debug`    | ❌ No      | ✅ Yes      | Detailed debugging information            |
+
+### Usage Examples
+
+```typescript
+import {Logger} from '../utils/logger.util'
+
+// Critical events (always logged)
+Logger.critical('Database connected successfully:', dbPath)
+Logger.serverStart(3001)
+
+// Errors (always logged)
+Logger.error('Failed to process request', error)
+
+// Warnings (always logged)
+Logger.warn('Deprecated API endpoint used')
+
+// Info (development only)
+Logger.info('Test discovery completed', {count: 10})
+
+// Success (development only)
+Logger.success('Test run completed successfully')
+
+// Debug (development only)
+Logger.debug('WebSocket client connected:', clientId)
+```
+
+### Best Practices
+
+1. **Use `critical()` for important events** that should always be visible:
+    - Server startup/shutdown
+    - Database connections
+    - Critical state changes
+
+2. **Use `error()` for all errors** - always logged in production:
+
+    ```typescript
+    try {
+        await processData()
+    } catch (error) {
+        Logger.error('Failed to process data', error)
+    }
+    ```
+
+3. **Use `warn()` for potential issues** that need attention:
+    - Deprecated features
+    - Security warnings
+    - Configuration issues
+
+4. **Use `info()` for general information** (development only):
+    - Test discovery results
+    - Process status updates
+    - Non-critical state changes
+
+5. **Use `debug()` for detailed debugging** (development only):
+    - WebSocket connections
+    - File operations
+    - Internal state tracking
+
+6. **Never use `console.log/warn/error` directly** - always use `Logger`:
+
+    ```typescript
+    // ❌ Bad
+    console.log('Processing request')
+    console.error('Error:', error)
+
+    // ✅ Good
+    Logger.info('Processing request')
+    Logger.error('Error:', error)
+    ```
+
+### Environment Detection
+
+The Logger automatically detects the environment based on `NODE_ENV`:
+
+- `NODE_ENV=production` → Only critical, error, warn logs
+- `NODE_ENV=development` → All logs
+- `NODE_ENV` not set → Treated as development (all logs)
+
+### Specific Logger Methods
+
+The Logger provides convenience methods for common operations:
+
+```typescript
+// Test discovery
+Logger.testDiscovery(10, 8) // "Discovered 10 tests, saved 8"
+
+// Test execution
+Logger.testRun('run-all', 'run-123') // "Starting run-all with run ID: run-123"
+Logger.testRerun('Test Name', 'run-456') // "Rerunning test "Test Name" with run ID: run-456"
+
+// WebSocket
+Logger.websocketBroadcast('test:status', 5) // "Broadcasting test:status to 5 clients"
+```
+
+### Production Logging Behavior
+
+In production (`NODE_ENV=production`), the Logger automatically filters out verbose logs:
+
+- ✅ **Logged**: Critical events, errors, warnings
+- ❌ **Filtered**: Info, success, debug messages
+
+This ensures production logs are clean and focused on important events, making it easier to monitor and troubleshoot production issues.
+
 ## Documentation Updates
 
 - **IMPORTANT**: Claude Code is authorized to update this CLAUDE.md and README.md file when making significant changes to:

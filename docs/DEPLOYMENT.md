@@ -102,9 +102,38 @@ PLAYWRIGHT_PROJECT_DIR=/path/to/your/playwright/project
 
 ### Log Management
 
-- Server logs available through application logging
-- Client-side errors visible in browser developer tools
-- WebSocket connection status logged in console
+The dashboard uses environment-aware logging to keep production logs clean and focused.
+
+**Production Logging (`NODE_ENV=production`):**
+
+- ✅ **Always logged**: Critical events, errors, warnings
+    - Server startup/shutdown messages
+    - Database connection status
+    - Authentication failures
+    - All errors and exceptions
+    - Security warnings
+- ❌ **Filtered out**: Info, success, debug messages
+    - Test discovery details
+    - WebSocket connection events
+    - File operation details
+    - General status updates
+
+**Development Logging (`NODE_ENV=development`):**
+
+- All log levels are enabled for detailed debugging
+
+**Log Output:**
+
+- Server logs: Available through application logging (stdout/stderr)
+- Client-side errors: Visible in browser developer tools
+- WebSocket status: Logged in console (development only)
+
+**Benefits:**
+
+- Clean production logs focused on important events
+- Easier monitoring and troubleshooting
+- Reduced log volume in production
+- Detailed debugging information in development
 
 ## Backup and Recovery
 

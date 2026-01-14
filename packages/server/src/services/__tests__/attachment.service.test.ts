@@ -16,6 +16,7 @@ import {AttachmentService} from '../attachment.service'
 import {AttachmentRepository} from '../../repositories/attachment.repository'
 import {AttachmentManager} from '../../storage/attachmentManager'
 import {AttachmentData} from '../../types/database.types'
+import {Logger} from '../../utils/logger.util'
 import fs from 'fs'
 
 // Mock fs module
@@ -253,7 +254,7 @@ describe('AttachmentService', () => {
         })
 
         it('should continue processing on error for individual attachment', async () => {
-            const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+            const loggerErrorSpy = vi.spyOn(Logger, 'error').mockImplementation(() => {})
 
             mockAttachmentManager.copyPlaywrightAttachment
                 .mockResolvedValueOnce({
@@ -285,9 +286,9 @@ describe('AttachmentService', () => {
             // Should process the valid one and skip the invalid one
             expect(result).toHaveLength(1)
             expect(result[0].fileName).toBe('valid.png')
-            expect(consoleErrorSpy).toHaveBeenCalled()
+            expect(loggerErrorSpy).toHaveBeenCalled()
 
-            consoleErrorSpy.mockRestore()
+            loggerErrorSpy.mockRestore()
         })
 
         it('should handle attachments with special characters in name', async () => {
@@ -715,7 +716,7 @@ describe('AttachmentService', () => {
         })
 
         it('should handle AttachmentManager errors during copy', async () => {
-            const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+            const loggerErrorSpy = vi.spyOn(Logger, 'error').mockImplementation(() => {})
 
             mockAttachmentManager.copyPlaywrightAttachment.mockRejectedValue(
                 new Error('Copy failed')
@@ -732,12 +733,12 @@ describe('AttachmentService', () => {
             const result = await service.processAttachments(attachments, testResultId)
 
             expect(result).toHaveLength(0)
-            expect(consoleErrorSpy).toHaveBeenCalledWith(
+            expect(loggerErrorSpy).toHaveBeenCalledWith(
                 expect.stringContaining('Failed to copy attachment'),
                 expect.any(Error)
             )
 
-            consoleErrorSpy.mockRestore()
+            loggerErrorSpy.mockRestore()
         })
     })
 

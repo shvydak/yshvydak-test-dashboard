@@ -1,6 +1,7 @@
 import fs from 'fs'
 import path from 'path'
 import {v4 as uuidv4} from 'uuid'
+import {Logger} from '../utils/logger.util'
 
 export type AttachmentType = 'video' | 'screenshot' | 'trace' | 'log'
 
@@ -26,7 +27,7 @@ export class AttachmentManager {
     private ensureDirectoryExists(): void {
         if (!fs.existsSync(this.attachmentsDir)) {
             fs.mkdirSync(this.attachmentsDir, {recursive: true})
-            console.log(`Created attachments directory: ${this.attachmentsDir}`)
+            Logger.debug(`Created attachments directory: ${this.attachmentsDir}`)
         }
     }
 
@@ -115,7 +116,7 @@ export class AttachmentManager {
             url: this.generateUrl(testResultId, fileName),
         }
 
-        console.log(`Copied attachment: ${sourceFilePath} -> ${targetFilePath}`)
+        Logger.debug(`Copied attachment: ${sourceFilePath} -> ${targetFilePath}`)
         return metadata
     }
 
@@ -146,7 +147,7 @@ export class AttachmentManager {
             url: this.generateUrl(testResultId, finalFileName),
         }
 
-        console.log(`Saved attachment: ${filePath}`)
+        Logger.debug(`Saved attachment: ${filePath}`)
         return metadata
     }
 
@@ -173,7 +174,7 @@ export class AttachmentManager {
 
         if (fs.existsSync(filePath)) {
             await fs.promises.unlink(filePath)
-            console.log(`Deleted attachment: ${filePath}`)
+            Logger.debug(`Deleted attachment: ${filePath}`)
 
             // Check if test directory is empty and remove it
             const testDir = path.join(this.attachmentsDir, testResultId)
@@ -181,7 +182,7 @@ export class AttachmentManager {
                 const files = await fs.promises.readdir(testDir)
                 if (files.length === 0) {
                     await fs.promises.rmdir(testDir)
-                    console.log(`Removed empty test directory: ${testDir}`)
+                    Logger.debug(`Removed empty test directory: ${testDir}`)
                 }
             } catch {
                 // Directory might not be empty or might not exist, ignore
@@ -212,7 +213,7 @@ export class AttachmentManager {
 
         // Remove the directory
         await fs.promises.rmdir(testDir)
-        console.log(`Deleted ${deletedCount} attachments for test ${testResultId}`)
+        Logger.debug(`Deleted ${deletedCount} attachments for test ${testResultId}`)
 
         return deletedCount
     }
@@ -314,7 +315,7 @@ export class AttachmentManager {
             }
         }
 
-        console.log(`Cleanup complete: deleted ${deletedFiles} files, freed ${freedSpace} bytes`)
+        Logger.info(`Cleanup complete: deleted ${deletedFiles} files, freed ${freedSpace} bytes`)
         return {deletedFiles, freedSpace}
     }
 
@@ -326,7 +327,7 @@ export class AttachmentManager {
         try {
             // Check if directory exists
             if (!fs.existsSync(this.attachmentsDir)) {
-                console.log('Attachments directory does not exist, nothing to clear')
+                Logger.debug('Attachments directory does not exist, nothing to clear')
                 return {deletedFiles, freedSpace}
             }
 
@@ -337,17 +338,17 @@ export class AttachmentManager {
 
             // Delete entire attachments directory recursively
             await fs.promises.rm(this.attachmentsDir, {recursive: true, force: true})
-            console.log(
+            Logger.info(
                 `Deleted attachments directory: ${this.attachmentsDir} (${deletedFiles} files, ${freedSpace} bytes)`
             )
 
             // Recreate empty directory
             this.ensureDirectoryExists()
-            console.log(`Recreated empty attachments directory: ${this.attachmentsDir}`)
+            Logger.debug(`Recreated empty attachments directory: ${this.attachmentsDir}`)
 
             return {deletedFiles, freedSpace}
         } catch (error) {
-            console.error('Error clearing attachments:', error)
+            Logger.error('Error clearing attachments:', error)
             throw new Error(
                 `Failed to clear attachments: ${error instanceof Error ? error.message : 'Unknown error'}`
             )

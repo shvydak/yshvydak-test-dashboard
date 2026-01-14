@@ -1,3 +1,4 @@
+import {useState} from 'react'
 import {StatusBadge, Button} from '@shared/components'
 import {formatLastRun} from '../../utils/formatters'
 
@@ -20,13 +21,46 @@ export function TestDetailHeader({
     onBackToLatest,
     onDelete,
 }: TestDetailHeaderProps) {
+    const [copied, setCopied] = useState(false)
+
+    const handleCopyTestName = async () => {
+        try {
+            await navigator.clipboard.writeText(testName)
+            setCopied(true)
+            setTimeout(() => setCopied(false), 2000)
+        } catch (err) {
+            console.error('Failed to copy test name:', err)
+        }
+    }
+
     return (
         <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
             <div className="flex-1">
                 <div className="flex items-center space-x-3 mb-1">
                     <StatusBadge status={testStatus as any} />
-                    <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
-                        {testName}
+                    <h2
+                        onClick={handleCopyTestName}
+                        className="text-xl font-semibold text-gray-900 dark:text-white cursor-pointer hover:text-primary-600 dark:hover:text-primary-400 transition-colors select-none"
+                        title="Click to copy test name">
+                        {copied ? (
+                            <span className="flex items-center gap-2">
+                                <span>Copied!</span>
+                                <svg
+                                    className="w-5 h-5 text-green-500"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    viewBox="0 0 24 24">
+                                    <path
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        strokeWidth={2}
+                                        d="M5 13l4 4L19 7"
+                                    />
+                                </svg>
+                            </span>
+                        ) : (
+                            testName
+                        )}
                     </h2>
                 </div>
 

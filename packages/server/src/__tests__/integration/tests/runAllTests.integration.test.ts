@@ -316,6 +316,10 @@ describe('POST /api/tests/run-all - Run All Tests (Integration)', () => {
 
         it('should not broadcast on conflict error', async () => {
             const firstRunId = 'run-ws-conflict-123'
+
+            // Ensure no active processes before test
+            activeProcessesTracker.forceReset()
+
             vi.spyOn(
                 server.serviceContainer.playwrightService as any,
                 'runAllTests'
@@ -337,6 +341,9 @@ describe('POST /api/tests/run-all - Run All Tests (Integration)', () => {
                 .set('Authorization', `Bearer ${server.authToken}`)
                 .send({})
                 .expect(200)
+
+            // Verify process was added
+            expect(activeProcessesTracker.isRunAllActive()).toBe(true)
 
             // Reset spy to track only second call
             broadcastSpy.mockClear()

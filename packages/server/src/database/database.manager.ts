@@ -1,6 +1,7 @@
 import sqlite3 from 'sqlite3'
 import fs from 'fs'
 import path from 'path'
+import {Logger} from '../utils/logger.util'
 
 export interface TestRunData {
     id: string
@@ -84,18 +85,18 @@ export class DatabaseManager {
                 sqlite3.OPEN_READWRITE | sqlite3.OPEN_CREATE,
                 (err) => {
                     if (err) {
-                        console.error('Database connection error:', err.message)
+                        Logger.error('Database connection error:', err.message)
                         reject(err)
                     } else {
-                        console.log('✅ Database connected successfully:', this.dbPath)
+                        Logger.critical('✅ Database connected successfully:', this.dbPath)
 
                         // Set file permissions after database is created (skip for in-memory)
                         if (this.dbPath !== ':memory:') {
                             try {
                                 fs.chmodSync(this.dbPath, 0o644)
-                                console.log('✅ Database file permissions set to 644')
+                                Logger.debug('✅ Database file permissions set to 644')
                             } catch (error) {
-                                console.warn('⚠️ Could not set database file permissions:', error)
+                                Logger.warn('⚠️ Could not set database file permissions:', error)
                             }
                         }
 
@@ -124,21 +125,21 @@ export class DatabaseManager {
 
     private initSchema(resolve: () => void, reject: (err: Error) => void): void {
         const schemaPath = path.join(__dirname, 'schema.sql')
-        console.log('Loading schema from:', schemaPath)
+        Logger.debug('Loading schema from:', schemaPath)
 
         if (!fs.existsSync(schemaPath)) {
-            console.error('Schema file not found:', schemaPath)
+            Logger.error('Schema file not found:', schemaPath)
             const alternativePath = path.join(process.cwd(), 'packages/server/src/db/schema.sql')
-            console.log('Trying alternative path:', alternativePath)
+            Logger.debug('Trying alternative path:', alternativePath)
 
             if (fs.existsSync(alternativePath)) {
                 const schema = fs.readFileSync(alternativePath, 'utf-8')
                 this.db.exec(schema, (error) => {
                     if (error) {
-                        console.error('Failed to initialize database schema:', error)
+                        Logger.error('Failed to initialize database schema:', error)
                         reject(error)
                     } else {
-                        console.log('Database schema initialized successfully')
+                        Logger.critical('Database schema initialized successfully')
                         resolve()
                     }
                 })
@@ -152,10 +153,10 @@ export class DatabaseManager {
 
         this.db.exec(schema, (error) => {
             if (error) {
-                console.error('Failed to initialize database schema:', error)
+                Logger.error('Failed to initialize database schema:', error)
                 reject(error)
             } else {
-                console.log('Database schema initialized successfully')
+                Logger.critical('Database schema initialized successfully')
                 resolve()
             }
         })
@@ -427,7 +428,7 @@ export class DatabaseManager {
         // Compact database after clearing
         await this.compactDatabase()
 
-        console.log('✅ All data cleared from database')
+        Logger.info('✅ All data cleared from database')
     }
 
     async compactDatabase(): Promise<void> {
@@ -539,9 +540,9 @@ export class DatabaseManager {
     close(): void {
         this.db.close((error) => {
             if (error) {
-                console.error('Error closing database:', error)
+                Logger.error('Error closing database:', error)
             } else {
-                console.log('Database connection closed')
+                Logger.critical('Database connection closed')
             }
         })
     }

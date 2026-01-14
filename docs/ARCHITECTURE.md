@@ -431,7 +431,7 @@ export type {FilterKey} from './constants'
 - Turborepo for monorepo management
 - TypeScript 5 across all packages with strict typing
 - ESLint for code quality
-- Centralized logging with Logger utility
+- **Centralized logging with Logger utility** - Environment-aware logging levels (critical/error/warn always logged; info/success/debug only in development)
 - Environment-based configuration
 
 ## Related Documentation

@@ -4,6 +4,7 @@ import {AttachmentRepository} from '../repositories/attachment.repository'
 import {FileUtil} from '../utils/file.util'
 import {AttachmentManager, AttachmentType} from '../storage/attachmentManager'
 import {config} from '../config/environment.config'
+import {Logger} from '../utils/logger.util'
 import fs from 'fs'
 
 /**
@@ -35,7 +36,7 @@ export class AttachmentService implements IAttachmentService {
                 const sourceFilePath = attachment.path
 
                 if (!fs.existsSync(sourceFilePath)) {
-                    console.warn(`[AttachmentService] Source file not found: ${sourceFilePath}`)
+                    Logger.warn(`[AttachmentService] Source file not found: ${sourceFilePath}`)
                     continue
                 }
 
@@ -64,7 +65,7 @@ export class AttachmentService implements IAttachmentService {
 
                     processedAttachments.push(attachmentData)
                 } catch (error) {
-                    console.error(
+                    Logger.error(
                         `[AttachmentService] Failed to copy attachment ${sourceFilePath}:`,
                         error
                     )

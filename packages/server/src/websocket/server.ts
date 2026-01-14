@@ -6,6 +6,7 @@ import {activeProcessesTracker} from '../services/activeProcesses.service'
 import {AuthService} from '../services/auth.service'
 import {config} from '../config/environment.config'
 import {TestProgress} from '@yshvydak/core'
+import {Logger} from '../utils/logger.util'
 
 export interface WebSocketMessage {
     type: string
@@ -46,17 +47,17 @@ export class WebSocketManager {
                     // Only log warnings for actual security issues (invalid tokens), not for missing tokens
                     // Missing tokens are expected when users haven't logged in yet
                     if (authResult.isSecurityIssue) {
-                        console.warn(`WebSocket authentication failed: ${authResult.message}`)
+                        Logger.warn(`WebSocket authentication failed: ${authResult.message}`)
                     }
                     ws.close(1008, authResult.message || 'Authentication required')
                     return
                 }
 
-                console.log(
+                Logger.debug(
                     `WebSocket client authenticated and connected: ${clientId} (User: ${authResult.user?.email})`
                 )
             } else {
-                console.log(`WebSocket client connected: ${clientId} (Authentication disabled)`)
+                Logger.debug(`WebSocket client connected: ${clientId} (Authentication disabled)`)
             }
 
             this.clients.set(clientId, ws)
@@ -82,7 +83,7 @@ export class WebSocketManager {
                     const message: WebSocketMessage = JSON.parse(data.toString())
                     this.handleClientMessage(clientId, message)
                 } catch (error) {
-                    console.error('Error parsing WebSocket message:', error)
+                    Logger.error(`Error parsing WebSocket message for client ${clientId}:`, error)
                     this.sendToClient(clientId, {
                         type: 'error',
                         data: {message: 'Invalid message format'},
@@ -92,13 +93,13 @@ export class WebSocketManager {
 
             // Handle client disconnect
             ws.on('close', () => {
-                console.log(`WebSocket client disconnected: ${clientId}`)
+                Logger.debug(`WebSocket client disconnected: ${clientId}`)
                 this.clients.delete(clientId)
             })
 
             // Handle errors
             ws.on('error', (error) => {
-                console.error(`WebSocket error for client ${clientId}:`, error)
+                Logger.error(`WebSocket error for client ${clientId}:`, error)
                 this.clients.delete(clientId)
             })
 
@@ -112,7 +113,7 @@ export class WebSocketManager {
             }, 30000) // Ping every 30 seconds
         })
 
-        console.log('WebSocket server initialized on /ws')
+        Logger.critical('WebSocket server initialized on /ws')
     }
 
     private async authenticateWebSocketConnection(request: IncomingMessage): Promise<{
@@ -156,7 +157,7 @@ export class WebSocketManager {
                 }
             }
         } catch (error) {
-            console.error('WebSocket authentication error:', error)
+            Logger.error('WebSocket authentication error:', error)
             return {
                 isAuthenticated: false,
                 message: 'Authentication service error',
@@ -173,16 +174,16 @@ export class WebSocketManager {
 
             case 'subscribe':
                 // Handle subscription to specific events (e.g., specific test updates)
-                console.log(`Client ${clientId} subscribed to:`, message.data)
+                Logger.debug(`Client ${clientId} subscribed to:`, message.data)
                 break
 
             case 'unsubscribe':
                 // Handle unsubscription
-                console.log(`Client ${clientId} unsubscribed from:`, message.data)
+                Logger.debug(`Client ${clientId} unsubscribed from:`, message.data)
                 break
 
             default:
-                console.log(`Unknown message type from client ${clientId}:`, message.type)
+                Logger.debug(`Unknown message type from client ${clientId}:`, message.type)
         }
     }
 
@@ -215,7 +216,7 @@ export class WebSocketManager {
                 try {
                     client.send(messageString)
                 } catch (error) {
-                    console.error(`Error sending message to client ${clientId}:`, error)
+                    Logger.error(`Error sending message to client ${clientId}:`, error)
                     this.clients.delete(clientId)
                 }
             } else {
@@ -299,7 +300,7 @@ export class WebSocketManager {
 
     // Close all connections
     public close(callback?: () => void): void {
-        console.log('Closing WebSocket server...')
+        Logger.critical('Closing WebSocket server...')
 
         // Close all client connections
         this.clients.forEach((client, _clientId) => {

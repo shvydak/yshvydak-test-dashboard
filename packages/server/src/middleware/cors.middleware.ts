@@ -1,5 +1,6 @@
 import cors from 'cors'
 import {config} from '../config/environment.config'
+import {Logger} from '../utils/logger.util'
 
 /**
  * CORS Configuration
@@ -22,7 +23,7 @@ function getAllowedOrigins(): string[] | boolean {
         }
 
         // If ALLOWED_ORIGINS not set in production, log warning and allow all
-        console.warn(
+        Logger.warn(
             '⚠️ ALLOWED_ORIGINS not set in production - allowing all origins (not recommended)'
         )
         return true

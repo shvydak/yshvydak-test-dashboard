@@ -3,6 +3,7 @@
 ## Known Issues
 
 - ⚠️ ALLOWED_ORIGINS not set in production - allowing all origins (not recommended)
+- token 24h to ...
 
 ### Active Issues
 

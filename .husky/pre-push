@@ -5,9 +5,12 @@
 [ "" = "1" ] && echo 'Skipping pre-push via SKIP_PREPUSH' && exit 0
 
 # Ensure we run from repo root for workspace scripts
-cd -- "/Users/y.shvydak/Projects/yshvydak-test-dashboard" || exit 1
+cd -- "$(git rev-parse --show-toplevel)" || exit 1
 
-# Run lint, type-check, and tests
+# Run format, lint, type-check, and tests
+echo 'Running format...'
+npm run format || exit 1
+
 echo 'Running lint...'
 npm run lint || exit 1
 

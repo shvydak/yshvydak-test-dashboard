@@ -1,1 +1,18 @@
-npm test
+#!/usr/bin/env sh
+
+# Husky Git pre-commit hook
+# Set SKIP_PRECOMMIT=1 to bypass (e.g., CI or emergency)
+[ "$SKIP_PRECOMMIT" = "1" ] && echo 'Skipping pre-commit via SKIP_PRECOMMIT' && exit 0
+
+# Ensure we run from repo root for workspace scripts
+cd -- "$(git rev-parse --show-toplevel)" || exit 1
+
+# Run format, lint, and type-check
+echo 'Running format...'
+npm run format || exit 1
+
+echo 'Running lint...'
+npm run lint || exit 1
+
+echo 'Running type-check...'
+npm run type-check || exit 1

@@ -232,8 +232,11 @@ export class TestService implements ITestService {
             result.process.on('close', (code) => {
                 Logger.info(`All tests completed with code: ${code}`)
 
-                // Remove process from tracker
-                activeProcessesTracker.removeProcess(result.runId)
+                // Remove process from tracker only if it still exists
+                // (it may have already been removed by process-end notification from reporter)
+                if (activeProcessesTracker.isProcessRunning(result.runId)) {
+                    activeProcessesTracker.removeProcess(result.runId)
+                }
 
                 this.websocketService.broadcastRunCompleted(result.runId, code || 1, 'run-all')
             })
@@ -277,8 +280,11 @@ export class TestService implements ITestService {
             result.process.on('close', (code) => {
                 Logger.info(`Group tests completed with code: ${code}`)
 
-                // Remove process from tracker
-                activeProcessesTracker.removeProcess(result.runId)
+                // Remove process from tracker only if it still exists
+                // (it may have already been removed by process-end notification from reporter)
+                if (activeProcessesTracker.isProcessRunning(result.runId)) {
+                    activeProcessesTracker.removeProcess(result.runId)
+                }
 
                 this.websocketService.broadcastRunCompleted(
                     result.runId,
@@ -351,8 +357,11 @@ export class TestService implements ITestService {
 
                     Logger.info(`Test rerun completed with code: ${code}`)
 
-                    // Remove process from tracker
-                    activeProcessesTracker.removeProcess(result.runId)
+                    // Remove process from tracker only if it still exists
+                    // (it may have already been removed by process-end notification from reporter)
+                    if (activeProcessesTracker.isProcessRunning(result.runId)) {
+                        activeProcessesTracker.removeProcess(result.runId)
+                    }
 
                     // Send WebSocket updates
                     this.websocketService.broadcast({

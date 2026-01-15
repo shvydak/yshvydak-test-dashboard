@@ -23,10 +23,7 @@ function App() {
     const [isSettingsOpen, setIsSettingsOpen] = useState(false)
 
     // Determine current view from URL
-    const currentView: ViewMode =
-        location.pathname === '/' || location.pathname.includes('/dashboard')
-            ? 'dashboard'
-            : 'tests'
+    const currentView: ViewMode = location.pathname.includes('/dashboard') ? 'dashboard' : 'tests'
     const {
         fetchTests,
         isLoading: testsLoading,
@@ -218,7 +215,7 @@ function App() {
 
             <main className="flex-1 overflow-y-auto container mx-auto px-4 py-8">
                 <Routes>
-                    <Route path="/" element={<Navigate to="/dashboard" replace />} />
+                    <Route path="/" element={<Navigate to="/tests" replace />} />
                     <Route
                         path="/tests"
                         element={

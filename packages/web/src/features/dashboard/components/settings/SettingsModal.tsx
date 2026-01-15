@@ -49,9 +49,9 @@ export function SettingsModal({isOpen, onClose}: SettingsModalProps) {
                     <div className="p-6 space-y-6 max-h-[calc(100vh-200px)] overflow-y-auto">
                         <SettingsThemeSection />
                         <SettingsTestExecutionSection />
-                        <SettingsDataRetentionSection />
                         <SettingsActionsSection />
                         <SettingsStorageSection />
+                        <SettingsDataRetentionSection />
                     </div>
                 </div>
             </div>

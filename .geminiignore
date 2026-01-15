@@ -1,0 +1,65 @@
+# Dependencies
+node_modules/
+
+# Build outputs
+dist/
+build/
+packages/*/dist/
+packages/*/build/
+
+# TypeScript
+*.tsbuildinfo
+*.map
+*.d.ts.map
+
+# Turbo
+.turbo/
+packages/*/.turbo/
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+*.sqlite-journal
+
+# Test results and artifacts
+test-results/
+packages/*/test-results/
+coverage/
+html/
+*.lcov
+
+# Environment files
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+!.env.example
+
+# Logs
+*.log
+logs/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Backups
+backups/
+*.backup
+
+# IDE files
+.idea/
+*.swp
+*.swo
+*~
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+
+# Large Asset Files (AI Context Optimization)
+package-lock.json
+pnpm-lock.yaml
+yarn.lock

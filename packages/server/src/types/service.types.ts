@@ -10,9 +10,21 @@ export interface ITestService {
     deleteTest(testId: string): Promise<{deletedExecutions: number}>
     deleteExecution(executionId: string): Promise<{success: boolean}>
     clearAllTests(): Promise<void>
+    cleanupData(options: CleanupOptions): Promise<CleanupResult>
     saveTestResult(testData: TestResultData): Promise<string>
     getTestStats(): Promise<DatabaseStats>
     getTraceFileById(attachmentId: string): Promise<{filePath: string; fileName: string} | null>
+}
+
+export interface CleanupOptions {
+    type: 'date' | 'count'
+    value: string | number
+}
+
+export interface CleanupResult {
+    deletedExecutions: number
+    freedSpace: number
+    message: string
 }
 
 export interface IPlaywrightService {
@@ -36,6 +48,12 @@ export interface IAttachmentService {
     processAttachments(attachments: any[], testResultId: string): Promise<AttachmentData[]>
     getAttachmentsByTestResult(testResultId: string): Promise<AttachmentData[]>
     getAttachmentById(attachmentId: string): Promise<AttachmentData | null>
+    getStorageStats(): Promise<{
+        totalFiles: number
+        totalSize: number
+        testDirectories: number
+        typeBreakdown: {[key: string]: {count: number; size: number}}
+    }>
 }
 
 // Service result types

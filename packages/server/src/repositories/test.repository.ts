@@ -204,6 +204,54 @@ export class TestRepository extends BaseRepository implements ITestRepository {
         }))
     }
 
+    async getIdsOlderThan(date: Date): Promise<string[]> {
+        const rows = await this.queryAll<{id: string}>(
+            `SELECT id FROM test_results WHERE created_at < ?`,
+            [date.toISOString()]
+        )
+        return rows.map((row) => row.id)
+    }
+
+    async getIdsPrunedByCount(keepCount: number): Promise<string[]> {
+        // Use window function to rank executions per test
+        // Select IDs that have a rank > keepCount (i.e., are older than the top N)
+        const sql = `
+            SELECT id FROM test_results
+            WHERE id NOT IN (
+                SELECT id FROM (
+                    SELECT id, ROW_NUMBER() OVER (PARTITION BY test_id ORDER BY created_at DESC) as rn
+                    FROM test_results
+                ) t
+                WHERE t.rn <= ?
+            )
+        `
+        const rows = await this.queryAll<{id: string}>(sql, [keepCount])
+        return rows.map((row) => row.id)
+    }
+
+    async deleteByIds(ids: string[]): Promise<number> {
+        if (ids.length === 0) return 0
+
+        // SQLite has a limit on variables, so batch the deletion if necessary
+        const BATCH_SIZE = 900
+        let totalDeleted = 0
+
+        for (let i = 0; i < ids.length; i += BATCH_SIZE) {
+            const batch = ids.slice(i, i + BATCH_SIZE)
+            const placeholders = batch.map(() => '?').join(',')
+            const result = await this.dbManager.execute(
+                `DELETE FROM test_results WHERE id IN (${placeholders})`,
+                batch
+            )
+            totalDeleted += result.changes || 0
+        }
+
+        // Compact database to reclaim space after deletion
+        await this.dbManager.compactDatabase()
+
+        return totalDeleted
+    }
+
     private mapRowToTestResult(row: TestResultRow): TestResult {
         return {
             id: row.id,

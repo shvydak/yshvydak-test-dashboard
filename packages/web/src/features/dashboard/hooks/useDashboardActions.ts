@@ -6,13 +6,16 @@ import {useTestsStore} from '@features/tests/store/testsStore'
 
 export interface UseDashboardActionsReturn {
     clearingData: boolean
+    cleaningData: boolean
     clearAllData: () => Promise<void>
+    cleanupData: (type: 'date' | 'count', value: string | number) => Promise<void>
 }
 
 export function useDashboardActions(): UseDashboardActionsReturn {
     const queryClient = useQueryClient()
     const {fetchTests} = useTestsStore()
     const [clearingData, setClearingData] = useState(false)
+    const [cleaningData, setCleaningData] = useState(false)
 
     const clearAllData = async () => {
         if (
@@ -57,8 +60,45 @@ export function useDashboardActions(): UseDashboardActionsReturn {
         }
     }
 
+    const cleanupData = async (type: 'date' | 'count', value: string | number) => {
+        setCleaningData(true)
+        try {
+            const response = await authFetch(`${config.api.baseUrl}/tests/cleanup`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({type, value}),
+            })
+
+            if (!response.ok) {
+                throw new Error('Failed to cleanup data')
+            }
+
+            const result = await response.json()
+            const {deletedExecutions, freedSpace} = result.data
+
+            const freedMb = (freedSpace / (1024 * 1024)).toFixed(2)
+            alert(
+                `✅ Cleanup complete! Deleted ${deletedExecutions} executions and freed ${freedMb} MB.`
+            )
+
+            fetchTests()
+            queryClient.invalidateQueries({queryKey: ['storage-stats']})
+        } catch (error) {
+            alert(
+                '❌ Failed to cleanup data: ' +
+                    (error instanceof Error ? error.message : 'Unknown error')
+            )
+        } finally {
+            setCleaningData(false)
+        }
+    }
+
     return {
         clearingData,
+        cleaningData,
         clearAllData,
+        cleanupData,
     }
 }

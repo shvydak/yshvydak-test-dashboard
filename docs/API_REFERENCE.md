@@ -310,6 +310,84 @@ Clear all test data from the database.
 }
 ```
 
+### POST /api/tests/cleanup
+
+**✨ New in v1.4.0** - Selective data cleanup to manage storage.
+
+**Description**: Clean up historical test data based on date or retention count per test. This action permanently deletes database records and their associated physical attachment files.
+
+**Authentication**: Required (JWT token)
+
+**Request Body (Date-based):**
+
+```json
+{
+    "type": "date",
+    "value": "2023-01-01T00:00:00.000Z"
+}
+```
+
+**Request Body (Count-based):**
+
+```json
+{
+    "type": "count",
+    "value": 20
+}
+```
+
+**Parameters:**
+
+- `type` (required) - Cleanup strategy: `"date"` (older than date) or `"count"` (retain latest N per test)
+- `value` (required) - ISO date string for `"date"` type, or integer number for `"count"` type
+
+**Response (200 - Success):**
+
+```json
+{
+    "status": "success",
+    "data": {
+        "deletedExecutions": 45,
+        "freedSpace": 52428800,
+        "message": "Successfully deleted 45 executions"
+    }
+}
+```
+
+**Response (400 - Bad Request):**
+
+```json
+{
+    "status": "error",
+    "error": {
+        "message": "Invalid type. Must be \"date\" or \"count\"",
+        "code": "BAD_REQUEST"
+    }
+}
+```
+
+**Response (409 - Conflict):**
+
+```json
+{
+    "status": "error",
+    "error": {
+        "message": "Cannot clean up data while tests are running",
+        "code": "CONFLICT"
+    }
+}
+```
+
+**What Gets Deleted:**
+
+1. **Database Records**: Rows in `test_results` matching the criteria
+2. **Physical Files**: Attachments for the deleted executions are removed _before_ DB deletion
+
+**Use Cases:**
+
+- "Delete data older than 30 days"
+- "Keep only the last 20 runs for each test" to cap database size
+
 ## Test Execution
 
 ### POST /api/tests/run-all

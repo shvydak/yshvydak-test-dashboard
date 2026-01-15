@@ -30,6 +30,7 @@ export function createTestRoutes(container: ServiceContainer): Router {
     router.get('/timeline', testController.getTestTimeline)
     router.get('/diagnostics', testController.getDiagnostics)
     router.delete('/all', testController.clearAllTests)
+    router.post('/cleanup', testController.cleanupData)
     router.post('/', testController.createTestResult)
     // Nested route must come before single-param route
     router.delete('/:testId/executions/:executionId', testController.deleteExecution)

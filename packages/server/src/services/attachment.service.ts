@@ -125,4 +125,17 @@ export class AttachmentService implements IAttachmentService {
     async clearAllAttachments(): Promise<{deletedFiles: number; freedSpace: number}> {
         return this.attachmentManager.clearAllAttachments()
     }
+
+    /**
+     * Gets statistics about attachment storage usage
+     * @returns Object containing file counts and sizes by type
+     */
+    async getStorageStats(): Promise<{
+        totalFiles: number
+        totalSize: number
+        testDirectories: number
+        typeBreakdown: {[key: string]: {count: number; size: number}}
+    }> {
+        return this.attachmentManager.getStorageStats()
+    }
 }

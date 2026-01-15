@@ -1,5 +1,16 @@
 # @yshvydak/web
 
+## 1.7.0
+
+### Minor Changes
+
+- feat: Implement selective data cleanup feature for test results
+
+### Patch Changes
+
+- Updated dependencies
+    - @yshvydak/core@1.7.0
+
 ## 1.6.0
 
 ### Minor Changes

@@ -1649,7 +1649,7 @@ Authenticate user with email and password.
         "user": {
             "email": "user@example.com"
         },
-        "expiresIn": "24h"
+        "expiresIn": "30d"
     }
 }
 ```
@@ -1870,7 +1870,7 @@ Frontend clears stored token
 ### JWT Token Details
 
 - **Algorithm:** HS256 (HMAC with SHA-256)
-- **Expiration:** 24 hours (default)
+- **Expiration:** 30 days (default, approximately 1 month)
 - **Storage:** Frontend stores in localStorage with key `_auth`
 - **Header Format:** `Authorization: Bearer {token}`
 - **Token Structure:**

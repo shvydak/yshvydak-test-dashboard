@@ -288,6 +288,39 @@ describe('AuthService', () => {
 
             expect(verifyResult.valid).toBe(false)
         }, 1000)
+
+        it('should set token expiration to 30 days by default', async () => {
+            // Use default expiration (30d) - delete env var to test default
+            delete process.env.JWT_EXPIRES_IN
+            vi.resetModules()
+            const defaultService = new AuthService()
+
+            const loginResult = await defaultService.login({
+                email: 'admin@example.com',
+                password: 'admin123',
+            })
+
+            expect(loginResult.success).toBe(true)
+            expect(loginResult.expiresIn).toBe('30d')
+
+            // Decode token to verify expiration time
+            const token = loginResult.token!
+            const parts = token.split('.')
+            expect(parts).toHaveLength(3) // JWT has 3 parts
+
+            // Decode payload (base64url)
+            const payload = JSON.parse(Buffer.from(parts[1], 'base64url').toString('utf-8'))
+
+            expect(payload.exp).toBeDefined()
+            expect(payload.iat).toBeDefined()
+
+            // Calculate expiration time (exp - iat should be ~30 days in seconds)
+            const expirationSeconds = payload.exp - payload.iat
+            const expectedSeconds = 30 * 24 * 60 * 60 // 30 days in seconds
+            const tolerance = 60 // Allow 1 minute tolerance
+
+            expect(Math.abs(expirationSeconds - expectedSeconds)).toBeLessThan(tolerance)
+        })
     })
 
     describe('Logout', () => {

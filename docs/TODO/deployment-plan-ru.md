@@ -194,7 +194,7 @@ PLAYWRIGHT_PROJECT_DIR=/var/www/qa-testing/probuild-qa
 # Authentication
 ENABLE_AUTH=true
 JWT_SECRET=СГЕНЕРИРОВАТЬ_СЕКРЕТНЫЙ_КЛЮЧ
-JWT_EXPIRES_IN=24h
+JWT_EXPIRES_IN=30d
 ADMIN_EMAIL=qa@probuild.com
 ADMIN_PASSWORD=УСТАНОВИТЬ_БЕЗОПАСНЫЙ_ПАРОЛЬ
 ```
@@ -333,7 +333,7 @@ PLAYWRIGHT_PROJECT_DIR=/var/www/qa-testing/playwright-tests
 # Authentication
 ENABLE_AUTH=true
 JWT_SECRET=ВСТАВЬТЕ_СЮДА_СГЕНЕРИРОВАННЫЙ_КЛЮЧ
-JWT_EXPIRES_IN=24h
+JWT_EXPIRES_IN=30d
 ADMIN_EMAIL=qa@probuild.com
 ADMIN_PASSWORD=qwe123
 EOF

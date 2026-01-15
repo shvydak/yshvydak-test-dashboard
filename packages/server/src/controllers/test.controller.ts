@@ -249,6 +249,33 @@ export class TestController {
         }
     }
 
+    // POST /api/tests/cleanup - Selective data cleanup
+    cleanupData = async (req: ServiceRequest, res: Response): Promise<Response> => {
+        try {
+            const {type, value} = req.body
+
+            if (!type || !value) {
+                return ResponseHelper.badRequest(res, 'Missing required fields: type, value')
+            }
+
+            if (type !== 'date' && type !== 'count') {
+                return ResponseHelper.badRequest(res, 'Invalid type. Must be "date" or "count"')
+            }
+
+            const result = await this.testService.cleanupData({type, value})
+
+            return ResponseHelper.success(res, result)
+        } catch (error) {
+            Logger.error('Error cleaning up data', error)
+            return ResponseHelper.error(
+                res,
+                error instanceof Error ? error.message : 'Unknown error',
+                'Failed to cleanup data',
+                500
+            )
+        }
+    }
+
     // POST /api/tests - Create a new test result (compatible with yshvydakReporter.ts)
     createTestResult = async (req: ServiceRequest, res: Response): Promise<Response> => {
         try {

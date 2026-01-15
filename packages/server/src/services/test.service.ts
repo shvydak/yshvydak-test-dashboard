@@ -149,6 +149,74 @@ export class TestService implements ITestService {
         await this.attachmentService.clearAllAttachments()
     }
 
+    async cleanupData(options: {type: 'date' | 'count'; value: string | number}): Promise<{
+        deletedExecutions: number
+        freedSpace: number
+        message: string
+    }> {
+        // Prevent cleanup if tests are running
+        if (activeProcessesTracker.isAnyProcessRunning()) {
+            throw new Error('Cannot clean up data while tests are running')
+        }
+
+        let idsToDelete: string[] = []
+
+        if (options.type === 'date') {
+            const date = new Date(options.value as string)
+            if (isNaN(date.getTime())) {
+                throw new Error('Invalid date provided')
+            }
+            idsToDelete = await this.testRepository.getIdsOlderThan(date)
+        } else if (options.type === 'count') {
+            const count = parseInt(options.value as string)
+            if (isNaN(count) || count < 1) {
+                throw new Error('Invalid count provided')
+            }
+            idsToDelete = await this.testRepository.getIdsPrunedByCount(count)
+        }
+
+        if (idsToDelete.length === 0) {
+            return {
+                deletedExecutions: 0,
+                freedSpace: 0,
+                message: 'No data matched the cleanup criteria',
+            }
+        }
+
+        Logger.info(`Cleanup: found ${idsToDelete.length} executions to delete`)
+
+        // 1. Delete attachments (physical files)
+        let totalFreedSpace = 0
+        const statsBefore = await this.attachmentService.getStorageStats()
+
+        // We can't easily track per-file size deleted here without extra queries,
+        // so we'll just check stats before/after or rely on attachment service logs.
+        // For now, let's just delete.
+        for (const id of idsToDelete) {
+            try {
+                await this.attachmentService.deleteAttachmentsForTestResult(id)
+            } catch (error) {
+                Logger.warn(`Failed to delete attachments for execution ${id}`, error)
+            }
+        }
+
+        const statsAfter = await this.attachmentService.getStorageStats()
+        totalFreedSpace = statsBefore.totalSize - statsAfter.totalSize
+
+        // 2. Delete DB records
+        const deletedCount = await this.testRepository.deleteByIds(idsToDelete)
+
+        Logger.info(
+            `Cleanup complete: deleted ${deletedCount} records, freed ${totalFreedSpace} bytes`
+        )
+
+        return {
+            deletedExecutions: deletedCount,
+            freedSpace: totalFreedSpace,
+            message: `Successfully deleted ${deletedCount} executions`,
+        }
+    }
+
     async saveTestResult(testData: TestResultData): Promise<string> {
         const resultId = await this.testRepository.saveTestResult(testData)
 
@@ -232,8 +300,11 @@ export class TestService implements ITestService {
             result.process.on('close', (code) => {
                 Logger.info(`All tests completed with code: ${code}`)
 
-                // Remove process from tracker
-                activeProcessesTracker.removeProcess(result.runId)
+                // Remove process from tracker only if it still exists
+                // (it may have already been removed by process-end notification from reporter)
+                if (activeProcessesTracker.isProcessRunning(result.runId)) {
+                    activeProcessesTracker.removeProcess(result.runId)
+                }
 
                 this.websocketService.broadcastRunCompleted(result.runId, code || 1, 'run-all')
             })
@@ -277,8 +348,11 @@ export class TestService implements ITestService {
             result.process.on('close', (code) => {
                 Logger.info(`Group tests completed with code: ${code}`)
 
-                // Remove process from tracker
-                activeProcessesTracker.removeProcess(result.runId)
+                // Remove process from tracker only if it still exists
+                // (it may have already been removed by process-end notification from reporter)
+                if (activeProcessesTracker.isProcessRunning(result.runId)) {
+                    activeProcessesTracker.removeProcess(result.runId)
+                }
 
                 this.websocketService.broadcastRunCompleted(
                     result.runId,
@@ -351,8 +425,11 @@ export class TestService implements ITestService {
 
                     Logger.info(`Test rerun completed with code: ${code}`)
 
-                    // Remove process from tracker
-                    activeProcessesTracker.removeProcess(result.runId)
+                    // Remove process from tracker only if it still exists
+                    // (it may have already been removed by process-end notification from reporter)
+                    if (activeProcessesTracker.isProcessRunning(result.runId)) {
+                        activeProcessesTracker.removeProcess(result.runId)
+                    }
 
                     // Send WebSocket updates
                     this.websocketService.broadcast({

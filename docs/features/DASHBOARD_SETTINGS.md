@@ -65,6 +65,7 @@ packages/web/src/
 │               ├── SettingsSection.tsx                # Reusable section wrapper
 │               ├── SettingsThemeSection.tsx           # Theme selector (Auto/Light/Dark)
 │               ├── SettingsTestExecutionSection.tsx   # Test execution settings (max workers)
+│               ├── SettingsDataRetentionSection.tsx   # Data cleanup controls
 │               ├── SettingsActionsSection.tsx         # Admin actions
 │               └── index.ts                           # Barrel export
 └── shared/
@@ -282,6 +283,37 @@ Backend adds `--workers=N` flag to Playwright CLI commands:
 ```bash
 npx playwright test --workers=2 --reporter=...
 ```
+
+### SettingsDataRetentionSection
+
+**Location**: `packages/web/src/features/dashboard/components/settings/SettingsDataRetentionSection.tsx`
+
+Controls for selective data cleanup to manage storage usage.
+
+**UI Design**:
+
+```
+┌─────────────────────────────────────────────────────────┐
+│ Data Retention                                          │
+│ Manage historical data to save storage space            │
+│                                                         │
+│ Delete data older than: [ 30 ] days         [ Delete ]  │
+│ ─────────────────────────────────────────────────────── │
+│ Keep only the latest:   [ 20 ] runs/test    [ Prune  ]  │
+└─────────────────────────────────────────────────────────┘
+```
+
+**Features**:
+
+- **Date-Based Cleanup**: Deletes all executions older than X days.
+- **Count-Based Retention**: Keeps only the top N most recent executions _per unique test_.
+- **Safety**: Disabled when tests are running.
+- **Feedback**: Shows success toast with deleted count and freed space (MB).
+
+**Backend Integration**:
+
+- Calls `POST /api/tests/cleanup`
+- Payload: `{ type: 'date', value: isoDate }` or `{ type: 'count', value: number }`
 
 ### SettingsActionsSection
 

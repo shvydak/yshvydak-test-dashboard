@@ -291,6 +291,7 @@ packages/web/src/
 │   │   │       ├── SettingsSection.tsx         # Reusable section wrapper
 │   │   │       ├── SettingsThemeSection.tsx    # Auto/Light/Dark theme selector
 │   │   │       ├── SettingsTestExecutionSection.tsx # Max workers config
+│   │   │       ├── SettingsDataRetentionSection.tsx # Data cleanup controls (✨ v1.4.0)
 │   │   │       ├── SettingsStorageSection.tsx  # Storage statistics display (✨ v1.0.4)
 │   │   │       │   ├── Collapsible storage info
 │   │   │       │   ├── Database size + record counts

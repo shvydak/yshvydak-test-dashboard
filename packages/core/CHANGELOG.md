@@ -1,5 +1,11 @@
 # @yshvydak/core
 
+## 1.7.0
+
+### Minor Changes
+
+- feat: Implement selective data cleanup feature for test results
+
 ## 1.6.0
 
 ### Minor Changes

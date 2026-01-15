@@ -86,7 +86,7 @@ export const config: EnvironmentConfig = {
             if (process.env.NODE_ENV === 'development') {
                 console.log('JWT_EXPITRES_IN', process.env.JWT_EXPIRES_IN)
             }
-            return process.env.JWT_EXPIRES_IN || '24h'
+            return process.env.JWT_EXPIRES_IN || '30d'
         },
         get adminEmail() {
             const email = process.env.ADMIN_EMAIL

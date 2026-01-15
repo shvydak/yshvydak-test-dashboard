@@ -26,6 +26,7 @@ vi.mock('../activeProcesses.service', () => ({
     activeProcessesTracker: {
         addProcess: vi.fn(),
         removeProcess: vi.fn(),
+        isProcessRunning: vi.fn(() => true),
         isRunAllActive: vi.fn(() => false),
         getActiveProcesses: vi.fn(() => []),
     },
@@ -639,6 +640,10 @@ describe('TestService', () => {
             mockPlaywrightService.runAllTests.mockResolvedValue(mockResult)
             mockRunRepository.createTestRun.mockResolvedValue('run-123')
 
+            // Mock isProcessRunning to return true (process exists)
+            const {activeProcessesTracker} = await import('../activeProcesses.service')
+            vi.mocked(activeProcessesTracker.isProcessRunning).mockReturnValue(true)
+
             await testService.runAllTests()
 
             // Simulate process completion (code || 1 is used, so code 0 becomes 1)
@@ -662,6 +667,10 @@ describe('TestService', () => {
 
             mockPlaywrightService.runAllTests.mockResolvedValue(mockResult)
             mockRunRepository.createTestRun.mockResolvedValue('run-123')
+
+            // Mock isProcessRunning to return true (process exists)
+            const {activeProcessesTracker} = await import('../activeProcesses.service')
+            vi.mocked(activeProcessesTracker.isProcessRunning).mockReturnValue(true)
 
             await testService.runAllTests()
 
@@ -801,6 +810,10 @@ describe('TestService', () => {
             mockPlaywrightService.runTestGroup.mockResolvedValue(mockResult)
             mockRunRepository.createTestRun.mockResolvedValue('run-456')
 
+            // Mock isProcessRunning to return true (process exists)
+            const {activeProcessesTracker} = await import('../activeProcesses.service')
+            vi.mocked(activeProcessesTracker.isProcessRunning).mockReturnValue(true)
+
             await testService.runTestGroup('/path/to/test.spec.ts')
 
             // Simulate process completion (code || 1 is used, so code 0 becomes 1)
@@ -892,6 +905,10 @@ describe('TestService', () => {
             mockPlaywrightService.rerunSingleTest.mockResolvedValue(mockResult)
             mockRunRepository.createTestRun.mockResolvedValue('rerun-789')
             mockRunRepository.updateTestRun.mockResolvedValue(undefined)
+
+            // Mock isProcessRunning to return true (process exists)
+            const {activeProcessesTracker} = await import('../activeProcesses.service')
+            vi.mocked(activeProcessesTracker.isProcessRunning).mockReturnValue(true)
 
             await testService.rerunTest('exec-1')
 

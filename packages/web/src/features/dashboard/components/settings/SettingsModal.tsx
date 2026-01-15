@@ -3,6 +3,7 @@ import {SettingsThemeSection} from './SettingsThemeSection'
 import {SettingsTestExecutionSection} from './SettingsTestExecutionSection'
 import {SettingsActionsSection} from './SettingsActionsSection'
 import {SettingsStorageSection} from './SettingsStorageSection'
+import {SettingsDataRetentionSection} from './SettingsDataRetentionSection'
 
 export interface SettingsModalProps {
     isOpen: boolean
@@ -48,6 +49,7 @@ export function SettingsModal({isOpen, onClose}: SettingsModalProps) {
                     <div className="p-6 space-y-6 max-h-[calc(100vh-200px)] overflow-y-auto">
                         <SettingsThemeSection />
                         <SettingsTestExecutionSection />
+                        <SettingsDataRetentionSection />
                         <SettingsActionsSection />
                         <SettingsStorageSection />
                     </div>

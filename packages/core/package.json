@@ -1,6 +1,6 @@
 {
     "name": "@yshvydak/core",
-    "version": "1.6.0",
+    "version": "1.7.0",
     "description": "Shared types and utilities for yshvydak-test-dashboard",
     "main": "dist/index.js",
     "types": "dist/index.d.ts",

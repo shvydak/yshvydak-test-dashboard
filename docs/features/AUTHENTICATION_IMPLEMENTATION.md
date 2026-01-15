@@ -127,7 +127,7 @@ Scenario 3: WebSocket Disconnect
 Token expiry duration is configured via environment variable:
 
 ```bash
-JWT_EXPIRES_IN=24h  # Default: 24 hours
+JWT_EXPIRES_IN=30d  # Default: 30 days (approximately 1 month)
 ```
 
 **Supported formats**:
@@ -135,8 +135,9 @@ JWT_EXPIRES_IN=24h  # Default: 24 hours
 - `"1m"` - 1 minute
 - `"15m"` - 15 minutes
 - `"1h"` - 1 hour
-- `"24h"` - 24 hours (default)
+- `"24h"` - 24 hours
 - `"7d"` - 7 days
+- `"30d"` - 30 days (default, approximately 1 month)
 
 #### Testing Token Expiry
 
@@ -201,7 +202,7 @@ Authenticate user with email and password.
             "email": "admin@admin.com",
             "role": "admin"
         },
-        "expiresIn": "24h"
+        "expiresIn": "30d"
     }
 }
 ```
@@ -319,7 +320,7 @@ ADMIN_PASSWORD=qwe123
 
 # JWT Configuration
 JWT_SECRET=your-secure-jwt-secret-key
-JWT_EXPIRES_IN=24h
+JWT_EXPIRES_IN=30d
 
 # Authentication Control
 ENABLE_AUTH=true

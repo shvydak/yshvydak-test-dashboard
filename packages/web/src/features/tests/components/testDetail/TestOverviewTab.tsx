@@ -27,8 +27,6 @@ export function TestOverviewTab({
     onDeleteNote,
 }: TestOverviewTabProps) {
     const hasConsoleOutput = (test.metadata?.console?.entries?.length ?? 0) > 0
-    const hasTraceAttachment = attachments.some((a) => a.type === 'trace')
-    const shouldShowTestOutput = hasConsoleOutput && hasTraceAttachment
 
     return (
         <div className="space-y-6">
@@ -79,18 +77,13 @@ export function TestOverviewTab({
 
                 {!attachmentsLoading && !attachmentsError && attachments.length > 0 && (
                     <div className="grid grid-cols-1 gap-4">
-                        {attachments.map((attachment) => {
-                            const isTrace = attachment.type === 'trace'
+                        {attachments.map((attachment, index) => {
+                            const isFirstAttachment = index === 0
 
                             return (
                                 <div key={attachment.id} className="space-y-4">
-                                    <AttachmentItem
-                                        attachment={attachment}
-                                        onError={onAttachmentsError}
-                                    />
-
-                                    {/* Render console output directly under Trace item (requested DOM placement) */}
-                                    {shouldShowTestOutput && isTrace && (
+                                    {/* Render console output above first attachment */}
+                                    {hasConsoleOutput && isFirstAttachment && (
                                         <div className="space-y-2">
                                             <div className="text-xs font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wide">
                                                 Test Output
@@ -98,6 +91,11 @@ export function TestOverviewTab({
                                             <TestConsoleOutput test={test} />
                                         </div>
                                     )}
+
+                                    <AttachmentItem
+                                        attachment={attachment}
+                                        onError={onAttachmentsError}
+                                    />
                                 </div>
                             )
                         })}

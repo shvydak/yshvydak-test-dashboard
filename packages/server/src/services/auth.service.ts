@@ -182,7 +182,24 @@ export class AuthService {
                 user: decoded.user,
             }
         } catch (error) {
-            Logger.warn('JWT verification failed', error)
+            const errorMessage = error instanceof Error ? error.message : String(error)
+            const errorType = error?.constructor?.name || 'Unknown'
+
+            // Log detailed error information for debugging
+            Logger.warn('JWT verification failed', {
+                error: errorMessage,
+                errorType,
+                tokenLength: token?.length,
+            })
+
+            // Return more specific error message for expired tokens
+            if (errorMessage.includes('expired')) {
+                return {
+                    valid: false,
+                    message: 'Token has expired. Please log in again.',
+                }
+            }
+
             return {
                 valid: false,
                 message: 'Invalid or expired token',

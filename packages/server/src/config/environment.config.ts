@@ -68,8 +68,23 @@ export const config: EnvironmentConfig = {
             return process.env.ENABLE_AUTH === 'true'
         },
         get jwtSecret() {
+            const secret = process.env.JWT_SECRET
+
+            // Validate JWT secret in production
+            if (
+                process.env.NODE_ENV === 'production' &&
+                secret === 'dev-jwt-secret-change-in-production-12345'
+            ) {
+                console.error(
+                    '⚠️  WARNING: Using development JWT_SECRET in production! This is a security risk.'
+                )
+                console.error(
+                    '⚠️  Please set a strong, unique JWT_SECRET in your production .env file'
+                )
+            }
+
             return (
-                process.env.JWT_SECRET ||
+                secret ||
                 (() => {
                     if (config.auth.enableAuth) {
                         throw new Error(
@@ -82,10 +97,6 @@ export const config: EnvironmentConfig = {
         },
 
         get expiresIn() {
-            // Only log in development
-            if (process.env.NODE_ENV === 'development') {
-                console.log('JWT_EXPITRES_IN', process.env.JWT_EXPIRES_IN)
-            }
             return process.env.JWT_EXPIRES_IN || '30d'
         },
         get adminEmail() {

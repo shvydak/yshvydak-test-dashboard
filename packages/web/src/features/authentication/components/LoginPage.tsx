@@ -56,7 +56,24 @@ export default function LoginPage() {
             const data = await response.json()
 
             if (response.ok && data.success) {
-                // Store token in localStorage for now (without React Auth Kit)
+                // Calculate token expiration timestamp
+                // Parse expiresIn (e.g., "30d", "24h", "60m") to milliseconds
+                const expiresIn = data.data.expiresIn || '30d'
+                let expirationMs = 0
+
+                if (expiresIn.endsWith('d')) {
+                    expirationMs = parseInt(expiresIn) * 24 * 60 * 60 * 1000
+                } else if (expiresIn.endsWith('h')) {
+                    expirationMs = parseInt(expiresIn) * 60 * 60 * 1000
+                } else if (expiresIn.endsWith('m')) {
+                    expirationMs = parseInt(expiresIn) * 60 * 1000
+                } else if (expiresIn.endsWith('s')) {
+                    expirationMs = parseInt(expiresIn) * 1000
+                }
+
+                const expiresAt = Date.now() + expirationMs
+
+                // Store token in localStorage with expiration timestamp
                 localStorage.setItem(
                     '_auth',
                     JSON.stringify({
@@ -65,6 +82,8 @@ export default function LoginPage() {
                             type: 'Bearer',
                         },
                         user: data.data.user,
+                        expiresAt, // Store expiration timestamp
+                        expiresIn: data.data.expiresIn, // Store original expiration string
                     })
                 )
 

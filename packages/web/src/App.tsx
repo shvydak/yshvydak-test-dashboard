@@ -61,6 +61,16 @@ function App() {
                     return
                 }
 
+                // Check if token has expired locally before making API call
+                if (parsed.expiresAt && Date.now() >= parsed.expiresAt) {
+                    console.log('Token expired locally, logging out')
+                    localStorage.removeItem('_auth')
+                    sessionStorage.removeItem('_auth')
+                    setIsAuthenticated(false)
+                    setIsLoading(false)
+                    return
+                }
+
                 const result = await verifyToken()
 
                 if (result.valid) {
@@ -87,6 +97,23 @@ function App() {
         }
 
         const checkTokenPeriodically = async () => {
+            // First check local expiration to avoid unnecessary API calls
+            try {
+                const authData = localStorage.getItem('_auth')
+                if (authData) {
+                    const parsed = JSON.parse(authData)
+                    if (parsed.expiresAt && Date.now() >= parsed.expiresAt) {
+                        console.log('Token expired locally during periodic check')
+                        setIsAuthenticated(false)
+                        localStorage.removeItem('_auth')
+                        sessionStorage.removeItem('_auth')
+                        return
+                    }
+                }
+            } catch (error) {
+                console.error('Error checking local token expiration:', error)
+            }
+
             const result = await verifyToken()
 
             if (!result.valid) {

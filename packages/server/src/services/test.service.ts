@@ -243,7 +243,7 @@ export class TestService implements ITestService {
         return this.testRepository.getTestTimeline(days)
     }
 
-    async runAllTests(maxWorkers?: number): Promise<any> {
+    async runAllTests(maxWorkers?: number, skipAutoDiscovery?: boolean): Promise<any> {
         // Check if tests are already running
         if (activeProcessesTracker.isRunAllActive()) {
             const activeRuns = activeProcessesTracker.getActiveProcesses()
@@ -266,6 +266,11 @@ export class TestService implements ITestService {
                     })
                 )
             }
+        }
+
+        // Auto-discover tests before running unless explicitly skipped
+        if (!skipAutoDiscovery) {
+            await this.discoverTests()
         }
 
         const result = await this.playwrightService.runAllTests(maxWorkers)

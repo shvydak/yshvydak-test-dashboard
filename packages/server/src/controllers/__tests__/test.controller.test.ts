@@ -163,7 +163,7 @@ describe('TestController', () => {
 
             await controller.runAllTests(mockReq as ServiceRequest, mockRes as Response)
 
-            expect(mockTestService.runAllTests).toHaveBeenCalledWith(4)
+            expect(mockTestService.runAllTests).toHaveBeenCalledWith(4, undefined)
             expect(ResponseHelper.success).toHaveBeenCalledWith(mockRes, runResult)
         })
 
@@ -173,7 +173,7 @@ describe('TestController', () => {
 
             await controller.runAllTests(mockReq as ServiceRequest, mockRes as Response)
 
-            expect(mockTestService.runAllTests).toHaveBeenCalledWith(undefined)
+            expect(mockTestService.runAllTests).toHaveBeenCalledWith(undefined, undefined)
         })
 
         it('should handle tests already running error (409)', async () => {

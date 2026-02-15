@@ -1,5 +1,11 @@
 # @yshvydak/core
 
+## 1.7.1
+
+### Patch Changes
+
+- feat: Add auto-discovery setting for run all test execution
+
 ## 1.7.0
 
 ### Minor Changes

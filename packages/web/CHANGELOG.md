@@ -1,5 +1,13 @@
 # @yshvydak/web
 
+## 1.7.1
+
+### Patch Changes
+
+- feat: Add auto-discovery setting for run all test execution
+- Updated dependencies
+    - @yshvydak/core@1.7.1
+
 ## 1.7.0
 
 ### Minor Changes

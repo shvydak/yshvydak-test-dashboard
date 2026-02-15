@@ -29,7 +29,7 @@ export interface CleanupResult {
 
 export interface IPlaywrightService {
     discoverTests(): Promise<DiscoveredTest[]>
-    runAllTests(): Promise<TestRunProcess>
+    runAllTests(maxWorkers?: number, skipAutoDiscovery?: boolean): Promise<TestRunProcess>
     runTestGroup(
         filePath: string,
         maxWorkers?: number,

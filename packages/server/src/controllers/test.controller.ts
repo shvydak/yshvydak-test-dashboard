@@ -34,8 +34,8 @@ export class TestController {
     // POST /api/tests/run-all - Run all tests
     runAllTests = async (req: ServiceRequest, res: Response): Promise<void> => {
         try {
-            const {maxWorkers} = req.body
-            const result = await this.testService.runAllTests(maxWorkers)
+            const {maxWorkers, skipAutoDiscovery} = req.body
+            const result = await this.testService.runAllTests(maxWorkers, skipAutoDiscovery)
             ResponseHelper.success(res, result)
         } catch (error) {
             // Check if this is a "tests already running" error

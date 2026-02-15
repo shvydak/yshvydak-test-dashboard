@@ -21,6 +21,12 @@ describe('POST /api/tests/run-all - Run All Tests (Integration)', () => {
         // Restore mocks before each test
         vi.restoreAllMocks()
 
+        // Mock discovery to avoid spawning real Playwright process
+        vi.spyOn(
+            server.serviceContainer.playwrightService as any,
+            'discoverTests'
+        ).mockResolvedValue([])
+
         // Force reset active processes tracker (clear all active runs)
         activeProcessesTracker.forceReset()
     })

@@ -60,7 +60,7 @@ describe('TestService', () => {
 
         // Create mock instances
         mockTestRepository = {
-            execute: vi.fn(),
+            execute: vi.fn().mockResolvedValue(undefined),
             saveTestResult: vi.fn(),
             getTestResult: vi.fn(),
             getAllTests: vi.fn(),
@@ -80,7 +80,7 @@ describe('TestService', () => {
         }
 
         mockPlaywrightService = {
-            discoverTests: vi.fn(),
+            discoverTests: vi.fn().mockResolvedValue([]),
             runAllTests: vi.fn(),
             runTestGroup: vi.fn(),
             rerunSingleTest: vi.fn(),

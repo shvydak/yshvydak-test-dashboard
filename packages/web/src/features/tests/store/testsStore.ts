@@ -3,6 +3,7 @@ import {devtools} from 'zustand/middleware'
 import {TestResult, TestRun, TestProgress} from '@yshvydak/core'
 import {authGet, authPost, authDelete} from '@features/authentication/utils/authFetch'
 import {getMaxWorkersFromStorage} from '@/hooks/usePlaywrightWorkers'
+import {getAutoDiscoverFromStorage} from '@/hooks/useAutoDiscoverSetting'
 
 interface TestsState {
     tests: TestResult[]
@@ -264,11 +265,44 @@ export const useTestsStore = create<TestsState>()(
 
             runAllTests: async () => {
                 try {
+                    const autoDiscover = getAutoDiscoverFromStorage()
+
+                    // Auto-discover tests before running if setting is enabled
+                    if (autoDiscover) {
+                        set({isDiscovering: true, error: null})
+                        try {
+                            const discoveryResponse = await authPost(
+                                `${API_BASE_URL}/tests/discovery`
+                            )
+                            if (!discoveryResponse.ok) {
+                                throw new Error(`HTTP error! status: ${discoveryResponse.status}`)
+                            }
+                            const discoveryData = await discoveryResponse.json()
+                            if (!discoveryData.success) {
+                                throw new Error(discoveryData.message || 'Failed to discover tests')
+                            }
+                            // Refresh test list with newly discovered tests (Q3)
+                            await get().fetchTests()
+                        } catch (error) {
+                            // Q1: abort run if discovery failed
+                            set({
+                                isDiscovering: false,
+                                error:
+                                    error instanceof Error
+                                        ? error.message
+                                        : 'Failed to discover tests',
+                            })
+                            return
+                        }
+                        set({isDiscovering: false})
+                    }
+
                     set({isRunningAllTests: true, error: null})
 
                     const maxWorkers = getMaxWorkersFromStorage()
                     const response = await authPost(`${API_BASE_URL}/tests/run-all`, {
                         maxWorkers,
+                        skipAutoDiscovery: true, // discovery already handled above (or disabled)
                     })
 
                     if (!response.ok) {

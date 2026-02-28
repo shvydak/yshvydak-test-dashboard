@@ -240,7 +240,7 @@ function App() {
 
             <SettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
 
-            <main className="flex-1 overflow-y-auto container mx-auto px-4 py-8">
+            <main className="flex-1 overflow-y-auto container mx-auto px-3 md:px-4 py-4 md:py-8">
                 <Routes>
                     <Route path="/" element={<Navigate to="/tests" replace />} />
                     <Route
@@ -262,10 +262,10 @@ function App() {
             <FloatingProgressPanel />
 
             {/* Footer */}
-            <footer className="bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 mt-12">
-                <div className="container mx-auto px-4 py-6">
-                    <div className="flex items-center justify-between">
-                        <p className="text-sm text-gray-600 dark:text-gray-400">
+            <footer className="bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 mt-6 md:mt-12">
+                <div className="container mx-auto px-3 md:px-4 py-4 md:py-6">
+                    <div className="flex flex-col sm:flex-row items-center sm:justify-between gap-2">
+                        <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 text-center sm:text-left">
                             © 2025{' '}
                             <a
                                 href="https://github.com/shvydak/yshvydak-test-dashboard"
@@ -287,7 +287,7 @@ function App() {
                             .
                         </p>
                         <div className="flex items-center space-x-4">
-                            <span className="text-xs text-gray-500 dark:text-gray-500">
+                            <span className="text-xs text-gray-500 dark:text-gray-500 hidden sm:inline">
                                 Welcome,{' '}
                                 {(() => {
                                     try {

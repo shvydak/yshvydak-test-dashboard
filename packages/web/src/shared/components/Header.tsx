@@ -21,6 +21,7 @@ export default function Header({
     const navigate = useNavigate()
     const location = useLocation()
     const [showUserMenu, setShowUserMenu] = useState(false)
+    const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
 
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
@@ -34,10 +35,28 @@ export default function Header({
         return () => document.removeEventListener('mousedown', handleClickOutside)
     }, [showUserMenu])
 
+    // Close mobile menu on route change
+    useEffect(() => {
+        setMobileMenuOpen(false)
+    }, [location.pathname])
+
+    // Prevent body scroll when mobile menu is open
+    useEffect(() => {
+        if (mobileMenuOpen) {
+            document.body.style.overflow = 'hidden'
+        } else {
+            document.body.style.overflow = ''
+        }
+        return () => {
+            document.body.style.overflow = ''
+        }
+    }, [mobileMenuOpen])
+
     const handleLogout = () => {
         localStorage.removeItem('_auth')
         sessionStorage.removeItem('_auth')
         setShowUserMenu(false)
+        setMobileMenuOpen(false)
         window.location.reload()
     }
 
@@ -60,155 +79,309 @@ export default function Header({
             navigate('/dashboard')
         }
         onViewChange(view)
+        setMobileMenuOpen(false)
     }
 
     return (
-        <header className="sticky top-0 z-50 bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700">
-            <div className="container mx-auto px-4">
-                <div className="flex items-center justify-between h-16">
-                    {/* Logo and title */}
-                    <div className="flex items-center space-x-4">
-                        <div className="flex items-center space-x-2">
-                            <a
-                                href="https://github.com/shvydak/yshvydak-test-dashboard"
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="w-8 h-8 bg-gradient-to-br from-primary-500 to-primary-600 rounded-lg flex items-center justify-center hover:from-primary-600 hover:to-primary-700 transition-all"
-                                title="View project on GitHub">
-                                <span className="text-white font-bold text-sm">YS</span>
-                            </a>
-                            <div>
-                                <h1 className="text-xl font-bold text-gray-900 dark:text-white">
-                                    <a
-                                        href="https://github.com/shvydak/yshvydak-test-dashboard"
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="hover:text-primary-600 dark:hover:text-primary-400 transition-colors"
-                                        title="View project on GitHub">
-                                        Test Dashboard
-                                    </a>
-                                </h1>
-                                <p className="text-xs text-gray-500 dark:text-gray-400">
-                                    by{' '}
-                                    <a
-                                        href="https://github.com/shvydak/yshvydak-test-dashboard"
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="hover:text-primary-600 dark:hover:text-primary-400 transition-colors"
-                                        title="View project on GitHub">
-                                        Yurii Shvydak
-                                    </a>
-                                </p>
+        <>
+            <header className="sticky top-0 z-50 bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700">
+                <div className="container mx-auto px-4">
+                    <div className="flex items-center justify-between h-14 md:h-16">
+                        {/* Logo and title */}
+                        <div className="flex items-center space-x-2 md:space-x-4 min-w-0">
+                            <div className="flex items-center space-x-2 min-w-0">
+                                <a
+                                    href="https://github.com/shvydak/yshvydak-test-dashboard"
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="w-8 h-8 flex-shrink-0 bg-gradient-to-br from-primary-500 to-primary-600 rounded-lg flex items-center justify-center hover:from-primary-600 hover:to-primary-700 transition-all"
+                                    title="View project on GitHub">
+                                    <span className="text-white font-bold text-sm">YS</span>
+                                </a>
+                                <div className="min-w-0">
+                                    <h1 className="text-lg md:text-xl font-bold text-gray-900 dark:text-white truncate">
+                                        <a
+                                            href="https://github.com/shvydak/yshvydak-test-dashboard"
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="hover:text-primary-600 dark:hover:text-primary-400 transition-colors"
+                                            title="View project on GitHub">
+                                            Test Dashboard
+                                        </a>
+                                    </h1>
+                                    <p className="text-xs text-gray-500 dark:text-gray-400 hidden sm:block">
+                                        by{' '}
+                                        <a
+                                            href="https://github.com/shvydak/yshvydak-test-dashboard"
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="hover:text-primary-600 dark:hover:text-primary-400 transition-colors"
+                                            title="View project on GitHub">
+                                            Yurii Shvydak
+                                        </a>
+                                    </p>
+                                </div>
                             </div>
                         </div>
-                    </div>
 
-                    {/* Navigation */}
-                    <nav className="flex items-center space-x-1">
-                        <button
-                            onClick={() => handleViewChange('dashboard')}
-                            className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
-                                currentView === 'dashboard'
-                                    ? 'bg-primary-100 dark:bg-primary-900 text-primary-700 dark:text-primary-300'
-                                    : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-700'
-                            }`}>
-                            Dashboard
-                        </button>
-                        <button
-                            onClick={() => handleViewChange('tests')}
-                            className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
-                                currentView === 'tests'
-                                    ? 'bg-primary-100 dark:bg-primary-900 text-primary-700 dark:text-primary-300'
-                                    : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-700'
-                            }`}>
-                            Tests
-                        </button>
-                    </nav>
+                        {/* Desktop Navigation */}
+                        <nav className="hidden md:flex items-center space-x-1">
+                            <button
+                                onClick={() => handleViewChange('dashboard')}
+                                className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
+                                    currentView === 'dashboard'
+                                        ? 'bg-primary-100 dark:bg-primary-900 text-primary-700 dark:text-primary-300'
+                                        : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-700'
+                                }`}>
+                                Dashboard
+                            </button>
+                            <button
+                                onClick={() => handleViewChange('tests')}
+                                className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
+                                    currentView === 'tests'
+                                        ? 'bg-primary-100 dark:bg-primary-900 text-primary-700 dark:text-primary-300'
+                                        : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-700'
+                                }`}>
+                                Tests
+                            </button>
+                        </nav>
 
-                    {/* Theme indicator, status, and user menu */}
-                    <div className="flex items-center space-x-4">
-                        {/* Theme indicator */}
-                        <div className="flex items-center space-x-2 text-xs text-gray-500 dark:text-gray-400">
-                            <span>{isDark ? '🌙' : '☀️'}</span>
-                            <span className="hidden sm:inline">
-                                {isDark ? 'Dark' : 'Light'} mode
-                            </span>
+                        {/* Desktop: Theme indicator, status, and user menu */}
+                        <div className="hidden md:flex items-center space-x-4">
+                            {/* Theme indicator */}
+                            <div className="flex items-center space-x-2 text-xs text-gray-500 dark:text-gray-400">
+                                <span>{isDark ? '🌙' : '☀️'}</span>
+                                <span className="hidden sm:inline">
+                                    {isDark ? 'Dark' : 'Light'} mode
+                                </span>
+                            </div>
+
+                            {/* WebSocket connection status indicator */}
+                            <div className="flex items-center space-x-2">
+                                <div
+                                    className={`w-2 h-2 rounded-full ${
+                                        wsConnected ? 'bg-green-500 animate-pulse' : 'bg-red-500'
+                                    }`}></div>
+                                <span className="text-xs text-gray-500 dark:text-gray-400 hidden sm:inline">
+                                    {wsConnected ? 'Live Updates' : 'Disconnected'}
+                                </span>
+                            </div>
+
+                            {/* User menu */}
+                            {user && (
+                                <div className="relative" data-user-menu>
+                                    <button
+                                        onClick={() => setShowUserMenu(!showUserMenu)}
+                                        className="flex items-center space-x-2 text-sm bg-gray-100 dark:bg-gray-700 rounded-md px-3 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors">
+                                        <div className="w-6 h-6 bg-blue-600 rounded-full flex items-center justify-center">
+                                            <span className="text-white text-xs font-medium">
+                                                {getUserData()?.email?.[0]?.toUpperCase() || 'U'}
+                                            </span>
+                                        </div>
+                                        <span className="hidden lg:inline">
+                                            {getUserData()?.email || 'User'}
+                                        </span>
+                                        <svg
+                                            className="w-4 h-4"
+                                            fill="currentColor"
+                                            viewBox="0 0 20 20">
+                                            <path
+                                                fillRule="evenodd"
+                                                d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"
+                                                clipRule="evenodd"
+                                            />
+                                        </svg>
+                                    </button>
+
+                                    {/* Dropdown menu */}
+                                    {showUserMenu && (
+                                        <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-md shadow-lg border border-gray-200 dark:border-gray-700 z-50">
+                                            <div className="py-1">
+                                                <div className="px-4 py-2 text-sm text-gray-700 dark:text-gray-300 border-b border-gray-200 dark:border-gray-700">
+                                                    <div className="font-medium">
+                                                        {getUserData()?.email || 'User'}
+                                                    </div>
+                                                    {getUserData()?.role && (
+                                                        <div className="text-xs text-gray-500 dark:text-gray-400 capitalize">
+                                                            {getUserData()?.role}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                                {onOpenSettings && (
+                                                    <button
+                                                        onClick={() => {
+                                                            onOpenSettings()
+                                                            setShowUserMenu(false)
+                                                        }}
+                                                        className="block w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+                                                        ⚙️ Settings
+                                                    </button>
+                                                )}
+                                                <button
+                                                    onClick={handleLogout}
+                                                    className="block w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+                                                    🔓 Sign out
+                                                </button>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
                         </div>
 
-                        {/* WebSocket connection status indicator */}
-                        <div className="flex items-center space-x-2">
+                        {/* Mobile: compact status + hamburger */}
+                        <div className="flex md:hidden items-center space-x-3">
+                            {/* Compact status indicators */}
+                            <span className="text-sm">{isDark ? '🌙' : '☀️'}</span>
                             <div
                                 className={`w-2 h-2 rounded-full ${
                                     wsConnected ? 'bg-green-500 animate-pulse' : 'bg-red-500'
                                 }`}></div>
-                            <span className="text-xs text-gray-500 dark:text-gray-400 hidden sm:inline">
-                                {wsConnected ? 'Live Updates' : 'Disconnected'}
-                            </span>
-                        </div>
 
-                        {/* User menu */}
-                        {user && (
-                            <div className="relative" data-user-menu>
-                                <button
-                                    onClick={() => setShowUserMenu(!showUserMenu)}
-                                    className="flex items-center space-x-2 text-sm bg-gray-100 dark:bg-gray-700 rounded-md px-3 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors">
-                                    <div className="w-6 h-6 bg-blue-600 rounded-full flex items-center justify-center">
-                                        <span className="text-white text-xs font-medium">
-                                            {getUserData()?.email?.[0]?.toUpperCase() || 'U'}
-                                        </span>
-                                    </div>
-                                    <span className="hidden md:inline">
-                                        {getUserData()?.email || 'User'}
-                                    </span>
+                            {/* Hamburger button */}
+                            <button
+                                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+                                className="p-2 rounded-md text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                                aria-label="Toggle menu">
+                                {mobileMenuOpen ? (
                                     <svg
-                                        className="w-4 h-4"
-                                        fill="currentColor"
-                                        viewBox="0 0 20 20">
+                                        className="w-6 h-6"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        viewBox="0 0 24 24">
                                         <path
-                                            fillRule="evenodd"
-                                            d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"
-                                            clipRule="evenodd"
+                                            strokeLinecap="round"
+                                            strokeLinejoin="round"
+                                            strokeWidth={2}
+                                            d="M6 18L18 6M6 6l12 12"
                                         />
                                     </svg>
-                                </button>
-
-                                {/* Dropdown menu */}
-                                {showUserMenu && (
-                                    <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-md shadow-lg border border-gray-200 dark:border-gray-700 z-50">
-                                        <div className="py-1">
-                                            <div className="px-4 py-2 text-sm text-gray-700 dark:text-gray-300 border-b border-gray-200 dark:border-gray-700">
-                                                <div className="font-medium">
-                                                    {getUserData()?.email || 'User'}
-                                                </div>
-                                                {getUserData()?.role && (
-                                                    <div className="text-xs text-gray-500 dark:text-gray-400 capitalize">
-                                                        {getUserData()?.role}
-                                                    </div>
-                                                )}
-                                            </div>
-                                            {onOpenSettings && (
-                                                <button
-                                                    onClick={() => {
-                                                        onOpenSettings()
-                                                        setShowUserMenu(false)
-                                                    }}
-                                                    className="block w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
-                                                    ⚙️ Settings
-                                                </button>
-                                            )}
-                                            <button
-                                                onClick={handleLogout}
-                                                className="block w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
-                                                🔓 Sign out
-                                            </button>
-                                        </div>
-                                    </div>
+                                ) : (
+                                    <svg
+                                        className="w-6 h-6"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        viewBox="0 0 24 24">
+                                        <path
+                                            strokeLinecap="round"
+                                            strokeLinejoin="round"
+                                            strokeWidth={2}
+                                            d="M4 6h16M4 12h16M4 18h16"
+                                        />
+                                    </svg>
                                 )}
-                            </div>
-                        )}
+                            </button>
+                        </div>
                     </div>
                 </div>
-            </div>
-        </header>
+            </header>
+
+            {/* Mobile menu overlay */}
+            {mobileMenuOpen && (
+                <div className="fixed inset-0 z-40 md:hidden">
+                    {/* Backdrop */}
+                    <div
+                        className="fixed inset-0 bg-black/50 backdrop-blur-sm"
+                        onClick={() => setMobileMenuOpen(false)}
+                    />
+
+                    {/* Slide-in menu */}
+                    <div className="fixed top-14 right-0 bottom-0 w-72 bg-white dark:bg-gray-800 shadow-xl border-l border-gray-200 dark:border-gray-700 overflow-y-auto">
+                        <div className="p-4 space-y-1">
+                            {/* Navigation */}
+                            <p className="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider px-3 pb-2">
+                                Navigation
+                            </p>
+                            <button
+                                onClick={() => handleViewChange('dashboard')}
+                                className={`w-full text-left px-3 py-3 text-sm font-medium rounded-lg transition-colors ${
+                                    currentView === 'dashboard'
+                                        ? 'bg-primary-100 dark:bg-primary-900 text-primary-700 dark:text-primary-300'
+                                        : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                                }`}>
+                                📊 Dashboard
+                            </button>
+                            <button
+                                onClick={() => handleViewChange('tests')}
+                                className={`w-full text-left px-3 py-3 text-sm font-medium rounded-lg transition-colors ${
+                                    currentView === 'tests'
+                                        ? 'bg-primary-100 dark:bg-primary-900 text-primary-700 dark:text-primary-300'
+                                        : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                                }`}>
+                                🧪 Tests
+                            </button>
+
+                            {/* Divider */}
+                            <div className="border-t border-gray-200 dark:border-gray-700 my-3"></div>
+
+                            {/* Status */}
+                            <p className="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider px-3 pb-2">
+                                Status
+                            </p>
+                            <div className="px-3 py-2 flex items-center justify-between text-sm text-gray-600 dark:text-gray-400">
+                                <span>Theme</span>
+                                <span>{isDark ? '🌙 Dark' : '☀️ Light'} mode</span>
+                            </div>
+                            <div className="px-3 py-2 flex items-center justify-between text-sm text-gray-600 dark:text-gray-400">
+                                <span>Connection</span>
+                                <div className="flex items-center space-x-2">
+                                    <div
+                                        className={`w-2 h-2 rounded-full ${
+                                            wsConnected
+                                                ? 'bg-green-500 animate-pulse'
+                                                : 'bg-red-500'
+                                        }`}></div>
+                                    <span>{wsConnected ? 'Live Updates' : 'Disconnected'}</span>
+                                </div>
+                            </div>
+
+                            {/* Divider */}
+                            <div className="border-t border-gray-200 dark:border-gray-700 my-3"></div>
+
+                            {/* User section */}
+                            {user && (
+                                <>
+                                    <p className="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider px-3 pb-2">
+                                        Account
+                                    </p>
+                                    <div className="px-3 py-2 flex items-center space-x-3">
+                                        <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center flex-shrink-0">
+                                            <span className="text-white text-sm font-medium">
+                                                {getUserData()?.email?.[0]?.toUpperCase() || 'U'}
+                                            </span>
+                                        </div>
+                                        <div className="min-w-0">
+                                            <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
+                                                {getUserData()?.email || 'User'}
+                                            </p>
+                                            {getUserData()?.role && (
+                                                <p className="text-xs text-gray-500 dark:text-gray-400 capitalize">
+                                                    {getUserData()?.role}
+                                                </p>
+                                            )}
+                                        </div>
+                                    </div>
+                                    {onOpenSettings && (
+                                        <button
+                                            onClick={() => {
+                                                onOpenSettings()
+                                                setMobileMenuOpen(false)
+                                            }}
+                                            className="w-full text-left px-3 py-3 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors">
+                                            ⚙️ Settings
+                                        </button>
+                                    )}
+                                    <button
+                                        onClick={handleLogout}
+                                        className="w-full text-left px-3 py-3 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors">
+                                        🔓 Sign out
+                                    </button>
+                                </>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
+        </>
     )
 }

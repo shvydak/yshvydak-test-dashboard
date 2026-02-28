@@ -15,11 +15,11 @@ export function SettingsModal({isOpen, onClose}: SettingsModalProps) {
 
     return (
         <div className="fixed inset-0 z-50 overflow-y-auto">
-            <div className="flex min-h-screen items-center justify-center p-4">
+            <div className="flex min-h-screen items-center justify-center p-0 md:p-4">
                 <ModalBackdrop onClick={onClose} blur="sm" />
 
-                <div className="relative w-full max-w-2xl bg-white dark:bg-gray-800 rounded-lg shadow-xl">
-                    <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
+                <div className="relative w-full max-w-2xl bg-white dark:bg-gray-800 md:rounded-lg shadow-xl max-h-screen md:max-h-[90vh] overflow-y-auto">
+                    <div className="flex items-center justify-between p-4 md:p-6 border-b border-gray-200 dark:border-gray-700">
                         <div>
                             <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
                                 Settings

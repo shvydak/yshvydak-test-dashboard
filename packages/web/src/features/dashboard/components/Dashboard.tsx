@@ -117,9 +117,11 @@ export default function Dashboard() {
 
     return (
         <div className="space-y-6">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                 <div>
-                    <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Dashboard</h1>
+                    <h1 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white">
+                        Dashboard
+                    </h1>
                     <p className="mt-2 text-gray-600 dark:text-gray-400">
                         Test execution overview and statistics
                     </p>
@@ -139,7 +141,7 @@ export default function Dashboard() {
 
             <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
                 <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-6">
-                    <div className="flex items-center justify-between mb-6">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6 gap-3">
                         <div>
                             <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
                                 Flaky Tests

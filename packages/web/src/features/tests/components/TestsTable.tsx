@@ -17,7 +17,7 @@ export function TestsTable({
     showFilePath = false,
 }: TestsTableProps) {
     return (
-        <div className="overflow-x-auto">
+        <div className="overflow-x-clip sm:overflow-x-auto">
             <table className="w-full">
                 <thead>
                     <tr className="border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">

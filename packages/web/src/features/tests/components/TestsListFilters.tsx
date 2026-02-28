@@ -81,7 +81,7 @@ export function TestsListFilters({
             </div>
 
             {/* Filters - horizontally scrollable on mobile */}
-            <div className="overflow-x-auto -mx-4 px-4 md:mx-0 md:px-0 pb-1 md:pb-0">
+            <div className="overflow-x-auto overscroll-x-contain pb-1 md:pb-0">
                 <FilterButtonGroup
                     value={filter}
                     onChange={(value) => onFilterChange(value as FilterKey)}

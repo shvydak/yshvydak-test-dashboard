@@ -97,7 +97,7 @@ export const FloatingProgressPanel = () => {
         return (
             <>
                 <div
-                    className="fixed bottom-4 right-4 z-50 bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 px-4 py-2 cursor-pointer hover:shadow-2xl transition-shadow"
+                    className="fixed bottom-3 right-3 md:bottom-4 md:right-4 z-50 bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 px-4 py-2 cursor-pointer hover:shadow-2xl transition-shadow"
                     onClick={() => setIsMinimized(false)}
                     role="button"
                     aria-label="Expand progress panel">
@@ -120,7 +120,7 @@ export const FloatingProgressPanel = () => {
     }
 
     return (
-        <div className="fixed bottom-4 right-4 z-50 w-96 bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 transition-all">
+        <div className="fixed bottom-3 left-3 right-3 md:left-auto md:right-4 md:bottom-4 z-50 md:w-96 bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 transition-all">
             {/* Header */}
             <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-700">
                 <div className="flex items-center gap-2">

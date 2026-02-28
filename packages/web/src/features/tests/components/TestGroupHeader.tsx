@@ -20,19 +20,17 @@ export function TestGroupHeader({group, expanded, onToggle, filter}: TestGroupHe
 
     return (
         <div
-            className="py-4 border-b border-gray-200 dark:border-gray-700 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors"
+            className="py-3 md:py-4 border-b border-gray-200 dark:border-gray-700 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors"
             onClick={onToggle}>
-            <div className="flex items-center justify-between px-6 min-h-[32px]">
-                <div className="flex items-center space-x-3">
-                    <span className="text-gray-400">{expanded ? '▼' : '▶'}</span>
-                    <span className="font-medium text-gray-900 dark:text-white font-mono text-sm">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between px-3 md:px-6 gap-2 sm:gap-0 min-h-[32px]">
+                <div className="flex items-center space-x-2 md:space-x-3 min-w-0">
+                    <span className="text-gray-400 flex-shrink-0">{expanded ? '▼' : '▶'}</span>
+                    <span className="font-medium text-gray-900 dark:text-white font-mono text-xs md:text-sm truncate">
                         {group.filePath}
                     </span>
                 </div>
-                <div
-                    className="flex items-center justify-end space-x-4 text-sm"
-                    style={{width: '28rem'}}>
-                    <div className="flex items-center space-x-2">
+                <div className="flex items-center justify-between sm:justify-end space-x-3 md:space-x-4 text-sm pl-5 sm:pl-0">
+                    <div className="flex items-center space-x-2 flex-wrap">
                         <span className="text-gray-600 dark:text-gray-400">
                             {group.total} test{group.total !== 1 ? 's' : ''}
                         </span>
@@ -70,7 +68,8 @@ export function TestGroupHeader({group, expanded, onToggle, filter}: TestGroupHe
                                 runTestsGroup(group.filePath, testNames)
                             }
                         }}>
-                        Run Tests Group
+                        <span className="hidden sm:inline">Run Tests Group</span>
+                        <span className="sm:hidden">Run</span>
                     </ActionButton>
                 </div>
             </div>

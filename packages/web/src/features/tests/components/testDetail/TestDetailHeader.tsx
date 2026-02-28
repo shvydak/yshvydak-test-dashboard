@@ -10,6 +10,9 @@ export interface TestDetailHeaderProps {
     onClose: () => void
     onBackToLatest: () => void
     onDelete?: () => void
+    onRerun?: () => void
+    isRunning?: boolean
+    isAnyTestRunning?: boolean
 }
 
 export function TestDetailHeader({
@@ -20,6 +23,9 @@ export function TestDetailHeader({
     onClose,
     onBackToLatest,
     onDelete,
+    onRerun,
+    isRunning,
+    isAnyTestRunning,
 }: TestDetailHeaderProps) {
     const [copied, setCopied] = useState(false)
 
@@ -34,13 +40,13 @@ export function TestDetailHeader({
     }
 
     return (
-        <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
-            <div className="flex-1">
-                <div className="flex items-center space-x-3 mb-1">
+        <div className="flex items-start md:items-center justify-between p-4 md:p-6 border-b border-gray-200 dark:border-gray-700 gap-3">
+            <div className="flex-1 min-w-0">
+                <div className="flex items-center space-x-2 md:space-x-3 mb-1">
                     <StatusBadge status={testStatus as any} />
                     <h2
                         onClick={handleCopyTestName}
-                        className="text-xl font-semibold text-gray-900 dark:text-white cursor-pointer hover:text-primary-600 dark:hover:text-primary-400 transition-colors select-none"
+                        className="text-base md:text-xl font-semibold text-gray-900 dark:text-white cursor-pointer hover:text-primary-600 dark:hover:text-primary-400 transition-colors select-none truncate"
                         title="Click to copy test name">
                         {copied ? (
                             <span className="flex items-center gap-2">
@@ -65,34 +71,50 @@ export function TestDetailHeader({
                 </div>
 
                 {!isLatest && executionDate && (
-                    <div className="flex items-center space-x-2 mt-2">
-                        <span className="text-sm text-gray-600 dark:text-gray-400">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:space-x-2 mt-2 gap-1">
+                        <span className="text-xs md:text-sm text-gray-600 dark:text-gray-400">
                             Viewing execution: {formatLastRun({createdAt: executionDate})}
                         </span>
                         <button
                             onClick={onBackToLatest}
-                            className="text-sm text-primary-600 hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300 font-medium transition-colors">
+                            className="text-xs md:text-sm text-primary-600 hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300 font-medium transition-colors">
                             ← Back to latest
                         </button>
                     </div>
                 )}
 
                 {isLatest && (
-                    <span className="text-sm text-gray-600 dark:text-gray-400">
+                    <span className="text-xs md:text-sm text-gray-600 dark:text-gray-400">
                         Latest execution
                     </span>
                 )}
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-shrink-0">
+                {/* Mobile: Show Run button instead of Delete */}
+                {onRerun && (
+                    <Button
+                        variant="primary"
+                        size="sm"
+                        onClick={onRerun}
+                        disabled={isRunning || isAnyTestRunning}
+                        className="md:hidden">
+                        {isRunning ? 'Running...' : '▶️ Run'}
+                    </Button>
+                )}
+                {/* Desktop: Show Delete button */}
                 {onDelete && (
-                    <Button variant="danger" size="sm" onClick={onDelete}>
+                    <Button
+                        variant="danger"
+                        size="sm"
+                        onClick={onDelete}
+                        className="hidden md:inline-flex">
                         Delete Test
                     </Button>
                 )}
                 <button
                     onClick={onClose}
-                    className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors">
+                    className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors p-1">
                     <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path
                             strokeLinecap="round"

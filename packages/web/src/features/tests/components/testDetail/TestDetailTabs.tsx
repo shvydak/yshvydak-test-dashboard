@@ -20,8 +20,8 @@ export function TestDetailTabs({activeTab, onTabChange}: TestDetailTabsProps) {
     ]
 
     return (
-        <div className="border-b border-gray-200 dark:border-gray-700">
-            <nav className="flex space-x-8 px-6">
+        <div className="flex-1">
+            <nav className="flex space-x-4 md:space-x-8 px-3 md:px-6">
                 {tabs.map((tab) => (
                     <button
                         key={tab.key}

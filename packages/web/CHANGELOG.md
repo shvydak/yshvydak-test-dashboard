@@ -1,5 +1,13 @@
 # @yshvydak/web
 
+## 1.7.2
+
+### Patch Changes
+
+- Mobile view support
+- Updated dependencies
+    - @yshvydak/core@1.7.2
+
 ## 1.7.1
 
 ### Patch Changes

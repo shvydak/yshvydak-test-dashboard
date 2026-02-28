@@ -21,24 +21,24 @@ export function TestsTable({
             <table className="w-full">
                 <thead>
                     <tr className="border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
-                        <th className="text-left py-3 px-6 text-xs font-medium text-gray-600 dark:text-gray-400 w-32">
+                        <th className="text-left py-3 px-3 md:px-6 text-xs font-medium text-gray-600 dark:text-gray-400 w-24 md:w-32">
                             Status
                         </th>
-                        <th className="text-left py-3 px-6 text-xs font-medium text-gray-600 dark:text-gray-400">
+                        <th className="text-left py-3 px-3 md:px-6 text-xs font-medium text-gray-600 dark:text-gray-400">
                             Test Name
                         </th>
                         {showFilePath && (
-                            <th className="text-left py-3 px-6 text-xs font-medium text-gray-600 dark:text-gray-400">
+                            <th className="text-left py-3 px-6 text-xs font-medium text-gray-600 dark:text-gray-400 hidden lg:table-cell">
                                 File Path
                             </th>
                         )}
-                        <th className="text-left py-3 px-6 text-xs font-medium text-gray-600 dark:text-gray-400 w-24">
+                        <th className="text-left py-3 px-6 text-xs font-medium text-gray-600 dark:text-gray-400 w-24 hidden sm:table-cell">
                             Duration
                         </th>
-                        <th className="text-left py-3 px-6 text-xs font-medium text-gray-600 dark:text-gray-400 w-48">
+                        <th className="text-left py-3 px-6 text-xs font-medium text-gray-600 dark:text-gray-400 w-48 hidden lg:table-cell">
                             Last Run
                         </th>
-                        <th className="text-left py-3 px-6 text-xs font-medium text-gray-600 dark:text-gray-400 w-40">
+                        <th className="text-left py-3 px-3 md:px-6 text-xs font-medium text-gray-600 dark:text-gray-400 w-20 md:w-40 hidden sm:table-cell">
                             Actions
                         </th>
                     </tr>

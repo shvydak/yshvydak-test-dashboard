@@ -1,5 +1,11 @@
 # @yshvydak/core
 
+## 1.7.2
+
+### Patch Changes
+
+- Mobile view support
+
 ## 1.7.1
 
 ### Patch Changes

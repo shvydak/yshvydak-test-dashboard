@@ -1,6 +1,6 @@
 {
     "name": "@yshvydak/web",
-    "version": "1.7.2",
+    "version": "1.7.3",
     "type": "module",
     "description": "Frontend web application for yshvydak-test-dashboard",
     "main": "dist/index.js",
@@ -27,7 +27,7 @@
     "license": "MIT",
     "dependencies": {
         "@tanstack/react-query": "^5.8.4",
-        "@yshvydak/core": "^1.7.2",
+        "@yshvydak/core": "^1.7.3",
         "react": "^18.2.0",
         "react-dom": "^18.2.0",
         "react-router-dom": "^6.30.1",

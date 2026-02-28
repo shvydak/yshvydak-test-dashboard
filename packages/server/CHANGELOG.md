@@ -1,11 +1,19 @@
 # @yshvydak/test-dashboard-server
 
+## 1.7.3
+
+### Patch Changes
+
+- mobile - fix scroll\
+- Updated dependencies
+    - @yshvydak/core@1.7.3
+
 ## 1.7.2
 
 ### Patch Changes
 
 - Mobile view support
-- Updated dependencies  
+- Updated dependencies
     - @yshvydak/core@1.7.2
 
 ## 1.7.1

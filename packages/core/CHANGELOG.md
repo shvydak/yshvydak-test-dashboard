@@ -1,5 +1,11 @@
 # @yshvydak/core
 
+## 1.7.3
+
+### Patch Changes
+
+- mobile - fix scroll\
+
 ## 1.7.2
 
 ### Patch Changes

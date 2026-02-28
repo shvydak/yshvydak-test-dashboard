@@ -1,5 +1,13 @@
 # @yshvydak/web
 
+## 1.7.3
+
+### Patch Changes
+
+- mobile - fix scroll\
+- Updated dependencies
+    - @yshvydak/core@1.7.3
+
 ## 1.7.2
 
 ### Patch Changes

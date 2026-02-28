@@ -28,7 +28,6 @@ export function TestDetailModal({test, isOpen, onClose}: TestDetailModalProps) {
     const [executionToDelete, setExecutionToDelete] = useState<string | null>(null)
     const [isDeleting, setIsDeleting] = useState(false)
     const [isDeletingExecution, setIsDeletingExecution] = useState(false)
-    const [showMobileSidebar, setShowMobileSidebar] = useState(false)
     const [swipeOffset, setSwipeOffset] = useState(0)
 
     const swipeStartY = useRef<number | null>(null)
@@ -151,13 +150,11 @@ export function TestDetailModal({test, isOpen, onClose}: TestDetailModalProps) {
     const handleClose = () => {
         selectExecution(null)
         setActiveTab('overview')
-        setShowMobileSidebar(false)
         onClose()
     }
 
     const handleSelectExecution = (executionId: string) => {
         selectExecution(executionId)
-        setShowMobileSidebar(false)
     }
 
     const handleDeleteClick = () => {
@@ -303,31 +300,9 @@ export function TestDetailModal({test, isOpen, onClose}: TestDetailModalProps) {
                         />
                     </div>
 
-                    {/* Tabs + mobile history toggle */}
-                    <div className="flex items-center justify-between border-b border-gray-200 dark:border-gray-700">
+                    {/* Tabs */}
+                    <div className="border-b border-gray-200 dark:border-gray-700">
                         <TestDetailTabs activeTab={activeTab} onTabChange={setActiveTab} />
-
-                        {/* Mobile history toggle button */}
-                        <button
-                            onClick={() => setShowMobileSidebar(!showMobileSidebar)}
-                            className="md:hidden flex items-center gap-1.5 px-4 py-3 text-sm font-medium text-gray-600 dark:text-gray-400 hover:text-primary-600 dark:hover:text-primary-400 transition-colors">
-                            <svg
-                                className="w-4 h-4"
-                                fill="none"
-                                stroke="currentColor"
-                                viewBox="0 0 24 24">
-                                <path
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    strokeWidth={2}
-                                    d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
-                                />
-                            </svg>
-                            <span>History</span>
-                            <span className="bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 text-xs rounded-full px-1.5 py-0.5">
-                                {executions.length}
-                            </span>
-                        </button>
                     </div>
 
                     {/* Main Content with Sidebar Layout */}
@@ -362,28 +337,6 @@ export function TestDetailModal({test, isOpen, onClose}: TestDetailModalProps) {
                                 error={historyError || undefined}
                             />
                         </div>
-
-                        {/* Mobile History Sidebar (slide-in overlay) */}
-                        {showMobileSidebar && (
-                            <div className="md:hidden absolute inset-0 z-20 flex">
-                                <div
-                                    className="flex-1 bg-black/30"
-                                    onClick={() => setShowMobileSidebar(false)}
-                                />
-                                <div className="w-80 max-w-[85vw]">
-                                    <ExecutionSidebar
-                                        executions={executions}
-                                        currentExecutionId={currentExecution?.id || test.id}
-                                        onSelectExecution={handleSelectExecution}
-                                        onDeleteExecution={handleDeleteExecutionClick}
-                                        testId={currentExecution?.id || test.id}
-                                        onRerun={handleRerun}
-                                        loading={historyLoading}
-                                        error={historyError || undefined}
-                                    />
-                                </div>
-                            </div>
-                        )}
                     </div>
                 </div>
 

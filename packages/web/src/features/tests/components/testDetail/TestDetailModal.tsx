@@ -1,4 +1,4 @@
-import {useState, useMemo, useCallback} from 'react'
+import {useState, useMemo, useCallback, useEffect, useRef} from 'react'
 import {useQueryClient} from '@tanstack/react-query'
 import {TestResult} from '@yshvydak/core'
 import {TabKey} from '../../types/attachment.types'
@@ -29,6 +29,10 @@ export function TestDetailModal({test, isOpen, onClose}: TestDetailModalProps) {
     const [isDeleting, setIsDeleting] = useState(false)
     const [isDeletingExecution, setIsDeletingExecution] = useState(false)
     const [showMobileSidebar, setShowMobileSidebar] = useState(false)
+    const [swipeOffset, setSwipeOffset] = useState(0)
+
+    const swipeStartY = useRef<number | null>(null)
+    const headerRef = useRef<HTMLDivElement>(null)
 
     const queryClient = useQueryClient()
     const selectedExecutionId = useTestsStore((state) => state.selectedExecutionId)
@@ -39,6 +43,64 @@ export function TestDetailModal({test, isOpen, onClose}: TestDetailModalProps) {
     const runningTests = useTestsStore((state) => state.runningTests)
     const getIsAnyTestRunning = useTestsStore((state) => state.getIsAnyTestRunning)
     const activeProgress = useTestsStore((state) => state.activeProgress)
+
+    // Lock body scroll when modal is open
+    useEffect(() => {
+        if (isOpen) {
+            const scrollY = window.scrollY
+            document.body.style.position = 'fixed'
+            document.body.style.top = `-${scrollY}px`
+            document.body.style.left = '0'
+            document.body.style.right = '0'
+            document.body.style.overflow = 'hidden'
+
+            return () => {
+                document.body.style.position = ''
+                document.body.style.top = ''
+                document.body.style.left = ''
+                document.body.style.right = ''
+                document.body.style.overflow = ''
+                window.scrollTo(0, scrollY)
+            }
+        }
+    }, [isOpen])
+
+    // Swipe-down-to-close on header (mobile only)
+    useEffect(() => {
+        const header = headerRef.current
+        if (!header || !isOpen) return
+
+        const handleTouchStart = (e: TouchEvent) => {
+            swipeStartY.current = e.touches[0].clientY
+        }
+
+        const handleTouchMove = (e: TouchEvent) => {
+            if (swipeStartY.current === null) return
+            const deltaY = e.touches[0].clientY - swipeStartY.current
+            if (deltaY > 0) {
+                setSwipeOffset(Math.min(deltaY, 150))
+                e.preventDefault()
+            }
+        }
+
+        const handleTouchEnd = () => {
+            if (swipeOffset > 80) {
+                handleClose()
+            }
+            setSwipeOffset(0)
+            swipeStartY.current = null
+        }
+
+        header.addEventListener('touchstart', handleTouchStart, {passive: true})
+        header.addEventListener('touchmove', handleTouchMove, {passive: false})
+        header.addEventListener('touchend', handleTouchEnd, {passive: true})
+
+        return () => {
+            header.removeEventListener('touchstart', handleTouchStart)
+            header.removeEventListener('touchmove', handleTouchMove)
+            header.removeEventListener('touchend', handleTouchEnd)
+        }
+    }, [isOpen, swipeOffset])
 
     const {
         executions,
@@ -190,27 +252,56 @@ export function TestDetailModal({test, isOpen, onClose}: TestDetailModalProps) {
 
     if (!isOpen || !test) return null
 
+    const swipeOpacity = swipeOffset > 0 ? Math.max(0.3, 1 - swipeOffset / 200) : 1
+
     return (
-        <div className="fixed inset-0 z-50 overflow-y-auto">
+        <div className="fixed inset-0 z-50 overflow-hidden">
             <div className="flex min-h-screen items-center justify-center p-0 md:p-4">
                 <ModalBackdrop onClick={handleClose} blur="sm" />
 
-                <div className="relative bg-white dark:bg-gray-800 md:rounded-lg shadow-xl max-w-7xl w-full h-screen md:h-[90vh] flex flex-col overflow-hidden">
-                    <TestDetailHeader
-                        testName={test.name}
-                        testStatus={currentExecution?.status || test.status}
-                        executionDate={currentExecution?.createdAt}
-                        isLatest={!selectedExecutionId}
-                        onClose={handleClose}
-                        onBackToLatest={() => selectExecution(null)}
-                        onDelete={handleDeleteClick}
-                        onRerun={() => handleRerun(currentExecution?.id || test.id)}
-                        isRunning={
-                            runningTests.has(currentExecution?.id || test.id) ||
-                            !!activeProgress?.runningTests.find((t) => t.testId === test.testId)
-                        }
-                        isAnyTestRunning={getIsAnyTestRunning()}
-                    />
+                <div
+                    className="relative bg-white dark:bg-gray-800 md:rounded-lg shadow-xl max-w-7xl w-full h-screen md:h-[90vh] flex flex-col overflow-hidden"
+                    style={
+                        swipeOffset > 0
+                            ? {
+                                  transform: `translateY(${swipeOffset}px)`,
+                                  opacity: swipeOpacity,
+                                  transition: 'none',
+                              }
+                            : {transition: 'transform 0.2s ease-out, opacity 0.2s ease-out'}
+                    }>
+                    {/* Swipe indicator - visible on mobile when dragging */}
+                    {swipeOffset > 0 && (
+                        <div className="md:hidden absolute top-0 left-0 right-0 flex justify-center py-1 z-10">
+                            <div className="w-10 h-1 bg-gray-400 dark:bg-gray-500 rounded-full" />
+                        </div>
+                    )}
+
+                    {/* Mobile swipe handle area */}
+                    <div
+                        ref={headerRef}
+                        className="md:cursor-default cursor-grab active:cursor-grabbing">
+                        {/* Swipe pill hint (mobile only, always visible) */}
+                        <div className="md:hidden flex justify-center pt-2 pb-0">
+                            <div className="w-8 h-1 bg-gray-300 dark:bg-gray-600 rounded-full" />
+                        </div>
+
+                        <TestDetailHeader
+                            testName={test.name}
+                            testStatus={currentExecution?.status || test.status}
+                            executionDate={currentExecution?.createdAt}
+                            isLatest={!selectedExecutionId}
+                            onClose={handleClose}
+                            onBackToLatest={() => selectExecution(null)}
+                            onDelete={handleDeleteClick}
+                            onRerun={() => handleRerun(currentExecution?.id || test.id)}
+                            isRunning={
+                                runningTests.has(currentExecution?.id || test.id) ||
+                                !!activeProgress?.runningTests.find((t) => t.testId === test.testId)
+                            }
+                            isAnyTestRunning={getIsAnyTestRunning()}
+                        />
+                    </div>
 
                     {/* Tabs + mobile history toggle */}
                     <div className="flex items-center justify-between border-b border-gray-200 dark:border-gray-700">
@@ -242,7 +333,7 @@ export function TestDetailModal({test, isOpen, onClose}: TestDetailModalProps) {
                     {/* Main Content with Sidebar Layout */}
                     <div className="flex flex-1 overflow-hidden relative">
                         {/* Tab Content Area */}
-                        <div className="flex-1 p-3 md:p-6 overflow-y-auto">
+                        <div className="flex-1 p-3 md:p-6 overflow-y-auto overscroll-contain">
                             {activeTab === 'overview' && (
                                 <TestOverviewTab
                                     test={currentExecution!}

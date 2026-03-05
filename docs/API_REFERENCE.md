@@ -415,6 +415,7 @@ Clear all test data from the database.
 ```
 
 **Notes**:
+
 - Returns an empty array (not an error) if Playwright is not installed or the config has no projects
 - Project names come from the `name` field in `playwright.config.ts` `projects[]` array
 - Used by Settings modal to populate the Playwright Project selector

@@ -273,9 +273,11 @@ Test execution configuration: workers, project selection, and auto-discover.
 **Hook Integration**:
 
 Uses `usePlaywrightWorkers()` hook:
+
 - `workers`, `setWorkers(count)`, `resetToDefault()`, `isValid(count)`
 
 Uses `usePlaywrightProject()` hook:
+
 - `selectedProject`: Currently selected project name (`""` = all projects)
 - `setSelectedProject(name)`: Save to localStorage
 - `availableProjects`: Project names from backend (`string[]`)
@@ -283,6 +285,7 @@ Uses `usePlaywrightProject()` hook:
 - `reloadProjects()`: Re-fetch from `GET /api/tests/projects`
 
 Uses `useAutoDiscoverSetting()` hook:
+
 - `enabled`, `toggle()`
 
 **Backend Integration**:

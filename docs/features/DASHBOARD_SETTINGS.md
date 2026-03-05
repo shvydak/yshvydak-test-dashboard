@@ -44,9 +44,9 @@ The Settings feature follows the project's **Feature-Based Architecture** with m
 │ Section              │  │ Execution        │  │ Section          │  │ (Extensible)         │
 │                      │  │ Section          │  │                  │  │                      │
 │ - Auto/Light/Dark    │  │ - Max Workers    │  │ - Discover Tests │  │ - Notifications      │
-│ - localStorage       │  │ - localStorage   │  │ - Health Check   │  │ - Display prefs      │
-│ - useTheme hook      │  │ - usePlaywright  │  │ - Clear Data     │  │ - Export/Import      │
-│                      │  │   Workers hook   │  │                  │  │                      │
+│ - localStorage       │  │ - Playwright     │  │ - Health Check   │  │ - Display prefs      │
+│ - useTheme hook      │  │   Project        │  │ - Clear Data     │  │ - Export/Import      │
+│                      │  │ - Auto-discover  │  │                  │  │                      │
 └──────────────────────┘  └──────────────────┘  └──────────────────┘  └──────────────────────┘
 ```
 
@@ -56,7 +56,8 @@ The Settings feature follows the project's **Feature-Based Architecture** with m
 packages/web/src/
 ├── hooks/
 │   ├── useTheme.ts                                    # Theme management hook
-│   └── usePlaywrightWorkers.ts                        # Playwright workers configuration hook
+│   ├── usePlaywrightWorkers.ts                        # Playwright workers configuration hook
+│   └── usePlaywrightProject.ts                        # Playwright project selection hook
 ├── features/
 │   └── dashboard/
 │       └── components/
@@ -239,7 +240,7 @@ Theme selector with three visual buttons.
 
 **Location**: `packages/web/src/features/dashboard/components/settings/SettingsTestExecutionSection.tsx`
 
-Test execution configuration with Playwright workers control.
+Test execution configuration: workers, project selection, and auto-discover.
 
 **UI Design**:
 
@@ -250,6 +251,13 @@ Test execution configuration with Playwright workers control.
 │                                                          │
 │ Maximum Workers: [2]  [Reset to default (2)]           │
 │ Limit concurrent test execution (1-16 workers)          │
+│                                                          │
+│ Playwright Project:            [Refresh]                │
+│ [All Projects              ▼]                           │
+│ All projects defined in playwright.config.ts will run   │
+│                                                          │
+│ Auto-discover before run          [toggle]              │
+│ Discover new tests automatically before each run        │
 └─────────────────────────────────────────────────────────┘
 ```
 
@@ -257,31 +265,39 @@ Test execution configuration with Playwright workers control.
 
 - **Number Input**: Range 1-16 workers (default: 2)
 - **Reset Button**: Restore default value (2 workers)
-- **localStorage Persistence**: Saved with key `'playwright_workers'`
+- **Project Selector**: Dropdown populated from `GET /api/tests/projects` — shows all Playwright projects from `playwright.config.ts`. "All Projects" runs everything (default).
+- **Project Refresh**: Manual reload button to re-fetch projects list from the backend
+- **localStorage Persistence**: Workers → `'playwright_workers'`, Project → `'playwright_project'`
 - **Real-time Updates**: Changes apply immediately to next test run
-- **Validation**: Only accepts integer values within range
 
 **Hook Integration**:
 
-Uses `usePlaywrightWorkers()` hook that provides:
+Uses `usePlaywrightWorkers()` hook:
+- `workers`, `setWorkers(count)`, `resetToDefault()`, `isValid(count)`
 
-- `workers`: Current workers count (number)
-- `setWorkers(count)`: Update workers count with validation
-- `resetToDefault()`: Reset to default (2 workers)
-- `isValid(count)`: Validate workers count (1-16 range)
+Uses `usePlaywrightProject()` hook:
+- `selectedProject`: Currently selected project name (`""` = all projects)
+- `setSelectedProject(name)`: Save to localStorage
+- `availableProjects`: Project names from backend (`string[]`)
+- `isLoadingProjects`: Loading state
+- `reloadProjects()`: Re-fetch from `GET /api/tests/projects`
+
+Uses `useAutoDiscoverSetting()` hook:
+- `enabled`, `toggle()`
 
 **Backend Integration**:
 
-Workers count is sent with all test execution API calls:
+- `GET /api/tests/projects` — called on Settings open to populate the dropdown
+- `POST /api/tests/run-all` — Body: `{maxWorkers: 2, project: "Sanity"}` (project omitted when "All Projects" selected)
 
-- `POST /api/tests/run-all` - Body: `{maxWorkers: 2}`
-- `POST /api/tests/run-group` - Body: `{filePath: "...", maxWorkers: 2}`
-- `POST /api/tests/:id/rerun` - Body: `{maxWorkers: 2}`
-
-Backend adds `--workers=N` flag to Playwright CLI commands:
+Backend adds `--project=<name>` flag to Playwright CLI:
 
 ```bash
+# All Projects (default)
 npx playwright test --workers=2 --reporter=...
+
+# Specific project
+npx playwright test --project=Sanity --workers=2 --reporter=...
 ```
 
 ### SettingsDataRetentionSection

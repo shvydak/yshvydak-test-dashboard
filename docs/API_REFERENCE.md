@@ -390,6 +390,37 @@ Clear all test data from the database.
 
 ## Test Execution
 
+### GET /api/tests/projects
+
+**✨ New in v1.5.0** - Get available Playwright projects defined in `playwright.config.ts`.
+
+**Authentication**: Not required (public endpoint)
+
+**Response (200 - Success):**
+
+```json
+{
+    "success": true,
+    "data": ["All_Tests", "Sanity"]
+}
+```
+
+**Response when no projects configured:**
+
+```json
+{
+    "success": true,
+    "data": []
+}
+```
+
+**Notes**:
+- Returns an empty array (not an error) if Playwright is not installed or the config has no projects
+- Project names come from the `name` field in `playwright.config.ts` `projects[]` array
+- Used by Settings modal to populate the Playwright Project selector
+
+---
+
 ### POST /api/tests/run-all
 
 Execute all tests in the project.
@@ -398,13 +429,15 @@ Execute all tests in the project.
 
 ```json
 {
-    "maxWorkers": 4
+    "maxWorkers": 4,
+    "project": "Sanity"
 }
 ```
 
-**Query Parameters:**
+**Parameters:**
 
 - `maxWorkers` (optional) - Maximum number of parallel workers
+- `project` (optional) - Playwright project name to run (e.g. `"All_Tests"`, `"Sanity"`). When omitted, all projects are run
 
 **Response (200 - Success):**
 

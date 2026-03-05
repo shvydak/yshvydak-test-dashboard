@@ -340,9 +340,14 @@ packages/web/src/
 │   │   ├── applyThemeMode() utility (exported for LoginPage)
 │   │   ├── localStorage persistence
 │   │   └── System theme detection (prefers-color-scheme)
-│   └── usePlaywrightWorkers.ts         # Playwright workers configuration
-│       ├── localStorage persistence
-│       ├── setWorkers(count), resetToDefault()
+│   ├── usePlaywrightWorkers.ts         # Playwright workers configuration
+│   │   ├── localStorage persistence
+│   │   ├── setWorkers(count), resetToDefault()
+│   │   └── getMaxWorkersFromStorage() standalone getter
+│   └── usePlaywrightProject.ts         # Playwright project selection (✨ v1.5.0)
+│       ├── localStorage persistence (key: 'playwright_project')
+│       ├── fetches projects from GET /api/tests/projects
+│       └── getProjectFromStorage() standalone getter
 │       └── Validation (1-16 range)
 │
 └── shared/                              # Shared components (Atomic Design)

@@ -29,7 +29,8 @@ export interface CleanupResult {
 
 export interface IPlaywrightService {
     discoverTests(): Promise<DiscoveredTest[]>
-    runAllTests(maxWorkers?: number, skipAutoDiscovery?: boolean): Promise<TestRunProcess>
+    getAvailableProjects(): Promise<string[]>
+    runAllTests(maxWorkers?: number, project?: string): Promise<TestRunProcess>
     runTestGroup(
         filePath: string,
         maxWorkers?: number,

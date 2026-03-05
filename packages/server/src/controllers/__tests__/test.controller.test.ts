@@ -155,6 +155,53 @@ describe('TestController', () => {
         })
     })
 
+    describe('getAvailableProjects', () => {
+        it('should return available projects successfully', async () => {
+            // Arrange
+            const mockProjects = ['All_Tests', 'Sanity']
+            mockTestService.getAvailableProjects = vi.fn().mockResolvedValue(mockProjects)
+            mockReq = createMockRequest()
+
+            // Act
+            await controller.getAvailableProjects(mockReq as ServiceRequest, mockRes as Response)
+
+            // Assert
+            expect(mockTestService.getAvailableProjects).toHaveBeenCalledTimes(1)
+            expect(ResponseHelper.success).toHaveBeenCalledWith(mockRes, mockProjects)
+        })
+
+        it('should return empty array when no projects configured', async () => {
+            // Arrange
+            mockTestService.getAvailableProjects = vi.fn().mockResolvedValue([])
+            mockReq = createMockRequest()
+
+            // Act
+            await controller.getAvailableProjects(mockReq as ServiceRequest, mockRes as Response)
+
+            // Assert
+            expect(ResponseHelper.success).toHaveBeenCalledWith(mockRes, [])
+        })
+
+        it('should return 500 on service error', async () => {
+            // Arrange
+            const error = new Error('Failed to read Playwright config')
+            mockTestService.getAvailableProjects = vi.fn().mockRejectedValue(error)
+            mockReq = createMockRequest()
+
+            // Act
+            await controller.getAvailableProjects(mockReq as ServiceRequest, mockRes as Response)
+
+            // Assert
+            expect(Logger.error).toHaveBeenCalledWith('Error fetching available projects', error)
+            expect(ResponseHelper.error).toHaveBeenCalledWith(
+                mockRes,
+                'Failed to read Playwright config',
+                'Failed to fetch available projects',
+                500
+            )
+        })
+    })
+
     describe('runAllTests', () => {
         it('should run all tests with maxWorkers', async () => {
             const runResult = {runId: 'run-123', message: 'Tests started'}
@@ -163,7 +210,7 @@ describe('TestController', () => {
 
             await controller.runAllTests(mockReq as ServiceRequest, mockRes as Response)
 
-            expect(mockTestService.runAllTests).toHaveBeenCalledWith(4, undefined)
+            expect(mockTestService.runAllTests).toHaveBeenCalledWith(4, undefined, undefined)
             expect(ResponseHelper.success).toHaveBeenCalledWith(mockRes, runResult)
         })
 
@@ -173,7 +220,37 @@ describe('TestController', () => {
 
             await controller.runAllTests(mockReq as ServiceRequest, mockRes as Response)
 
-            expect(mockTestService.runAllTests).toHaveBeenCalledWith(undefined, undefined)
+            expect(mockTestService.runAllTests).toHaveBeenCalledWith(
+                undefined,
+                undefined,
+                undefined
+            )
+        })
+
+        it('should pass project to testService when provided', async () => {
+            // Arrange
+            const runResult = {runId: 'run-proj', message: 'Tests started for project: Sanity'}
+            mockReq.body = {maxWorkers: 2, project: 'Sanity'}
+            mockTestService.runAllTests.mockResolvedValue(runResult)
+
+            // Act
+            await controller.runAllTests(mockReq as ServiceRequest, mockRes as Response)
+
+            // Assert
+            expect(mockTestService.runAllTests).toHaveBeenCalledWith(2, undefined, 'Sanity')
+            expect(ResponseHelper.success).toHaveBeenCalledWith(mockRes, runResult)
+        })
+
+        it('should pass undefined project when not specified in body', async () => {
+            // Arrange
+            mockReq.body = {maxWorkers: 4}
+            mockTestService.runAllTests.mockResolvedValue({runId: 'r1'})
+
+            // Act
+            await controller.runAllTests(mockReq as ServiceRequest, mockRes as Response)
+
+            // Assert
+            expect(mockTestService.runAllTests).toHaveBeenCalledWith(4, undefined, undefined)
         })
 
         it('should handle tests already running error (409)', async () => {

@@ -14,8 +14,16 @@ export interface PlaywrightSuite {
     suites?: PlaywrightSuite[]
 }
 
+export interface PlaywrightProjectConfig {
+    id: string
+    name: string
+}
+
 export interface PlaywrightListOutput {
     suites?: PlaywrightSuite[]
+    config?: {
+        projects?: PlaywrightProjectConfig[]
+    }
 }
 
 export interface PlaywrightSpawnOptions {

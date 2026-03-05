@@ -1,16 +1,28 @@
 import {usePlaywrightWorkers} from '@/hooks/usePlaywrightWorkers'
 import {useAutoDiscoverSetting} from '@/hooks/useAutoDiscoverSetting'
+import {usePlaywrightProject} from '@/hooks/usePlaywrightProject'
 import {SettingsSection} from './SettingsSection'
 
 export function SettingsTestExecutionSection() {
     const {workers, setWorkers, resetToDefault} = usePlaywrightWorkers()
     const {enabled: autoDiscover, toggle: toggleAutoDiscover} = useAutoDiscoverSetting()
+    const {
+        selectedProject,
+        setSelectedProject,
+        availableProjects,
+        isLoadingProjects,
+        reloadProjects,
+    } = usePlaywrightProject()
 
-    const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const handleWorkersChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const value = parseInt(e.target.value, 10)
         if (!isNaN(value)) {
             setWorkers(value)
         }
+    }
+
+    const handleProjectChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+        setSelectedProject(e.target.value)
     }
 
     return (
@@ -29,7 +41,7 @@ export function SettingsTestExecutionSection() {
                             min={1}
                             max={16}
                             value={workers}
-                            onChange={handleChange}
+                            onChange={handleWorkersChange}
                             className="w-24 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg
                                      bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100
                                      focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent"
@@ -43,6 +55,44 @@ export function SettingsTestExecutionSection() {
                     </div>
                     <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">
                         Limit concurrent test execution (1-16 workers)
+                    </p>
+                </div>
+
+                <div>
+                    <div className="flex items-center justify-between mb-2">
+                        <label
+                            htmlFor="playwright-project"
+                            className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                            Playwright Project
+                        </label>
+                        <button
+                            onClick={reloadProjects}
+                            disabled={isLoadingProjects}
+                            className="text-xs text-gray-500 dark:text-gray-400 hover:text-blue-600
+                                     dark:hover:text-blue-400 transition-colors disabled:opacity-50">
+                            {isLoadingProjects ? 'Loading…' : 'Refresh'}
+                        </button>
+                    </div>
+                    <select
+                        id="playwright-project"
+                        value={selectedProject}
+                        onChange={handleProjectChange}
+                        disabled={isLoadingProjects}
+                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg
+                                 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100
+                                 focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent
+                                 disabled:opacity-50">
+                        <option value="">All Projects</option>
+                        {availableProjects.map((project) => (
+                            <option key={project} value={project}>
+                                {project}
+                            </option>
+                        ))}
+                    </select>
+                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">
+                        {selectedProject
+                            ? `Only "${selectedProject}" project will run`
+                            : 'All projects defined in playwright.config.ts will run'}
                     </p>
                 </div>
 

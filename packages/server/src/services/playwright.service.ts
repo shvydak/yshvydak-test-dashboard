@@ -52,11 +52,25 @@ export class PlaywrightService implements IPlaywrightService {
         return discoveredTests
     }
 
-    async runAllTests(maxWorkers?: number): Promise<TestRunProcess> {
+    async getAvailableProjects(): Promise<string[]> {
+        try {
+            const playwrightData = await this.executePlaywrightListCommand()
+            const projects = playwrightData.config?.projects ?? []
+            return projects.map((p) => p.name).filter(Boolean)
+        } catch (error) {
+            Logger.warn('Failed to get available projects', error)
+            return []
+        }
+    }
+
+    async runAllTests(maxWorkers?: number, project?: string): Promise<TestRunProcess> {
         const runId = uuidv4()
         Logger.testRun('run-all', runId)
 
         const args = ['playwright', 'test']
+        if (project) {
+            args.push(`--project=${project}`)
+        }
         if (maxWorkers) {
             args.push(`--workers=${maxWorkers}`)
         }
@@ -72,7 +86,7 @@ export class PlaywrightService implements IPlaywrightService {
 
         return {
             runId,
-            message: 'All tests started',
+            message: project ? `Tests started for project: ${project}` : 'All tests started',
             timestamp: new Date().toISOString(),
             process,
         }

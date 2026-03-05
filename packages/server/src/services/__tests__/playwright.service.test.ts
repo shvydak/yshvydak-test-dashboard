@@ -376,6 +376,168 @@ describe('PlaywrightService', () => {
     })
 
     // ============================================================================
+    // TEST EXECUTION - getAvailableProjects
+    // ============================================================================
+
+    describe('getAvailableProjects', () => {
+        it('should return project names from config.projects', async () => {
+            // Arrange
+            const mockOutput = {
+                config: {
+                    projects: [
+                        {id: 'proj-1', name: 'All_Tests'},
+                        {id: 'proj-2', name: 'Sanity'},
+                    ],
+                },
+                suites: [],
+            }
+            mockSpawn.mockReturnValue(createMockProcess(JSON.stringify(mockOutput)))
+
+            // Act
+            const projects = await service.getAvailableProjects()
+
+            // Assert
+            expect(projects).toEqual(['All_Tests', 'Sanity'])
+        })
+
+        it('should return empty array when config.projects is absent', async () => {
+            // Arrange
+            const mockOutput = {suites: []}
+            mockSpawn.mockReturnValue(createMockProcess(JSON.stringify(mockOutput)))
+
+            // Act
+            const projects = await service.getAvailableProjects()
+
+            // Assert
+            expect(projects).toEqual([])
+        })
+
+        it('should return empty array when config.projects is empty', async () => {
+            // Arrange
+            const mockOutput = {config: {projects: []}, suites: []}
+            mockSpawn.mockReturnValue(createMockProcess(JSON.stringify(mockOutput)))
+
+            // Act
+            const projects = await service.getAvailableProjects()
+
+            // Assert
+            expect(projects).toEqual([])
+        })
+
+        it('should return empty array on Playwright command failure (no throw)', async () => {
+            // Arrange - simulate process exiting with error
+            mockSpawn.mockReturnValue(createMockProcess('', 'Playwright not found', 1))
+
+            // Act
+            const projects = await service.getAvailableProjects()
+
+            // Assert - should not throw, returns empty array gracefully
+            expect(projects).toEqual([])
+        })
+
+        it('should run the --list command to get projects', async () => {
+            // Arrange
+            const mockOutput = {config: {projects: [{id: 'p', name: 'All_Tests'}]}, suites: []}
+            mockSpawn.mockReturnValue(createMockProcess(JSON.stringify(mockOutput)))
+
+            // Act
+            await service.getAvailableProjects()
+
+            // Assert - uses same --list command as discoverTests
+            expect(mockSpawn).toHaveBeenCalledWith(
+                'npx',
+                ['playwright', 'test', '--list', '--reporter=json'],
+                expect.objectContaining({cwd: '/test/project'})
+            )
+        })
+    })
+
+    // ============================================================================
+    // TEST EXECUTION - runAllTests (project flag)
+    // ============================================================================
+
+    describe('runAllTests - project flag', () => {
+        it('should include --project flag when project is provided', async () => {
+            // Arrange
+            const mockProcess = createMockProcess('')
+            mockSpawn.mockReturnValue(mockProcess)
+
+            // Act
+            await service.runAllTests(undefined, 'Sanity')
+
+            // Assert
+            expect(mockSpawn).toHaveBeenCalledWith(
+                'npx',
+                [
+                    'playwright',
+                    'test',
+                    '--project=Sanity',
+                    '--reporter=playwright-dashboard-reporter',
+                ],
+                expect.anything()
+            )
+        })
+
+        it('should include both --project and --workers when both provided', async () => {
+            // Arrange
+            const mockProcess = createMockProcess('')
+            mockSpawn.mockReturnValue(mockProcess)
+
+            // Act
+            await service.runAllTests(4, 'All_Tests')
+
+            // Assert
+            expect(mockSpawn).toHaveBeenCalledWith(
+                'npx',
+                [
+                    'playwright',
+                    'test',
+                    '--project=All_Tests',
+                    '--workers=4',
+                    '--reporter=playwright-dashboard-reporter',
+                ],
+                expect.anything()
+            )
+        })
+
+        it('should NOT include --project flag when project is undefined', async () => {
+            // Arrange
+            const mockProcess = createMockProcess('')
+            mockSpawn.mockReturnValue(mockProcess)
+
+            // Act
+            await service.runAllTests()
+
+            // Assert - original behavior preserved
+            const [, args] = mockSpawn.mock.calls[0]
+            expect(args).not.toContain(expect.stringMatching(/^--project=/))
+            expect(args).toEqual(['playwright', 'test', '--reporter=playwright-dashboard-reporter'])
+        })
+
+        it('should return project-specific message when project is provided', async () => {
+            // Arrange
+            mockSpawn.mockReturnValue(createMockProcess(''))
+
+            // Act
+            const result = await service.runAllTests(undefined, 'Sanity')
+
+            // Assert
+            expect(result.message).toBe('Tests started for project: Sanity')
+        })
+
+        it('should return default message when no project is provided', async () => {
+            // Arrange
+            mockSpawn.mockReturnValue(createMockProcess(''))
+
+            // Act
+            const result = await service.runAllTests()
+
+            // Assert
+            expect(result.message).toBe('All tests started')
+        })
+    })
+
+    // ============================================================================
     // TEST EXECUTION - runTestGroup
     // ============================================================================
 

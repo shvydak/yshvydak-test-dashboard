@@ -98,7 +98,7 @@ describe('POST /api/tests/run-all - Run All Tests (Integration)', () => {
             expect(response.body.data.runId).toBe(mockRunId)
 
             // Verify playwrightService was called with undefined
-            expect(mockRunAllTests).toHaveBeenCalledWith(undefined)
+            expect(mockRunAllTests).toHaveBeenCalledWith(undefined, undefined)
         })
 
         it('should pass maxWorkers to Playwright service', async () => {
@@ -118,7 +118,7 @@ describe('POST /api/tests/run-all - Run All Tests (Integration)', () => {
                 .send({maxWorkers: 8})
                 .expect(200)
 
-            expect(mockRunAllTests).toHaveBeenCalledWith(8)
+            expect(mockRunAllTests).toHaveBeenCalledWith(8, undefined)
         })
     })
 

@@ -243,7 +243,15 @@ export class TestService implements ITestService {
         return this.testRepository.getTestTimeline(days)
     }
 
-    async runAllTests(maxWorkers?: number, skipAutoDiscovery?: boolean): Promise<any> {
+    async getAvailableProjects(): Promise<string[]> {
+        return this.playwrightService.getAvailableProjects()
+    }
+
+    async runAllTests(
+        maxWorkers?: number,
+        skipAutoDiscovery?: boolean,
+        project?: string
+    ): Promise<any> {
         // Check if tests are already running
         if (activeProcessesTracker.isRunAllActive()) {
             const activeRuns = activeProcessesTracker.getActiveProcesses()
@@ -273,7 +281,7 @@ export class TestService implements ITestService {
             await this.discoverTests()
         }
 
-        const result = await this.playwrightService.runAllTests(maxWorkers)
+        const result = await this.playwrightService.runAllTests(maxWorkers, project)
 
         // Add process to tracker
         activeProcessesTracker.addProcess({

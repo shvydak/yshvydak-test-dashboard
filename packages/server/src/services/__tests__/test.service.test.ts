@@ -81,6 +81,7 @@ describe('TestService', () => {
 
         mockPlaywrightService = {
             discoverTests: vi.fn().mockResolvedValue([]),
+            getAvailableProjects: vi.fn().mockResolvedValue([]),
             runAllTests: vi.fn(),
             runTestGroup: vi.fn(),
             rerunSingleTest: vi.fn(),
@@ -592,6 +593,32 @@ describe('TestService', () => {
         })
     })
 
+    describe('getAvailableProjects', () => {
+        it('should delegate to playwrightService', async () => {
+            // Arrange
+            const mockProjects = ['All_Tests', 'Sanity']
+            mockPlaywrightService.getAvailableProjects.mockResolvedValue(mockProjects)
+
+            // Act
+            const result = await testService.getAvailableProjects()
+
+            // Assert
+            expect(result).toEqual(mockProjects)
+            expect(mockPlaywrightService.getAvailableProjects).toHaveBeenCalledTimes(1)
+        })
+
+        it('should return empty array when no projects available', async () => {
+            // Arrange
+            mockPlaywrightService.getAvailableProjects.mockResolvedValue([])
+
+            // Act
+            const result = await testService.getAvailableProjects()
+
+            // Assert
+            expect(result).toEqual([])
+        })
+    })
+
     describe('runAllTests', () => {
         it('should run all tests successfully', async () => {
             const mockProcess = createMockProcess()
@@ -608,7 +635,7 @@ describe('TestService', () => {
             const result = await testService.runAllTests(4)
 
             expect(result).toEqual(mockResult)
-            expect(mockPlaywrightService.runAllTests).toHaveBeenCalledWith(4)
+            expect(mockPlaywrightService.runAllTests).toHaveBeenCalledWith(4, undefined)
             expect(mockRunRepository.createTestRun).toHaveBeenCalledWith({
                 id: 'run-123',
                 status: 'running',
@@ -626,6 +653,42 @@ describe('TestService', () => {
                 'run-123',
                 'run-all'
             )
+        })
+
+        it('should pass project to playwrightService when provided', async () => {
+            // Arrange
+            const mockProcess = createMockProcess()
+            mockPlaywrightService.runAllTests.mockResolvedValue({
+                runId: 'run-proj-1',
+                message: 'Tests started for project: Sanity',
+                timestamp: '2025-10-21T10:00:00.000Z',
+                process: mockProcess,
+            })
+            mockRunRepository.createTestRun.mockResolvedValue('run-proj-1')
+
+            // Act
+            await testService.runAllTests(2, false, 'Sanity')
+
+            // Assert - project forwarded to PlaywrightService
+            expect(mockPlaywrightService.runAllTests).toHaveBeenCalledWith(2, 'Sanity')
+        })
+
+        it('should pass undefined project to playwrightService when not specified', async () => {
+            // Arrange
+            const mockProcess = createMockProcess()
+            mockPlaywrightService.runAllTests.mockResolvedValue({
+                runId: 'run-no-proj',
+                message: 'All tests started',
+                timestamp: '2025-10-21T10:00:00.000Z',
+                process: mockProcess,
+            })
+            mockRunRepository.createTestRun.mockResolvedValue('run-no-proj')
+
+            // Act
+            await testService.runAllTests()
+
+            // Assert - no project means undefined
+            expect(mockPlaywrightService.runAllTests).toHaveBeenCalledWith(undefined, undefined)
         })
 
         it('should handle process completion', async () => {

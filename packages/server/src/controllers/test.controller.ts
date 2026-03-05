@@ -31,11 +31,31 @@ export class TestController {
         }
     }
 
+    // GET /api/tests/projects - Get available Playwright projects
+    getAvailableProjects = async (_req: ServiceRequest, res: Response): Promise<Response> => {
+        try {
+            const projects = await this.testService.getAvailableProjects()
+            return ResponseHelper.success(res, projects)
+        } catch (error) {
+            Logger.error('Error fetching available projects', error)
+            return ResponseHelper.error(
+                res,
+                error instanceof Error ? error.message : 'Unknown error',
+                'Failed to fetch available projects',
+                500
+            )
+        }
+    }
+
     // POST /api/tests/run-all - Run all tests
     runAllTests = async (req: ServiceRequest, res: Response): Promise<void> => {
         try {
-            const {maxWorkers, skipAutoDiscovery} = req.body
-            const result = await this.testService.runAllTests(maxWorkers, skipAutoDiscovery)
+            const {maxWorkers, skipAutoDiscovery, project} = req.body
+            const result = await this.testService.runAllTests(
+                maxWorkers,
+                skipAutoDiscovery,
+                project
+            )
             ResponseHelper.success(res, result)
         } catch (error) {
             // Check if this is a "tests already running" error

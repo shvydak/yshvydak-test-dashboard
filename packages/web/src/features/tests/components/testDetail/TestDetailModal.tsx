@@ -325,7 +325,7 @@ export function TestDetailModal({test, isOpen, onClose}: TestDetailModalProps) {
                         </div>
 
                         {/* Desktop History Sidebar */}
-                        <div className="hidden md:block">
+                        <div className="hidden md:block h-full min-h-0">
                             <ExecutionSidebar
                                 executions={executions}
                                 currentExecutionId={currentExecution?.id || test.id}

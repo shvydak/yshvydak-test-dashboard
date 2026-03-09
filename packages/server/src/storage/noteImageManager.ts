@@ -71,7 +71,7 @@ export class NoteImageManager {
     // Save image from buffer
     async saveImage(buffer: Buffer, testId: string, fileName?: string): Promise<NoteImageMetadata> {
         const testDir = this.ensureTestDirectory(testId)
-        const finalFileName = fileName || this.generateFileName()
+        const finalFileName = this.generateFileName(fileName)
         const filePath = path.join(testDir, finalFileName)
 
         // Write buffer to file

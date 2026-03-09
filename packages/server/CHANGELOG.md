@@ -1,5 +1,13 @@
 # @yshvydak/test-dashboard-server
 
+## 1.7.4
+
+### Patch Changes
+
+- fix: test notes attachments
+- Updated dependencies
+    - @yshvydak/core@1.7.4
+
 ## 1.7.3
 
 ### Patch Changes

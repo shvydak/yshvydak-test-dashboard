@@ -112,20 +112,18 @@ describe('NoteImageManager', () => {
             expect(metadata.fileName).toMatch(/\.jpg$/)
         })
 
-        it('should use provided file name as-is when specified', async () => {
+        it('should generate unique file name when original file name is provided', async () => {
             const buffer = Buffer.from('test')
             const metadata = await manager.saveImage(buffer, testId, 'my-image.png')
 
-            // When fileName is provided, it's used as-is (no timestamp/random suffix)
-            expect(metadata.fileName).toBe('my-image.png')
+            expect(metadata.fileName).toMatch(/^my-image-\d+-[a-z0-9]{6}\.png$/)
         })
 
-        it('should use provided file name even with invalid extension', async () => {
+        it('should normalize invalid extension while keeping original base name', async () => {
             const buffer = Buffer.from('test')
             const metadata = await manager.saveImage(buffer, testId, 'image.exe')
 
-            // File name is used as-is, but MIME type defaults to PNG for unknown extensions
-            expect(metadata.fileName).toBe('image.exe')
+            expect(metadata.fileName).toMatch(/^image-\d+-[a-z0-9]{6}\.png$/)
             expect(metadata.mimeType).toBe('image/png')
         })
 
@@ -156,7 +154,17 @@ describe('NoteImageManager', () => {
             const metadata = await manager.saveImage(buffer, testId, 'test (copy) [1].png')
 
             expect(fs.existsSync(metadata.filePath)).toBe(true)
-            expect(metadata.fileName).toContain('test (copy) [1]')
+            expect(metadata.fileName).toMatch(/^test \(copy\) \[1\]-\d+-[a-z0-9]{6}\.png$/)
+        })
+
+        it('should avoid overwriting pasted images with the same original name', async () => {
+            const first = await manager.saveImage(Buffer.from('first'), testId, 'image.png')
+            const second = await manager.saveImage(Buffer.from('second'), testId, 'image.png')
+
+            expect(first.fileName).not.toBe(second.fileName)
+            expect(first.url).not.toBe(second.url)
+            expect(fs.readFileSync(first.filePath).toString()).toBe('first')
+            expect(fs.readFileSync(second.filePath).toString()).toBe('second')
         })
 
         it('should handle binary image data correctly', async () => {

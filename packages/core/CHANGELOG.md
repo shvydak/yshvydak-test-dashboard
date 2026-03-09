@@ -1,5 +1,11 @@
 # @yshvydak/core
 
+## 1.7.4
+
+### Patch Changes
+
+- fix: test notes attachments
+
 ## 1.7.3
 
 ### Patch Changes

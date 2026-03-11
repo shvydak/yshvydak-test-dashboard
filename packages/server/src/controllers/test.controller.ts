@@ -382,8 +382,8 @@ export class TestController {
     rerunTest = async (req: ServiceRequest, res: Response): Promise<void> => {
         try {
             const {id} = req.params
-            const {maxWorkers} = req.body
-            const result = await this.testService.rerunTest(id, maxWorkers)
+            const {maxWorkers, project} = req.body
+            const result = await this.testService.rerunTest(id, maxWorkers, project)
 
             ResponseHelper.success(res, result, 'Test rerun started')
         } catch (error) {

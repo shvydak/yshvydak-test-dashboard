@@ -913,7 +913,7 @@ describe('TestService', () => {
             mockPlaywrightService.rerunSingleTest.mockResolvedValue(mockResult)
             mockRunRepository.createTestRun.mockResolvedValue('rerun-789')
 
-            const result = await testService.rerunTest('exec-1', 1)
+            const result = await testService.rerunTest('exec-1', 1, 'All_Tests')
 
             expect(result.runId).toBe('rerun-789')
             expect(result.testId).toBe('exec-1')
@@ -921,7 +921,8 @@ describe('TestService', () => {
             expect(mockPlaywrightService.rerunSingleTest).toHaveBeenCalledWith(
                 '/path/to/test.spec.ts',
                 'Test 1',
-                1
+                1,
+                'All_Tests'
             )
             expect(mockRunRepository.createTestRun).toHaveBeenCalledWith({
                 id: 'rerun-789',

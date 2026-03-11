@@ -379,7 +379,7 @@ export class TestService implements ITestService {
         return result
     }
 
-    async rerunTest(testId: string, maxWorkers?: number): Promise<any> {
+    async rerunTest(testId: string, maxWorkers?: number, project?: string): Promise<any> {
         // Get the test to rerun
         const test = await this.testRepository.getTestResult(testId)
         if (!test) {
@@ -389,7 +389,8 @@ export class TestService implements ITestService {
         const result = await this.playwrightService.rerunSingleTest(
             test.filePath,
             test.name,
-            maxWorkers
+            maxWorkers,
+            project
         )
 
         // Add process to tracker

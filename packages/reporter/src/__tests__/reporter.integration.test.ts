@@ -23,6 +23,7 @@ describe('YShvydakReporter - Integration Tests', () => {
         // Reset environment variables
         delete process.env.RUN_ID
         delete process.env.RERUN_ID
+        delete process.env.RERUN_MODE
         delete process.env.DASHBOARD_API_URL
 
         // Ensure fetch mock is set up
@@ -187,6 +188,19 @@ describe('YShvydakReporter - Integration Tests', () => {
                 totalTests: 5,
             })
             expect(callBody.runId).toBeTruthy()
+        })
+
+        it('should notify dashboard with rerun type in rerun mode', () => {
+            process.env.RERUN_MODE = 'true'
+            const suite = createMockSuite(1)
+
+            reporter.onBegin({} as FullConfig, suite)
+
+            const callBody = JSON.parse(mockFetch.mock.calls[0][1].body)
+            expect(callBody).toMatchObject({
+                type: 'rerun',
+                totalTests: 1,
+            })
         })
 
         it('should log test count on begin', () => {

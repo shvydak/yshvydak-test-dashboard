@@ -36,7 +36,12 @@ export interface IPlaywrightService {
         maxWorkers?: number,
         testNames?: string[]
     ): Promise<TestRunProcess>
-    rerunSingleTest(testFile: string, testName: string): Promise<TestRunProcess>
+    rerunSingleTest(
+        testFile: string,
+        testName: string,
+        maxWorkers?: number,
+        project?: string
+    ): Promise<TestRunProcess>
 }
 
 export interface IWebSocketService {

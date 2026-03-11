@@ -134,11 +134,12 @@ class YShvydakReporter implements Reporter {
 
     onBegin(_config: FullConfig, suite: Suite) {
         this.startTime = Date.now()
+        const processType = process.env.RERUN_MODE === 'true' ? 'rerun' : 'run-all'
 
         // Notify dashboard that process is starting
         this.notifyProcessStart({
             runId: this.runId,
-            type: 'run-all',
+            type: processType,
             totalTests: suite.allTests().length,
         })
 

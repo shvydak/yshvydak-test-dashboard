@@ -151,8 +151,10 @@ export const useTestsStore = create<TestsState>()(
                     set({error: null})
 
                     const maxWorkers = getMaxWorkersFromStorage()
+                    const project = getProjectFromStorage()
                     const response = await authPost(`${API_BASE_URL}/tests/${testId}/rerun`, {
                         maxWorkers,
+                        ...(project ? {project} : {}),
                     })
 
                     if (!response.ok) {

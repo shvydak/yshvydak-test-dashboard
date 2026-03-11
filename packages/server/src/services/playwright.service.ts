@@ -138,7 +138,8 @@ export class PlaywrightService implements IPlaywrightService {
     async rerunSingleTest(
         testFile: string,
         testName: string,
-        maxWorkers?: number
+        maxWorkers?: number,
+        project?: string
     ): Promise<TestRunProcess> {
         const runId = uuidv4()
         Logger.testRerun(testName, runId)
@@ -153,6 +154,9 @@ export class PlaywrightService implements IPlaywrightService {
         const args = ['playwright', 'test', testFile, '--grep', grepPattern]
         if (maxWorkers) {
             args.push(`--workers=${maxWorkers}`)
+        }
+        if (project) {
+            args.push(`--project=${project}`)
         }
         args.push(`--reporter=json,${config.playwright.reporterPath}`)
 

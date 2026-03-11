@@ -714,12 +714,12 @@ describe('TestController', () => {
         it('should rerun test successfully', async () => {
             const result = {runId: 'rerun-123', message: 'Test rerun started'}
             mockReq.params = {id: 'result-1'}
-            mockReq.body = {maxWorkers: 2}
+            mockReq.body = {maxWorkers: 2, project: 'All_Tests'}
             mockTestService.rerunTest.mockResolvedValue(result)
 
             await controller.rerunTest(mockReq as ServiceRequest, mockRes as Response)
 
-            expect(mockTestService.rerunTest).toHaveBeenCalledWith('result-1', 2)
+            expect(mockTestService.rerunTest).toHaveBeenCalledWith('result-1', 2, 'All_Tests')
             expect(ResponseHelper.success).toHaveBeenCalledWith(
                 mockRes,
                 result,
@@ -734,7 +734,7 @@ describe('TestController', () => {
 
             await controller.rerunTest(mockReq as ServiceRequest, mockRes as Response)
 
-            expect(mockTestService.rerunTest).toHaveBeenCalledWith('result-1', undefined)
+            expect(mockTestService.rerunTest).toHaveBeenCalledWith('result-1', undefined, undefined)
         })
 
         it('should return 404 when test not found', async () => {

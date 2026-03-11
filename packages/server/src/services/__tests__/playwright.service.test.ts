@@ -776,6 +776,18 @@ describe('PlaywrightService', () => {
             expect(args).toContain('--workers=1')
         })
 
+        it('should include project when provided', async () => {
+            // Arrange
+            mockSpawn.mockReturnValue(createMockProcess(''))
+
+            // Act
+            await service.rerunSingleTest('test.spec.ts', 'test name', 1, 'All_Tests')
+
+            // Assert
+            const args = mockSpawn.mock.calls[0][1]
+            expect(args).toContain('--project=All_Tests')
+        })
+
         it('should escape special regex characters in test name', async () => {
             // Arrange
             mockSpawn.mockReturnValue(createMockProcess(''))

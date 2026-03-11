@@ -136,6 +136,7 @@ describe('POST /api/tests/:id/rerun - Rerun Test (Integration)', () => {
             expect(mockRerunSingleTest).toHaveBeenCalledWith(
                 'tests/test2.spec.ts',
                 'Test 2',
+                undefined,
                 undefined
             )
         })
@@ -174,7 +175,12 @@ describe('POST /api/tests/:id/rerun - Rerun Test (Integration)', () => {
                 .send({maxWorkers: 4})
                 .expect(200)
 
-            expect(mockRerunSingleTest).toHaveBeenCalledWith('tests/test3.spec.ts', 'Test 3', 4)
+            expect(mockRerunSingleTest).toHaveBeenCalledWith(
+                'tests/test3.spec.ts',
+                'Test 3',
+                4,
+                undefined
+            )
         })
     })
 

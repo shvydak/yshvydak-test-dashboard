@@ -11,8 +11,17 @@ import * as path from 'path'
 import * as fs from 'fs'
 import {v4 as uuidv4} from 'uuid'
 import * as dotenv from 'dotenv'
-import {normalizeTestPath} from '@yshvydak/core'
 dotenv.config()
+
+function normalizeTestPath(filePath: string): string {
+    const prefixesToRemove = ['e2e/tests/', 'e2e\\tests\\', 'tests/', 'tests\\', 'e2e/', 'e2e\\']
+    for (const prefix of prefixesToRemove) {
+        if (filePath.startsWith(prefix)) {
+            return filePath.substring(prefix.length)
+        }
+    }
+    return filePath
+}
 
 interface TestStep {
     title: string

@@ -11,7 +11,16 @@
  */
 
 import {describe, it, expect} from 'vitest'
-import {normalizeTestPath} from '@yshvydak/core'
+
+function normalizeTestPath(filePath: string): string {
+    const prefixesToRemove = ['e2e/tests/', 'e2e\\tests\\', 'tests/', 'tests\\', 'e2e/', 'e2e\\']
+    for (const prefix of prefixesToRemove) {
+        if (filePath.startsWith(prefix)) {
+            return filePath.substring(prefix.length)
+        }
+    }
+    return filePath
+}
 
 /**
  * Extracted generateStableTestId function for testing

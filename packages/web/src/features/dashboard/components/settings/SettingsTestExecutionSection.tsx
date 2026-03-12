@@ -11,6 +11,8 @@ export function SettingsTestExecutionSection() {
         setSelectedProject,
         availableProjects,
         isLoadingProjects,
+        isSavingProject,
+        projectError,
         reloadProjects,
     } = usePlaywrightProject()
 
@@ -21,8 +23,8 @@ export function SettingsTestExecutionSection() {
         }
     }
 
-    const handleProjectChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-        setSelectedProject(e.target.value)
+    const handleProjectChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
+        await setSelectedProject(e.target.value)
     }
 
     return (
@@ -67,7 +69,7 @@ export function SettingsTestExecutionSection() {
                         </label>
                         <button
                             onClick={reloadProjects}
-                            disabled={isLoadingProjects}
+                            disabled={isLoadingProjects || isSavingProject}
                             className="text-xs text-gray-500 dark:text-gray-400 hover:text-blue-600
                                      dark:hover:text-blue-400 transition-colors disabled:opacity-50">
                             {isLoadingProjects ? 'Loading…' : 'Refresh'}
@@ -76,8 +78,10 @@ export function SettingsTestExecutionSection() {
                     <select
                         id="playwright-project"
                         value={selectedProject}
-                        onChange={handleProjectChange}
-                        disabled={isLoadingProjects}
+                        onChange={(e) => {
+                            void handleProjectChange(e)
+                        }}
+                        disabled={isLoadingProjects || isSavingProject}
                         className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg
                                  bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100
                                  focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent
@@ -91,9 +95,14 @@ export function SettingsTestExecutionSection() {
                     </select>
                     <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">
                         {selectedProject
-                            ? `Only "${selectedProject}" project will run`
+                            ? `All test runs will use "${selectedProject}" for every user`
                             : 'All projects defined in playwright.config.ts will run'}
                     </p>
+                    {projectError && (
+                        <p className="text-sm text-red-600 dark:text-red-400 mt-2">
+                            {projectError}
+                        </p>
+                    )}
                 </div>
 
                 <div className="flex items-center justify-between">

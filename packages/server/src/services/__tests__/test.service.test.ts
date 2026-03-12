@@ -13,6 +13,7 @@ vi.mock('../playwright.service')
 vi.mock('../websocket.service')
 vi.mock('../attachment.service')
 vi.mock('../note.service')
+vi.mock('../settings.service')
 vi.mock('../../utils/logger.util', () => ({
     Logger: {
         info: vi.fn(),
@@ -40,6 +41,7 @@ describe('TestService', () => {
     let mockWebSocketService: any
     let mockAttachmentService: any
     let mockNoteService: any
+    let mockSettingsService: any
 
     // Helper to create mock child process
     const createMockProcess = (): ChildProcess => {
@@ -111,6 +113,12 @@ describe('TestService', () => {
             deleteNote: vi.fn(),
         }
 
+        mockSettingsService = {
+            getGlobalPlaywrightProject: vi.fn().mockResolvedValue(''),
+            getTestExecutionSettings: vi.fn(),
+            setGlobalPlaywrightProject: vi.fn(),
+        }
+
         // Create service instance
         testService = new TestService(
             mockTestRepository,
@@ -118,7 +126,8 @@ describe('TestService', () => {
             mockPlaywrightService,
             mockWebSocketService,
             mockAttachmentService,
-            mockNoteService
+            mockNoteService,
+            mockSettingsService
         )
     })
 
@@ -647,6 +656,7 @@ describe('TestService', () => {
                 metadata: {
                     type: 'run-all',
                     triggeredFrom: 'dashboard',
+                    project: undefined,
                 },
             })
             expect(mockWebSocketService.broadcastRunStarted).toHaveBeenCalledWith(
@@ -655,9 +665,10 @@ describe('TestService', () => {
             )
         })
 
-        it('should pass project to playwrightService when provided', async () => {
+        it('should use global project from settings service', async () => {
             // Arrange
             const mockProcess = createMockProcess()
+            mockSettingsService.getGlobalPlaywrightProject.mockResolvedValue('Sanity')
             mockPlaywrightService.runAllTests.mockResolvedValue({
                 runId: 'run-proj-1',
                 message: 'Tests started for project: Sanity',
@@ -667,13 +678,13 @@ describe('TestService', () => {
             mockRunRepository.createTestRun.mockResolvedValue('run-proj-1')
 
             // Act
-            await testService.runAllTests(2, false, 'Sanity')
+            await testService.runAllTests(2, false, 'Ignored_By_Request')
 
-            // Assert - project forwarded to PlaywrightService
+            // Assert - project resolved from global settings
             expect(mockPlaywrightService.runAllTests).toHaveBeenCalledWith(2, 'Sanity')
         })
 
-        it('should pass undefined project to playwrightService when not specified', async () => {
+        it('should pass undefined project when no global project is configured', async () => {
             // Arrange
             const mockProcess = createMockProcess()
             mockPlaywrightService.runAllTests.mockResolvedValue({
@@ -838,6 +849,7 @@ describe('TestService', () => {
             expect(mockPlaywrightService.runTestGroup).toHaveBeenCalledWith(
                 '/path/to/test.spec.ts',
                 2,
+                undefined,
                 undefined
             )
             expect(mockRunRepository.createTestRun).toHaveBeenCalledWith({
@@ -852,6 +864,8 @@ describe('TestService', () => {
                     type: 'run-group',
                     filePath: '/path/to/test.spec.ts',
                     triggeredFrom: 'dashboard',
+                    filteredTests: undefined,
+                    project: undefined,
                 },
             })
             expect(mockWebSocketService.broadcastRunStarted).toHaveBeenCalledWith(
@@ -913,7 +927,9 @@ describe('TestService', () => {
             mockPlaywrightService.rerunSingleTest.mockResolvedValue(mockResult)
             mockRunRepository.createTestRun.mockResolvedValue('rerun-789')
 
-            const result = await testService.rerunTest('exec-1', 1, 'All_Tests')
+            mockSettingsService.getGlobalPlaywrightProject.mockResolvedValue('All_Tests')
+
+            const result = await testService.rerunTest('exec-1', 1, 'Ignored_By_Request')
 
             expect(result.runId).toBe('rerun-789')
             expect(result.testId).toBe('exec-1')
@@ -937,6 +953,7 @@ describe('TestService', () => {
                     originalTestId: 'exec-1',
                     originalTestName: 'Test 1',
                     filePath: '/path/to/test.spec.ts',
+                    project: 'All_Tests',
                 },
             })
         })

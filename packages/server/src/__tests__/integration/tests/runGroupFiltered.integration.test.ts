@@ -72,7 +72,8 @@ describe('POST /api/tests/run-group - Filtered Group Run (Integration)', () => {
             expect(mockPlaywrightService).toHaveBeenCalledWith(
                 'e2e/tests/auth.spec.ts',
                 undefined, // maxWorkers
-                testNames
+                testNames,
+                undefined
             )
         })
 
@@ -102,6 +103,7 @@ describe('POST /api/tests/run-group - Filtered Group Run (Integration)', () => {
             // Verify testNames was undefined
             expect(mockPlaywrightService).toHaveBeenCalledWith(
                 'e2e/tests/auth.spec.ts',
+                undefined,
                 undefined,
                 undefined
             )
@@ -138,7 +140,8 @@ describe('POST /api/tests/run-group - Filtered Group Run (Integration)', () => {
             expect(mockPlaywrightService).toHaveBeenCalledWith(
                 'e2e/tests/auth.spec.ts',
                 4,
-                testNames
+                testNames,
+                undefined
             )
         })
     })
@@ -168,7 +171,8 @@ describe('POST /api/tests/run-group - Filtered Group Run (Integration)', () => {
             expect(mockPlaywrightService).toHaveBeenCalledWith(
                 'e2e/tests/auth.spec.ts',
                 undefined,
-                []
+                [],
+                undefined
             )
         })
 
@@ -196,7 +200,8 @@ describe('POST /api/tests/run-group - Filtered Group Run (Integration)', () => {
             expect(mockPlaywrightService).toHaveBeenCalledWith(
                 'e2e/tests/auth.spec.ts',
                 undefined,
-                ['Single Test']
+                ['Single Test'],
+                undefined
             )
         })
     })

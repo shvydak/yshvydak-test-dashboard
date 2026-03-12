@@ -6,6 +6,7 @@ import {AttachmentRepository} from '../repositories/attachment.repository'
 import {StorageRepository} from '../repositories/storage.repository'
 import {NoteRepository} from '../repositories/note.repository'
 import {NoteImageRepository} from '../repositories/noteImage.repository'
+import {SettingsRepository} from '../repositories/settings.repository'
 import {TestService} from '../services/test.service'
 import {PlaywrightService} from '../services/playwright.service'
 import {WebSocketService} from '../services/websocket.service'
@@ -14,6 +15,7 @@ import {StorageService} from '../services/storage.service'
 import {AuthService} from '../services/auth.service'
 import {NoteService} from '../services/note.service'
 import {NoteImageService} from '../services/noteImage.service'
+import {SettingsService} from '../services/settings.service'
 import {AttachmentManager} from '../storage/attachmentManager'
 import {config} from '../config/environment.config'
 
@@ -26,6 +28,7 @@ export interface ServiceContainer {
     storageRepository: StorageRepository
     noteRepository: NoteRepository
     noteImageRepository: NoteImageRepository
+    settingsRepository: SettingsRepository
     testService: TestService
     playwrightService: PlaywrightService
     websocketService: WebSocketService
@@ -34,6 +37,7 @@ export interface ServiceContainer {
     authService: AuthService
     noteService: NoteService
     noteImageService: NoteImageService
+    settingsService: SettingsService
 }
 
 // Create service container
@@ -52,6 +56,7 @@ export async function createServiceContainer(): Promise<ServiceContainer> {
     const storageRepository = new StorageRepository(dbManager, attachmentManager)
     const noteRepository = new NoteRepository(dbManager)
     const noteImageRepository = new NoteImageRepository(dbManager)
+    const settingsRepository = new SettingsRepository(dbManager)
 
     // Initialize services
     const websocketService = new WebSocketService()
@@ -61,13 +66,15 @@ export async function createServiceContainer(): Promise<ServiceContainer> {
     const authService = new AuthService()
     const noteImageService = new NoteImageService(noteImageRepository, noteRepository)
     const noteService = new NoteService(noteRepository, noteImageService)
+    const settingsService = new SettingsService(settingsRepository, playwrightService)
     const testService = new TestService(
         testRepository,
         runRepository,
         playwrightService,
         websocketService,
         attachmentService,
-        noteService
+        noteService,
+        settingsService
     )
 
     return {
@@ -77,6 +84,7 @@ export async function createServiceContainer(): Promise<ServiceContainer> {
         storageRepository,
         noteRepository,
         noteImageRepository,
+        settingsRepository,
         testService,
         playwrightService,
         websocketService,
@@ -85,6 +93,7 @@ export async function createServiceContainer(): Promise<ServiceContainer> {
         authService,
         noteService,
         noteImageService,
+        settingsService,
     }
 }
 

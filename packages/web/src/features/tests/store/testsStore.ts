@@ -4,7 +4,6 @@ import {TestResult, TestRun, TestProgress} from '@yshvydak/core'
 import {authGet, authPost, authDelete} from '@features/authentication/utils/authFetch'
 import {getMaxWorkersFromStorage} from '@/hooks/usePlaywrightWorkers'
 import {getAutoDiscoverFromStorage} from '@/hooks/useAutoDiscoverSetting'
-import {getProjectFromStorage} from '@/hooks/usePlaywrightProject'
 
 interface TestsState {
     tests: TestResult[]
@@ -151,10 +150,8 @@ export const useTestsStore = create<TestsState>()(
                     set({error: null})
 
                     const maxWorkers = getMaxWorkersFromStorage()
-                    const project = getProjectFromStorage()
                     const response = await authPost(`${API_BASE_URL}/tests/${testId}/rerun`, {
                         maxWorkers,
-                        ...(project ? {project} : {}),
                     })
 
                     if (!response.ok) {
@@ -303,11 +300,9 @@ export const useTestsStore = create<TestsState>()(
                     set({isRunningAllTests: true, error: null})
 
                     const maxWorkers = getMaxWorkersFromStorage()
-                    const project = getProjectFromStorage()
                     const response = await authPost(`${API_BASE_URL}/tests/run-all`, {
                         maxWorkers,
                         skipAutoDiscovery: true, // discovery already handled above (or disabled)
-                        ...(project ? {project} : {}),
                     })
 
                     if (!response.ok) {

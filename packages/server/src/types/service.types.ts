@@ -34,7 +34,8 @@ export interface IPlaywrightService {
     runTestGroup(
         filePath: string,
         maxWorkers?: number,
-        testNames?: string[]
+        testNames?: string[],
+        project?: string
     ): Promise<TestRunProcess>
     rerunSingleTest(
         testFile: string,

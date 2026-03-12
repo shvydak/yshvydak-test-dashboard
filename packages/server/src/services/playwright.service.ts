@@ -95,7 +95,8 @@ export class PlaywrightService implements IPlaywrightService {
     async runTestGroup(
         filePath: string,
         maxWorkers?: number,
-        testNames?: string[]
+        testNames?: string[],
+        project?: string
     ): Promise<TestRunProcess> {
         const runId = uuidv4()
         Logger.testRun('run-group', runId)
@@ -116,6 +117,9 @@ export class PlaywrightService implements IPlaywrightService {
         if (maxWorkers) {
             args.push(`--workers=${maxWorkers}`)
         }
+        if (project) {
+            args.push(`--project=${project}`)
+        }
         args.push(`--reporter=${config.playwright.reporterPath}`)
 
         const process = this.spawnPlaywrightProcess(args, {
@@ -129,7 +133,9 @@ export class PlaywrightService implements IPlaywrightService {
 
         return {
             runId,
-            message: `Tests started for ${filePath}`,
+            message: project
+                ? `Tests started for ${filePath} in project: ${project}`
+                : `Tests started for ${filePath}`,
             timestamp: new Date().toISOString(),
             process,
         }

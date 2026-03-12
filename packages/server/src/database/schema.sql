@@ -65,6 +65,13 @@ CREATE TABLE IF NOT EXISTS note_images (
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
+-- Application settings (global dashboard configuration)
+CREATE TABLE IF NOT EXISTS app_settings (
+    key TEXT PRIMARY KEY,
+    value TEXT,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
 -- Indexes for better performance
 CREATE INDEX IF NOT EXISTS idx_test_runs_status ON test_runs(status);
 CREATE INDEX IF NOT EXISTS idx_test_runs_created_at ON test_runs(created_at);
@@ -80,6 +87,8 @@ CREATE INDEX IF NOT EXISTS idx_attachments_type ON attachments(type);
 CREATE INDEX IF NOT EXISTS idx_test_notes_test_id ON test_notes(test_id);
 
 CREATE INDEX IF NOT EXISTS idx_note_images_test_id ON note_images(test_id);
+
+CREATE INDEX IF NOT EXISTS idx_app_settings_updated_at ON app_settings(updated_at);
 
 -- Triggers to update timestamps
 CREATE TRIGGER IF NOT EXISTS update_test_runs_timestamp 
@@ -98,4 +107,10 @@ CREATE TRIGGER IF NOT EXISTS update_test_notes_timestamp
     AFTER UPDATE ON test_notes
 BEGIN
     UPDATE test_notes SET updated_at = CURRENT_TIMESTAMP WHERE test_id = NEW.test_id;
+END;
+
+CREATE TRIGGER IF NOT EXISTS update_app_settings_timestamp
+    AFTER UPDATE ON app_settings
+BEGIN
+    UPDATE app_settings SET updated_at = CURRENT_TIMESTAMP WHERE key = NEW.key;
 END;

@@ -12,6 +12,7 @@ import {PlaywrightService} from './playwright.service'
 import {WebSocketService} from './websocket.service'
 import {AttachmentService} from './attachment.service'
 import {NoteService} from './note.service'
+import {SettingsService} from './settings.service'
 import {Logger} from '../utils/logger.util'
 import {FileUtil} from '../utils/file.util'
 import {activeProcessesTracker} from './activeProcesses.service'
@@ -23,8 +24,14 @@ export class TestService implements ITestService {
         private playwrightService: PlaywrightService,
         private websocketService: WebSocketService,
         private attachmentService: AttachmentService,
-        private noteService: NoteService
+        private noteService: NoteService,
+        private settingsService: SettingsService
     ) {}
+
+    private async getExecutionProject(): Promise<string | undefined> {
+        const project = await this.settingsService.getGlobalPlaywrightProject()
+        return project || undefined
+    }
 
     async discoverTests(): Promise<TestDiscoveryResult> {
         try {
@@ -250,7 +257,7 @@ export class TestService implements ITestService {
     async runAllTests(
         maxWorkers?: number,
         skipAutoDiscovery?: boolean,
-        project?: string
+        _project?: string
     ): Promise<any> {
         // Check if tests are already running
         if (activeProcessesTracker.isRunAllActive()) {
@@ -281,6 +288,7 @@ export class TestService implements ITestService {
             await this.discoverTests()
         }
 
+        const project = await this.getExecutionProject()
         const result = await this.playwrightService.runAllTests(maxWorkers, project)
 
         // Add process to tracker
@@ -302,6 +310,7 @@ export class TestService implements ITestService {
             metadata: {
                 type: 'run-all',
                 triggeredFrom: 'dashboard',
+                project,
             },
         })
 
@@ -327,7 +336,13 @@ export class TestService implements ITestService {
     }
 
     async runTestGroup(filePath: string, maxWorkers?: number, testNames?: string[]): Promise<any> {
-        const result = await this.playwrightService.runTestGroup(filePath, maxWorkers, testNames)
+        const project = await this.getExecutionProject()
+        const result = await this.playwrightService.runTestGroup(
+            filePath,
+            maxWorkers,
+            testNames,
+            project
+        )
 
         // Add process to tracker
         activeProcessesTracker.addProcess({
@@ -350,6 +365,7 @@ export class TestService implements ITestService {
                 filePath,
                 triggeredFrom: 'dashboard',
                 filteredTests: testNames ? testNames.length : undefined,
+                project,
             },
         })
 
@@ -379,13 +395,14 @@ export class TestService implements ITestService {
         return result
     }
 
-    async rerunTest(testId: string, maxWorkers?: number, project?: string): Promise<any> {
+    async rerunTest(testId: string, maxWorkers?: number, _project?: string): Promise<any> {
         // Get the test to rerun
         const test = await this.testRepository.getTestResult(testId)
         if (!test) {
             throw new Error('Test not found')
         }
 
+        const project = await this.getExecutionProject()
         const result = await this.playwrightService.rerunSingleTest(
             test.filePath,
             test.name,
@@ -416,6 +433,7 @@ export class TestService implements ITestService {
                 originalTestId: testId,
                 originalTestName: test.name,
                 filePath: test.filePath,
+                project,
             },
         })
 

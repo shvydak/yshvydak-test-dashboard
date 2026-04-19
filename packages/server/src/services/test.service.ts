@@ -86,17 +86,9 @@ export class TestService implements ITestService {
     }
 
     async getTestHistory(testId: string, limit: number = 50): Promise<TestResult[]> {
-        const history = await this.testRepository.getTestResultsByTestId(testId, limit)
-
-        // Load attachments for each execution
-        for (const execution of history) {
-            const attachments = await this.attachmentService.getAttachmentsByTestResult(
-                execution.id
-            )
-            execution.attachments = attachments
-        }
-
-        return history
+        // Attachments and notes are loaded via JOIN inside the repository, so a
+        // single SQL roundtrip is sufficient — no per-execution N+1 fan-out here.
+        return this.testRepository.getTestResultsByTestId(testId, limit)
     }
 
     async deleteTest(testId: string): Promise<{deletedExecutions: number}> {

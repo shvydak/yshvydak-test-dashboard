@@ -30,8 +30,11 @@ export function useTestExecutionHistory(testId: string): UseTestExecutionHistory
             setLoading(true)
             setError(null)
             try {
+                // byTestId=true tells the server we already have the stable test_id
+                // (not an execution id), so it can skip an extra SELECT + attachment
+                // lookup that exists for backwards-compatible execution-id callers.
                 const response = await authGet(
-                    `${config.api.serverUrl}/api/tests/${testId}/history?limit=200`
+                    `${config.api.serverUrl}/api/tests/${testId}/history?limit=200&byTestId=true`
                 )
 
                 if (response.ok) {

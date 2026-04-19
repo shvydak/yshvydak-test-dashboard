@@ -2,6 +2,23 @@ import {BaseRepository} from './base.repository'
 import {TestResultData, TestResultRow, DatabaseStats} from '../types/database.types'
 import {TestResult, TestFilters, ITestRepository} from '../types/service.types'
 import {DEFAULT_LIMITS} from '../config/constants'
+import {FileUtil} from '../utils/file.util'
+
+// Shared SELECT projection for queries that JOIN attachments + notes onto test_results.
+// Keeping the column list in one place ensures the row mapper stays in sync with the SQL.
+const TEST_RESULT_WITH_RELATIONS_COLUMNS = `
+    tr.*,
+    a.id          as attachment_id,
+    a.type        as attachment_type,
+    a.url         as attachment_url,
+    a.file_name   as attachment_file_name,
+    a.file_path   as attachment_file_path,
+    a.file_size   as attachment_file_size,
+    a.mime_type   as attachment_mime_type,
+    tn.content    as note_content,
+    tn.created_at as note_created_at,
+    tn.updated_at as note_updated_at
+`
 
 export class TestRepository extends BaseRepository implements ITestRepository {
     async saveTestResult(testData: TestResultData): Promise<string> {
@@ -20,9 +37,7 @@ export class TestRepository extends BaseRepository implements ITestRepository {
 
     async getTestResultsByRun(runId: string): Promise<TestResult[]> {
         const rows = await this.queryAll<TestResultRow>(
-            `SELECT tr.*,
-                    a.id as attachment_id, a.type as attachment_type, a.url as attachment_url,
-                    tn.content as note_content, tn.created_at as note_created_at, tn.updated_at as note_updated_at
+            `SELECT ${TEST_RESULT_WITH_RELATIONS_COLUMNS}
              FROM test_results tr
              LEFT JOIN attachments a ON tr.id = a.test_result_id
              LEFT JOIN test_notes tn ON tr.test_id = tn.test_id
@@ -38,10 +53,10 @@ export class TestRepository extends BaseRepository implements ITestRepository {
         testId: string,
         limit = DEFAULT_LIMITS.TEST_HISTORY
     ): Promise<TestResult[]> {
+        // Important: LIMIT is applied to the inner subquery so that history depth
+        // is bounded by execution count, not by the row count after attachment JOIN.
         const rows = await this.queryAll<TestResultRow>(
-            `SELECT tr.*,
-                a.id as attachment_id, a.type as attachment_type, a.url as attachment_url,
-                tn.content as note_content, tn.created_at as note_created_at, tn.updated_at as note_updated_at
+            `SELECT ${TEST_RESULT_WITH_RELATIONS_COLUMNS}
              FROM (
                 SELECT * FROM test_results
                 WHERE test_id = ? AND status NOT IN ('pending', 'skipped')
@@ -59,9 +74,7 @@ export class TestRepository extends BaseRepository implements ITestRepository {
 
     async getAllTests(filters: TestFilters): Promise<TestResult[]> {
         let sql = `
-            SELECT tr.*,
-                   a.id as attachment_id, a.type as attachment_type, a.url as attachment_url,
-                   tn.content as note_content, tn.created_at as note_created_at, tn.updated_at as note_updated_at
+            SELECT ${TEST_RESULT_WITH_RELATIONS_COLUMNS}
             FROM test_results tr
             LEFT JOIN attachments a ON tr.id = a.test_result_id
             LEFT JOIN test_notes tn ON tr.test_id = tn.test_id
@@ -72,20 +85,18 @@ export class TestRepository extends BaseRepository implements ITestRepository {
             sql += ` WHERE tr.run_id = ?`
             params.push(filters.runId)
         } else {
-            // Get latest test results grouped by test_id - use updated_at to get most recent execution
+            // Pick the latest execution per test_id with a window function (O(N log N))
+            // instead of a correlated subquery (O(N^2)) — important once history grows.
             sql = `
-                SELECT DISTINCT tr.*,
-                       a.id as attachment_id, a.type as attachment_type, a.url as attachment_url,
-                       tn.content as note_content, tn.created_at as note_created_at, tn.updated_at as note_updated_at
-                FROM test_results tr
+                SELECT ${TEST_RESULT_WITH_RELATIONS_COLUMNS}
+                FROM (
+                    SELECT *,
+                           ROW_NUMBER() OVER (PARTITION BY test_id ORDER BY updated_at DESC) AS rn
+                    FROM test_results
+                ) tr
                 LEFT JOIN attachments a ON tr.id = a.test_result_id
                 LEFT JOIN test_notes tn ON tr.test_id = tn.test_id
-                WHERE tr.id IN (
-                    SELECT id FROM test_results tr2
-                    WHERE tr2.test_id = tr.test_id
-                    ORDER BY tr2.updated_at DESC
-                    LIMIT 1
-                )
+                WHERE tr.rn = 1
             `
         }
 
@@ -274,39 +285,65 @@ export class TestRepository extends BaseRepository implements ITestRepository {
 
     private mapRowsToTestResults(rows: TestResultRow[]): TestResult[] {
         const testsMap = new Map<string, TestResult>()
+        // Track attachment ids per execution to keep the result idempotent if the
+        // JOIN ever produces duplicate (execution × attachment) pairs.
+        const seenAttachments = new Map<string, Set<string>>()
 
         rows.forEach((row) => {
             if (!testsMap.has(row.id)) {
                 const testResult = this.mapRowToTestResult(row)
                 testsMap.set(row.id, testResult)
+                seenAttachments.set(row.id, new Set())
 
-                // Add note if present
-                if ((row as any).note_content) {
+                if (row.note_content) {
                     testResult.note = {
                         testId: row.test_id,
-                        content: (row as any).note_content,
-                        createdAt: (row as any).note_created_at,
-                        updatedAt: (row as any).note_updated_at,
+                        content: row.note_content,
+                        createdAt: row.note_created_at!,
+                        updatedAt: row.note_updated_at!,
                     }
                 }
             }
 
-            // Add attachment if present
             if (row.attachment_id) {
-                const test = testsMap.get(row.id)!
-                test.attachments = test.attachments || []
-                test.attachments.push({
-                    id: row.attachment_id,
-                    testResultId: row.id,
-                    type: row.attachment_type as any,
-                    fileName: '',
-                    filePath: '',
-                    fileSize: 0,
-                    url: row.attachment_url!,
-                })
+                const seen = seenAttachments.get(row.id)!
+                if (!seen.has(row.attachment_id)) {
+                    seen.add(row.attachment_id)
+                    const test = testsMap.get(row.id)!
+                    test.attachments = test.attachments || []
+                    test.attachments.push({
+                        id: row.attachment_id,
+                        testResultId: row.id,
+                        type: row.attachment_type as any,
+                        fileName: row.attachment_file_name || '',
+                        filePath: row.attachment_file_path || '',
+                        fileSize: row.attachment_file_size || 0,
+                        mimeType: row.attachment_mime_type,
+                        url: this.normalizeAttachmentUrl(
+                            row.attachment_url,
+                            row.attachment_file_path
+                        ),
+                    })
+                }
             }
         })
 
         return Array.from(testsMap.values())
+    }
+
+    /**
+     * Mirrors AttachmentRepository.getAttachmentsWithUrls() so that the JOIN-loaded
+     * attachments behave identically to the dedicated repository call.
+     */
+    private normalizeAttachmentUrl(url?: string, filePath?: string): string {
+        if (!url) {
+            return filePath ? FileUtil.convertToRelativeUrl(filePath) : ''
+        }
+
+        if (url.startsWith('/attachments/')) {
+            return url
+        }
+
+        return filePath ? FileUtil.convertToRelativeUrl(filePath) : url
     }
 }

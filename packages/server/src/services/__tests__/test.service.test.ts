@@ -359,7 +359,7 @@ describe('TestService', () => {
     })
 
     describe('getTestHistory', () => {
-        it('should retrieve test history with attachments', async () => {
+        it('should retrieve test history (attachments are loaded by repository JOIN, no N+1)', async () => {
             const mockHistory = [
                 {
                     id: 'exec-3',
@@ -368,6 +368,7 @@ describe('TestService', () => {
                     name: 'Test 1',
                     status: 'passed',
                     duration: 100,
+                    attachments: [{id: 'att-1', fileName: 'screenshot1.png', type: 'screenshot'}],
                 },
                 {
                     id: 'exec-2',
@@ -376,6 +377,10 @@ describe('TestService', () => {
                     name: 'Test 1',
                     status: 'failed',
                     duration: 150,
+                    attachments: [
+                        {id: 'att-2', fileName: 'screenshot2.png', type: 'screenshot'},
+                        {id: 'att-3', fileName: 'trace.zip', type: 'trace'},
+                    ],
                 },
                 {
                     id: 'exec-1',
@@ -384,33 +389,18 @@ describe('TestService', () => {
                     name: 'Test 1',
                     status: 'passed',
                     duration: 120,
+                    attachments: [],
                 },
             ]
 
-            const mockAttachments1 = [
-                {id: 'att-1', fileName: 'screenshot1.png', type: 'screenshot'},
-            ]
-            const mockAttachments2 = [
-                {id: 'att-2', fileName: 'screenshot2.png', type: 'screenshot'},
-                {id: 'att-3', fileName: 'trace.zip', type: 'trace'},
-            ]
-            const mockAttachments3: any[] = []
-
             mockTestRepository.getTestResultsByTestId.mockResolvedValue(mockHistory)
-            mockAttachmentService.getAttachmentsByTestResult
-                .mockResolvedValueOnce(mockAttachments1)
-                .mockResolvedValueOnce(mockAttachments2)
-                .mockResolvedValueOnce(mockAttachments3)
 
             const history = await testService.getTestHistory('hash-1', 50)
 
-            expect(history).toHaveLength(3)
-            expect(history[0].attachments).toEqual(mockAttachments1)
-            expect(history[1].attachments).toEqual(mockAttachments2)
-            expect(history[2].attachments).toEqual(mockAttachments3)
-
+            expect(history).toEqual(mockHistory)
             expect(mockTestRepository.getTestResultsByTestId).toHaveBeenCalledWith('hash-1', 50)
-            expect(mockAttachmentService.getAttachmentsByTestResult).toHaveBeenCalledTimes(3)
+            // Critical: history must NOT issue per-execution attachment queries
+            expect(mockAttachmentService.getAttachmentsByTestResult).not.toHaveBeenCalled()
         })
 
         it('should use default limit of 50 if not provided', async () => {
@@ -446,7 +436,6 @@ describe('TestService', () => {
             ]
 
             mockTestRepository.getTestResultsByTestId.mockResolvedValue(mockHistory)
-            mockAttachmentService.getAttachmentsByTestResult.mockResolvedValue([])
 
             const history = await testService.getTestHistory('hash-1')
 

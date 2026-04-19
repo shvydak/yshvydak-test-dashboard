@@ -570,11 +570,16 @@ describe('TestRepository - Core Functionality', () => {
 
             expect(results).toHaveLength(1)
             expect(results[0].attachments).toHaveLength(1)
+            // URL is normalized the same way AttachmentRepository.getAttachmentsWithUrls
+            // does it: stored URLs that don't already start with /attachments/ get
+            // rebuilt from filePath (leading slash stripped by convertToRelativeUrl).
             expect(results[0].attachments?.[0]).toMatchObject({
                 id: 'attachment-1',
                 testResultId: testId,
                 type: 'screenshot',
-                url: '/api/attachments/attachment-1',
+                fileName: 'screenshot.png',
+                fileSize: 12345,
+                url: 'attachments/screenshot.png',
             })
         })
 

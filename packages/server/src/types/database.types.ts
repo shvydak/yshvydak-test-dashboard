@@ -57,6 +57,14 @@ export interface TestResultRow {
     attachment_id?: string
     attachment_type?: string
     attachment_url?: string
+    attachment_file_name?: string
+    attachment_file_path?: string
+    attachment_file_size?: number
+    attachment_mime_type?: string
+    // Joined test_notes fields
+    note_content?: string
+    note_created_at?: string
+    note_updated_at?: string
 }
 
 // Discovered test from Playwright

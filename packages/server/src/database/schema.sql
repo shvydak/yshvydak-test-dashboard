@@ -80,6 +80,12 @@ CREATE INDEX IF NOT EXISTS idx_test_results_run_id ON test_results(run_id);
 CREATE INDEX IF NOT EXISTS idx_test_results_test_id ON test_results(test_id);
 CREATE INDEX IF NOT EXISTS idx_test_results_status ON test_results(status);
 CREATE INDEX IF NOT EXISTS idx_test_results_file_path ON test_results(file_path);
+-- Covers the per-test history query: WHERE test_id = ? ORDER BY created_at DESC LIMIT N.
+-- SQLite can use this composite index to satisfy both the lookup and the sort
+-- without a separate ORDER BY pass, which matters as history grows.
+CREATE INDEX IF NOT EXISTS idx_test_results_test_id_created_at ON test_results(test_id, created_at DESC);
+-- Speeds up retention queries (cleanupData by date) and the timeline aggregation.
+CREATE INDEX IF NOT EXISTS idx_test_results_created_at ON test_results(created_at);
 
 CREATE INDEX IF NOT EXISTS idx_attachments_test_result_id ON attachments(test_result_id);
 CREATE INDEX IF NOT EXISTS idx_attachments_type ON attachments(type);

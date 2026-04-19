@@ -12,6 +12,7 @@
 - ❌ NEVER: Direct DatabaseManager calls
 - ✅ ALWAYS: Full chain for all operations
 - 📂 Location: `packages/server/src/{controllers,services,repositories}/`
+- 💾 Engine: **SQLite** (`sqlite3` + WAL). Not MongoDB. Schema: `packages/server/src/database/schema.sql`
 
 ### 2️⃣ Reporter Integration - npm package + npm link
 
@@ -119,6 +120,7 @@ For rapid feature development with automated workflow, use the custom agent:
 - Rerun button? → `web/src/features/tests/components/history/ExecutionSidebar.tsx`
 - Copy attachments? → `server/src/storage/attachmentManager.ts`
 - Flaky detection? → `server/src/repositories/test.repository.ts`
+- DB schema? → `server/src/database/schema.sql` (copied to `dist/database/` by `copy-files` script — rebuild after edits)
 - **Test configurations?** → `vitest.config.ts`, `packages/{package}/vitest.config.ts`
 - **Write tests?** → `packages/{package}/src/__tests__/`
 
@@ -156,6 +158,10 @@ import {getWebSocketUrl} from '@/utils/webSocketUrl'
 const url = getWebSocketUrl(true)
 ```
 
+### ❌ Service-layer N+1 over JOIN repositories
+
+Repository methods like `getTestResultsByTestId` already JOIN attachments + notes. Don't loop the result and call `getAttachmentsByTestResult(execution.id)` per row — that turns 1 query into N+1.
+
 **More examples:** [docs/ai/ANTI_PATTERNS.md](docs/ai/ANTI_PATTERNS.md)
 
 ---
@@ -167,6 +173,13 @@ const url = getWebSocketUrl(true)
 **Reporter:** npm package, CLI injection, environment config
 **Database:** INSERT-only, testId grouping, execution history
 **Attachments:** Permanent storage, unique filenames, isolated dirs
+
+### SQLite conventions
+
+- Tests use in-memory DB: `new DatabaseManager(':memory:')` + `await dbManager.initialize()`
+- Prefer `ROW_NUMBER() OVER (PARTITION BY ...)` over correlated subqueries (SQLite ≥ 3.25, already used in `getIdsPrunedByCount`)
+- Add a composite index when filter + sort target the same query (e.g. `(test_id, created_at DESC)` for history)
+- History defaults: `DEFAULT_LIMITS.TEST_HISTORY = 200` (`server/src/config/constants.ts`); frontend hook always sends `?limit=200&byTestId=true`
 
 **Deep dive:** [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
 
@@ -288,12 +301,13 @@ Vibe agent automatically runs these checks through specialized agents:
 
 ## 🐛 Quick Fixes
 
-| Issue               | Solution                                               |
-| ------------------- | ------------------------------------------------------ |
-| Reporter not found  | `npm install --save-dev playwright-dashboard-reporter` |
-| WebSocket fails     | Check JWT token in URL params                          |
-| Tests not appearing | Verify `PLAYWRIGHT_PROJECT_DIR` in `.env`              |
-| Attachments 404     | Check permanent storage permissions                    |
+| Issue                                    | Solution                                                                                                                                                                                      |
+| ---------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Reporter not found                       | `npm install --save-dev playwright-dashboard-reporter`                                                                                                                                        |
+| WebSocket fails                          | Check JWT token in URL params                                                                                                                                                                 |
+| Tests not appearing                      | Verify `PLAYWRIGHT_PROJECT_DIR` in `.env`                                                                                                                                                     |
+| Attachments 404                          | Check permanent storage permissions                                                                                                                                                           |
+| Attachment URLs differ between endpoints | JOIN-based mappers in `TestRepository` must apply the same URL rewrite as `AttachmentRepository.getAttachmentsWithUrls()` (`/attachments/...` passthrough, otherwise rebuild from `filePath`) |
 
 ---
 

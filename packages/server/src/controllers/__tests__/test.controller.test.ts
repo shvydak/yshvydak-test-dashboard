@@ -803,6 +803,30 @@ describe('TestController', () => {
             expect(mockTestService.getTestHistory).toHaveBeenCalledWith('test-1', 10)
         })
 
+        it('should skip getTestById lookup when byTestId=true', async () => {
+            const history = [{id: 'result-1'}, {id: 'result-2'}]
+            mockReq.params = {id: 'stable-test-id'}
+            mockReq.query = {byTestId: 'true'}
+            mockTestService.getTestHistory.mockResolvedValue(history)
+
+            await controller.getTestHistory(mockReq as ServiceRequest, mockRes as Response)
+
+            expect(mockTestService.getTestById).not.toHaveBeenCalled()
+            expect(mockTestService.getTestHistory).toHaveBeenCalledWith('stable-test-id', 50)
+            expect(ResponseHelper.success).toHaveBeenCalledWith(mockRes, history, undefined, 2)
+        })
+
+        it('should treat byTestId=1 as truthy', async () => {
+            mockReq.params = {id: 'stable-test-id'}
+            mockReq.query = {byTestId: '1'}
+            mockTestService.getTestHistory.mockResolvedValue([])
+
+            await controller.getTestHistory(mockReq as ServiceRequest, mockRes as Response)
+
+            expect(mockTestService.getTestById).not.toHaveBeenCalled()
+            expect(mockTestService.getTestHistory).toHaveBeenCalledWith('stable-test-id', 50)
+        })
+
         it('should handle errors when fetching history', async () => {
             mockReq.params = {id: 'test-1'}
             const error = new Error('History error')

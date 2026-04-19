@@ -1,5 +1,16 @@
 # @yshvydak/test-dashboard-server
 
+## 1.8.0
+
+### Minor Changes
+
+- Database requesting optimization
+
+### Patch Changes
+
+- Updated dependencies
+    - @yshvydak/core@1.8.0
+
 ## 1.7.4
 
 ### Patch Changes

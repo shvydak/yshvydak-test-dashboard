@@ -403,16 +403,25 @@ export class TestController {
     }
 
     // GET /api/tests/:id/history - Get test history (all runs of this test)
+    // Pass ?byTestId=true when the route param is already the stable test_id (the
+    // hash) — this skips the extra SELECT + attachment fetch that the legacy
+    // execution-id lookup performs.
     getTestHistory = async (req: ServiceRequest, res: Response): Promise<void> => {
         try {
             const {id} = req.params
-            const {limit = 50} = req.query
+            const {limit = 50, byTestId} = req.query
 
-            // Try to find test by ID first (for backwards compatibility)
-            const test = await this.testService.getTestById(id)
+            const isExplicitTestId = byTestId === 'true' || byTestId === '1' || byTestId === 'yes'
 
-            // If found by ID, use its testId; otherwise treat parameter as testId directly
-            const testId = test ? test.testId : id
+            let testId: string
+            if (isExplicitTestId) {
+                testId = id
+            } else {
+                // Backwards-compatible behaviour: treat the parameter as either an
+                // execution id (look it up) or fall back to using it as a test id.
+                const test = await this.testService.getTestById(id)
+                testId = test ? test.testId : id
+            }
 
             const history = await this.testService.getTestHistory(
                 testId,

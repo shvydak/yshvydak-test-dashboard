@@ -1,5 +1,11 @@
 # @yshvydak/core
 
+## 1.8.0
+
+### Minor Changes
+
+- Database requesting optimization
+
 ## 1.7.4
 
 ### Patch Changes

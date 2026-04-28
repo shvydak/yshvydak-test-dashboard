@@ -609,18 +609,17 @@ describe('YShvydakReporter - Integration Tests', () => {
             reporter.onTestEnd(createMockTestCase('test', 'passed'), createMockTestResult('passed'))
 
             const result: FullResult = {status: 'passed'} as FullResult
-            const startTime = Date.now()
+            const setTimeoutSpy = vi.spyOn(global, 'setTimeout')
             await reporter.onEnd(result)
-            const duration = Date.now() - startTime
 
-            // Should wait at least 1000ms
-            expect(duration).toBeGreaterThanOrEqual(1000)
+            expect(setTimeoutSpy).toHaveBeenCalledWith(expect.any(Function), 1000)
             expect(consoleLogSpy).toHaveBeenCalledWith(
                 expect.stringContaining('Waiting for all test results')
             )
             expect(consoleLogSpy).toHaveBeenCalledWith(
                 expect.stringContaining('All test results should be processed')
             )
+            setTimeoutSpy.mockRestore()
         })
 
         it('should handle API error when updating run', async () => {

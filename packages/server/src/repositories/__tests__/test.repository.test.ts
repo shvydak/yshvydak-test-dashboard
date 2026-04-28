@@ -775,6 +775,41 @@ describe('TestRepository - Core Functionality', () => {
             const expectedIds = executionIds.slice(-5).reverse() // Last 5, newest first
             expect(returnedIds).toEqual(expectedIds)
         })
+
+        it('should apply getAllTests LIMIT to tests before joining attachments', async () => {
+            const executionIds: string[] = []
+
+            for (let i = 0; i < 6; i++) {
+                const id = await repository.saveTestResult(
+                    createTestResult(`test-list-limit-${i}`, 'failed')
+                )
+                executionIds.push(id)
+
+                for (let j = 0; j < 3; j++) {
+                    await attachmentRepository.saveAttachment({
+                        id: `att-list-limit-${i}-${j}`,
+                        testResultId: id,
+                        type: j === 0 ? 'screenshot' : j === 1 ? 'video' : 'trace',
+                        fileName: `file-${i}-${j}.png`,
+                        filePath: `/path/to/file-${i}-${j}.png`,
+                        fileSize: 1024,
+                        url: `/attachments/file-${i}-${j}.png`,
+                    })
+                }
+
+                await new Promise((resolve) => setTimeout(resolve, 10))
+            }
+
+            const limited = await repository.getAllTests({limit: 5})
+
+            expect(limited).toHaveLength(5)
+            limited.forEach((test) => {
+                expect(test.attachments).toHaveLength(3)
+            })
+
+            const returnedIds = limited.map((test) => test.id)
+            expect(returnedIds).toEqual(executionIds.slice(-5).reverse())
+        })
     })
 
     describe('clearAllTests()', () => {

@@ -73,41 +73,43 @@ export class TestRepository extends BaseRepository implements ITestRepository {
     }
 
     async getAllTests(filters: TestFilters): Promise<TestResult[]> {
-        let sql = `
-            SELECT ${TEST_RESULT_WITH_RELATIONS_COLUMNS}
-            FROM test_results tr
-            LEFT JOIN attachments a ON tr.id = a.test_result_id
-            LEFT JOIN test_notes tn ON tr.test_id = tn.test_id
-        `
         const params: any[] = []
+        let innerSql: string
 
         if (filters.runId) {
-            sql += ` WHERE tr.run_id = ?`
+            innerSql = `SELECT * FROM test_results WHERE run_id = ?`
             params.push(filters.runId)
         } else {
             // Pick the latest execution per test_id with a window function (O(N log N))
             // instead of a correlated subquery (O(N^2)) — important once history grows.
-            sql = `
-                SELECT ${TEST_RESULT_WITH_RELATIONS_COLUMNS}
+            innerSql = `
+                SELECT *
                 FROM (
                     SELECT *,
                            ROW_NUMBER() OVER (PARTITION BY test_id ORDER BY updated_at DESC) AS rn
                     FROM test_results
-                ) tr
-                LEFT JOIN attachments a ON tr.id = a.test_result_id
-                LEFT JOIN test_notes tn ON tr.test_id = tn.test_id
-                WHERE tr.rn = 1
+                )
+                WHERE rn = 1
             `
         }
 
         if (filters.status) {
-            sql += filters.runId ? ` AND` : ` AND`
-            sql += ` tr.status = ?`
+            innerSql += ` AND status = ?`
             params.push(filters.status)
         }
 
-        sql += ` ORDER BY tr.updated_at DESC LIMIT ?`
+        // Apply LIMIT before joining attachments so attachment fan-out cannot
+        // shrink the number of test executions returned to the UI.
+        innerSql += ` ORDER BY updated_at DESC LIMIT ?`
         params.push(filters.limit || DEFAULT_LIMITS.TESTS_PER_PAGE)
+
+        const sql = `
+            SELECT ${TEST_RESULT_WITH_RELATIONS_COLUMNS}
+            FROM (${innerSql}) tr
+            LEFT JOIN attachments a ON tr.id = a.test_result_id
+            LEFT JOIN test_notes tn ON tr.test_id = tn.test_id
+            ORDER BY tr.updated_at DESC
+        `
 
         const rows = await this.queryAll<TestResultRow>(sql, params)
         return this.mapRowsToTestResults(rows)

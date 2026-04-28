@@ -251,7 +251,7 @@ describe('POST /api/tests - Create Test Result (Integration)', () => {
 
             // Verify all 3 records exist in database
             const allResults = await server.testRepository.dbManager.queryAll(
-                'SELECT * FROM test_results WHERE test_id = ? ORDER BY created_at ASC',
+                'SELECT * FROM test_results WHERE test_id = ? ORDER BY created_at ASC, id ASC',
                 ['test-same-id']
             )
 

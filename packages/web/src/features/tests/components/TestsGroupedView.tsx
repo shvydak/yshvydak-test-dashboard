@@ -21,7 +21,7 @@ export function TestsGroupedView({
     const groupStats = useTestGroups(tests)
 
     return (
-        <div className="space-y-4">
+        <div className="space-y-4 stagger">
             {groupStats.map((group) => (
                 <TestGroup
                     key={group.filePath}

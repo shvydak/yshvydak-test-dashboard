@@ -31,21 +31,23 @@ export function ConfirmationDialog({
             <div className="flex min-h-screen items-center justify-center p-4">
                 <ModalBackdrop onClick={onCancel} blur="md" />
 
-                <div className="relative w-full max-w-md bg-white dark:bg-gray-800 rounded-lg shadow-xl">
+                <div className="relative w-full max-w-md animate-scale-in rounded-2xl border border-gray-200/80 bg-white shadow-pop dark:border-white/10 dark:bg-gray-800">
                     {/* Header */}
-                    <div className="p-6 border-b border-gray-200 dark:border-gray-700">
-                        <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                    <div className="p-6 pb-3">
+                        <h3 className="text-lg font-semibold tracking-tight text-gray-900 dark:text-white">
                             {title}
                         </h3>
                     </div>
 
                     {/* Body */}
-                    <div className="p-6">
-                        <p className="text-sm text-gray-600 dark:text-gray-400">{description}</p>
+                    <div className="px-6 pb-6">
+                        <p className="text-sm leading-relaxed text-gray-500 dark:text-gray-400">
+                            {description}
+                        </p>
                     </div>
 
                     {/* Footer */}
-                    <div className="flex items-center justify-end gap-3 p-6 border-t border-gray-200 dark:border-gray-700">
+                    <div className="flex items-center justify-end gap-3 border-t border-gray-200/70 p-4 dark:border-white/[0.06]">
                         <Button variant="secondary" onClick={onCancel} disabled={isLoading}>
                             {cancelText}
                         </Button>

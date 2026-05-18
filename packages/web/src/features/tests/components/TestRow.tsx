@@ -41,15 +41,15 @@ export function TestRow({test, selected, onSelect, onRerun}: TestRowProps) {
 
     return (
         <tr
-            className={`border-b border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors cursor-pointer ${
+            className={`cursor-pointer border-b border-gray-100 transition-colors duration-150 dark:border-white/[0.04] ${
                 isRunning
-                    ? 'bg-blue-50 dark:bg-blue-900/20 border-l-4 border-l-blue-500 animate-pulse'
+                    ? 'bg-primary-50/60 ring-1 ring-inset ring-primary-400/40 animate-pulse dark:bg-primary-500/10'
                     : selected
-                      ? 'bg-primary-50 dark:bg-primary-900/20'
-                      : ''
+                      ? 'bg-primary-50 shadow-[inset_3px_0_0_0_theme(colors.primary.500)] dark:bg-primary-500/10'
+                      : 'hover:bg-gray-50 dark:hover:bg-white/[0.04]'
             }`}
             onClick={() => onSelect(test)}>
-            <td className="py-3 px-3 md:px-6 w-24 md:w-32">
+            <td className="py-3.5 px-3 md:px-6 w-24 md:w-32">
                 {isRunning ? (
                     <Badge variant="info" size="md">
                         <LoadingSpinner size="sm" className="mr-1" />
@@ -60,21 +60,21 @@ export function TestRow({test, selected, onSelect, onRerun}: TestRowProps) {
                     <StatusBadge status={test.status as any} />
                 )}
             </td>
-            <td className="py-3 px-3 md:px-6">
-                <div className="font-medium text-gray-900 dark:text-white text-sm md:text-base">
+            <td className="py-3.5 px-3 md:px-6">
+                <div className="font-medium tracking-tight text-gray-900 dark:text-white text-sm md:text-base">
                     {test.name}
                 </div>
                 {/* On mobile, show duration inline under name */}
-                <div className="sm:hidden text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                <div className="sm:hidden text-xs text-gray-400 dark:text-gray-500 mt-0.5 font-mono tabular-nums">
                     {formatDuration(test.duration)}
                 </div>
                 {!runningInfo && test.errorMessage && (
-                    <div className="text-xs text-red-600 dark:text-red-400 mt-1 truncate max-w-[200px] md:max-w-xs">
+                    <div className="text-xs font-mono text-danger-600 dark:text-danger-400 mt-1.5 truncate max-w-[200px] md:max-w-xs">
                         {test.errorMessage}
                     </div>
                 )}
                 {!runningInfo && test.note?.content && (
-                    <div className="text-xs text-gray-600 dark:text-gray-400 mt-1 max-w-[200px] md:max-w-xs flex items-center gap-1 flex-wrap">
+                    <div className="text-xs text-gray-500 dark:text-gray-400 mt-1.5 max-w-[200px] md:max-w-xs flex items-center gap-1 flex-wrap">
                         <span>💬</span>
                         {noteParts.map((part, index) => {
                             if (part.type === 'image' && part.image) {
@@ -100,13 +100,13 @@ export function TestRow({test, selected, onSelect, onRerun}: TestRowProps) {
                     </div>
                 )}
             </td>
-            <td className="py-3 px-6 text-sm text-gray-600 dark:text-gray-400 w-24 hidden sm:table-cell">
+            <td className="py-3.5 px-6 text-sm font-mono tabular-nums text-gray-500 dark:text-gray-400 w-24 hidden sm:table-cell">
                 {formatDuration(test.duration)}
             </td>
-            <td className="py-3 px-6 text-sm text-gray-600 dark:text-gray-400 w-48 hidden lg:table-cell">
+            <td className="py-3.5 px-6 text-sm text-gray-500 dark:text-gray-400 w-48 hidden lg:table-cell">
                 {formatLastRun(test)}
             </td>
-            <td className="py-3 px-3 md:px-6 w-20 md:w-40 hidden sm:table-cell">
+            <td className="py-3.5 px-3 md:px-6 w-20 md:w-40 hidden sm:table-cell">
                 <ActionButton
                     size="sm"
                     variant="primary"
@@ -159,7 +159,7 @@ function NoteImageMiniThumbnail({image}: {image: NoteImage}) {
 
     if (loading || !imageUrl) {
         return (
-            <span className="inline-block w-4 h-4 bg-gray-200 dark:bg-gray-700 rounded border border-gray-300 dark:border-gray-600" />
+            <span className="skeleton inline-block h-4 w-4 rounded-md ring-1 ring-inset ring-gray-500/10 dark:ring-white/10" />
         )
     }
 
@@ -167,7 +167,7 @@ function NoteImageMiniThumbnail({image}: {image: NoteImage}) {
         <img
             src={imageUrl}
             alt=""
-            className="inline-block w-4 h-4 rounded border border-gray-300 dark:border-gray-600 object-cover"
+            className="inline-block h-4 w-4 rounded-md object-cover ring-1 ring-inset ring-gray-500/15 dark:ring-white/10"
             style={{verticalAlign: 'middle'}}
             onClick={(e) => e.stopPropagation()}
         />

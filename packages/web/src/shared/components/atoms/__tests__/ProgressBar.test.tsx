@@ -96,21 +96,21 @@ describe('ProgressBar', () => {
             const {container} = render(<ProgressBar percentage={50} variant="primary" />)
 
             const progressBar = container.querySelector('[role="progressbar"]')
-            expect(progressBar).toHaveClass('bg-primary-600')
+            expect(progressBar).toHaveClass('from-primary-500', 'to-primary-400')
         })
 
         it('should apply success variant class', () => {
             const {container} = render(<ProgressBar percentage={50} variant="success" />)
 
             const progressBar = container.querySelector('[role="progressbar"]')
-            expect(progressBar).toHaveClass('bg-success-600')
+            expect(progressBar).toHaveClass('from-success-500', 'to-success-400')
         })
 
         it('should apply danger variant class', () => {
             const {container} = render(<ProgressBar percentage={50} variant="danger" />)
 
             const progressBar = container.querySelector('[role="progressbar"]')
-            expect(progressBar).toHaveClass('bg-danger-600')
+            expect(progressBar).toHaveClass('from-danger-500', 'to-danger-400')
         })
     })
 
@@ -119,14 +119,14 @@ describe('ProgressBar', () => {
             const {container} = render(<ProgressBar percentage={50} height="sm" />)
 
             const progressBar = container.querySelector('[role="progressbar"]')
-            expect(progressBar).toHaveClass('h-1')
+            expect(progressBar).toHaveClass('h-1.5')
         })
 
         it('should apply medium height by default', () => {
             const {container} = render(<ProgressBar percentage={50} />)
 
             const progressBar = container.querySelector('[role="progressbar"]')
-            expect(progressBar).toHaveClass('h-2')
+            expect(progressBar).toHaveClass('h-2.5')
         })
 
         it('should apply large height', () => {
@@ -176,24 +176,24 @@ describe('ProgressBar', () => {
 
             const progressBar = container.querySelector('[role="progressbar"]')
             expect(progressBar).toHaveClass('transition-all')
-            expect(progressBar).toHaveClass('duration-300')
+            expect(progressBar).toHaveClass('duration-500')
             expect(progressBar).toHaveClass('ease-out')
         })
     })
 
     describe('Dark Mode', () => {
-        it('should have dark mode classes for primary variant', () => {
+        it('should use a theme-agnostic gradient fill for primary variant', () => {
             const {container} = render(<ProgressBar percentage={50} variant="primary" />)
 
             const progressBar = container.querySelector('[role="progressbar"]')
-            expect(progressBar).toHaveClass('dark:bg-primary-500')
+            expect(progressBar).toHaveClass('bg-gradient-to-r', 'from-primary-500')
         })
 
-        it('should have dark mode classes for success variant', () => {
+        it('should use a theme-agnostic gradient fill for success variant', () => {
             const {container} = render(<ProgressBar percentage={50} variant="success" />)
 
             const progressBar = container.querySelector('[role="progressbar"]')
-            expect(progressBar).toHaveClass('dark:bg-success-500')
+            expect(progressBar).toHaveClass('bg-gradient-to-r', 'from-success-500')
         })
 
         it('should have dark mode classes for label text', () => {

@@ -82,7 +82,7 @@ export function NoteImageLightbox({image, isOpen, onClose}: NoteImageLightboxPro
                 aria-modal="true"
                 aria-label="Image preview">
                 <div
-                    className="relative max-w-[90vw] max-h-[90vh] bg-white dark:bg-gray-800 rounded-lg shadow-2xl pointer-events-auto"
+                    className="relative max-w-[90vw] max-h-[90vh] bg-white dark:bg-gray-800 rounded-2xl shadow-pop animate-scale-in pointer-events-auto"
                     onClick={(e) => e.stopPropagation()}>
                     {/* Close button */}
                     <button
@@ -90,10 +90,10 @@ export function NoteImageLightbox({image, isOpen, onClose}: NoteImageLightboxPro
                             e.stopPropagation()
                             onClose()
                         }}
-                        className="absolute -top-10 right-0 text-white hover:text-gray-300 transition-colors z-10"
+                        className="absolute -top-11 right-0 rounded-xl p-1.5 text-white/80 hover:text-white hover:bg-white/10 transition-colors z-10"
                         aria-label="Close image preview">
                         <svg
-                            className="w-8 h-8"
+                            className="w-7 h-7"
                             fill="none"
                             stroke="currentColor"
                             viewBox="0 0 24 24">
@@ -116,11 +116,11 @@ export function NoteImageLightbox({image, isOpen, onClose}: NoteImageLightboxPro
                             <img
                                 src={imageUrl}
                                 alt={image.fileName}
-                                className="max-w-full max-h-[85vh] object-contain rounded"
+                                className="max-w-full max-h-[85vh] object-contain rounded-xl"
                             />
                         ) : (
                             <div className="flex items-center justify-center w-full h-64">
-                                <span className="text-red-500 dark:text-red-400">
+                                <span className="text-danger-500 dark:text-danger-400">
                                     Failed to load image
                                 </span>
                             </div>

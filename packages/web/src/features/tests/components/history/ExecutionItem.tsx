@@ -37,16 +37,16 @@ export function ExecutionItem({
             onClick={handleClick}
             onMouseEnter={() => setShowRemoveButton(true)}
             onMouseLeave={() => setShowRemoveButton(false)}
-            className={`group w-full text-left rounded-lg p-3 transition-all ${
+            className={`group w-full text-left rounded-xl p-3 transition-all duration-200 ${
                 isCurrent
-                    ? 'bg-primary-100 dark:bg-primary-900/30 border-2 border-primary-500 shadow-sm cursor-default'
-                    : 'bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:border-primary-300 dark:hover:border-primary-600 hover:shadow-md cursor-pointer'
+                    ? 'bg-primary-50 ring-1 ring-inset ring-primary-600/20 shadow-soft cursor-default dark:bg-primary-500/15 dark:ring-primary-400/25'
+                    : 'bg-white border border-gray-200/80 hover:-translate-y-0.5 hover:border-gray-300 hover:shadow-card-hover cursor-pointer dark:bg-gray-800/70 dark:border-white/[0.07] dark:hover:border-white/[0.12]'
             }`}>
             {/* Header with Badge and Date */}
             <div className="flex items-start justify-between gap-2 mb-2">
                 <StatusBadge status={execution.status as any} />
                 {isLatest && (
-                    <span className="px-1.5 py-0.5 text-[10px] font-bold rounded bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300 uppercase tracking-wider">
+                    <span className="px-2 py-0.5 text-[10px] font-semibold rounded-full bg-success-50 text-success-700 ring-1 ring-inset ring-success-600/15 dark:bg-success-500/10 dark:text-success-300 dark:ring-success-400/20 uppercase tracking-wider">
                         Latest
                     </span>
                 )}
@@ -58,7 +58,7 @@ export function ExecutionItem({
             </div>
 
             {/* Metadata */}
-            <div className="flex items-center gap-2 text-[11px] text-gray-600 dark:text-gray-400 mb-2">
+            <div className="flex items-center gap-2 text-[11px] font-mono tabular-nums text-gray-400 dark:text-gray-500 mb-2">
                 <span>⏱ {formatDuration(execution.duration)}</span>
                 {attachmentCount > 0 && (
                     <>
@@ -89,7 +89,7 @@ export function ExecutionItem({
                 {showRemoveButton && (
                     <button
                         onClick={handleDeleteClick}
-                        className="px-1.5 py-0.5 text-[10px] font-bold rounded bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300 uppercase tracking-wider hover:bg-red-200 dark:hover:bg-red-900/60 transition-all"
+                        className="px-2 py-0.5 text-[10px] font-semibold rounded-full bg-danger-50 text-danger-700 ring-1 ring-inset ring-danger-600/15 dark:bg-danger-500/10 dark:text-danger-300 dark:ring-danger-400/20 uppercase tracking-wider hover:bg-danger-100 dark:hover:bg-danger-500/20 transition-all duration-150"
                         title="Remove this execution"
                         aria-label="Remove execution">
                         Remove

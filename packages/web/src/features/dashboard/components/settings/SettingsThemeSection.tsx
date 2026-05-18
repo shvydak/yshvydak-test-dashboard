@@ -16,17 +16,17 @@ export function SettingsThemeSection() {
         <SettingsSection
             title="Theme"
             description="Choose your preferred theme or follow system settings">
-            <div className="flex space-x-2">
+            <div className="flex gap-1.5 rounded-2xl bg-gray-100/70 p-1.5 dark:bg-white/[0.04]">
                 {themeOptions.map((option) => (
                     <button
                         key={option.value}
                         onClick={() => setThemeMode(option.value)}
-                        className={`flex-1 px-4 py-3 rounded-md text-sm font-medium transition-colors ${
+                        className={`flex-1 rounded-xl px-4 py-3 text-sm font-medium transition-all duration-150 active:scale-[0.98] ${
                             themeMode === option.value
-                                ? 'bg-primary-100 dark:bg-primary-900 text-primary-700 dark:text-primary-300 border-2 border-primary-500'
-                                : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 border-2 border-transparent hover:bg-gray-200 dark:hover:bg-gray-600'
+                                ? 'bg-white text-primary-700 shadow-soft dark:bg-primary-500/15 dark:text-primary-300'
+                                : 'text-gray-500 hover:bg-white/60 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-white/[0.05] dark:hover:text-white'
                         }`}>
-                        <div className="flex flex-col items-center space-y-1">
+                        <div className="flex flex-col items-center gap-1.5">
                             <span className="text-2xl">{option.icon}</span>
                             <span>{option.label}</span>
                         </div>

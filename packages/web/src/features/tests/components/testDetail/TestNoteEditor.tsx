@@ -179,7 +179,7 @@ export const TestNoteEditor: React.FC<TestNoteEditorProps> = ({
     return (
         <div>
             {error && (
-                <div className="text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3 mb-3">
+                <div className="text-sm font-medium text-danger-700 dark:text-danger-300 bg-danger-50 dark:bg-danger-500/10 border border-danger-200/70 ring-1 ring-inset ring-danger-600/10 dark:border-danger-500/20 dark:ring-danger-400/15 rounded-xl p-3 mb-3">
                     {error}
                 </div>
             )}
@@ -192,7 +192,7 @@ export const TestNoteEditor: React.FC<TestNoteEditorProps> = ({
                         onDrop={handleDrop}
                         className={`relative ${
                             isDragging
-                                ? 'border-2 border-primary-500 bg-primary-50 dark:bg-primary-900/20'
+                                ? 'border-2 border-primary-500 bg-primary-50 dark:bg-primary-500/10 rounded-xl'
                                 : ''
                         }`}>
                         <textarea
@@ -201,7 +201,7 @@ export const TestNoteEditor: React.FC<TestNoteEditorProps> = ({
                             onChange={(e) => setNote(e.target.value)}
                             onPaste={handlePaste}
                             placeholder="Add notes about this test... (e.g., 'This test is flaky, known issue #123', 'Bug report: https://example.com/issue/456'). You can drag & drop images or paste screenshots here."
-                            className={`w-full px-4 py-3 text-sm border rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 border-gray-200 dark:border-gray-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-colors resize-none ${
+                            className={`input resize-none ${
                                 isDragging ? 'border-primary-500' : ''
                             }`}
                             rows={4}
@@ -209,23 +209,23 @@ export const TestNoteEditor: React.FC<TestNoteEditorProps> = ({
                             disabled={isSaving || isUploading}
                         />
                         {isDragging && (
-                            <div className="absolute inset-0 flex items-center justify-center bg-primary-50 dark:bg-primary-900/20 border-2 border-dashed border-primary-500 rounded-lg pointer-events-none">
+                            <div className="absolute inset-0 flex items-center justify-center bg-primary-50/90 dark:bg-primary-500/10 border-2 border-dashed border-primary-500 rounded-xl pointer-events-none">
                                 <span className="text-primary-600 dark:text-primary-400 font-medium">
                                     Drop images here
                                 </span>
                             </div>
                         )}
                         {isUploading && (
-                            <div className="absolute top-2 right-2 text-xs text-gray-500 dark:text-gray-400">
+                            <div className="absolute top-2 right-2 rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-500 dark:bg-white/[0.06] dark:text-gray-400">
                                 Uploading...
                             </div>
                         )}
-                        <div className="flex justify-between items-center mt-1">
+                        <div className="flex justify-between items-center mt-1.5">
                             <span
-                                className={`text-xs ${
+                                className={`text-xs font-medium tabular-nums ${
                                     remainingChars < 100
-                                        ? 'text-red-600 dark:text-red-400'
-                                        : 'text-gray-500 dark:text-gray-400'
+                                        ? 'text-danger-600 dark:text-danger-400'
+                                        : 'text-gray-400 dark:text-gray-500'
                                 }`}>
                                 {remainingChars} characters remaining
                             </span>
@@ -252,9 +252,9 @@ export const TestNoteEditor: React.FC<TestNoteEditorProps> = ({
             ) : initialNote ? (
                 <div
                     onClick={() => setIsEditing(true)}
-                    className="bg-gray-50 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-700 rounded-lg p-4 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-900/70 transition-colors relative">
+                    className="bg-gray-50 dark:bg-white/[0.03] border border-gray-200/70 dark:border-white/[0.06] rounded-2xl p-4 cursor-pointer hover:bg-gray-100/80 hover:border-gray-300 dark:hover:bg-white/[0.05] dark:hover:border-white/10 transition-all duration-200 relative">
                     {imagesLoading ? (
-                        <div className="text-sm text-gray-500 dark:text-gray-400">
+                        <div className="text-sm text-gray-400 dark:text-gray-500">
                             Loading images...
                         </div>
                     ) : (
@@ -280,7 +280,7 @@ export const TestNoteEditor: React.FC<TestNoteEditorProps> = ({
             ) : (
                 <div
                     onClick={() => setIsEditing(true)}
-                    className="text-sm text-gray-500 dark:text-gray-400 italic cursor-pointer hover:text-gray-700 dark:hover:text-gray-300 transition-colors p-2 rounded border border-dashed border-gray-300 dark:border-gray-600 hover:border-gray-400 dark:hover:border-gray-500">
+                    className="text-sm text-gray-400 dark:text-gray-500 italic cursor-pointer hover:text-gray-600 dark:hover:text-gray-300 transition-all duration-200 px-4 py-3 rounded-2xl border border-dashed border-gray-300 dark:border-white/10 hover:border-primary-400 hover:bg-primary-50/40 dark:hover:border-primary-400/40 dark:hover:bg-primary-500/[0.06]">
                     No notes for this test. Click here to add one.
                 </div>
             )}

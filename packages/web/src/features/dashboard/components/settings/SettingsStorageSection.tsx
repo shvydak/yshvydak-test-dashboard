@@ -32,23 +32,23 @@ export function SettingsStorageSection() {
                 {isOpen && (
                     <div className="space-y-4">
                         {isLoading || isRefetching ? (
-                            <div className="text-center py-4 text-gray-600 dark:text-gray-400">
+                            <div className="py-4 text-center text-sm text-gray-500 dark:text-gray-400">
                                 Loading storage statistics...
                             </div>
                         ) : error ? (
-                            <div className="text-center py-4 text-red-600 dark:text-red-400">
+                            <div className="py-4 text-center text-sm text-danger-600 dark:text-danger-400">
                                 Failed to load storage statistics
                             </div>
                         ) : stats ? (
                             <>
-                                <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-4 space-y-3">
+                                <div className="space-y-3 rounded-xl border border-gray-200/70 bg-white/60 p-4 dark:border-white/[0.06] dark:bg-white/[0.02]">
                                     {/* Total Storage */}
-                                    <div className="pb-3 border-b border-gray-200 dark:border-gray-700">
+                                    <div className="border-b border-gray-200/70 pb-3 dark:border-white/[0.06]">
                                         <div className="flex justify-between items-center">
                                             <span className="font-semibold text-gray-900 dark:text-white">
                                                 Total Storage
                                             </span>
-                                            <span className="text-lg font-bold text-blue-600 dark:text-blue-400">
+                                            <span className="text-lg font-bold tabular-nums text-primary-600 dark:text-primary-400">
                                                 {formatBytes(stats.total.size)}
                                             </span>
                                         </div>
@@ -118,7 +118,7 @@ export function SettingsStorageSection() {
 
                                             {/* Type Breakdown */}
                                             {stats.attachments.totalFiles > 0 && (
-                                                <div className="pt-2 mt-2 border-t border-gray-200 dark:border-gray-700">
+                                                <div className="mt-2 border-t border-gray-200/70 pt-2 dark:border-white/[0.06]">
                                                     <div className="font-medium mb-1">By type:</div>
                                                     {Object.entries(
                                                         stats.attachments.typeBreakdown

@@ -43,7 +43,7 @@ export function SettingsDataRetentionSection() {
                                 onChange={(e) => setDaysToKeep(e.target.value)}
                                 placeholder="30"
                             />
-                            <span className="absolute right-3 top-2.5 text-sm text-gray-500">
+                            <span className="pointer-events-none absolute right-3 top-2.5 text-sm font-medium text-gray-400 dark:text-gray-500">
                                 days
                             </span>
                         </div>
@@ -57,7 +57,7 @@ export function SettingsDataRetentionSection() {
                     </Button>
                 </div>
 
-                <div className="border-t border-gray-100 dark:border-gray-800 my-3"></div>
+                <div className="my-3 border-t border-gray-200/70 dark:border-white/[0.06]"></div>
 
                 {/* Option B: Count-based cleanup */}
                 <div className="flex items-end gap-3">
@@ -73,7 +73,7 @@ export function SettingsDataRetentionSection() {
                                 onChange={(e) => setRunsToKeep(e.target.value)}
                                 placeholder="20"
                             />
-                            <span className="absolute right-3 top-2.5 text-sm text-gray-500">
+                            <span className="pointer-events-none absolute right-3 top-2.5 text-sm font-medium text-gray-400 dark:text-gray-500">
                                 runs per test
                             </span>
                         </div>

@@ -198,10 +198,12 @@ function App() {
 
     if (isLoading) {
         return (
-            <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
-                <div className="text-center">
-                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-                    <p className="mt-4 text-gray-600 dark:text-gray-400">Loading...</p>
+            <div className="min-h-screen bg-gray-50 dark:bg-gray-950 flex items-center justify-center">
+                <div className="text-center animate-fade-in">
+                    <div className="mx-auto h-12 w-12 animate-spin rounded-full border-[3px] border-primary-500 border-t-transparent" />
+                    <p className="mt-4 text-sm font-medium text-gray-500 dark:text-gray-400">
+                        Loading…
+                    </p>
                 </div>
             </div>
         )
@@ -218,7 +220,7 @@ function App() {
 
     // Authenticated user interface
     return (
-        <div className="flex flex-col h-screen bg-gray-50 dark:bg-gray-900">
+        <div className="flex flex-col h-screen bg-gray-50 dark:bg-gray-950">
             <Header
                 currentView={currentView}
                 onViewChange={() => {
@@ -262,7 +264,7 @@ function App() {
             <FloatingProgressPanel />
 
             {/* Footer */}
-            <footer className="bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 mt-6 md:mt-12">
+            <footer className="border-t border-gray-200/70 bg-white/60 backdrop-blur-sm dark:border-white/[0.06] dark:bg-gray-950/40 mt-6 md:mt-12">
                 <div className="container mx-auto px-3 md:px-4 py-4 md:py-6">
                     <div className="flex flex-col sm:flex-row items-center sm:justify-between gap-2">
                         <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 text-center sm:text-left">

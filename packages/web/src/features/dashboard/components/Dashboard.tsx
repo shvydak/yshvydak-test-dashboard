@@ -100,13 +100,16 @@ export default function Dashboard() {
 
     if (statsError) {
         return (
-            <div className="rounded-lg bg-red-50 dark:bg-red-900/20 p-4">
-                <div className="flex">
-                    <div className="ml-3">
-                        <h3 className="text-sm font-medium text-red-800 dark:text-red-200">
+            <div className="animate-fade-in rounded-2xl border border-danger-600/15 bg-danger-50 p-5 ring-1 ring-danger-600/10 dark:border-danger-400/20 dark:bg-danger-500/10">
+                <div className="flex items-start gap-3">
+                    <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl bg-danger-100 text-lg dark:bg-danger-500/15">
+                        ⚠️
+                    </div>
+                    <div className="min-w-0">
+                        <h3 className="text-sm font-semibold text-danger-700 dark:text-danger-300">
                             Error loading dashboard
                         </h3>
-                        <div className="mt-2 text-sm text-red-700 dark:text-red-300">
+                        <div className="mt-1 text-sm text-danger-600/90 dark:text-danger-300/80">
                             <p>{statsError.message}</p>
                         </div>
                     </div>
@@ -116,23 +119,26 @@ export default function Dashboard() {
     }
 
     return (
-        <div className="space-y-6">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+        <div className="space-y-6 animate-fade-in">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                 <div>
-                    <h1 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white">
+                    <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-gray-900 dark:text-white">
                         Dashboard
                     </h1>
-                    <p className="mt-2 text-gray-600 dark:text-gray-400">
+                    <p className="mt-1.5 text-gray-500 dark:text-gray-400">
                         Test execution overview and statistics
                     </p>
                 </div>
 
                 {lastUpdated && (
-                    <div className="text-right">
-                        <p className="text-sm text-gray-500 dark:text-gray-400">Last updated</p>
-                        <p className="text-sm font-medium text-gray-900 dark:text-white">
+                    <div className="flex items-center gap-2 self-start rounded-full bg-gray-100/70 px-3.5 py-1.5 dark:bg-white/[0.04] sm:self-auto">
+                        <span className="h-1.5 w-1.5 rounded-full bg-success-500" />
+                        <span className="text-xs font-medium text-gray-500 dark:text-gray-400">
+                            Updated
+                        </span>
+                        <span className="text-xs font-semibold tabular-nums text-gray-900 dark:text-white">
                             {lastUpdated.toLocaleTimeString()}
-                        </p>
+                        </span>
                     </div>
                 )}
             </div>
@@ -140,34 +146,34 @@ export default function Dashboard() {
             <DashboardStats tests={tests} loading={statsLoading} />
 
             <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-                <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-6">
+                <div className="rounded-2xl border border-gray-200/80 bg-white p-6 shadow-card transition-all duration-200 dark:border-white/[0.07] dark:bg-gray-800/70 dark:backdrop-blur-xl">
                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6 gap-3">
                         <div>
-                            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+                            <h2 className="text-lg font-semibold tracking-tight text-gray-900 dark:text-white">
                                 Flaky Tests
                             </h2>
-                            <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                            <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
                                 Tests with intermittent failures
                             </p>
                         </div>
-                        <div className="flex items-center gap-3">
-                            <div className="flex items-center gap-2">
-                                <label className="text-xs text-gray-600 dark:text-gray-400">
-                                    Period:
+                        <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-2 rounded-xl bg-gray-100/70 px-3 py-1.5 dark:bg-white/[0.04]">
+                                <label className="text-[11px] font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500">
+                                    Period
                                 </label>
                                 <select
                                     value={days}
                                     onChange={(e) => updateDays(parseInt(e.target.value))}
-                                    className="text-xs px-2 py-1 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white">
+                                    className="bg-transparent text-xs font-medium text-gray-900 outline-none dark:text-white">
                                     <option value="7">7 days</option>
                                     <option value="14">14 days</option>
                                     <option value="30">30 days</option>
                                     <option value="60">60 days</option>
                                 </select>
                             </div>
-                            <div className="flex items-center gap-2">
-                                <label className="text-xs text-gray-600 dark:text-gray-400">
-                                    Threshold:
+                            <div className="flex items-center gap-2 rounded-xl bg-gray-100/70 px-3 py-1.5 dark:bg-white/[0.04]">
+                                <label className="text-[11px] font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500">
+                                    Threshold
                                 </label>
                                 <input
                                     type="number"
@@ -175,9 +181,11 @@ export default function Dashboard() {
                                     max="99"
                                     value={threshold}
                                     onChange={(e) => updateThreshold(parseInt(e.target.value))}
-                                    className="w-16 text-xs px-2 py-1 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                                    className="w-10 bg-transparent text-xs font-medium tabular-nums text-gray-900 outline-none dark:text-white"
                                 />
-                                <span className="text-xs text-gray-600 dark:text-gray-400">%</span>
+                                <span className="text-xs font-medium text-gray-400 dark:text-gray-500">
+                                    %
+                                </span>
                             </div>
                         </div>
                     </div>
@@ -187,55 +195,60 @@ export default function Dashboard() {
                             {[1, 2, 3].map((i) => (
                                 <div
                                     key={i}
-                                    className="h-16 bg-gray-100 dark:bg-gray-700 rounded animate-pulse"
+                                    className="h-16 animate-pulse rounded-xl bg-gray-100 dark:bg-white/[0.05]"
                                 />
                             ))}
                         </div>
                     ) : !flakyTests || flakyTests.length === 0 ? (
-                        <div className="text-center py-12">
-                            <div className="text-4xl mb-2">🎉</div>
-                            <p className="text-gray-600 dark:text-gray-400 text-sm">
+                        <div className="flex flex-col items-center py-12 text-center">
+                            <div className="mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-success-50 text-3xl ring-1 ring-success-600/15 dark:bg-success-500/10 dark:ring-success-400/20">
+                                🎉
+                            </div>
+                            <p className="text-sm font-semibold text-gray-900 dark:text-white">
                                 No flaky tests detected!
                             </p>
-                            <p className="text-gray-500 dark:text-gray-500 text-xs mt-1">
+                            <p className="mt-1 text-xs text-gray-500 dark:text-gray-500">
                                 All tests are stable
                             </p>
                         </div>
                     ) : (
-                        <div className="space-y-2 max-h-96 overflow-y-auto">
+                        <div className="stagger space-y-2 max-h-96 overflow-y-auto pr-1">
                             {flakyTests.map((test) => (
                                 <div
                                     key={test.testId}
                                     onClick={() => handleFlakyTestClick(test.testId)}
-                                    className="p-3 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors cursor-pointer">
+                                    className="cursor-pointer rounded-xl border border-gray-200/70 p-3.5 transition-all duration-150 hover:-translate-y-0.5 hover:border-gray-300 hover:shadow-card dark:border-white/[0.06] dark:hover:border-white/10 dark:hover:bg-white/[0.03]">
                                     <div className="flex items-start justify-between gap-3">
                                         <div className="flex-1 min-w-0">
                                             <p className="font-medium text-sm text-gray-900 dark:text-white truncate">
                                                 {test.name}
                                             </p>
-                                            <p className="text-xs text-gray-500 dark:text-gray-400 truncate mt-0.5">
+                                            <p className="mt-0.5 truncate font-mono text-xs text-gray-400 dark:text-gray-500">
                                                 {test.filePath}
                                             </p>
                                         </div>
-                                        <div className="flex items-center gap-3 flex-shrink-0">
+                                        <div className="flex flex-shrink-0 items-center gap-3">
                                             <div className="text-right">
-                                                <p className="text-lg font-bold text-orange-600 dark:text-orange-400">
+                                                <p className="text-lg font-bold tabular-nums text-warning-600 dark:text-warning-400">
                                                     {test.flakyPercentage}%
                                                 </p>
-                                                <p className="text-xs text-gray-500 dark:text-gray-400">
+                                                <p className="text-xs tabular-nums text-gray-400 dark:text-gray-500">
                                                     {test.failedRuns}/{test.totalRuns} failed
                                                 </p>
                                             </div>
                                         </div>
                                     </div>
-                                    <div className="flex items-center gap-0.5 mt-2">
+                                    <div className="mt-2.5 flex items-center gap-1">
                                         {test.history.slice(-15).map((status, idx) => (
                                             <span
                                                 key={idx}
-                                                className="text-base"
-                                                title={`Run ${idx + 1}: ${status}`}>
-                                                {status === 'passed' ? '✅' : '❌'}
-                                            </span>
+                                                title={`Run ${idx + 1}: ${status}`}
+                                                className={`h-2 w-3.5 rounded-full ${
+                                                    status === 'passed'
+                                                        ? 'bg-success-500/80 dark:bg-success-400/70'
+                                                        : 'bg-danger-500/80 dark:bg-danger-400/70'
+                                                }`}
+                                            />
                                         ))}
                                     </div>
                                 </div>
@@ -244,24 +257,27 @@ export default function Dashboard() {
                     )}
                 </div>
 
-                <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-6">
+                <div className="rounded-2xl border border-gray-200/80 bg-white p-6 shadow-card transition-all duration-200 dark:border-white/[0.07] dark:bg-gray-800/70 dark:backdrop-blur-xl">
                     <div className="mb-6">
-                        <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+                        <h2 className="text-lg font-semibold tracking-tight text-gray-900 dark:text-white">
                             Test Execution Timeline
                         </h2>
-                        <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                        <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
                             Last 30 days activity
                         </p>
                     </div>
 
                     {timelineLoading ? (
-                        <div className="h-64 bg-gray-100 dark:bg-gray-700 rounded animate-pulse" />
+                        <div className="h-64 animate-pulse rounded-xl bg-gray-100 dark:bg-white/[0.05]" />
                     ) : !timelineData || timelineData.length === 0 ? (
-                        <div className="text-center py-12">
-                            <p className="text-gray-600 dark:text-gray-400 text-sm">
+                        <div className="flex flex-col items-center py-12 text-center">
+                            <div className="mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-gray-100 text-3xl dark:bg-white/[0.04]">
+                                📊
+                            </div>
+                            <p className="text-sm font-semibold text-gray-900 dark:text-white">
                                 No test data available
                             </p>
-                            <p className="text-gray-500 dark:text-gray-500 text-xs mt-1">
+                            <p className="mt-1 text-xs text-gray-500 dark:text-gray-500">
                                 Run some tests to see timeline
                             </p>
                         </div>
@@ -270,57 +286,111 @@ export default function Dashboard() {
                             <AreaChart
                                 data={timelineData}
                                 margin={{top: 10, right: 10, left: 0, bottom: 0}}>
+                                <defs>
+                                    <linearGradient
+                                        id="flakyGradientPassed"
+                                        x1="0"
+                                        y1="0"
+                                        x2="0"
+                                        y2="1">
+                                        <stop offset="0%" stopColor="#10b981" stopOpacity={0.35} />
+                                        <stop
+                                            offset="100%"
+                                            stopColor="#10b981"
+                                            stopOpacity={0.02}
+                                        />
+                                    </linearGradient>
+                                    <linearGradient
+                                        id="flakyGradientFailed"
+                                        x1="0"
+                                        y1="0"
+                                        x2="0"
+                                        y2="1">
+                                        <stop offset="0%" stopColor="#f43f5e" stopOpacity={0.35} />
+                                        <stop
+                                            offset="100%"
+                                            stopColor="#f43f5e"
+                                            stopOpacity={0.02}
+                                        />
+                                    </linearGradient>
+                                    <linearGradient
+                                        id="flakyGradientSkipped"
+                                        x1="0"
+                                        y1="0"
+                                        x2="0"
+                                        y2="1">
+                                        <stop offset="0%" stopColor="#f59e0b" stopOpacity={0.3} />
+                                        <stop
+                                            offset="100%"
+                                            stopColor="#f59e0b"
+                                            stopOpacity={0.02}
+                                        />
+                                    </linearGradient>
+                                </defs>
                                 <CartesianGrid
-                                    strokeDasharray="3 3"
-                                    className="stroke-gray-200 dark:stroke-gray-700"
+                                    strokeDasharray="4 4"
+                                    stroke="#94a3b8"
+                                    strokeOpacity={0.18}
+                                    vertical={false}
                                 />
                                 <XAxis
                                     dataKey="date"
-                                    tick={{fontSize: 12}}
-                                    className="fill-gray-600 dark:fill-gray-400"
+                                    tick={{fontSize: 12, fill: '#94a3b8'}}
+                                    tickLine={false}
+                                    axisLine={{stroke: '#94a3b8', strokeOpacity: 0.2}}
                                     tickFormatter={(value) => {
                                         const date = new Date(value)
                                         return `${date.getMonth() + 1}/${date.getDate()}`
                                     }}
                                 />
                                 <YAxis
-                                    tick={{fontSize: 12}}
-                                    className="fill-gray-600 dark:fill-gray-400"
+                                    tick={{fontSize: 12, fill: '#94a3b8'}}
+                                    tickLine={false}
+                                    axisLine={false}
                                 />
                                 <Tooltip
+                                    cursor={{stroke: '#94a3b8', strokeOpacity: 0.25}}
                                     contentStyle={{
-                                        backgroundColor: 'rgb(31 41 55)',
-                                        border: 'none',
-                                        borderRadius: '0.5rem',
+                                        backgroundColor: 'rgba(31, 31, 46, 0.95)',
+                                        border: '1px solid rgba(255,255,255,0.08)',
+                                        borderRadius: '0.875rem',
+                                        boxShadow: '0 12px 32px -8px rgba(0,0,0,0.45)',
                                         color: 'white',
+                                        fontSize: '12px',
+                                        padding: '10px 14px',
                                     }}
-                                    labelStyle={{color: 'rgb(156 163 175)'}}
+                                    labelStyle={{
+                                        color: 'rgb(148 163 184)',
+                                        fontWeight: 600,
+                                        marginBottom: '4px',
+                                    }}
+                                    itemStyle={{padding: '2px 0'}}
                                 />
                                 <Area
                                     type="monotone"
                                     dataKey="passed"
                                     stackId="1"
-                                    stroke="rgb(34 197 94)"
-                                    fill="rgb(34 197 94)"
-                                    fillOpacity={0.6}
+                                    stroke="#10b981"
+                                    strokeWidth={2}
+                                    fill="url(#flakyGradientPassed)"
                                     name="Passed"
                                 />
                                 <Area
                                     type="monotone"
                                     dataKey="failed"
                                     stackId="1"
-                                    stroke="rgb(239 68 68)"
-                                    fill="rgb(239 68 68)"
-                                    fillOpacity={0.6}
+                                    stroke="#f43f5e"
+                                    strokeWidth={2}
+                                    fill="url(#flakyGradientFailed)"
                                     name="Failed"
                                 />
                                 <Area
                                     type="monotone"
                                     dataKey="skipped"
                                     stackId="1"
-                                    stroke="rgb(156 163 175)"
-                                    fill="rgb(156 163 175)"
-                                    fillOpacity={0.6}
+                                    stroke="#f59e0b"
+                                    strokeWidth={2}
+                                    fill="url(#flakyGradientSkipped)"
                                     name="Skipped"
                                 />
                             </AreaChart>

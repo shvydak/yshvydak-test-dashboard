@@ -1,7 +1,9 @@
+import {ReactNode} from 'react'
+
 interface StatsCardProps {
     title: string
     value: string | number
-    icon: string
+    icon: ReactNode
     className?: string
     loading?: boolean
     onClick?: () => void
@@ -19,7 +21,11 @@ export default function StatsCard({
 
     return (
         <div
-            className={`card ${isClickable ? 'cursor-pointer hover:shadow-lg transition-shadow' : ''}`}
+            className={`group relative overflow-hidden rounded-2xl border border-gray-200/80 bg-white p-5 shadow-card transition-all duration-200 dark:border-white/[0.07] dark:bg-gray-800/70 dark:backdrop-blur-xl ${
+                isClickable
+                    ? 'cursor-pointer hover:-translate-y-0.5 hover:shadow-card-hover active:scale-[0.99]'
+                    : ''
+            }`}
             onClick={onClick}
             role={isClickable ? 'button' : undefined}
             tabIndex={isClickable ? 0 : undefined}
@@ -33,24 +39,24 @@ export default function StatsCard({
                       }
                     : undefined
             }>
-            <div className="card-content">
-                <div className="flex items-center justify-between">
-                    <div className="flex-1">
-                        <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
-                            {title}
+            <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0 flex-1">
+                    <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500">
+                        {title}
+                    </p>
+                    {loading ? (
+                        <div className="mt-3 h-9 w-20 animate-pulse rounded-xl bg-gray-100 dark:bg-white/[0.06]" />
+                    ) : (
+                        <p
+                            className={`mt-2 text-3xl font-bold tracking-tight tabular-nums ${
+                                className || 'text-gray-900 dark:text-white'
+                            }`}>
+                            {value}
                         </p>
-                        {loading ? (
-                            <div className="mt-2 h-8 w-16 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
-                        ) : (
-                            <p
-                                className={`text-2xl font-bold ${
-                                    className || 'text-gray-900 dark:text-white'
-                                }`}>
-                                {value}
-                            </p>
-                        )}
-                    </div>
-                    <div className="text-3xl opacity-80">{icon}</div>
+                    )}
+                </div>
+                <div className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-xl bg-gray-100/80 transition-transform duration-200 group-hover:scale-105 dark:bg-white/[0.05]">
+                    {icon}
                 </div>
             </div>
         </div>

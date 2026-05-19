@@ -13,8 +13,11 @@ export function ModalBackdrop({onClick, blur = 'sm'}: ModalBackdropProps) {
 
     return (
         <div
-            className={`fixed inset-0 bg-black/50 ${blurClasses[blur]}`}
-            onClick={onClick}
+            className={`fixed inset-0 bg-gray-950/50 dark:bg-gray-950/70 animate-fade-in ${blurClasses[blur]}`}
+            onClick={(e) => {
+                e.stopPropagation()
+                onClick()
+            }}
             aria-hidden="true"
         />
     )

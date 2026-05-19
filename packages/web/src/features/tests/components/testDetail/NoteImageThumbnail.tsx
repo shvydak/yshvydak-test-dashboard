@@ -46,17 +46,17 @@ export function NoteImageThumbnail({image, onClick, className = ''}: NoteImageTh
     if (loading) {
         return (
             <div
-                className={`inline-block w-20 h-20 bg-gray-200 dark:bg-gray-700 rounded border border-gray-300 dark:border-gray-600 flex items-center justify-center ${className}`}>
-                <span className="text-xs text-gray-500 dark:text-gray-400">Loading...</span>
-            </div>
+                className={`skeleton inline-block w-20 h-20 rounded-xl ${className}`}
+                aria-label="Loading image"
+            />
         )
     }
 
     if (error || !imageUrl) {
         return (
             <div
-                className={`inline-block w-20 h-20 bg-gray-200 dark:bg-gray-700 rounded border border-gray-300 dark:border-gray-600 flex items-center justify-center ${className}`}>
-                <span className="text-xs text-gray-500 dark:text-gray-400">Error</span>
+                className={`inline-block w-20 h-20 bg-gray-100 dark:bg-white/[0.06] rounded-xl border border-gray-200/70 dark:border-white/10 flex items-center justify-center ${className}`}>
+                <span className="text-xs text-gray-400 dark:text-gray-500">Error</span>
             </div>
         )
     }
@@ -69,7 +69,7 @@ export function NoteImageThumbnail({image, onClick, className = ''}: NoteImageTh
                 e.stopPropagation()
                 onClick?.()
             }}
-            className={`inline-block max-w-[100px] max-h-[100px] rounded border border-gray-300 dark:border-gray-600 cursor-pointer hover:scale-105 transition-transform object-contain ${className}`}
+            className={`inline-block max-w-[100px] max-h-[100px] rounded-xl border border-gray-200/70 dark:border-white/10 cursor-pointer hover:scale-105 transition-transform duration-200 object-contain ${className}`}
             style={{verticalAlign: 'middle'}}
         />
     )

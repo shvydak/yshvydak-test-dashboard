@@ -8,11 +8,13 @@ export interface SettingsSectionProps {
 
 export function SettingsSection({title, description, children}: SettingsSectionProps) {
     return (
-        <div className="border-b border-gray-200 dark:border-gray-700 pb-6 last:border-b-0 last:pb-0">
+        <div className="rounded-2xl border border-gray-200/70 bg-gray-50/60 p-5 dark:border-white/[0.06] dark:bg-white/[0.02]">
             <div className="mb-4">
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-white">{title}</h3>
+                <h3 className="text-[11px] font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500">
+                    {title}
+                </h3>
                 {description && (
-                    <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">{description}</p>
+                    <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">{description}</p>
                 )}
             </div>
             <div>{children}</div>

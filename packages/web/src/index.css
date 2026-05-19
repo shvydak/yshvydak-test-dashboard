@@ -2,7 +2,57 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ============================================================
+   Soft & Friendly design system — semantic tokens
+   Light + dark. Accent is swappable via --accent-* only.
+   ============================================================ */
 @layer base {
+    :root {
+        /* Accent (indigo) — change these to re-brand the whole app */
+        --accent-50: 238 242 255;
+        --accent-100: 224 231 255;
+        --accent-400: 129 140 248;
+        --accent-500: 99 102 241;
+        --accent-600: 79 70 229;
+        --accent-700: 67 56 202;
+
+        /* Surfaces & text — light theme */
+        --bg-base: 247 248 251; /* app background */
+        --bg-elevated: 255 255 255; /* cards / panels */
+        --bg-subtle: 241 242 247; /* hovers / wells */
+        --bg-inset: 248 249 252; /* code / inputs */
+        --border-soft: 227 230 239;
+        --border-strong: 205 210 225;
+        --text-strong: 22 26 41;
+        --text-soft: 86 93 115;
+        --text-muted: 123 130 153;
+
+        --ring: var(--accent-500);
+        --shadow-color: 20 26 41;
+    }
+
+    .dark {
+        --accent-50: 30 27 75;
+        --accent-100: 49 46 129;
+        --accent-400: 129 140 248;
+        --accent-500: 129 140 248;
+        --accent-600: 99 102 241;
+        --accent-700: 79 70 229;
+
+        --bg-base: 15 18 32;
+        --bg-elevated: 33 38 58;
+        --bg-subtle: 22 26 41;
+        --bg-inset: 15 18 32;
+        --border-soft: 54 60 78;
+        --border-strong: 70 78 102;
+        --text-strong: 237 239 246;
+        --text-soft: 164 171 194;
+        --text-muted: 123 130 153;
+
+        --ring: 129 140 248;
+        --shadow-color: 0 0 0;
+    }
+
     html,
     body {
         overflow-x: hidden;
@@ -10,7 +60,15 @@
     }
 
     html {
-        font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
+        font-family:
+            'DM Sans',
+            ui-sans-serif,
+            system-ui,
+            -apple-system,
+            BlinkMacSystemFont,
+            'Segoe UI',
+            Roboto,
+            sans-serif;
         line-height: 1.5;
         font-weight: 400;
         color-scheme: light dark;
@@ -19,35 +77,90 @@
         -webkit-font-smoothing: antialiased;
         -moz-osx-font-smoothing: grayscale;
         -webkit-text-size-adjust: 100%;
+        font-feature-settings: 'cv11', 'ss01';
     }
 
     body {
-        @apply bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100;
+        @apply bg-gray-50 text-gray-900 dark:bg-gray-950 dark:text-gray-100;
         margin: 0;
         min-height: 100vh;
+        background-image: var(--tw-bg-mesh, none);
+        background-attachment: fixed;
+    }
+
+    /* Soft atmospheric mesh behind everything */
+    body::before {
+        content: '';
+        position: fixed;
+        inset: 0;
+        z-index: -1;
+        pointer-events: none;
+        background:
+            radial-gradient(900px circle at 6% -8%, rgb(99 102 241 / 0.1), transparent 42%),
+            radial-gradient(820px circle at 100% 0%, rgb(16 185 129 / 0.06), transparent 44%);
+    }
+
+    .dark body::before {
+        background:
+            radial-gradient(900px circle at 6% -8%, rgb(99 102 241 / 0.16), transparent 42%),
+            radial-gradient(820px circle at 100% 0%, rgb(16 185 129 / 0.08), transparent 44%);
     }
 
     #root {
         min-height: 100vh;
         overflow-x: hidden;
     }
+
+    ::selection {
+        background: rgb(var(--accent-500) / 0.28);
+    }
+
+    /* Refined, quiet scrollbars */
+    * {
+        scrollbar-width: thin;
+        scrollbar-color: rgb(var(--border-strong)) transparent;
+    }
+    *::-webkit-scrollbar {
+        width: 10px;
+        height: 10px;
+    }
+    *::-webkit-scrollbar-track {
+        background: transparent;
+    }
+    *::-webkit-scrollbar-thumb {
+        background-color: rgb(var(--border-strong));
+        border-radius: 9999px;
+        border: 3px solid transparent;
+        background-clip: content-box;
+    }
+    *::-webkit-scrollbar-thumb:hover {
+        background-color: rgb(var(--text-muted));
+        background-clip: content-box;
+    }
+
+    :focus-visible {
+        outline: 2px solid rgb(var(--ring) / 0.65);
+        outline-offset: 2px;
+        border-radius: 6px;
+    }
 }
 
 @layer components {
-    .btn-primary {
-        @apply inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none;
-        @apply bg-primary-600 text-white hover:bg-primary-700 dark:bg-primary-500 dark:hover:bg-primary-600;
-        @apply h-10 py-2 px-4;
-    }
-
-    .btn-secondary {
-        @apply inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-300 focus-visible:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none;
-        @apply border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700;
-        @apply h-10 py-2 px-4;
-    }
-
+    /* ---- Surfaces ---------------------------------------- */
     .card {
-        @apply rounded-lg border bg-white dark:bg-gray-800 shadow-sm border-gray-200 dark:border-gray-700;
+        @apply rounded-2xl border border-gray-200/80 bg-white shadow-card transition-all duration-200 dark:border-white/[0.07] dark:bg-gray-800/70 dark:backdrop-blur-xl;
+    }
+
+    .card-interactive {
+        @apply card hover:-translate-y-0.5 hover:border-gray-300 hover:shadow-card-hover dark:hover:border-white/[0.12];
+    }
+
+    .surface {
+        @apply rounded-xl border border-gray-200/70 bg-white dark:border-white/[0.06] dark:bg-gray-800/60;
+    }
+
+    .surface-subtle {
+        @apply rounded-xl bg-gray-100/70 dark:bg-white/[0.03];
     }
 
     .card-header {
@@ -55,11 +168,11 @@
     }
 
     .card-title {
-        @apply text-2xl font-semibold leading-none tracking-tight;
+        @apply text-lg font-semibold leading-tight tracking-tight text-gray-900 dark:text-white;
     }
 
     .card-description {
-        @apply text-sm text-gray-600 dark:text-gray-400;
+        @apply text-sm text-gray-500 dark:text-gray-400;
     }
 
     .card-content {
@@ -69,10 +182,84 @@
     .card-footer {
         @apply flex items-center p-6 pt-0;
     }
+
+    /* ---- Buttons ----------------------------------------- */
+    .btn {
+        @apply inline-flex items-center justify-center gap-2 rounded-xl text-sm font-medium transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/60 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:pointer-events-none disabled:opacity-50 dark:focus-visible:ring-offset-gray-900;
+        @apply h-10 px-4 py-2;
+    }
+
+    .btn-primary {
+        @apply btn bg-primary-600 text-white shadow-soft hover:bg-primary-500 hover:shadow-glow active:scale-[0.98] dark:bg-primary-500 dark:hover:bg-primary-400;
+    }
+
+    .btn-secondary {
+        @apply btn border border-gray-200 bg-white text-gray-700 hover:bg-gray-50 hover:border-gray-300 active:scale-[0.98] dark:border-white/10 dark:bg-white/[0.04] dark:text-gray-200 dark:hover:bg-white/[0.08];
+    }
+
+    .btn-ghost {
+        @apply btn text-gray-600 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-white/[0.06] dark:hover:text-white;
+    }
+
+    .btn-danger {
+        @apply btn bg-danger-500 text-white shadow-soft hover:bg-danger-600 active:scale-[0.98];
+    }
+
+    /* ---- Inputs ------------------------------------------ */
+    .input {
+        @apply w-full rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm text-gray-900 placeholder-gray-400 transition-all duration-150 focus:border-primary-400 focus:outline-none focus:ring-4 focus:ring-primary-500/15 dark:border-white/10 dark:bg-white/[0.04] dark:text-white dark:placeholder-gray-500 dark:focus:border-primary-400/60;
+    }
+
+    /* ---- Chips / pills ----------------------------------- */
+    .chip {
+        @apply inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium;
+    }
+
+    /* ---- Skeleton shimmer -------------------------------- */
+    .skeleton {
+        @apply relative overflow-hidden rounded-lg bg-gray-200/70 dark:bg-white/[0.06];
+    }
+    .skeleton::after {
+        content: '';
+        @apply absolute inset-0 -translate-x-full animate-shimmer bg-gradient-to-r from-transparent via-white/40 to-transparent dark:via-white/[0.08];
+    }
 }
 
 @layer utilities {
     .text-balance {
         text-wrap: balance;
+    }
+
+    /* Stagger helper for orchestrated page-load reveals */
+    .stagger > * {
+        animation: slide-up 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+    }
+    .stagger > *:nth-child(1) {
+        animation-delay: 0.02s;
+    }
+    .stagger > *:nth-child(2) {
+        animation-delay: 0.07s;
+    }
+    .stagger > *:nth-child(3) {
+        animation-delay: 0.12s;
+    }
+    .stagger > *:nth-child(4) {
+        animation-delay: 0.17s;
+    }
+    .stagger > *:nth-child(5) {
+        animation-delay: 0.22s;
+    }
+    .stagger > *:nth-child(6) {
+        animation-delay: 0.27s;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        *,
+        *::before,
+        *::after {
+            animation-duration: 0.001ms !important;
+            animation-iteration-count: 1 !important;
+            transition-duration: 0.001ms !important;
+        }
     }
 }

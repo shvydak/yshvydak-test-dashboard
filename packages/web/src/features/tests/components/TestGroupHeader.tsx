@@ -1,3 +1,4 @@
+import {ChevronDown, Play, CheckCircle2, XCircle, SkipForward, CircleDot} from 'lucide-react'
 import {ActionButton} from '@shared/components'
 import {TestGroupData} from '../hooks/useTestGroups'
 import {useTestsStore} from '../store/testsStore'
@@ -20,47 +21,51 @@ export function TestGroupHeader({group, expanded, onToggle, filter}: TestGroupHe
 
     return (
         <div
-            className="py-3 md:py-4 border-b border-gray-200 dark:border-gray-700 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors"
+            className="group/header cursor-pointer border-b border-gray-200/70 py-3 transition-colors hover:bg-gray-50 dark:border-white/[0.06] dark:hover:bg-white/[0.03] md:py-4"
             onClick={onToggle}>
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between px-3 md:px-6 gap-2 sm:gap-0 min-h-[32px]">
-                <div className="flex items-center space-x-2 md:space-x-3 min-w-0">
-                    <span className="text-gray-400 flex-shrink-0">{expanded ? '▼' : '▶'}</span>
-                    <span className="font-medium text-gray-900 dark:text-white font-mono text-xs md:text-sm truncate">
+            <div className="flex min-h-[32px] flex-col gap-2 px-3 sm:flex-row sm:items-center sm:justify-between sm:gap-0 md:px-6">
+                <div className="flex min-w-0 items-center space-x-2 md:space-x-3">
+                    <ChevronDown
+                        className={`h-4 w-4 flex-shrink-0 text-gray-400 transition-transform duration-200 dark:text-gray-500 ${
+                            expanded ? 'rotate-0' : '-rotate-90'
+                        }`}
+                    />
+                    <span className="truncate font-mono text-xs font-medium text-gray-900 dark:text-white md:text-sm">
                         {group.filePath}
                     </span>
                 </div>
-                <div className="flex items-center justify-between sm:justify-end space-x-3 md:space-x-4 text-sm pl-5 sm:pl-0">
-                    <div className="flex items-center space-x-2 flex-wrap">
-                        <span className="text-gray-600 dark:text-gray-400">
+                <div className="flex items-center justify-between space-x-3 pl-5 text-sm sm:justify-end sm:space-x-4 sm:pl-0">
+                    <div className="flex flex-wrap items-center gap-1.5">
+                        <span className="inline-flex items-center rounded-full bg-gray-100 px-2.5 py-0.5 text-[11px] font-medium tabular-nums text-gray-600 ring-1 ring-inset ring-gray-500/10 dark:bg-white/[0.06] dark:text-gray-300 dark:ring-white/10">
                             {group.total} test{group.total !== 1 ? 's' : ''}
                         </span>
                         {group.passed > 0 && (
-                            <span className="text-success-600 dark:text-success-400">
-                                ✅ {group.passed}
+                            <span className="inline-flex items-center gap-1 rounded-full bg-success-50 px-2 py-0.5 text-[11px] font-medium tabular-nums text-success-700 ring-1 ring-inset ring-success-600/15 dark:bg-success-500/10 dark:text-success-300 dark:ring-success-400/20">
+                                <CheckCircle2 className="h-3 w-3" /> {group.passed}
                             </span>
                         )}
                         {group.failed > 0 && (
-                            <span className="text-danger-600 dark:text-danger-400">
-                                ❌ {group.failed}
+                            <span className="inline-flex items-center gap-1 rounded-full bg-danger-50 px-2 py-0.5 text-[11px] font-medium tabular-nums text-danger-700 ring-1 ring-inset ring-danger-600/15 dark:bg-danger-500/10 dark:text-danger-300 dark:ring-danger-400/20">
+                                <XCircle className="h-3 w-3" /> {group.failed}
                             </span>
                         )}
                         {group.skipped > 0 && (
-                            <span className="text-warning-600 dark:text-warning-400">
-                                ⏭️ {group.skipped}
+                            <span className="inline-flex items-center gap-1 rounded-full bg-warning-50 px-2 py-0.5 text-[11px] font-medium tabular-nums text-warning-700 ring-1 ring-inset ring-warning-600/20 dark:bg-warning-500/10 dark:text-warning-300 dark:ring-warning-400/20">
+                                <SkipForward className="h-3 w-3" /> {group.skipped}
                             </span>
                         )}
                         {group.pending > 0 && (
-                            <span className="text-blue-600 dark:text-blue-400">
-                                ⏸️ {group.pending}
+                            <span className="inline-flex items-center gap-1 rounded-full bg-primary-50 px-2 py-0.5 text-[11px] font-medium tabular-nums text-primary-700 ring-1 ring-inset ring-primary-600/15 dark:bg-primary-500/10 dark:text-primary-300 dark:ring-primary-400/20">
+                                <CircleDot className="h-3 w-3" /> {group.pending}
                             </span>
                         )}
                     </div>
                     <ActionButton
                         size="sm"
-                        variant="primary"
+                        variant="secondary"
                         isRunning={isRunning}
                         runningText="Running..."
-                        icon="▶️"
+                        icon={<Play className="h-3.5 w-3.5" />}
                         disabled={isAnyTestRunning}
                         onClick={(e) => {
                             e.stopPropagation()

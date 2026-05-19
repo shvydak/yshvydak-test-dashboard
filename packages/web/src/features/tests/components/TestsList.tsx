@@ -1,5 +1,6 @@
 import {useState, useEffect, useRef} from 'react'
 import {useSearchParams} from 'react-router-dom'
+import {AlertTriangle} from 'lucide-react'
 import {TestResult} from '@yshvydak/core'
 import {LoadingSpinner} from '@shared/components'
 import {useTestsStore} from '../store/testsStore'
@@ -114,17 +115,17 @@ export default function TestsList({
 
     if (loading && tests.length === 0) {
         return (
-            <div className="space-y-6">
+            <div className="space-y-6 animate-fade-in">
                 <div className="flex items-center justify-between">
-                    <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Tests</h1>
+                    <h1 className="text-3xl font-bold tracking-tight text-gray-900 dark:text-white">
+                        Tests
+                    </h1>
                 </div>
 
-                <div className="card">
-                    <div className="card-content">
-                        <div className="text-center py-12">
-                            <LoadingSpinner size="lg" className="mx-auto mb-4" />
-                            <p className="text-gray-600 dark:text-gray-400">Loading tests...</p>
-                        </div>
+                <div className="rounded-2xl border border-gray-200/80 bg-white shadow-card dark:border-white/[0.07] dark:bg-gray-800/70 dark:backdrop-blur-xl">
+                    <div className="flex flex-col items-center justify-center px-6 py-20 text-center">
+                        <LoadingSpinner size="lg" className="mb-4" />
+                        <p className="text-sm text-gray-500 dark:text-gray-400">Loading tests...</p>
                     </div>
                 </div>
             </div>
@@ -133,18 +134,23 @@ export default function TestsList({
 
     if (error) {
         return (
-            <div className="space-y-6">
-                <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Tests</h1>
+            <div className="space-y-6 animate-fade-in">
+                <h1 className="text-3xl font-bold tracking-tight text-gray-900 dark:text-white">
+                    Tests
+                </h1>
 
-                <div className="rounded-lg bg-red-50 dark:bg-red-900/20 p-4">
-                    <div className="flex">
-                        <div className="ml-3">
-                            <h3 className="text-sm font-medium text-red-800 dark:text-red-200">
+                <div className="rounded-2xl border border-danger-600/15 bg-danger-50 p-5 shadow-card dark:border-danger-400/20 dark:bg-danger-500/10">
+                    <div className="flex items-start gap-3">
+                        <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl bg-danger-100 dark:bg-danger-500/15">
+                            <AlertTriangle className="h-5 w-5 text-danger-600 dark:text-danger-400" />
+                        </div>
+                        <div className="min-w-0">
+                            <h3 className="text-sm font-semibold text-danger-700 dark:text-danger-300">
                                 Error loading tests
                             </h3>
-                            <div className="mt-2 text-sm text-red-700 dark:text-red-300">
-                                <p>{error}</p>
-                            </div>
+                            <p className="mt-1 text-sm text-danger-600 dark:text-danger-400">
+                                {error}
+                            </p>
                         </div>
                     </div>
                 </div>
@@ -166,24 +172,29 @@ export default function TestsList({
     }
 
     return (
-        <div className="space-y-6">
-            {/* <TestsListHeader testsCount={filteredTests.length} /> */}
-            <TestsListFilters
-                filter={filter}
-                onFilterChange={handleFilterChange}
-                counts={counts}
-                searchQuery={searchQuery}
-                onSearchChange={setSearchQuery}
-            />
+        <div className="flex flex-col h-full animate-fade-in">
+            {/* Filter bar — fixed at top, never scrolls */}
+            <div className="py-3 md:py-4 shrink-0">
+                <TestsListFilters
+                    filter={filter}
+                    onFilterChange={handleFilterChange}
+                    counts={counts}
+                    searchQuery={searchQuery}
+                    onSearchChange={setSearchQuery}
+                />
+            </div>
 
-            <TestsContent
-                tests={filteredTests}
-                selectedTest={selectedTest}
-                onTestSelect={openTestDetail}
-                onTestRerun={onTestRerun}
-                searchQuery={searchQuery}
-                filter={filter}
-            />
+            {/* Scrollable content */}
+            <div className="flex-1 overflow-y-auto pb-4 md:pb-8">
+                <TestsContent
+                    tests={filteredTests}
+                    selectedTest={selectedTest}
+                    onTestSelect={openTestDetail}
+                    onTestRerun={onTestRerun}
+                    searchQuery={searchQuery}
+                    filter={filter}
+                />
+            </div>
 
             <TestDetailModal
                 test={detailModalTest}

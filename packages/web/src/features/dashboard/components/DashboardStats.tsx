@@ -1,5 +1,6 @@
 import {TestResult} from '@yshvydak/core'
 import {useNavigate} from 'react-router-dom'
+import {LayoutGrid, CheckCircle2, XCircle, TrendingUp} from 'lucide-react'
 import StatsCard from './StatsCard'
 import {DashboardStats as DashboardStatsType} from '../hooks/useDashboardStats'
 
@@ -40,18 +41,18 @@ export function DashboardStats({stats, tests, loading}: DashboardStatsProps) {
     }
 
     return (
-        <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-6">
+        <div className="stagger grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-6">
             <StatsCard
-                title={`Total Tests ( not include "skipped" )`}
+                title={`Total Tests`}
                 value={displayStats.totalTests - displayStats.skippedTests}
-                icon="📊"
+                icon={<LayoutGrid className="h-5 w-5 text-gray-500 dark:text-gray-400" />}
                 loading={loading}
                 onClick={() => handleStatsClick('all')}
             />
             <StatsCard
                 title="Passed"
                 value={displayStats.passedTests}
-                icon="✅"
+                icon={<CheckCircle2 className="h-5 w-5 text-success-500 dark:text-success-400" />}
                 className="text-success-600 dark:text-success-400"
                 loading={loading}
                 onClick={() => handleStatsClick('passed')}
@@ -59,7 +60,7 @@ export function DashboardStats({stats, tests, loading}: DashboardStatsProps) {
             <StatsCard
                 title="Failed"
                 value={displayStats.failedTests}
-                icon="❌"
+                icon={<XCircle className="h-5 w-5 text-danger-500 dark:text-danger-400" />}
                 className="text-danger-600 dark:text-danger-400"
                 loading={loading}
                 onClick={() => handleStatsClick('failed')}
@@ -67,7 +68,15 @@ export function DashboardStats({stats, tests, loading}: DashboardStatsProps) {
             <StatsCard
                 title="Success Rate"
                 value={`${Math.round(displayStats.successRate)}%`}
-                icon="📈"
+                icon={
+                    <TrendingUp
+                        className={`h-5 w-5 ${
+                            displayStats.successRate >= 80
+                                ? 'text-success-500 dark:text-success-400'
+                                : 'text-danger-500 dark:text-danger-400'
+                        }`}
+                    />
+                }
                 className={
                     displayStats.successRate >= 80
                         ? 'text-success-600 dark:text-success-400'

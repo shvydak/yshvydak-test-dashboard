@@ -1,10 +1,11 @@
+import {ReactNode} from 'react'
 import {Button, ButtonProps} from '../atoms'
 import {LoadingSpinner} from '../atoms/LoadingSpinner'
 
 export interface ActionButtonProps extends Omit<ButtonProps, 'loading'> {
     isRunning?: boolean
     runningText?: string
-    icon?: string
+    icon?: ReactNode
 }
 
 export function ActionButton({
@@ -24,7 +25,7 @@ export function ActionButton({
                 </span>
             ) : (
                 <>
-                    {icon && <span className="mr-1">{icon}</span>}
+                    {icon && <span className="mr-1.5 inline-flex items-center">{icon}</span>}
                     {children}
                 </>
             )}

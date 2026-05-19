@@ -1,5 +1,16 @@
 import {useState, useEffect} from 'react'
 import {useNavigate, useLocation} from 'react-router-dom'
+import {
+    Settings,
+    LogOut,
+    LayoutDashboard,
+    FlaskConical,
+    ChevronDown,
+    Menu,
+    X,
+    Moon,
+    Sun,
+} from 'lucide-react'
 import {useTheme} from '@/hooks/useTheme'
 
 interface HeaderProps {
@@ -71,7 +82,6 @@ export default function Header({
     // Handle view changes with URL preservation
     const handleViewChange = (view: 'dashboard' | 'tests') => {
         if (view === 'tests') {
-            // Preserve filter parameters when navigating to tests
             const params = new URLSearchParams(location.search)
             const filter = params.get('filter')
             navigate(filter ? `/tests?filter=${filter}` : '/tests')
@@ -82,24 +92,33 @@ export default function Header({
         setMobileMenuOpen(false)
     }
 
+    const navItemClass = (active: boolean) =>
+        `relative px-4 py-2 text-sm font-medium rounded-xl transition-all duration-200 ${
+            active
+                ? 'bg-primary-50 text-primary-700 shadow-soft dark:bg-primary-500/15 dark:text-primary-300'
+                : 'text-gray-500 hover:text-gray-900 hover:bg-gray-100/80 dark:text-gray-400 dark:hover:text-white dark:hover:bg-white/[0.06]'
+        }`
+
     return (
         <>
-            <header className="sticky top-0 z-50 bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700">
+            <header className="sticky top-0 z-50 border-b border-gray-200/70 bg-white/80 backdrop-blur-xl dark:border-white/[0.06] dark:bg-gray-950/70">
                 <div className="container mx-auto px-4">
                     <div className="flex items-center justify-between h-14 md:h-16">
                         {/* Logo and title */}
                         <div className="flex items-center space-x-2 md:space-x-4 min-w-0">
-                            <div className="flex items-center space-x-2 min-w-0">
+                            <div className="flex items-center space-x-3 min-w-0">
                                 <a
                                     href="https://github.com/shvydak/yshvydak-test-dashboard"
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    className="w-8 h-8 flex-shrink-0 bg-gradient-to-br from-primary-500 to-primary-600 rounded-lg flex items-center justify-center hover:from-primary-600 hover:to-primary-700 transition-all"
+                                    className="group relative w-9 h-9 flex-shrink-0 bg-gradient-to-br from-primary-500 to-primary-600 rounded-xl flex items-center justify-center shadow-glow transition-transform hover:scale-105 active:scale-95"
                                     title="View project on GitHub">
-                                    <span className="text-white font-bold text-sm">YS</span>
+                                    <span className="text-white font-bold text-sm tracking-tight">
+                                        YS
+                                    </span>
                                 </a>
                                 <div className="min-w-0">
-                                    <h1 className="text-lg md:text-xl font-bold text-gray-900 dark:text-white truncate">
+                                    <h1 className="text-base md:text-lg font-bold tracking-tight text-gray-900 dark:text-white truncate">
                                         <a
                                             href="https://github.com/shvydak/yshvydak-test-dashboard"
                                             target="_blank"
@@ -109,7 +128,7 @@ export default function Header({
                                             Test Dashboard
                                         </a>
                                     </h1>
-                                    <p className="text-xs text-gray-500 dark:text-gray-400 hidden sm:block">
+                                    <p className="text-xs text-gray-400 dark:text-gray-500 hidden sm:block -mt-0.5">
                                         by{' '}
                                         <a
                                             href="https://github.com/shvydak/yshvydak-test-dashboard"
@@ -125,102 +144,89 @@ export default function Header({
                         </div>
 
                         {/* Desktop Navigation */}
-                        <nav className="hidden md:flex items-center space-x-1">
+                        <nav className="hidden md:flex items-center gap-1 rounded-2xl bg-gray-100/60 p-1 dark:bg-white/[0.04]">
                             <button
                                 onClick={() => handleViewChange('dashboard')}
-                                className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
-                                    currentView === 'dashboard'
-                                        ? 'bg-primary-100 dark:bg-primary-900 text-primary-700 dark:text-primary-300'
-                                        : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-700'
-                                }`}>
+                                className={navItemClass(currentView === 'dashboard')}>
                                 Dashboard
                             </button>
                             <button
                                 onClick={() => handleViewChange('tests')}
-                                className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
-                                    currentView === 'tests'
-                                        ? 'bg-primary-100 dark:bg-primary-900 text-primary-700 dark:text-primary-300'
-                                        : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-700'
-                                }`}>
+                                className={navItemClass(currentView === 'tests')}>
                                 Tests
                             </button>
                         </nav>
 
-                        {/* Desktop: Theme indicator, status, and user menu */}
-                        <div className="hidden md:flex items-center space-x-4">
-                            {/* Theme indicator */}
-                            <div className="flex items-center space-x-2 text-xs text-gray-500 dark:text-gray-400">
-                                <span>{isDark ? '🌙' : '☀️'}</span>
-                                <span className="hidden sm:inline">
-                                    {isDark ? 'Dark' : 'Light'} mode
+                        {/* Desktop: status + user menu */}
+                        <div className="hidden md:flex items-center gap-3">
+                            <div className="flex items-center gap-2 rounded-full bg-gray-100/70 px-3 py-1.5 dark:bg-white/[0.04]">
+                                <span
+                                    className={`relative flex h-2 w-2 ${
+                                        wsConnected ? '' : 'opacity-70'
+                                    }`}>
+                                    {wsConnected && (
+                                        <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-success-400 opacity-75" />
+                                    )}
+                                    <span
+                                        className={`relative inline-flex h-2 w-2 rounded-full ${
+                                            wsConnected ? 'bg-success-500' : 'bg-danger-500'
+                                        }`}
+                                    />
+                                </span>
+                                <span className="text-xs font-medium text-gray-500 dark:text-gray-400 hidden lg:inline">
+                                    {wsConnected ? 'Live' : 'Offline'}
                                 </span>
                             </div>
 
-                            {/* WebSocket connection status indicator */}
-                            <div className="flex items-center space-x-2">
-                                <div
-                                    className={`w-2 h-2 rounded-full ${
-                                        wsConnected ? 'bg-green-500 animate-pulse' : 'bg-red-500'
-                                    }`}></div>
-                                <span className="text-xs text-gray-500 dark:text-gray-400 hidden sm:inline">
-                                    {wsConnected ? 'Live Updates' : 'Disconnected'}
-                                </span>
-                            </div>
-
-                            {/* User menu */}
                             {user && (
                                 <div className="relative" data-user-menu>
                                     <button
                                         onClick={() => setShowUserMenu(!showUserMenu)}
-                                        className="flex items-center space-x-2 text-sm bg-gray-100 dark:bg-gray-700 rounded-md px-3 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors">
-                                        <div className="w-6 h-6 bg-blue-600 rounded-full flex items-center justify-center">
-                                            <span className="text-white text-xs font-medium">
+                                        className="flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-2.5 py-1.5 text-sm text-gray-700 transition-all hover:border-gray-300 hover:bg-gray-50 dark:border-white/10 dark:bg-white/[0.04] dark:text-gray-300 dark:hover:bg-white/[0.08]">
+                                        <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-br from-primary-500 to-primary-600">
+                                            <span className="text-xs font-semibold text-white">
                                                 {getUserData()?.email?.[0]?.toUpperCase() || 'U'}
                                             </span>
                                         </div>
-                                        <span className="hidden lg:inline">
+                                        <span className="hidden lg:inline max-w-[140px] truncate">
                                             {getUserData()?.email || 'User'}
                                         </span>
-                                        <svg
-                                            className="w-4 h-4"
-                                            fill="currentColor"
-                                            viewBox="0 0 20 20">
-                                            <path
-                                                fillRule="evenodd"
-                                                d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"
-                                                clipRule="evenodd"
-                                            />
-                                        </svg>
+                                        <ChevronDown
+                                            className={`w-4 h-4 text-gray-400 transition-transform ${
+                                                showUserMenu ? 'rotate-180' : ''
+                                            }`}
+                                        />
                                     </button>
 
-                                    {/* Dropdown menu */}
                                     {showUserMenu && (
-                                        <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-md shadow-lg border border-gray-200 dark:border-gray-700 z-50">
-                                            <div className="py-1">
-                                                <div className="px-4 py-2 text-sm text-gray-700 dark:text-gray-300 border-b border-gray-200 dark:border-gray-700">
-                                                    <div className="font-medium">
-                                                        {getUserData()?.email || 'User'}
-                                                    </div>
-                                                    {getUserData()?.role && (
-                                                        <div className="text-xs text-gray-500 dark:text-gray-400 capitalize">
-                                                            {getUserData()?.role}
-                                                        </div>
-                                                    )}
+                                        <div className="absolute right-0 mt-2 w-56 origin-top-right animate-scale-in overflow-hidden rounded-2xl border border-gray-200/80 bg-white shadow-pop dark:border-white/10 dark:bg-gray-800">
+                                            <div className="border-b border-gray-200/70 px-4 py-3 dark:border-white/[0.06]">
+                                                <div className="text-sm font-semibold text-gray-900 dark:text-white truncate">
+                                                    {getUserData()?.email || 'User'}
                                                 </div>
+                                                {getUserData()?.role && (
+                                                    <div className="text-xs capitalize text-gray-400 dark:text-gray-500">
+                                                        {getUserData()?.role}
+                                                    </div>
+                                                )}
+                                            </div>
+                                            <div className="p-1.5">
                                                 {onOpenSettings && (
                                                     <button
                                                         onClick={() => {
                                                             onOpenSettings()
                                                             setShowUserMenu(false)
                                                         }}
-                                                        className="block w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
-                                                        ⚙️ Settings
+                                                        className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-sm text-gray-600 transition-colors hover:bg-gray-100 hover:text-gray-900 dark:text-gray-300 dark:hover:bg-white/[0.06] dark:hover:text-white">
+                                                        <Settings className="h-4 w-4 text-gray-400" />
+                                                        Settings
                                                     </button>
                                                 )}
                                                 <button
                                                     onClick={handleLogout}
-                                                    className="block w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
-                                                    🔓 Sign out
+                                                    className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-sm text-danger-600 transition-colors hover:bg-danger-50 dark:text-danger-400 dark:hover:bg-danger-500/10">
+                                                    <LogOut className="h-4 w-4" />
+                                                    Sign out
                                                 </button>
                                             </div>
                                         </div>
@@ -230,45 +236,29 @@ export default function Header({
                         </div>
 
                         {/* Mobile: compact status + hamburger */}
-                        <div className="flex md:hidden items-center space-x-3">
-                            {/* Compact status indicators */}
-                            <span className="text-sm">{isDark ? '🌙' : '☀️'}</span>
-                            <div
-                                className={`w-2 h-2 rounded-full ${
-                                    wsConnected ? 'bg-green-500 animate-pulse' : 'bg-red-500'
-                                }`}></div>
+                        <div className="flex md:hidden items-center gap-3">
+                            <span
+                                className={`relative flex h-2.5 w-2.5 ${
+                                    wsConnected ? '' : 'opacity-70'
+                                }`}>
+                                {wsConnected && (
+                                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-success-400 opacity-75" />
+                                )}
+                                <span
+                                    className={`relative inline-flex h-2.5 w-2.5 rounded-full ${
+                                        wsConnected ? 'bg-success-500' : 'bg-danger-500'
+                                    }`}
+                                />
+                            </span>
 
-                            {/* Hamburger button */}
                             <button
                                 onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                                className="p-2 rounded-md text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                                className="rounded-xl p-2 text-gray-600 transition-colors hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-white/[0.06]"
                                 aria-label="Toggle menu">
                                 {mobileMenuOpen ? (
-                                    <svg
-                                        className="w-6 h-6"
-                                        fill="none"
-                                        stroke="currentColor"
-                                        viewBox="0 0 24 24">
-                                        <path
-                                            strokeLinecap="round"
-                                            strokeLinejoin="round"
-                                            strokeWidth={2}
-                                            d="M6 18L18 6M6 6l12 12"
-                                        />
-                                    </svg>
+                                    <X className="w-6 h-6" />
                                 ) : (
-                                    <svg
-                                        className="w-6 h-6"
-                                        fill="none"
-                                        stroke="currentColor"
-                                        viewBox="0 0 24 24">
-                                        <path
-                                            strokeLinecap="round"
-                                            strokeLinejoin="round"
-                                            strokeWidth={2}
-                                            d="M4 6h16M4 12h16M4 18h16"
-                                        />
-                                    </svg>
+                                    <Menu className="w-6 h-6" />
                                 )}
                             </button>
                         </div>
@@ -279,83 +269,84 @@ export default function Header({
             {/* Mobile menu overlay */}
             {mobileMenuOpen && (
                 <div className="fixed inset-0 z-40 md:hidden">
-                    {/* Backdrop */}
                     <div
-                        className="fixed inset-0 bg-black/50 backdrop-blur-sm"
+                        className="fixed inset-0 bg-gray-950/40 backdrop-blur-sm animate-fade-in"
                         onClick={() => setMobileMenuOpen(false)}
                     />
 
-                    {/* Slide-in menu */}
-                    <div className="fixed top-14 right-0 bottom-0 w-72 bg-white dark:bg-gray-800 shadow-xl border-l border-gray-200 dark:border-gray-700 overflow-y-auto">
+                    <div className="fixed top-14 right-0 bottom-0 w-72 animate-slide-in-right overflow-y-auto border-l border-gray-200/70 bg-white shadow-pop dark:border-white/[0.06] dark:bg-gray-900">
                         <div className="p-4 space-y-1">
-                            {/* Navigation */}
-                            <p className="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider px-3 pb-2">
+                            <p className="px-3 pb-2 text-[11px] font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500">
                                 Navigation
                             </p>
                             <button
                                 onClick={() => handleViewChange('dashboard')}
-                                className={`w-full text-left px-3 py-3 text-sm font-medium rounded-lg transition-colors ${
+                                className={`flex w-full items-center gap-3 rounded-xl px-3 py-3 text-sm font-medium transition-colors ${
                                     currentView === 'dashboard'
-                                        ? 'bg-primary-100 dark:bg-primary-900 text-primary-700 dark:text-primary-300'
-                                        : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                                        ? 'bg-primary-50 text-primary-700 dark:bg-primary-500/15 dark:text-primary-300'
+                                        : 'text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-white/[0.06]'
                                 }`}>
-                                📊 Dashboard
+                                <LayoutDashboard className="h-4 w-4 flex-shrink-0" /> Dashboard
                             </button>
                             <button
                                 onClick={() => handleViewChange('tests')}
-                                className={`w-full text-left px-3 py-3 text-sm font-medium rounded-lg transition-colors ${
+                                className={`flex w-full items-center gap-3 rounded-xl px-3 py-3 text-sm font-medium transition-colors ${
                                     currentView === 'tests'
-                                        ? 'bg-primary-100 dark:bg-primary-900 text-primary-700 dark:text-primary-300'
-                                        : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                                        ? 'bg-primary-50 text-primary-700 dark:bg-primary-500/15 dark:text-primary-300'
+                                        : 'text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-white/[0.06]'
                                 }`}>
-                                🧪 Tests
+                                <FlaskConical className="h-4 w-4 flex-shrink-0" /> Tests
                             </button>
 
-                            {/* Divider */}
-                            <div className="border-t border-gray-200 dark:border-gray-700 my-3"></div>
+                            <div className="my-3 border-t border-gray-200/70 dark:border-white/[0.06]" />
 
-                            {/* Status */}
-                            <p className="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider px-3 pb-2">
+                            <p className="px-3 pb-2 text-[11px] font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500">
                                 Status
                             </p>
-                            <div className="px-3 py-2 flex items-center justify-between text-sm text-gray-600 dark:text-gray-400">
+                            <div className="flex items-center justify-between px-3 py-2 text-sm text-gray-600 dark:text-gray-400">
                                 <span>Theme</span>
-                                <span>{isDark ? '🌙 Dark' : '☀️ Light'} mode</span>
+                                <span className="flex items-center gap-1.5">
+                                    {isDark ? (
+                                        <Moon className="h-3.5 w-3.5" />
+                                    ) : (
+                                        <Sun className="h-3.5 w-3.5" />
+                                    )}
+                                    {isDark ? 'Dark' : 'Light'} mode
+                                </span>
                             </div>
-                            <div className="px-3 py-2 flex items-center justify-between text-sm text-gray-600 dark:text-gray-400">
+                            <div className="flex items-center justify-between px-3 py-2 text-sm text-gray-600 dark:text-gray-400">
                                 <span>Connection</span>
-                                <div className="flex items-center space-x-2">
+                                <div className="flex items-center gap-2">
                                     <div
-                                        className={`w-2 h-2 rounded-full ${
+                                        className={`h-2 w-2 rounded-full ${
                                             wsConnected
-                                                ? 'bg-green-500 animate-pulse'
-                                                : 'bg-red-500'
-                                        }`}></div>
+                                                ? 'bg-success-500 animate-pulse'
+                                                : 'bg-danger-500'
+                                        }`}
+                                    />
                                     <span>{wsConnected ? 'Live Updates' : 'Disconnected'}</span>
                                 </div>
                             </div>
 
-                            {/* Divider */}
-                            <div className="border-t border-gray-200 dark:border-gray-700 my-3"></div>
+                            <div className="my-3 border-t border-gray-200/70 dark:border-white/[0.06]" />
 
-                            {/* User section */}
                             {user && (
                                 <>
-                                    <p className="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider px-3 pb-2">
+                                    <p className="px-3 pb-2 text-[11px] font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500">
                                         Account
                                     </p>
-                                    <div className="px-3 py-2 flex items-center space-x-3">
-                                        <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center flex-shrink-0">
-                                            <span className="text-white text-sm font-medium">
+                                    <div className="flex items-center gap-3 px-3 py-2">
+                                        <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-primary-500 to-primary-600">
+                                            <span className="text-sm font-semibold text-white">
                                                 {getUserData()?.email?.[0]?.toUpperCase() || 'U'}
                                             </span>
                                         </div>
                                         <div className="min-w-0">
-                                            <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
+                                            <p className="truncate text-sm font-medium text-gray-900 dark:text-white">
                                                 {getUserData()?.email || 'User'}
                                             </p>
                                             {getUserData()?.role && (
-                                                <p className="text-xs text-gray-500 dark:text-gray-400 capitalize">
+                                                <p className="text-xs capitalize text-gray-400 dark:text-gray-500">
                                                     {getUserData()?.role}
                                                 </p>
                                             )}
@@ -367,14 +358,15 @@ export default function Header({
                                                 onOpenSettings()
                                                 setMobileMenuOpen(false)
                                             }}
-                                            className="w-full text-left px-3 py-3 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors">
-                                            ⚙️ Settings
+                                            className="flex w-full items-center gap-3 rounded-xl px-3 py-3 text-sm text-gray-700 transition-colors hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-white/[0.06]">
+                                            <Settings className="h-4 w-4 flex-shrink-0 text-gray-400" />{' '}
+                                            Settings
                                         </button>
                                     )}
                                     <button
                                         onClick={handleLogout}
-                                        className="w-full text-left px-3 py-3 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors">
-                                        🔓 Sign out
+                                        className="flex w-full items-center gap-3 rounded-xl px-3 py-3 text-sm text-danger-600 transition-colors hover:bg-danger-50 dark:text-danger-400 dark:hover:bg-danger-500/10">
+                                        <LogOut className="h-4 w-4 flex-shrink-0" /> Sign out
                                     </button>
                                 </>
                             )}

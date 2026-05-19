@@ -22,11 +22,7 @@ export function StatusBadge({
 
     return (
         <Badge variant={variantMap[status]} size={size} className={className}>
-            {showIcon && (
-                <span className="mr-1">
-                    <StatusIcon status={status} />
-                </span>
-            )}
+            {showIcon && <StatusIcon status={status} className="h-3.5 w-3.5 mr-1 inline-block" />}
             <span className="capitalize">{status}</span>
         </Badge>
     )

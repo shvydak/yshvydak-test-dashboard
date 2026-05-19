@@ -24,7 +24,7 @@ export function TestGroup({
     const [expanded, setExpanded] = useState(true)
 
     return (
-        <Card padding="none">
+        <Card padding="none" className="overflow-hidden hover:shadow-card-hover">
             <TestGroupHeader
                 group={group}
                 expanded={expanded}
@@ -33,12 +33,14 @@ export function TestGroup({
             />
 
             {expanded && (
-                <TestsTable
-                    tests={group.tests}
-                    selectedTest={selectedTest}
-                    onTestSelect={onTestSelect}
-                    onTestRerun={onTestRerun}
-                />
+                <div className="animate-slide-up">
+                    <TestsTable
+                        tests={group.tests}
+                        selectedTest={selectedTest}
+                        onTestSelect={onTestSelect}
+                        onTestRerun={onTestRerun}
+                    />
+                </div>
             )}
         </Card>
     )

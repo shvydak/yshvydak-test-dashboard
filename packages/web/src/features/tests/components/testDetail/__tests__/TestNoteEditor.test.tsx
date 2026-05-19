@@ -332,7 +332,7 @@ describe('TestNoteEditor', () => {
             await user.type(screen.getByRole('textbox'), 'a'.repeat(950))
 
             const counter = screen.getByText('50 characters remaining')
-            expect(counter).toHaveClass('text-red-600', 'dark:text-red-400')
+            expect(counter).toHaveClass('text-danger-600', 'dark:text-danger-400')
         })
 
         it('should enforce maximum length of 1000 characters', async () => {

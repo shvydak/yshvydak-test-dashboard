@@ -1,4 +1,5 @@
 import React, {useEffect, useState} from 'react'
+import {createPortal} from 'react-dom'
 import {X} from 'lucide-react'
 import {NoteImage} from '@yshvydak/core'
 import {createProtectedFileURL} from '@features/authentication/utils/authFetch'
@@ -63,10 +64,10 @@ export function NoteImageLightbox({image, isOpen, onClose}: NoteImageLightboxPro
 
     if (!isOpen || !image) return null
 
-    return (
+    return createPortal(
         <>
             <div
-                className="fixed inset-0 z-[55] bg-black/50 backdrop-blur-md"
+                className="fixed inset-0 z-[200] bg-black/50 backdrop-blur-md"
                 onClick={(e) => {
                     e.stopPropagation()
                     onClose()
@@ -74,7 +75,7 @@ export function NoteImageLightbox({image, isOpen, onClose}: NoteImageLightboxPro
                 aria-hidden="true"
             />
             <div
-                className="fixed inset-0 z-[60] flex items-center justify-center p-4 pointer-events-none"
+                className="fixed inset-0 z-[201] flex items-center justify-center p-4 pointer-events-none"
                 onClick={(e) => {
                     e.stopPropagation()
                     onClose()
@@ -118,6 +119,7 @@ export function NoteImageLightbox({image, isOpen, onClose}: NoteImageLightboxPro
                     </div>
                 </div>
             </div>
-        </>
+        </>,
+        document.body
     )
 }

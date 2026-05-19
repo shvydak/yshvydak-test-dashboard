@@ -172,24 +172,29 @@ export default function TestsList({
     }
 
     return (
-        <div className="space-y-6 animate-fade-in">
-            {/* <TestsListHeader testsCount={filteredTests.length} /> */}
-            <TestsListFilters
-                filter={filter}
-                onFilterChange={handleFilterChange}
-                counts={counts}
-                searchQuery={searchQuery}
-                onSearchChange={setSearchQuery}
-            />
+        <div className="flex flex-col h-full animate-fade-in">
+            {/* Filter bar — fixed at top, never scrolls */}
+            <div className="py-3 md:py-4 shrink-0">
+                <TestsListFilters
+                    filter={filter}
+                    onFilterChange={handleFilterChange}
+                    counts={counts}
+                    searchQuery={searchQuery}
+                    onSearchChange={setSearchQuery}
+                />
+            </div>
 
-            <TestsContent
-                tests={filteredTests}
-                selectedTest={selectedTest}
-                onTestSelect={openTestDetail}
-                onTestRerun={onTestRerun}
-                searchQuery={searchQuery}
-                filter={filter}
-            />
+            {/* Scrollable content */}
+            <div className="flex-1 overflow-y-auto pb-4 md:pb-8">
+                <TestsContent
+                    tests={filteredTests}
+                    selectedTest={selectedTest}
+                    onTestSelect={openTestDetail}
+                    onTestRerun={onTestRerun}
+                    searchQuery={searchQuery}
+                    filter={filter}
+                />
+            </div>
 
             <TestDetailModal
                 test={detailModalTest}

@@ -242,7 +242,7 @@ function App() {
 
             <SettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
 
-            <main className="flex-1 overflow-y-auto container mx-auto px-3 md:px-4 py-4 md:py-8">
+            <main className="flex-1 overflow-hidden flex flex-col container mx-auto px-3 md:px-4">
                 <Routes>
                     <Route path="/" element={<Navigate to="/tests" replace />} />
                     <Route
@@ -256,7 +256,14 @@ function App() {
                             />
                         }
                     />
-                    <Route path="/dashboard" element={<Dashboard />} />
+                    <Route
+                        path="/dashboard"
+                        element={
+                            <div className="overflow-y-auto h-full py-4 md:py-8">
+                                <Dashboard />
+                            </div>
+                        }
+                    />
                 </Routes>
             </main>
 

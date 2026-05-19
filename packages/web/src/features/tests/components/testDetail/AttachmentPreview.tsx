@@ -20,7 +20,7 @@ export function AttachmentPreview({attachment}: AttachmentPreviewProps) {
                         ''
                     }
                     alt="Test Screenshot"
-                    className="max-w-full h-auto rounded border border-gray-200 dark:border-gray-700 cursor-pointer hover:opacity-90 transition-opacity"
+                    className="max-w-full h-auto rounded-xl border border-gray-200/80 dark:border-white/[0.08] cursor-pointer hover:opacity-90 transition-opacity"
                     onClick={() => {
                         // Use blob URL for inline preview if available, otherwise open with token
                         if (attachment.blobURL) {
@@ -41,7 +41,7 @@ export function AttachmentPreview({attachment}: AttachmentPreviewProps) {
             <div className="mt-4">
                 <video
                     controls
-                    className="max-w-full h-auto rounded border border-gray-200 dark:border-gray-700"
+                    className="max-w-full h-auto rounded-xl border border-gray-200/80 dark:border-white/[0.08]"
                     src={
                         attachment.blobURL ||
                         buildAuthenticatedAttachmentUrl(config.api.serverUrl, attachment.url) ||

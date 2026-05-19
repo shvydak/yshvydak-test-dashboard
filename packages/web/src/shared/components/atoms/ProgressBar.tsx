@@ -14,15 +14,15 @@ export const ProgressBar = ({
     className = '',
 }: ProgressBarProps) => {
     const heightClass = {
-        sm: 'h-1',
-        md: 'h-2',
+        sm: 'h-1.5',
+        md: 'h-2.5',
         lg: 'h-4',
     }[height]
 
     const colorClass = {
-        primary: 'bg-primary-600 dark:bg-primary-500',
-        success: 'bg-success-600 dark:bg-success-500',
-        danger: 'bg-danger-600 dark:bg-danger-500',
+        primary: 'bg-gradient-to-r from-primary-500 to-primary-400',
+        success: 'bg-gradient-to-r from-success-500 to-success-400',
+        danger: 'bg-gradient-to-r from-danger-500 to-danger-400',
     }[variant]
 
     const safePercentage = Math.min(100, Math.max(0, percentage))
@@ -30,9 +30,9 @@ export const ProgressBar = ({
     return (
         <div className={`w-full ${className}`}>
             <div
-                className={`w-full bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden ${heightClass}`}>
+                className={`w-full bg-gray-200/80 dark:bg-white/[0.06] rounded-full overflow-hidden ${heightClass}`}>
                 <div
-                    className={`${colorClass} ${heightClass} transition-all duration-300 ease-out`}
+                    className={`${colorClass} ${heightClass} rounded-full transition-all duration-500 ease-out`}
                     style={{width: `${safePercentage}%`}}
                     role="progressbar"
                     aria-valuenow={safePercentage}
@@ -41,7 +41,7 @@ export const ProgressBar = ({
                 />
             </div>
             {showLabel && (
-                <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                <div className="text-xs font-medium text-gray-500 dark:text-gray-400 mt-1.5 tabular-nums">
                     {safePercentage.toFixed(0)}%
                 </div>
             )}

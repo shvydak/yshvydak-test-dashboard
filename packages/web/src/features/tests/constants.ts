@@ -15,12 +15,12 @@ export const TEST_STATUS_ICONS: Record<TestStatus, string> = {
 } as const
 
 export const FILTER_OPTIONS = [
-    {key: 'all', label: 'All'},
-    {key: 'passed', label: 'Passed'},
-    {key: 'failed', label: 'Failed'},
-    {key: 'skipped', label: 'Skipped'},
-    {key: 'pending', label: 'Pending'},
-    {key: 'noted', label: 'Noted'},
+    {key: 'all', label: 'All', color: 'primary'},
+    {key: 'passed', label: 'Passed', color: 'success'},
+    {key: 'failed', label: 'Failed', color: 'danger'},
+    {key: 'skipped', label: 'Skipped', color: 'warning'},
+    {key: 'pending', label: 'Pending', color: 'info'},
+    {key: 'noted', label: 'Noted', color: 'primary'},
 ] as const
 
 export type FilterKey = (typeof FILTER_OPTIONS)[number]['key']

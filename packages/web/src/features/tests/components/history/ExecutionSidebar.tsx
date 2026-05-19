@@ -1,3 +1,4 @@
+import {Play, Clock} from 'lucide-react'
 import {TestResult} from '@yshvydak/core'
 import {ActionButton} from '@shared/components'
 import {useTestsStore} from '../../store/testsStore'
@@ -38,15 +39,15 @@ export function ExecutionSidebar({
     const isRunning = runningTests.has(testId) || !!runningInfo
 
     return (
-        <div className="w-80 h-full min-h-0 border-l border-gray-200 dark:border-gray-700 flex flex-col bg-gray-50 dark:bg-gray-800">
+        <div className="w-80 h-full min-h-0 border-l border-gray-200/70 dark:border-white/[0.06] flex flex-col bg-gray-50 dark:bg-white/[0.02]">
             {/* Sticky Header */}
-            <div className="sticky top-0 bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-4 py-4 z-10">
+            <div className="sticky top-0 bg-gray-50/80 backdrop-blur-xl dark:bg-gray-900/40 border-b border-gray-200/70 dark:border-white/[0.06] px-4 py-4 z-10">
                 <div className="flex items-center justify-between gap-3">
                     <div className="flex-1">
-                        <h3 className="text-sm font-semibold text-gray-900 dark:text-white uppercase tracking-wide">
+                        <h3 className="text-[11px] font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500">
                             Execution History
                         </h3>
-                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                        <p className="mt-1.5 inline-flex items-center rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium tabular-nums text-gray-500 ring-1 ring-inset ring-gray-500/10 dark:bg-white/[0.06] dark:text-gray-400 dark:ring-white/10">
                             {executions.length}{' '}
                             {executions.length === 1 ? 'execution' : 'executions'}
                         </p>
@@ -56,7 +57,7 @@ export function ExecutionSidebar({
                         variant="primary"
                         isRunning={isRunning}
                         runningText="Running..."
-                        icon="▶️"
+                        icon={<Play className="h-3.5 w-3.5" />}
                         disabled={isAnyTestRunning}
                         onClick={() => onRerun(testId)}>
                         Run
@@ -67,27 +68,34 @@ export function ExecutionSidebar({
             {/* Content */}
             <div className="flex-1 min-h-0 overflow-y-auto px-4 py-3">
                 {loading && (
-                    <div className="flex items-center justify-center py-12">
-                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600 dark:border-primary-400" />
+                    <div className="space-y-2">
+                        {[0, 1, 2].map((i) => (
+                            <div key={i} className="skeleton h-24 w-full rounded-xl" />
+                        ))}
                     </div>
                 )}
 
                 {error && (
-                    <div className="text-center py-8 px-2">
-                        <p className="text-xs text-danger-600 dark:text-danger-400">
+                    <div className="rounded-2xl border border-danger-200/70 bg-danger-50 ring-1 ring-inset ring-danger-600/10 px-3 py-4 text-center dark:border-danger-500/20 dark:bg-danger-500/10 dark:ring-danger-400/15">
+                        <p className="text-xs font-medium text-danger-700 dark:text-danger-300">
                             Error loading history: {error}
                         </p>
                     </div>
                 )}
 
                 {!loading && !error && executions.length === 0 && (
-                    <div className="text-center py-12 text-gray-500 dark:text-gray-400">
-                        <p className="text-sm">No execution history</p>
+                    <div className="flex flex-col items-center justify-center text-center py-12">
+                        <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gray-100 dark:bg-white/[0.04]">
+                            <Clock className="h-6 w-6 text-gray-400 dark:text-gray-500" />
+                        </div>
+                        <p className="mt-3 text-sm font-medium text-gray-600 dark:text-gray-300">
+                            No execution history
+                        </p>
                     </div>
                 )}
 
                 {!loading && !error && executions.length > 0 && (
-                    <div className="space-y-2">
+                    <div className="space-y-2 stagger">
                         {executions.map((execution, index) => (
                             <ExecutionItem
                                 key={execution.id}

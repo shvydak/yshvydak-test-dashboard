@@ -8,7 +8,7 @@ export interface CardProps {
 
 export function Card({children, className = '', padding = 'md'}: CardProps) {
     const baseStyles =
-        'bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700'
+        'rounded-2xl border border-gray-200/80 bg-white shadow-card transition-all duration-200 dark:border-white/[0.07] dark:bg-gray-800/70 dark:backdrop-blur-xl'
 
     const paddingStyles = {
         none: '',
@@ -29,7 +29,8 @@ export interface CardHeaderProps {
 
 export function CardHeader({children, className = ''}: CardHeaderProps) {
     return (
-        <div className={`px-6 py-4 border-b border-gray-200 dark:border-gray-700 ${className}`}>
+        <div
+            className={`px-6 py-4 border-b border-gray-200/70 dark:border-white/[0.06] ${className}`}>
             {children}
         </div>
     )

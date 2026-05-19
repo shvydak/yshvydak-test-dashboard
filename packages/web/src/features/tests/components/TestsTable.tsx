@@ -20,25 +20,25 @@ export function TestsTable({
         <div className="overflow-x-clip sm:overflow-x-auto">
             <table className="w-full">
                 <thead>
-                    <tr className="border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
-                        <th className="text-left py-3 px-3 md:px-6 text-xs font-medium text-gray-600 dark:text-gray-400 w-24 md:w-32">
+                    <tr className="border-b border-gray-200/70 bg-gray-50/80 dark:border-white/[0.06] dark:bg-white/[0.02]">
+                        <th className="w-24 px-3 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500 md:w-32 md:px-6">
                             Status
                         </th>
-                        <th className="text-left py-3 px-3 md:px-6 text-xs font-medium text-gray-600 dark:text-gray-400">
+                        <th className="px-3 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500 md:px-6">
                             Test Name
                         </th>
                         {showFilePath && (
-                            <th className="text-left py-3 px-6 text-xs font-medium text-gray-600 dark:text-gray-400 hidden lg:table-cell">
+                            <th className="hidden px-6 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500 lg:table-cell">
                                 File Path
                             </th>
                         )}
-                        <th className="text-left py-3 px-6 text-xs font-medium text-gray-600 dark:text-gray-400 w-24 hidden sm:table-cell">
+                        <th className="hidden w-24 px-6 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500 sm:table-cell">
                             Duration
                         </th>
-                        <th className="text-left py-3 px-6 text-xs font-medium text-gray-600 dark:text-gray-400 w-48 hidden lg:table-cell">
+                        <th className="hidden w-48 px-6 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500 lg:table-cell">
                             Last Run
                         </th>
-                        <th className="text-left py-3 px-3 md:px-6 text-xs font-medium text-gray-600 dark:text-gray-400 w-20 md:w-40 hidden sm:table-cell">
+                        <th className="hidden w-20 px-3 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500 sm:table-cell md:w-40 md:px-6">
                             Actions
                         </th>
                     </tr>

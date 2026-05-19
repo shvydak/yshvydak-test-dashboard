@@ -1,4 +1,5 @@
 import {useState} from 'react'
+import {ChevronDown, ChevronRight, Database, Paperclip, RefreshCw} from 'lucide-react'
 import {Button} from '@shared/components'
 import {SettingsSection} from './SettingsSection'
 import {useStorageStats} from '../../hooks'
@@ -26,29 +27,37 @@ export function SettingsStorageSection() {
             description="View storage usage for tests and attachments">
             <div className="space-y-4">
                 <Button variant="secondary" fullWidth onClick={handleToggle}>
-                    {isOpen ? '▼ Hide Storage Info' : '▶ Show Storage Info'}
+                    {isOpen ? (
+                        <span className="flex items-center gap-1.5">
+                            <ChevronDown className="h-4 w-4" /> Hide Storage Info
+                        </span>
+                    ) : (
+                        <span className="flex items-center gap-1.5">
+                            <ChevronRight className="h-4 w-4" /> Show Storage Info
+                        </span>
+                    )}
                 </Button>
 
                 {isOpen && (
                     <div className="space-y-4">
                         {isLoading || isRefetching ? (
-                            <div className="text-center py-4 text-gray-600 dark:text-gray-400">
+                            <div className="py-4 text-center text-sm text-gray-500 dark:text-gray-400">
                                 Loading storage statistics...
                             </div>
                         ) : error ? (
-                            <div className="text-center py-4 text-red-600 dark:text-red-400">
+                            <div className="py-4 text-center text-sm text-danger-600 dark:text-danger-400">
                                 Failed to load storage statistics
                             </div>
                         ) : stats ? (
                             <>
-                                <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-4 space-y-3">
+                                <div className="space-y-3 rounded-xl border border-gray-200/70 bg-white/60 p-4 dark:border-white/[0.06] dark:bg-white/[0.02]">
                                     {/* Total Storage */}
-                                    <div className="pb-3 border-b border-gray-200 dark:border-gray-700">
+                                    <div className="border-b border-gray-200/70 pb-3 dark:border-white/[0.06]">
                                         <div className="flex justify-between items-center">
                                             <span className="font-semibold text-gray-900 dark:text-white">
                                                 Total Storage
                                             </span>
-                                            <span className="text-lg font-bold text-blue-600 dark:text-blue-400">
+                                            <span className="text-lg font-bold tabular-nums text-primary-600 dark:text-primary-400">
                                                 {formatBytes(stats.total.size)}
                                             </span>
                                         </div>
@@ -64,7 +73,9 @@ export function SettingsStorageSection() {
                                     <div>
                                         <div className="flex justify-between items-center mb-2">
                                             <span className="font-medium text-gray-900 dark:text-white">
-                                                💾 Database
+                                                <span className="flex items-center gap-1.5">
+                                                    <Database className="h-4 w-4" /> Database
+                                                </span>
                                             </span>
                                             <span className="font-semibold text-gray-700 dark:text-gray-300">
                                                 {formatBytes(stats.database.size)}
@@ -96,7 +107,9 @@ export function SettingsStorageSection() {
                                     <div>
                                         <div className="flex justify-between items-center mb-2">
                                             <span className="font-medium text-gray-900 dark:text-white">
-                                                📎 Attachments
+                                                <span className="flex items-center gap-1.5">
+                                                    <Paperclip className="h-4 w-4" /> Attachments
+                                                </span>
                                             </span>
                                             <span className="font-semibold text-gray-700 dark:text-gray-300">
                                                 {formatBytes(stats.attachments.totalSize)}
@@ -118,7 +131,7 @@ export function SettingsStorageSection() {
 
                                             {/* Type Breakdown */}
                                             {stats.attachments.totalFiles > 0 && (
-                                                <div className="pt-2 mt-2 border-t border-gray-200 dark:border-gray-700">
+                                                <div className="mt-2 border-t border-gray-200/70 pt-2 dark:border-white/[0.06]">
                                                     <div className="font-medium mb-1">By type:</div>
                                                     {Object.entries(
                                                         stats.attachments.typeBreakdown
@@ -150,7 +163,13 @@ export function SettingsStorageSection() {
                                     onClick={handleRefresh}
                                     loading={isRefetching}
                                     disabled={isRefetching}>
-                                    {isRefetching ? 'Refreshing...' : '🔄 Refresh Statistics'}
+                                    {isRefetching ? (
+                                        'Refreshing...'
+                                    ) : (
+                                        <span className="flex items-center gap-1.5">
+                                            <RefreshCw className="h-4 w-4" /> Refresh Statistics
+                                        </span>
+                                    )}
                                 </Button>
                             </>
                         ) : null}

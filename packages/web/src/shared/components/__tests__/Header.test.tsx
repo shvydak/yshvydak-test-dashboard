@@ -187,7 +187,7 @@ describe('Header - Filter Preservation', () => {
             )
 
             const dashboardButton = screen.getByText('Dashboard')
-            expect(dashboardButton).toHaveClass('bg-primary-100')
+            expect(dashboardButton).toHaveClass('bg-primary-50')
         })
 
         it('should highlight Tests button when on tests view', () => {
@@ -196,7 +196,7 @@ describe('Header - Filter Preservation', () => {
             )
 
             const testsButton = screen.getByText('Tests')
-            expect(testsButton).toHaveClass('bg-primary-100')
+            expect(testsButton).toHaveClass('bg-primary-50')
         })
 
         it('should not highlight Dashboard button when on tests view', () => {
@@ -205,7 +205,7 @@ describe('Header - Filter Preservation', () => {
             )
 
             const dashboardButton = screen.getByText('Dashboard')
-            expect(dashboardButton).not.toHaveClass('bg-primary-100')
+            expect(dashboardButton).not.toHaveClass('bg-primary-50')
         })
 
         it('should not highlight Tests button when on dashboard view', () => {
@@ -218,7 +218,7 @@ describe('Header - Filter Preservation', () => {
             )
 
             const testsButton = screen.getByText('Tests')
-            expect(testsButton).not.toHaveClass('bg-primary-100')
+            expect(testsButton).not.toHaveClass('bg-primary-50')
         })
     })
 
@@ -232,7 +232,7 @@ describe('Header - Filter Preservation', () => {
                 />
             )
 
-            expect(screen.getByText('Live Updates')).toBeInTheDocument()
+            expect(screen.getByText('Live')).toBeInTheDocument()
         })
 
         it('should show disconnected status when wsConnected is false', () => {
@@ -244,7 +244,7 @@ describe('Header - Filter Preservation', () => {
                 />
             )
 
-            expect(screen.getByText('Disconnected')).toBeInTheDocument()
+            expect(screen.getByText('Offline')).toBeInTheDocument()
         })
     })
 
@@ -283,7 +283,7 @@ describe('Header - Filter Preservation', () => {
             await user.click(userButton)
 
             // Click on Settings option
-            const settingsButton = screen.getByText('⚙️ Settings')
+            const settingsButton = screen.getByText('Settings')
             await user.click(settingsButton)
 
             expect(mockOnOpenSettings).toHaveBeenCalledTimes(1)

@@ -1,4 +1,5 @@
 import {useState, useMemo, useCallback, useEffect, useRef} from 'react'
+import {createPortal} from 'react-dom'
 import {useQueryClient} from '@tanstack/react-query'
 import {TestResult} from '@yshvydak/core'
 import {TabKey} from '../../types/attachment.types'
@@ -43,7 +44,7 @@ export function TestDetailModal({test, isOpen, onClose}: TestDetailModalProps) {
     const getIsAnyTestRunning = useTestsStore((state) => state.getIsAnyTestRunning)
     const activeProgress = useTestsStore((state) => state.activeProgress)
 
-    // Lock body scroll when modal is open
+    // Lock body scroll when modal is open + ESC to close
     useEffect(() => {
         if (isOpen) {
             const scrollY = window.scrollY
@@ -53,6 +54,11 @@ export function TestDetailModal({test, isOpen, onClose}: TestDetailModalProps) {
             document.body.style.right = '0'
             document.body.style.overflow = 'hidden'
 
+            const handleKeyDown = (e: KeyboardEvent) => {
+                if (e.key === 'Escape') handleClose()
+            }
+            document.addEventListener('keydown', handleKeyDown)
+
             return () => {
                 document.body.style.position = ''
                 document.body.style.top = ''
@@ -60,6 +66,7 @@ export function TestDetailModal({test, isOpen, onClose}: TestDetailModalProps) {
                 document.body.style.right = ''
                 document.body.style.overflow = ''
                 window.scrollTo(0, scrollY)
+                document.removeEventListener('keydown', handleKeyDown)
             }
         }
     }, [isOpen])
@@ -251,13 +258,16 @@ export function TestDetailModal({test, isOpen, onClose}: TestDetailModalProps) {
 
     const swipeOpacity = swipeOffset > 0 ? Math.max(0.3, 1 - swipeOffset / 200) : 1
 
-    return (
-        <div className="fixed inset-0 z-50 overflow-hidden">
-            <div className="flex min-h-screen items-center justify-center p-0 md:p-4">
+    return createPortal(
+        <div className="fixed inset-0 z-[60] overflow-hidden">
+            <div
+                className="flex min-h-screen items-center justify-center p-0 md:p-4"
+                onClick={handleClose}>
                 <ModalBackdrop onClick={handleClose} blur="sm" />
 
                 <div
-                    className="relative bg-white dark:bg-gray-800 md:rounded-lg shadow-xl max-w-7xl w-full h-screen md:h-[90vh] flex flex-col overflow-hidden"
+                    className="relative bg-white dark:bg-gray-800 dark:backdrop-blur-xl md:rounded-2xl border-0 md:border md:border-gray-200/80 md:dark:border-white/10 shadow-pop animate-scale-in max-w-5xl w-full h-screen md:h-[82vh] flex flex-col overflow-hidden"
+                    onClick={(e) => e.stopPropagation()}
                     style={
                         swipeOffset > 0
                             ? {
@@ -270,7 +280,7 @@ export function TestDetailModal({test, isOpen, onClose}: TestDetailModalProps) {
                     {/* Swipe indicator - visible on mobile when dragging */}
                     {swipeOffset > 0 && (
                         <div className="md:hidden absolute top-0 left-0 right-0 flex justify-center py-1 z-10">
-                            <div className="w-10 h-1 bg-gray-400 dark:bg-gray-500 rounded-full" />
+                            <div className="w-10 h-1.5 bg-gray-400 dark:bg-gray-500 rounded-full" />
                         </div>
                     )}
 
@@ -279,8 +289,8 @@ export function TestDetailModal({test, isOpen, onClose}: TestDetailModalProps) {
                         ref={headerRef}
                         className="md:cursor-default cursor-grab active:cursor-grabbing">
                         {/* Swipe pill hint (mobile only, always visible) */}
-                        <div className="md:hidden flex justify-center pt-2 pb-0">
-                            <div className="w-8 h-1 bg-gray-300 dark:bg-gray-600 rounded-full" />
+                        <div className="md:hidden flex justify-center pt-3 pb-1">
+                            <div className="w-12 h-1.5 bg-gray-400/70 dark:bg-white/50 rounded-full" />
                         </div>
 
                         <TestDetailHeader
@@ -301,7 +311,7 @@ export function TestDetailModal({test, isOpen, onClose}: TestDetailModalProps) {
                     </div>
 
                     {/* Tabs */}
-                    <div className="border-b border-gray-200 dark:border-gray-700">
+                    <div className="border-b border-gray-200/70 dark:border-white/[0.06]">
                         <TestDetailTabs activeTab={activeTab} onTabChange={setActiveTab} />
                     </div>
 
@@ -366,6 +376,7 @@ export function TestDetailModal({test, isOpen, onClose}: TestDetailModalProps) {
                     onCancel={handleDeleteExecutionCancel}
                 />
             </div>
-        </div>
+        </div>,
+        document.body
     )
 }

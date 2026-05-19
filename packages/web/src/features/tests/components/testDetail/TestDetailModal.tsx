@@ -1,4 +1,5 @@
 import {useState, useMemo, useCallback, useEffect, useRef} from 'react'
+import {createPortal} from 'react-dom'
 import {useQueryClient} from '@tanstack/react-query'
 import {TestResult} from '@yshvydak/core'
 import {TabKey} from '../../types/attachment.types'
@@ -257,8 +258,8 @@ export function TestDetailModal({test, isOpen, onClose}: TestDetailModalProps) {
 
     const swipeOpacity = swipeOffset > 0 ? Math.max(0.3, 1 - swipeOffset / 200) : 1
 
-    return (
-        <div className="fixed inset-0 z-50 overflow-hidden">
+    return createPortal(
+        <div className="fixed inset-0 z-[60] overflow-hidden">
             <div
                 className="flex min-h-screen items-center justify-center p-0 md:p-4"
                 onClick={handleClose}>
@@ -375,6 +376,7 @@ export function TestDetailModal({test, isOpen, onClose}: TestDetailModalProps) {
                     onCancel={handleDeleteExecutionCancel}
                 />
             </div>
-        </div>
+        </div>,
+        document.body
     )
 }

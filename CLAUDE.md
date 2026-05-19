@@ -1,8 +1,5 @@
 # CLAUDE.md - Quick Reference for AI Development
 
-> **Note:** This is the Claude Code-optimized version of project documentation. For Gemini, see [GEMINI.md](GEMINI.md).
-> Both files contain identical technical content but may have AI-specific formatting.
-
 ## 🔥 CRITICAL CONTEXT (30 seconds to read)
 
 ### 1️⃣ Repository Pattern - NEVER Bypass
@@ -77,36 +74,17 @@ User clicks "Run All"
 
 ---
 
-## 🤖 Vibe Coding Agent
+## 🤖 Specialized Agents
 
-For rapid feature development with automated workflow, use the custom agent:
+Use these agents for post-development checks:
 
-```
-@vibe <feature description>
-```
+- **`validation-agent`** — format, type-check, lint, tests, build. Run after any code changes.
+- **`coverage-agent`** — test coverage vs targets (Reporter 90%, Server 80%, Web 70%).
+- **`documentation-agent`** — detects docs needing updates after API/feature changes.
+- **`architecture-review-agent`** — Repository Pattern, dead code, duplicated logic.
+- **`external-code-review-agent`** — review & fix code written by other AI assistants.
 
-**The agent automatically:**
-
-- 🔍 **Research:** Parallel Explore agents gather context
-- 📋 **Planning:** Presents plan + asks only critical questions
-- 💻 **Development:** Implements following Repository Pattern + best practices
-- 🧪 **Test Gap Detection:** Proactively identifies missing tests
-- 🤖 **Smart Validation:** Recommends & runs specialized agents:
-    - `validation-agent`: format, type-check, lint, test, build (parallel)
-    - `coverage-agent`: test coverage analysis vs targets
-    - `documentation-agent`: doc updates + Context7-MCP checks
-- 🏗️ **Architecture Review:** Detects dead code, duplicates, pattern violations
-
-**Examples:**
-
-```
-@vibe add bulk test rerun
-@vibe fix attachments bug
-@vibe refactor WebSocket logic
-```
-
-**Full workflow guide:** [docs/ai/AGENT_WORKFLOW.md](docs/ai/AGENT_WORKFLOW.md)
-**Agent definition:** `.claude/agents/vibe.md` (customizable)
+All agents are in `.claude/agents/` and use `disable-model-invocation: true` (manual-only).
 
 ---
 
@@ -125,18 +103,6 @@ For rapid feature development with automated workflow, use the custom agent:
 - **Write tests?** → `packages/{package}/src/__tests__/`
 
 **Full structure:** See [docs/ai/FILE_LOCATIONS.md](docs/ai/FILE_LOCATIONS.md)
-
----
-
-## 🖥️ UI / Responsive Rules
-
-- **ALWAYS verify both desktop and mobile** when changing layout/components. Mobile breakpoint is `md:` (768px).
-- `flex-1` buttons inside `flex-wrap` container wrap into a column on mobile — use two-row responsive layout instead (`space-y-2 md:space-y-0 md:flex`).
-- Footer `mt-X` inside `flex-col h-screen` eats height from `main` — avoid top margin on footer.
-- Sticky filter bar pattern: make `main` `overflow-hidden flex flex-col`, filter bar `shrink-0`, content area `flex-1 overflow-y-auto`.
-- Mobile swipe pills need `bg-white/40+` opacity — `bg-white/15` is invisible on dark backgrounds.
-- All icons: use `lucide-react` (already installed). Never use emoji or unicode characters in UI.
-- Edit tool fails on multi-byte emoji — use Python `open(f).read().replace(...)` to swap them.
 
 ---
 
@@ -185,13 +151,6 @@ Repository methods like `getTestResultsByTestId` already JOIN attachments + note
 **Reporter:** npm package, CLI injection, environment config
 **Database:** INSERT-only, testId grouping, execution history
 **Attachments:** Permanent storage, unique filenames, isolated dirs
-
-### SQLite conventions
-
-- Tests use in-memory DB: `new DatabaseManager(':memory:')` + `await dbManager.initialize()`
-- Prefer `ROW_NUMBER() OVER (PARTITION BY ...)` over correlated subqueries (SQLite ≥ 3.25, already used in `getIdsPrunedByCount`)
-- Add a composite index when filter + sort target the same query (e.g. `(test_id, created_at DESC)` for history)
-- History defaults: `DEFAULT_LIMITS.TEST_HISTORY = 200` (`server/src/config/constants.ts`); frontend hook always sends `?limit=200&byTestId=true`
 
 **Deep dive:** [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
 
@@ -249,18 +208,16 @@ cd packages/reporter && npm run dev   # Reporter watch
 - ALWAYS check before changing dependency configuration
 - Get latest docs, breaking changes, migration guides
 
-**Complete Development Checklist** (Automated via agents):
+**Complete Development Checklist:**
 
-Vibe agent automatically runs these checks through specialized agents:
+1. `npm run format` - Format all files with Prettier
+2. `npm run type-check` - Verify TypeScript
+3. `npm run lint:fix` - Fix linting issues
+4. `npm test` - Run all tests (update affected tests if needed)
+5. `npm run build` - Ensure build succeeds
 
-1. ✨ `npm run format` - Format all files with Prettier
-2. 🔍 `npm run type-check` - Verify TypeScript
-3. 🎨 `npm run lint:fix` - Fix linting issues
-4. ✅ `npm test` - Run all tests (update affected tests if needed)
-5. 📦 `npm run build` - Ensure build succeeds
-
-**Run via:** `@validation-agent` (or automatically when using `@vibe`)
-**Manual fallback:** If agents skipped, run commands manually
+**Run via:** `@validation-agent`
+**Manual fallback:** Run commands above directly
 
 **IMPORTANT**: These checks are MANDATORY after ANY code changes!
 
@@ -289,7 +246,6 @@ Vibe agent automatically runs these checks through specialized agents:
 
 ### AI Deep Dive
 
-- [docs/ai/AGENT_WORKFLOW.md](docs/ai/AGENT_WORKFLOW.md) - Agent-based workflow guide
 - [docs/ai/ANTI_PATTERNS.md](docs/ai/ANTI_PATTERNS.md) - Code examples
 - [docs/ai/FILE_LOCATIONS.md](docs/ai/FILE_LOCATIONS.md) - Full structure
 - [docs/ai/CONCEPT_MAP.md](docs/ai/CONCEPT_MAP.md) - Detailed flows
@@ -323,6 +279,5 @@ Vibe agent automatically runs these checks through specialized agents:
 
 ---
 
-**Total:** ~150 lines | **Read time:** 2-3 minutes
 **For detailed examples:** See [docs/ai/](docs/ai/)
-**Last Updated:** October 2025 | **Maintained by:** Yurii Shvydak
+**Last Updated:** May 2026 | **Maintained by:** Yurii Shvydak

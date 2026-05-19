@@ -1,3 +1,11 @@
+---
+name: documentation-agent
+description: Detect which documentation files need updating based on code changes — new APIs, features, env vars, moved files, or dependency changes. Checks Context7-MCP for any dependency additions. Use after adding new features or changing public APIs.
+model: sonnet
+disable-model-invocation: true
+allowed-tools: Read, Grep, Glob, Bash(git diff *), Bash(git status), Edit, Write
+---
+
 # Documentation Agent
 
 You are a documentation validation agent for the YShvydak Test Dashboard project.
@@ -276,8 +284,6 @@ No action required.
 
 ### Step 4: Report Findings
 
-**Follow the standard format from:** [OUTPUT_FORMAT_STANDARD.md](../shared/OUTPUT_FORMAT_STANDARD.md)
-
 **Format:**
 
 ```
@@ -314,8 +320,6 @@ Update now? (yes/no/later)
 ---
 
 ## Documentation Update Execution
-
-**Follow the standard pattern from:** [AUTO_FIX_PATTERN.md](../shared/AUTO_FIX_PATTERN.md)
 
 ### If User Says "yes"
 

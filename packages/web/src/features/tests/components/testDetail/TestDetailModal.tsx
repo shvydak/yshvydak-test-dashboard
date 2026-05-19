@@ -288,8 +288,8 @@ export function TestDetailModal({test, isOpen, onClose}: TestDetailModalProps) {
                         ref={headerRef}
                         className="md:cursor-default cursor-grab active:cursor-grabbing">
                         {/* Swipe pill hint (mobile only, always visible) */}
-                        <div className="md:hidden flex justify-center pt-2.5 pb-0">
-                            <div className="w-9 h-1.5 bg-gray-300 dark:bg-white/15 rounded-full" />
+                        <div className="md:hidden flex justify-center pt-3 pb-1">
+                            <div className="w-12 h-1.5 bg-gray-400/70 dark:bg-white/50 rounded-full" />
                         </div>
 
                         <TestDetailHeader

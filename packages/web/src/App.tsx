@@ -264,7 +264,7 @@ function App() {
             <FloatingProgressPanel />
 
             {/* Footer */}
-            <footer className="border-t border-gray-200/70 bg-white/60 backdrop-blur-sm dark:border-white/[0.06] dark:bg-gray-950/40 mt-6 md:mt-12">
+            <footer className="border-t border-gray-200/70 bg-white/60 backdrop-blur-sm dark:border-white/[0.06] dark:bg-gray-950/40">
                 <div className="container mx-auto px-3 md:px-4 py-4 md:py-6">
                     <div className="flex flex-col sm:flex-row items-center sm:justify-between gap-2">
                         <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 text-center sm:text-left">

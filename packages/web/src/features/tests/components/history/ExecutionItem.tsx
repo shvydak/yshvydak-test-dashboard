@@ -1,4 +1,5 @@
 import {useState} from 'react'
+import {Check, Timer, Paperclip} from 'lucide-react'
 import {TestResult} from '@yshvydak/core'
 import {StatusBadge} from '@shared/components'
 import {formatLastRun, formatDuration} from '../../utils/formatters'
@@ -59,11 +60,15 @@ export function ExecutionItem({
 
             {/* Metadata */}
             <div className="flex items-center gap-2 text-[11px] font-mono tabular-nums text-gray-400 dark:text-gray-500 mb-2">
-                <span>⏱ {formatDuration(execution.duration)}</span>
+                <span className="flex items-center gap-1">
+                    <Timer className="h-3 w-3" /> {formatDuration(execution.duration)}
+                </span>
                 {attachmentCount > 0 && (
                     <>
                         <span>•</span>
-                        <span>📎 {attachmentCount}</span>
+                        <span className="flex items-center gap-1">
+                            <Paperclip className="h-3 w-3" /> {attachmentCount}
+                        </span>
                     </>
                 )}
             </div>
@@ -73,7 +78,7 @@ export function ExecutionItem({
                 {/* Current Indicator */}
                 {isCurrent && (
                     <div className="flex items-center gap-1 text-primary-700 dark:text-primary-300 font-semibold text-[11px]">
-                        <span>✓</span>
+                        <Check className="h-3 w-3" />
                         <span>Currently viewing</span>
                     </div>
                 )}

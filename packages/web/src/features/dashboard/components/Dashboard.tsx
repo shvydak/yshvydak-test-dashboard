@@ -1,4 +1,5 @@
 import {useEffect, useState, useCallback, useRef} from 'react'
+import {AlertTriangle, PartyPopper, BarChart2} from 'lucide-react'
 import {useSearchParams} from 'react-router-dom'
 import {useTestsStore} from '@features/tests/store/testsStore'
 import {useDashboardStats, useFlakyTests, useTestTimeline} from '../hooks'
@@ -102,8 +103,8 @@ export default function Dashboard() {
         return (
             <div className="animate-fade-in rounded-2xl border border-danger-600/15 bg-danger-50 p-5 ring-1 ring-danger-600/10 dark:border-danger-400/20 dark:bg-danger-500/10">
                 <div className="flex items-start gap-3">
-                    <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl bg-danger-100 text-lg dark:bg-danger-500/15">
-                        ⚠️
+                    <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl bg-danger-100 dark:bg-danger-500/15">
+                        <AlertTriangle className="h-5 w-5 text-danger-600 dark:text-danger-400" />
                     </div>
                     <div className="min-w-0">
                         <h3 className="text-sm font-semibold text-danger-700 dark:text-danger-300">
@@ -201,8 +202,8 @@ export default function Dashboard() {
                         </div>
                     ) : !flakyTests || flakyTests.length === 0 ? (
                         <div className="flex flex-col items-center py-12 text-center">
-                            <div className="mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-success-50 text-3xl ring-1 ring-success-600/15 dark:bg-success-500/10 dark:ring-success-400/20">
-                                🎉
+                            <div className="mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-success-50 ring-1 ring-success-600/15 dark:bg-success-500/10 dark:ring-success-400/20">
+                                <PartyPopper className="h-7 w-7 text-success-500 dark:text-success-400" />
                             </div>
                             <p className="text-sm font-semibold text-gray-900 dark:text-white">
                                 No flaky tests detected!
@@ -271,8 +272,8 @@ export default function Dashboard() {
                         <div className="h-64 animate-pulse rounded-xl bg-gray-100 dark:bg-white/[0.05]" />
                     ) : !timelineData || timelineData.length === 0 ? (
                         <div className="flex flex-col items-center py-12 text-center">
-                            <div className="mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-gray-100 text-3xl dark:bg-white/[0.04]">
-                                📊
+                            <div className="mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-gray-100 dark:bg-white/[0.04]">
+                                <BarChart2 className="h-7 w-7 text-gray-400 dark:text-gray-500" />
                             </div>
                             <p className="text-sm font-semibold text-gray-900 dark:text-white">
                                 No test data available

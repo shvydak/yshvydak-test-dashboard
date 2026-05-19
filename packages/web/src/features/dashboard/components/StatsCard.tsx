@@ -1,7 +1,9 @@
+import {ReactNode} from 'react'
+
 interface StatsCardProps {
     title: string
     value: string | number
-    icon: string
+    icon: ReactNode
     className?: string
     loading?: boolean
     onClick?: () => void
@@ -53,7 +55,7 @@ export default function StatsCard({
                         </p>
                     )}
                 </div>
-                <div className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-xl bg-gray-100/80 text-xl transition-transform duration-200 group-hover:scale-105 dark:bg-white/[0.05]">
+                <div className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-xl bg-gray-100/80 transition-transform duration-200 group-hover:scale-105 dark:bg-white/[0.05]">
                     {icon}
                 </div>
             </div>

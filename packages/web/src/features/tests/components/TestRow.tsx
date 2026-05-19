@@ -1,4 +1,5 @@
 import React, {useState, useEffect} from 'react'
+import {Play, MessageSquare} from 'lucide-react'
 import {TestResult} from '@yshvydak/core'
 import {StatusBadge, ActionButton, LoadingSpinner, Badge} from '@shared/components'
 import {formatDuration, formatLastRun} from '../utils'
@@ -75,7 +76,7 @@ export function TestRow({test, selected, onSelect, onRerun}: TestRowProps) {
                 )}
                 {!runningInfo && test.note?.content && (
                     <div className="text-xs text-gray-500 dark:text-gray-400 mt-1.5 max-w-[200px] md:max-w-xs flex items-center gap-1 flex-wrap">
-                        <span>💬</span>
+                        <MessageSquare className="h-3 w-3 flex-shrink-0" />
                         {noteParts.map((part, index) => {
                             if (part.type === 'image' && part.image) {
                                 return (
@@ -112,7 +113,7 @@ export function TestRow({test, selected, onSelect, onRerun}: TestRowProps) {
                     variant="primary"
                     isRunning={isRunning}
                     runningText="Running..."
-                    icon="▶️"
+                    icon={<Play className="h-3.5 w-3.5" />}
                     disabled={isAnyTestRunning}
                     onClick={(e) => {
                         e.stopPropagation()

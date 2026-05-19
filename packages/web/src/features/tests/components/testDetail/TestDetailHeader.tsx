@@ -1,4 +1,5 @@
 import {useState} from 'react'
+import {Check, X, Play} from 'lucide-react'
 import {StatusBadge, Button} from '@shared/components'
 import {formatLastRun} from '../../utils/formatters'
 
@@ -51,18 +52,7 @@ export function TestDetailHeader({
                         {copied ? (
                             <span className="flex items-center gap-2">
                                 <span>Copied!</span>
-                                <svg
-                                    className="w-5 h-5 text-success-500"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    viewBox="0 0 24 24">
-                                    <path
-                                        strokeLinecap="round"
-                                        strokeLinejoin="round"
-                                        strokeWidth={2}
-                                        d="M5 13l4 4L19 7"
-                                    />
-                                </svg>
+                                <Check className="w-5 h-5 text-success-500" />
                             </span>
                         ) : (
                             testName
@@ -99,7 +89,14 @@ export function TestDetailHeader({
                         onClick={onRerun}
                         disabled={isRunning || isAnyTestRunning}
                         className="md:hidden">
-                        {isRunning ? 'Running...' : '▶️ Run'}
+                        {isRunning ? (
+                            'Running...'
+                        ) : (
+                            <span className="flex items-center gap-1.5">
+                                <Play className="w-3.5 h-3.5" />
+                                Run
+                            </span>
+                        )}
                     </Button>
                 )}
                 {/* Desktop: Show Delete button */}
@@ -115,14 +112,7 @@ export function TestDetailHeader({
                 <button
                     onClick={onClose}
                     className="rounded-xl p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-600 dark:hover:bg-white/[0.06] dark:hover:text-gray-200 transition-colors">
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M6 18L18 6M6 6l12 12"
-                        />
-                    </svg>
+                    <X className="w-5 h-5" />
                 </button>
             </div>
         </div>

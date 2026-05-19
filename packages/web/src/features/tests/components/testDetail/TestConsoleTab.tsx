@@ -1,3 +1,4 @@
+import {Copy, Terminal} from 'lucide-react'
 import {TestResult} from '@yshvydak/core'
 
 function getEntryStyle(type: string) {
@@ -26,8 +27,8 @@ export function TestConsoleOutput({test}: TestConsoleOutputProps) {
     if (entries.length === 0) {
         return (
             <div className="flex flex-col items-center justify-center text-center py-12 bg-gray-50 dark:bg-white/[0.03] rounded-2xl border border-gray-200/70 dark:border-white/[0.06]">
-                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gray-100 text-xl dark:bg-white/[0.04]">
-                    🖥️
+                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gray-100 dark:bg-white/[0.04]">
+                    <Terminal className="h-6 w-6 text-gray-400 dark:text-gray-500" />
                 </div>
                 <p className="mt-3 text-sm font-medium text-gray-600 dark:text-gray-300">
                     No console output captured
@@ -58,7 +59,7 @@ export function TestConsoleOutput({test}: TestConsoleOutputProps) {
                             navigator.clipboard.writeText(text)
                         }}
                         className="inline-flex items-center gap-1.5 rounded-xl border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-gray-600 transition-all hover:bg-gray-50 hover:border-gray-300 active:scale-[0.98] dark:border-white/10 dark:bg-white/[0.05] dark:text-gray-300 dark:hover:bg-white/[0.09]">
-                        📋 Copy
+                        <Copy className="h-3.5 w-3.5" /> Copy
                     </button>
                 </div>
 

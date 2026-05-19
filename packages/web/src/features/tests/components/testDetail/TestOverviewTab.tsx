@@ -1,11 +1,11 @@
+import {Paperclip, Copy} from 'lucide-react'
 import {TestResult} from '@yshvydak/core'
 import {LoadingSpinner} from '@shared/components'
 import {AttachmentWithBlobURL} from '../../types/attachment.types'
 import {AttachmentItem} from './AttachmentItem'
+import {formatErrorLines} from '../../../../utils/errorFormatter'
 import {TestNoteEditor} from './TestNoteEditor'
 import {TestConsoleOutput} from './TestConsoleTab'
-import {formatErrorLines} from '../../../../utils/errorFormatter'
-import {formatDuration} from '../../utils/formatters'
 
 export interface TestOverviewTabProps {
     test: TestResult
@@ -34,7 +34,7 @@ export function TestOverviewTab({
             <div>
                 <div className="flex items-start justify-between mb-4 gap-4">
                     <h3 className="text-lg font-semibold tracking-tight text-gray-900 dark:text-white flex items-center gap-2">
-                        <span>📎</span>
+                        <Paperclip className="h-4 w-4 text-gray-400" />
                         <span>Attachments</span>
                         <span className="ml-1 inline-flex items-center rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium tabular-nums text-gray-500 ring-1 ring-inset ring-gray-500/10 dark:bg-white/[0.06] dark:text-gray-400 dark:ring-white/10">
                             {attachmentsLoading ? '...' : attachments.length}
@@ -72,7 +72,7 @@ export function TestOverviewTab({
                 {!attachmentsLoading && !attachmentsError && attachments.length === 0 && (
                     <div className="flex flex-col items-center justify-center text-center py-12 bg-gray-50 dark:bg-white/[0.03] rounded-2xl border border-gray-200/70 dark:border-white/[0.06]">
                         <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gray-100 text-xl dark:bg-white/[0.04]">
-                            📎
+                            <Paperclip className="h-3.5 w-3.5" />
                         </div>
                         <p className="mt-3 text-sm font-medium text-gray-600 dark:text-gray-300">
                             No attachments
@@ -111,84 +111,6 @@ export function TestOverviewTab({
                 )}
             </div>
 
-            {/* Divider */}
-            <div className="border-t border-gray-200/70 dark:border-white/[0.06]" />
-
-            {/* Test Information Section */}
-            <div>
-                <h3 className="text-lg font-semibold tracking-tight text-gray-900 dark:text-white mb-4">
-                    Test Information
-                </h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="rounded-2xl border border-gray-200/80 bg-white p-5 shadow-card dark:border-white/[0.07] dark:bg-gray-800/70 dark:backdrop-blur-xl">
-                        <h3 className="text-[11px] font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500 mb-4">
-                            Test Details
-                        </h3>
-                        <div className="space-y-3.5">
-                            <div>
-                                <span className="text-[11px] font-medium uppercase tracking-wide text-gray-400 dark:text-gray-500">
-                                    File Path
-                                </span>
-                                <p className="font-mono text-sm text-gray-900 dark:text-white break-all">
-                                    {test.filePath}
-                                </p>
-                            </div>
-                            <div>
-                                <span className="text-[11px] font-medium uppercase tracking-wide text-gray-400 dark:text-gray-500">
-                                    Duration
-                                </span>
-                                <p className="font-mono text-sm tabular-nums text-gray-900 dark:text-white">
-                                    {formatDuration(test.duration)}
-                                </p>
-                            </div>
-                            <div>
-                                <span className="text-[11px] font-medium uppercase tracking-wide text-gray-400 dark:text-gray-500">
-                                    Run ID
-                                </span>
-                                <p className="font-mono text-xs text-gray-900 dark:text-white break-all">
-                                    {test.runId}
-                                </p>
-                            </div>
-                            {test.rerunCount && test.rerunCount > 0 && (
-                                <div>
-                                    <span className="text-[11px] font-medium uppercase tracking-wide text-gray-400 dark:text-gray-500">
-                                        Rerun Count
-                                    </span>
-                                    <p className="font-mono text-sm tabular-nums text-gray-900 dark:text-white">
-                                        {test.rerunCount}
-                                    </p>
-                                </div>
-                            )}
-                        </div>
-                    </div>
-                    <div className="rounded-2xl border border-gray-200/80 bg-white p-5 shadow-card dark:border-white/[0.07] dark:bg-gray-800/70 dark:backdrop-blur-xl">
-                        <h3 className="text-[11px] font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500 mb-4">
-                            Execution Summary
-                        </h3>
-                        <div className="space-y-3.5">
-                            <div>
-                                <span className="text-[11px] font-medium uppercase tracking-wide text-gray-400 dark:text-gray-500">
-                                    Status
-                                </span>
-                                <p className="text-sm font-medium capitalize text-gray-900 dark:text-white">
-                                    {test.status}
-                                </p>
-                            </div>
-                            <div>
-                                <span className="text-[11px] font-medium uppercase tracking-wide text-gray-400 dark:text-gray-500">
-                                    Attachments
-                                </span>
-                                <p className="text-sm text-gray-900 dark:text-white">
-                                    {attachmentsLoading
-                                        ? 'Running...'
-                                        : `${attachments.length} file(s)`}
-                                </p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
             {test.errorMessage && (
                 <div>
                     <h3 className="text-[11px] font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500 mb-2">
@@ -210,7 +132,7 @@ export function TestOverviewTab({
                                 navigator.clipboard.writeText(test.errorMessage as any)
                             }}
                             className="inline-flex items-center gap-1.5 rounded-xl border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-gray-600 transition-all hover:bg-gray-50 hover:border-gray-300 active:scale-[0.98] dark:border-white/10 dark:bg-white/[0.05] dark:text-gray-300 dark:hover:bg-white/[0.09]">
-                            📋 Copy Error
+                            <Copy className="h-3.5 w-3.5" /> Copy Error
                         </button>
                     </div>
                 </div>

@@ -1,3 +1,4 @@
+import {Search} from 'lucide-react'
 import {TestResult} from '@yshvydak/core'
 import {TestsGroupedView} from './TestsGroupedView'
 import {FilterKey} from '../constants'
@@ -23,8 +24,8 @@ export function TestsContent({
         return (
             <div className="rounded-2xl border border-gray-200/80 bg-white shadow-card dark:border-white/[0.07] dark:bg-gray-800/70 dark:backdrop-blur-xl">
                 <div className="flex flex-col items-center justify-center px-6 py-20 text-center animate-fade-in">
-                    <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-gray-100 text-2xl dark:bg-white/[0.04]">
-                        🔍
+                    <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-gray-100 dark:bg-white/[0.04]">
+                        <Search className="h-7 w-7 text-gray-400 dark:text-gray-500" />
                     </div>
                     <h3 className="mt-4 text-base font-semibold tracking-tight text-gray-900 dark:text-white">
                         No tests found

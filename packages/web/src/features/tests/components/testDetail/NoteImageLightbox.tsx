@@ -1,4 +1,5 @@
 import React, {useEffect, useState} from 'react'
+import {X} from 'lucide-react'
 import {NoteImage} from '@yshvydak/core'
 import {createProtectedFileURL} from '@features/authentication/utils/authFetch'
 import {config} from '@config/environment.config'
@@ -92,18 +93,7 @@ export function NoteImageLightbox({image, isOpen, onClose}: NoteImageLightboxPro
                         }}
                         className="absolute -top-11 right-0 rounded-xl p-1.5 text-white/80 hover:text-white hover:bg-white/10 transition-colors z-10"
                         aria-label="Close image preview">
-                        <svg
-                            className="w-7 h-7"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24">
-                            <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth={2}
-                                d="M6 18L18 6M6 6l12 12"
-                            />
-                        </svg>
+                        <X className="w-7 h-7" />
                     </button>
 
                     {/* Image container */}

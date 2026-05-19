@@ -1,3 +1,4 @@
+import {Play} from 'lucide-react'
 import {FilterButtonGroup, SearchInput, Button} from '@shared/components'
 import {FilterKey, FILTER_OPTIONS} from '../constants'
 import {useTestsStore} from '../store/testsStore'
@@ -47,7 +48,14 @@ export function TestsListFilters({
                             loading={isRunningAllTests}
                             disabled={isAnyTestRunning}
                             onClick={runAllTests}>
-                            {isRunningAllTests ? 'Running...' : '▶️ Run All Tests'}
+                            {isRunningAllTests ? (
+                                'Running...'
+                            ) : (
+                                <span className="flex items-center gap-1.5">
+                                    <Play className="h-4 w-4" />
+                                    Run All Tests
+                                </span>
+                            )}
                         </Button>
 
                         {onExpandAll && onCollapseAll && (

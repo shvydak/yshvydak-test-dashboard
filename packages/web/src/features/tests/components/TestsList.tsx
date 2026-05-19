@@ -1,5 +1,6 @@
 import {useState, useEffect, useRef} from 'react'
 import {useSearchParams} from 'react-router-dom'
+import {AlertTriangle} from 'lucide-react'
 import {TestResult} from '@yshvydak/core'
 import {LoadingSpinner} from '@shared/components'
 import {useTestsStore} from '../store/testsStore'
@@ -140,8 +141,8 @@ export default function TestsList({
 
                 <div className="rounded-2xl border border-danger-600/15 bg-danger-50 p-5 shadow-card dark:border-danger-400/20 dark:bg-danger-500/10">
                     <div className="flex items-start gap-3">
-                        <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl bg-danger-100 text-base dark:bg-danger-500/15">
-                            ⚠️
+                        <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl bg-danger-100 dark:bg-danger-500/15">
+                            <AlertTriangle className="h-5 w-5 text-danger-600 dark:text-danger-400" />
                         </div>
                         <div className="min-w-0">
                             <h3 className="text-sm font-semibold text-danger-700 dark:text-danger-300">

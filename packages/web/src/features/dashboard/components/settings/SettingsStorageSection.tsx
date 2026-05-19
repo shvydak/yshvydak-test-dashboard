@@ -1,4 +1,5 @@
 import {useState} from 'react'
+import {ChevronDown, ChevronRight, Database, Paperclip, RefreshCw} from 'lucide-react'
 import {Button} from '@shared/components'
 import {SettingsSection} from './SettingsSection'
 import {useStorageStats} from '../../hooks'
@@ -26,7 +27,15 @@ export function SettingsStorageSection() {
             description="View storage usage for tests and attachments">
             <div className="space-y-4">
                 <Button variant="secondary" fullWidth onClick={handleToggle}>
-                    {isOpen ? '▼ Hide Storage Info' : '▶ Show Storage Info'}
+                    {isOpen ? (
+                        <span className="flex items-center gap-1.5">
+                            <ChevronDown className="h-4 w-4" /> Hide Storage Info
+                        </span>
+                    ) : (
+                        <span className="flex items-center gap-1.5">
+                            <ChevronRight className="h-4 w-4" /> Show Storage Info
+                        </span>
+                    )}
                 </Button>
 
                 {isOpen && (
@@ -64,7 +73,9 @@ export function SettingsStorageSection() {
                                     <div>
                                         <div className="flex justify-between items-center mb-2">
                                             <span className="font-medium text-gray-900 dark:text-white">
-                                                💾 Database
+                                                <span className="flex items-center gap-1.5">
+                                                    <Database className="h-4 w-4" /> Database
+                                                </span>
                                             </span>
                                             <span className="font-semibold text-gray-700 dark:text-gray-300">
                                                 {formatBytes(stats.database.size)}
@@ -96,7 +107,9 @@ export function SettingsStorageSection() {
                                     <div>
                                         <div className="flex justify-between items-center mb-2">
                                             <span className="font-medium text-gray-900 dark:text-white">
-                                                📎 Attachments
+                                                <span className="flex items-center gap-1.5">
+                                                    <Paperclip className="h-4 w-4" /> Attachments
+                                                </span>
                                             </span>
                                             <span className="font-semibold text-gray-700 dark:text-gray-300">
                                                 {formatBytes(stats.attachments.totalSize)}
@@ -150,7 +163,13 @@ export function SettingsStorageSection() {
                                     onClick={handleRefresh}
                                     loading={isRefetching}
                                     disabled={isRefetching}>
-                                    {isRefetching ? 'Refreshing...' : '🔄 Refresh Statistics'}
+                                    {isRefetching ? (
+                                        'Refreshing...'
+                                    ) : (
+                                        <span className="flex items-center gap-1.5">
+                                            <RefreshCw className="h-4 w-4" /> Refresh Statistics
+                                        </span>
+                                    )}
                                 </Button>
                             </>
                         ) : null}

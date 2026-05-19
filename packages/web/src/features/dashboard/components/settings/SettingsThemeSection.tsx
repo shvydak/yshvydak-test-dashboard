@@ -1,15 +1,23 @@
+import React from 'react'
+import {SunMedium, Moon, MonitorSmartphone} from 'lucide-react'
 import {useTheme} from '@/hooks/useTheme'
 import {SettingsSection} from './SettingsSection'
 
 type ThemeMode = 'auto' | 'light' | 'dark'
 
+const THEME_ICONS: Record<ThemeMode, React.ReactNode> = {
+    auto: <MonitorSmartphone className="h-5 w-5" />,
+    light: <SunMedium className="h-5 w-5" />,
+    dark: <Moon className="h-5 w-5" />,
+}
+
 export function SettingsThemeSection() {
     const {themeMode, setThemeMode} = useTheme()
 
-    const themeOptions: Array<{value: ThemeMode; label: string; icon: string}> = [
-        {value: 'auto', label: 'Auto', icon: '🌓'},
-        {value: 'light', label: 'Light', icon: '☀️'},
-        {value: 'dark', label: 'Dark', icon: '🌙'},
+    const themeOptions: Array<{value: ThemeMode; label: string}> = [
+        {value: 'auto', label: 'Auto'},
+        {value: 'light', label: 'Light'},
+        {value: 'dark', label: 'Dark'},
     ]
 
     return (
@@ -27,7 +35,7 @@ export function SettingsThemeSection() {
                                 : 'text-gray-500 hover:bg-white/60 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-white/[0.05] dark:hover:text-white'
                         }`}>
                         <div className="flex flex-col items-center gap-1.5">
-                            <span className="text-2xl">{option.icon}</span>
+                            {THEME_ICONS[option.value]}
                             <span>{option.label}</span>
                         </div>
                     </button>

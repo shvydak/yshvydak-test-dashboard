@@ -1,3 +1,4 @@
+import {ClipboardList} from 'lucide-react'
 import {TabKey} from '../../types/attachment.types'
 
 export interface TestDetailTabsProps {
@@ -10,13 +11,8 @@ export function TestDetailTabs({activeTab, onTabChange}: TestDetailTabsProps) {
         {
             key: 'overview' as TabKey,
             label: 'Overview',
-            icon: '📋',
+            icon: <ClipboardList className="h-4 w-4" />,
         },
-        // {
-        //     key: 'steps' as TabKey,
-        //     label: 'Test Steps',
-        //     icon: '🔄',
-        // },
     ]
 
     return (
@@ -26,12 +22,12 @@ export function TestDetailTabs({activeTab, onTabChange}: TestDetailTabsProps) {
                     <button
                         key={tab.key}
                         onClick={() => onTabChange(tab.key)}
-                        className={`relative px-4 py-2 text-sm font-medium rounded-xl transition-all duration-200 ${
+                        className={`relative inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-xl transition-all duration-200 ${
                             activeTab === tab.key
                                 ? 'bg-primary-50 text-primary-700 shadow-soft dark:bg-primary-500/15 dark:text-primary-300'
                                 : 'text-gray-500 hover:text-gray-900 hover:bg-gray-100/80 dark:text-gray-400 dark:hover:text-white dark:hover:bg-white/[0.06]'
                         }`}>
-                        <span className="mr-2">{tab.icon}</span>
+                        {tab.icon}
                         {tab.label}
                     </button>
                 ))}

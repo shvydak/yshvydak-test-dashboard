@@ -1,4 +1,14 @@
 import {useState, useEffect} from 'react'
+import {
+    FlaskConical,
+    Minus,
+    X,
+    CheckCircle2,
+    XCircle,
+    SkipForward,
+    CircleDot,
+    Timer,
+} from 'lucide-react'
 import {useTestsStore} from '@features/tests/store/testsStore'
 import {ProgressBar} from '@/shared/components/atoms/ProgressBar'
 import {LoadingSpinner} from '@/shared/components/atoms/LoadingSpinner'
@@ -126,7 +136,7 @@ export const FloatingProgressPanel = () => {
             {/* Header */}
             <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200/70 dark:border-white/[0.06]">
                 <div className="flex items-center gap-2.5">
-                    <span className="text-lg">🧪</span>
+                    <FlaskConical className="h-4 w-4 text-primary-500" />
                     <h3 className="text-sm font-semibold tracking-tight text-gray-900 dark:text-gray-100">
                         Running Tests
                     </h3>
@@ -136,13 +146,13 @@ export const FloatingProgressPanel = () => {
                         onClick={() => setIsMinimized(true)}
                         className="rounded-xl p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-600 dark:text-gray-500 dark:hover:bg-white/[0.06] dark:hover:text-gray-300 transition-colors"
                         aria-label="Minimize">
-                        <span>−</span>
+                        <Minus className="h-4 w-4" />
                     </button>
                     <button
                         onClick={() => clearProgress()}
                         className="rounded-xl p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-600 dark:text-gray-500 dark:hover:bg-white/[0.06] dark:hover:text-gray-300 transition-colors"
                         aria-label="Close">
-                        <span>✕</span>
+                        <X className="h-4 w-4" />
                     </button>
                 </div>
             </div>
@@ -163,28 +173,28 @@ export const FloatingProgressPanel = () => {
             {/* Stats */}
             <div className="px-4 py-3 bg-gray-50 dark:bg-white/[0.03] grid grid-cols-2 gap-2 text-sm">
                 <div className="flex items-center gap-1.5">
-                    <span>✅</span>
+                    <CheckCircle2 className="h-4 w-4 text-success-500" />
                     <span className="text-gray-500 dark:text-gray-400">Passed:</span>
                     <span className="font-semibold tabular-nums text-success-600 dark:text-success-400">
                         {activeProgress.passedTests}
                     </span>
                 </div>
                 <div className="flex items-center gap-1.5">
-                    <span>❌</span>
+                    <XCircle className="h-4 w-4 text-danger-500" />
                     <span className="text-gray-500 dark:text-gray-400">Failed:</span>
                     <span className="font-semibold tabular-nums text-danger-600 dark:text-danger-400">
                         {activeProgress.failedTests}
                     </span>
                 </div>
                 <div className="flex items-center gap-1.5">
-                    <span>⏭️</span>
+                    <SkipForward className="h-4 w-4 text-gray-400" />
                     <span className="text-gray-500 dark:text-gray-400">Skipped:</span>
                     <span className="font-semibold tabular-nums text-gray-600 dark:text-gray-300">
                         {activeProgress.skippedTests}
                     </span>
                 </div>
                 <div className="flex items-center gap-1.5">
-                    <span>⏸️</span>
+                    <CircleDot className="h-4 w-4 text-primary-400" />
                     <span className="text-gray-500 dark:text-gray-400">Pending:</span>
                     <span className="font-semibold tabular-nums text-gray-600 dark:text-gray-300">
                         {activeProgress.totalTests - activeProgress.completedTests}
@@ -249,7 +259,7 @@ export const FloatingProgressPanel = () => {
             {/* Time Estimate */}
             <div className="px-4 py-3 border-t border-gray-200/70 dark:border-white/[0.06] flex items-center justify-between text-sm">
                 <div className="flex items-center gap-1.5 text-gray-500 dark:text-gray-400">
-                    <span>⏱️</span>
+                    <Timer className="h-4 w-4" />
                     <span>Elapsed:</span>
                     <span className="font-medium tabular-nums text-gray-900 dark:text-gray-100">
                         {formatTime(elapsedTime)}

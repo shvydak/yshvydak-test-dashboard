@@ -2,6 +2,7 @@ import {config} from '@config/environment.config'
 import {PasswordInput} from '@/shared/components/molecules'
 import {applyThemeMode, type ThemeMode} from '@/hooks/useTheme'
 import {useState, useEffect, type ChangeEvent, type FormEvent} from 'react'
+import {ShieldCheck} from 'lucide-react'
 
 interface LoginFormData {
     email: string
@@ -105,19 +106,7 @@ export default function LoginPage() {
                 <div className="mb-8 text-center">
                     <div className="flex justify-center">
                         <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-primary-500 to-primary-600 shadow-glow">
-                            <svg
-                                className="w-8 h-8 text-white"
-                                fill="none"
-                                stroke="currentColor"
-                                viewBox="0 0 24 24"
-                                xmlns="http://www.w3.org/2000/svg">
-                                <path
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    strokeWidth={2}
-                                    d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-                                />
-                            </svg>
+                            <ShieldCheck className="w-8 h-8 text-white" strokeWidth={1.5} />
                         </div>
                     </div>
                     <h2 className="mt-6 text-2xl font-bold tracking-tight text-gray-900 dark:text-white">

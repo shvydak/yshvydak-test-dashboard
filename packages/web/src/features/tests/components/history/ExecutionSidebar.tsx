@@ -1,3 +1,4 @@
+import {Play, Clock} from 'lucide-react'
 import {TestResult} from '@yshvydak/core'
 import {ActionButton} from '@shared/components'
 import {useTestsStore} from '../../store/testsStore'
@@ -56,7 +57,7 @@ export function ExecutionSidebar({
                         variant="primary"
                         isRunning={isRunning}
                         runningText="Running..."
-                        icon="▶️"
+                        icon={<Play className="h-3.5 w-3.5" />}
                         disabled={isAnyTestRunning}
                         onClick={() => onRerun(testId)}>
                         Run
@@ -84,8 +85,8 @@ export function ExecutionSidebar({
 
                 {!loading && !error && executions.length === 0 && (
                     <div className="flex flex-col items-center justify-center text-center py-12">
-                        <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gray-100 text-xl dark:bg-white/[0.04]">
-                            🕓
+                        <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gray-100 dark:bg-white/[0.04]">
+                            <Clock className="h-6 w-6 text-gray-400 dark:text-gray-500" />
                         </div>
                         <p className="mt-3 text-sm font-medium text-gray-600 dark:text-gray-300">
                             No execution history

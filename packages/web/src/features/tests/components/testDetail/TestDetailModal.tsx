@@ -43,7 +43,7 @@ export function TestDetailModal({test, isOpen, onClose}: TestDetailModalProps) {
     const getIsAnyTestRunning = useTestsStore((state) => state.getIsAnyTestRunning)
     const activeProgress = useTestsStore((state) => state.activeProgress)
 
-    // Lock body scroll when modal is open
+    // Lock body scroll when modal is open + ESC to close
     useEffect(() => {
         if (isOpen) {
             const scrollY = window.scrollY
@@ -53,6 +53,11 @@ export function TestDetailModal({test, isOpen, onClose}: TestDetailModalProps) {
             document.body.style.right = '0'
             document.body.style.overflow = 'hidden'
 
+            const handleKeyDown = (e: KeyboardEvent) => {
+                if (e.key === 'Escape') handleClose()
+            }
+            document.addEventListener('keydown', handleKeyDown)
+
             return () => {
                 document.body.style.position = ''
                 document.body.style.top = ''
@@ -60,6 +65,7 @@ export function TestDetailModal({test, isOpen, onClose}: TestDetailModalProps) {
                 document.body.style.right = ''
                 document.body.style.overflow = ''
                 window.scrollTo(0, scrollY)
+                document.removeEventListener('keydown', handleKeyDown)
             }
         }
     }, [isOpen])
@@ -253,11 +259,14 @@ export function TestDetailModal({test, isOpen, onClose}: TestDetailModalProps) {
 
     return (
         <div className="fixed inset-0 z-50 overflow-hidden">
-            <div className="flex min-h-screen items-center justify-center p-0 md:p-4">
+            <div
+                className="flex min-h-screen items-center justify-center p-0 md:p-4"
+                onClick={handleClose}>
                 <ModalBackdrop onClick={handleClose} blur="sm" />
 
                 <div
-                    className="relative bg-white dark:bg-gray-800 dark:backdrop-blur-xl md:rounded-2xl border-0 md:border md:border-gray-200/80 md:dark:border-white/10 shadow-pop animate-scale-in max-w-7xl w-full h-screen md:h-[90vh] flex flex-col overflow-hidden"
+                    className="relative bg-white dark:bg-gray-800 dark:backdrop-blur-xl md:rounded-2xl border-0 md:border md:border-gray-200/80 md:dark:border-white/10 shadow-pop animate-scale-in max-w-5xl w-full h-screen md:h-[82vh] flex flex-col overflow-hidden"
+                    onClick={(e) => e.stopPropagation()}
                     style={
                         swipeOffset > 0
                             ? {

@@ -1,5 +1,16 @@
 import {useState, useEffect} from 'react'
 import {useNavigate, useLocation} from 'react-router-dom'
+import {
+    Settings,
+    LogOut,
+    LayoutDashboard,
+    FlaskConical,
+    ChevronDown,
+    Menu,
+    X,
+    Moon,
+    Sun,
+} from 'lucide-react'
 import {useTheme} from '@/hooks/useTheme'
 
 interface HeaderProps {
@@ -180,18 +191,11 @@ export default function Header({
                                         <span className="hidden lg:inline max-w-[140px] truncate">
                                             {getUserData()?.email || 'User'}
                                         </span>
-                                        <svg
+                                        <ChevronDown
                                             className={`w-4 h-4 text-gray-400 transition-transform ${
                                                 showUserMenu ? 'rotate-180' : ''
                                             }`}
-                                            fill="currentColor"
-                                            viewBox="0 0 20 20">
-                                            <path
-                                                fillRule="evenodd"
-                                                d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"
-                                                clipRule="evenodd"
-                                            />
-                                        </svg>
+                                        />
                                     </button>
 
                                     {showUserMenu && (
@@ -214,14 +218,14 @@ export default function Header({
                                                             setShowUserMenu(false)
                                                         }}
                                                         className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-sm text-gray-600 transition-colors hover:bg-gray-100 hover:text-gray-900 dark:text-gray-300 dark:hover:bg-white/[0.06] dark:hover:text-white">
-                                                        <span className="text-base">⚙️</span>
+                                                        <Settings className="h-4 w-4 text-gray-400" />
                                                         Settings
                                                     </button>
                                                 )}
                                                 <button
                                                     onClick={handleLogout}
                                                     className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-sm text-danger-600 transition-colors hover:bg-danger-50 dark:text-danger-400 dark:hover:bg-danger-500/10">
-                                                    <span className="text-base">🔓</span>
+                                                    <LogOut className="h-4 w-4" />
                                                     Sign out
                                                 </button>
                                             </div>
@@ -252,31 +256,9 @@ export default function Header({
                                 className="rounded-xl p-2 text-gray-600 transition-colors hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-white/[0.06]"
                                 aria-label="Toggle menu">
                                 {mobileMenuOpen ? (
-                                    <svg
-                                        className="w-6 h-6"
-                                        fill="none"
-                                        stroke="currentColor"
-                                        viewBox="0 0 24 24">
-                                        <path
-                                            strokeLinecap="round"
-                                            strokeLinejoin="round"
-                                            strokeWidth={2}
-                                            d="M6 18L18 6M6 6l12 12"
-                                        />
-                                    </svg>
+                                    <X className="w-6 h-6" />
                                 ) : (
-                                    <svg
-                                        className="w-6 h-6"
-                                        fill="none"
-                                        stroke="currentColor"
-                                        viewBox="0 0 24 24">
-                                        <path
-                                            strokeLinecap="round"
-                                            strokeLinejoin="round"
-                                            strokeWidth={2}
-                                            d="M4 6h16M4 12h16M4 18h16"
-                                        />
-                                    </svg>
+                                    <Menu className="w-6 h-6" />
                                 )}
                             </button>
                         </div>
@@ -304,7 +286,7 @@ export default function Header({
                                         ? 'bg-primary-50 text-primary-700 dark:bg-primary-500/15 dark:text-primary-300'
                                         : 'text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-white/[0.06]'
                                 }`}>
-                                <span className="text-base">📊</span> Dashboard
+                                <LayoutDashboard className="h-4 w-4 flex-shrink-0" /> Dashboard
                             </button>
                             <button
                                 onClick={() => handleViewChange('tests')}
@@ -313,7 +295,7 @@ export default function Header({
                                         ? 'bg-primary-50 text-primary-700 dark:bg-primary-500/15 dark:text-primary-300'
                                         : 'text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-white/[0.06]'
                                 }`}>
-                                <span className="text-base">🧪</span> Tests
+                                <FlaskConical className="h-4 w-4 flex-shrink-0" /> Tests
                             </button>
 
                             <div className="my-3 border-t border-gray-200/70 dark:border-white/[0.06]" />
@@ -323,7 +305,14 @@ export default function Header({
                             </p>
                             <div className="flex items-center justify-between px-3 py-2 text-sm text-gray-600 dark:text-gray-400">
                                 <span>Theme</span>
-                                <span>{isDark ? '🌙 Dark' : '☀️ Light'} mode</span>
+                                <span className="flex items-center gap-1.5">
+                                    {isDark ? (
+                                        <Moon className="h-3.5 w-3.5" />
+                                    ) : (
+                                        <Sun className="h-3.5 w-3.5" />
+                                    )}
+                                    {isDark ? 'Dark' : 'Light'} mode
+                                </span>
                             </div>
                             <div className="flex items-center justify-between px-3 py-2 text-sm text-gray-600 dark:text-gray-400">
                                 <span>Connection</span>
@@ -370,13 +359,14 @@ export default function Header({
                                                 setMobileMenuOpen(false)
                                             }}
                                             className="flex w-full items-center gap-3 rounded-xl px-3 py-3 text-sm text-gray-700 transition-colors hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-white/[0.06]">
-                                            <span className="text-base">⚙️</span> Settings
+                                            <Settings className="h-4 w-4 flex-shrink-0 text-gray-400" />{' '}
+                                            Settings
                                         </button>
                                     )}
                                     <button
                                         onClick={handleLogout}
                                         className="flex w-full items-center gap-3 rounded-xl px-3 py-3 text-sm text-danger-600 transition-colors hover:bg-danger-50 dark:text-danger-400 dark:hover:bg-danger-500/10">
-                                        <span className="text-base">🔓</span> Sign out
+                                        <LogOut className="h-4 w-4 flex-shrink-0" /> Sign out
                                     </button>
                                 </>
                             )}

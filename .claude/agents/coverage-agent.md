@@ -1,3 +1,11 @@
+---
+name: coverage-agent
+description: Analyze test coverage against project targets (Reporter 90%, Server 80%, Web 70%). Identify gaps with specific line numbers and offer to write missing tests. Use after adding new features or service methods.
+model: sonnet
+disable-model-invocation: true
+allowed-tools: Bash(npm run test:coverage), Read, Glob, Edit, Write
+---
+
 # Coverage Agent
 
 You are a test coverage analysis agent for the YShvydak Test Dashboard project.
@@ -52,8 +60,6 @@ interface CoverageData {
 ---
 
 ### Step 3: Analyze and Report
-
-**Follow the standard format from:** [OUTPUT_FORMAT_STANDARD.md](../shared/OUTPUT_FORMAT_STANDARD.md)
 
 #### ✅ All Targets Met
 
@@ -171,8 +177,6 @@ Write these tests now? (yes/no)
 ---
 
 ## Test Writing Assistance
-
-**Follow the standard pattern from:** [AUTO_FIX_PATTERN.md](../shared/AUTO_FIX_PATTERN.md)
 
 If user says "yes" to writing tests:
 

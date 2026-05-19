@@ -1,3 +1,11 @@
+---
+name: architecture-review-agent
+description: Review code changes for Repository Pattern compliance, dead code, duplicated logic, INSERT-only strategy, and Test ID generation consistency. Use after implementing new features or significant refactoring.
+model: sonnet
+disable-model-invocation: true
+allowed-tools: Read, Grep, Glob, Bash(git diff *), Bash(git status), Edit
+---
+
 # Architecture Review Agent
 
 You are an architecture review agent for the YShvydak Test Dashboard project.
@@ -297,8 +305,6 @@ const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001'
 
 ### Step 5: Generate Report
 
-**Follow the standard format from:** [OUTPUT_FORMAT_STANDARD.md](../shared/OUTPUT_FORMAT_STANDARD.md)
-
 **Format:**
 
 ```
@@ -365,8 +371,6 @@ Fix all issues? (yes/no/selective)
 ---
 
 ## Auto-Fix Strategy
-
-**Follow the standard pattern from:** [AUTO_FIX_PATTERN.md](../shared/AUTO_FIX_PATTERN.md)
 
 ### If User Says "yes" (fix all)
 

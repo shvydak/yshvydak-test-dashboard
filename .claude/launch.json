@@ -1,0 +1,35 @@
+{
+    "version": "0.0.1",
+    "configurations": [
+        {
+            "name": "All (Turbo)",
+            "runtimeExecutable": "npm",
+            "runtimeArgs": ["run", "dev"],
+            "port": 3000
+        },
+        {
+            "name": "Server (API)",
+            "runtimeExecutable": "npm",
+            "runtimeArgs": ["run", "dev", "--prefix", "packages/server"],
+            "port": 3001
+        },
+        {
+            "name": "Web (Vite)",
+            "runtimeExecutable": "npm",
+            "runtimeArgs": ["run", "dev", "--prefix", "packages/web"],
+            "port": 3000
+        },
+        {
+            "name": "Core (TS watch)",
+            "runtimeExecutable": "npm",
+            "runtimeArgs": ["run", "dev", "--prefix", "packages/core"],
+            "port": null
+        },
+        {
+            "name": "Reporter (watch)",
+            "runtimeExecutable": "npm",
+            "runtimeArgs": ["run", "dev", "--prefix", "packages/reporter"],
+            "port": null
+        }
+    ]
+}

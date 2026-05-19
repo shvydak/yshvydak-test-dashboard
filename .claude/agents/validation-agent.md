@@ -1,3 +1,11 @@
+---
+name: validation-agent
+description: Run all code quality checks — format, type-check, lint, tests, and build. Use after any code changes to verify everything passes before committing.
+model: sonnet
+disable-model-invocation: true
+allowed-tools: Bash(npm run format), Bash(npm run type-check), Bash(npm run lint:fix), Bash(npm test), Bash(npm run build)
+---
+
 # Validation Agent
 
 You are a code validation agent for the YShvydak Test Dashboard project.
@@ -44,7 +52,7 @@ npm run build         # 📦 Build verification
 
 ### Step 3: Report to Main Chat
 
-**Follow the standard format from:** [OUTPUT_FORMAT_STANDARD.md](../shared/OUTPUT_FORMAT_STANDARD.md)
+#### ✅ Success Case (ALL checks passed)
 
 #### ✅ Success Case (ALL checks passed)
 
@@ -183,8 +191,6 @@ Fix now? (yes/no)
 ---
 
 ## Auto-Fix Strategy
-
-**Follow the standard pattern from:** [AUTO_FIX_PATTERN.md](../shared/AUTO_FIX_PATTERN.md)
 
 When user says "yes" to fix:
 

@@ -1,17 +1,29 @@
+import {useRef, useEffect} from 'react'
 import {X} from 'lucide-react'
 import {ModalBackdrop} from '@shared/components/molecules'
 import {SettingsThemeSection} from './SettingsThemeSection'
 import {SettingsTestExecutionSection} from './SettingsTestExecutionSection'
 import {SettingsActionsSection} from './SettingsActionsSection'
 import {SettingsStorageSection} from './SettingsStorageSection'
-import {SettingsDataRetentionSection} from './SettingsDataRetentionSection'
 
 export interface SettingsModalProps {
     isOpen: boolean
     onClose: () => void
+    scrollToDataRetention?: boolean
 }
 
-export function SettingsModal({isOpen, onClose}: SettingsModalProps) {
+export function SettingsModal({isOpen, onClose, scrollToDataRetention}: SettingsModalProps) {
+    const dataRetentionRef = useRef<HTMLDivElement>(null)
+
+    useEffect(() => {
+        if (isOpen && scrollToDataRetention && dataRetentionRef.current) {
+            const timer = setTimeout(() => {
+                dataRetentionRef.current?.scrollIntoView({behavior: 'smooth', block: 'start'})
+            }, 150)
+            return () => clearTimeout(timer)
+        }
+    }, [isOpen, scrollToDataRetention])
+
     if (!isOpen) return null
 
     return (
@@ -40,8 +52,9 @@ export function SettingsModal({isOpen, onClose}: SettingsModalProps) {
                         <SettingsThemeSection />
                         <SettingsTestExecutionSection />
                         <SettingsActionsSection />
-                        <SettingsStorageSection />
-                        <SettingsDataRetentionSection />
+                        <div ref={dataRetentionRef}>
+                            <SettingsStorageSection />
+                        </div>
                     </div>
                 </div>
             </div>

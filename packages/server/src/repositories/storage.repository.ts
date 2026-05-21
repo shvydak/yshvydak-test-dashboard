@@ -4,6 +4,13 @@ import {config} from '../config/environment.config'
 import path from 'path'
 import fs from 'fs'
 
+export interface DiskStats {
+    total: number // bytes
+    free: number // bytes (available to user processes)
+    used: number // bytes
+    usedPercent: number // 0-100
+}
+
 export interface StorageStats {
     database: {
         size: number // bytes
@@ -27,6 +34,7 @@ export interface StorageStats {
         size: number // bytes
         averageSizePerTest: number // bytes
     }
+    disk: DiskStats | null
 }
 
 export interface IStorageRepository {
@@ -44,6 +52,9 @@ export class StorageRepository extends BaseRepository implements IStorageReposit
     async getStorageStats(): Promise<StorageStats> {
         // Get database stats
         const dbStats = await this.getDatabaseStats()
+
+        // Get disk stats
+        const diskStats = await this.getDiskStats()
 
         // Get attachment stats
         const rawAttachmentStats = await this.attachmentManager.getStorageStats()
@@ -76,6 +87,20 @@ export class StorageRepository extends BaseRepository implements IStorageReposit
                 size: totalSize,
                 averageSizePerTest,
             },
+            disk: diskStats,
+        }
+    }
+
+    private async getDiskStats(): Promise<DiskStats | null> {
+        try {
+            const stats = await fs.promises.statfs(config.storage.outputDir)
+            const total = stats.blocks * stats.bsize
+            const free = stats.bavail * stats.bsize
+            const used = (stats.blocks - stats.bfree) * stats.bsize
+            const usedPercent = total > 0 ? Math.round((used / total) * 100) : 0
+            return {total, free, used, usedPercent}
+        } catch {
+            return null
         }
     }
 

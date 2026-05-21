@@ -22,6 +22,62 @@ export class SettingsController {
         }
     }
 
+    getDiskThresholds = async (_req: ServiceRequest, res: Response): Promise<Response> => {
+        try {
+            const thresholds = await this.settingsService.getDiskThresholds()
+            return ResponseHelper.success(res, thresholds)
+        } catch (error) {
+            Logger.error('Error getting disk thresholds', error)
+            return ResponseHelper.error(
+                res,
+                error instanceof Error ? error.message : 'Unknown error',
+                'Failed to get disk thresholds',
+                500
+            )
+        }
+    }
+
+    updateDiskThresholds = async (req: ServiceRequest, res: Response): Promise<Response> => {
+        try {
+            const {warningPercent, criticalPercent} = req.body
+
+            if (typeof warningPercent !== 'number' || typeof criticalPercent !== 'number') {
+                return ResponseHelper.badRequest(
+                    res,
+                    'warningPercent and criticalPercent must be numbers'
+                )
+            }
+            if (warningPercent < 1 || warningPercent > 99) {
+                return ResponseHelper.badRequest(res, 'warningPercent must be between 1 and 99')
+            }
+            if (criticalPercent < 1 || criticalPercent > 99) {
+                return ResponseHelper.badRequest(res, 'criticalPercent must be between 1 and 99')
+            }
+
+            const thresholds = await this.settingsService.setDiskThresholds(
+                warningPercent,
+                criticalPercent
+            )
+            return ResponseHelper.success(res, thresholds)
+        } catch (error) {
+            Logger.error('Error updating disk thresholds', error)
+
+            if (
+                error instanceof Error &&
+                error.message === 'Critical threshold must be lower than warning threshold'
+            ) {
+                return ResponseHelper.badRequest(res, error.message)
+            }
+
+            return ResponseHelper.error(
+                res,
+                error instanceof Error ? error.message : 'Unknown error',
+                'Failed to update disk thresholds',
+                500
+            )
+        }
+    }
+
     updateGlobalPlaywrightProject = async (
         req: ServiceRequest,
         res: Response

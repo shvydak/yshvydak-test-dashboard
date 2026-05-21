@@ -39,6 +39,17 @@ describe('StorageRepository - Core Functionality', () => {
 
         // Spy on fs.statSync (will be configured per test)
         statSyncSpy = vi.spyOn(fs, 'statSync')
+
+        // Mock fs.promises.statfs
+        vi.spyOn(fs.promises, 'statfs').mockResolvedValue({
+            type: 26,
+            bsize: 4096,
+            blocks: 100000000,
+            bfree: 50000000,
+            bavail: 50000000,
+            files: 1000000,
+            ffree: 500000,
+        } as any)
     })
 
     afterEach(async () => {
@@ -125,6 +136,11 @@ describe('StorageRepository - Core Functionality', () => {
             const expectedTotal = 1024 * 1024 + 512 * 1024 + 256 * 1024 + 5 * 1024 * 1024
             expect(stats.total.size).toBe(expectedTotal)
             expect(stats.total.averageSizePerTest).toBe(Math.round(expectedTotal / 5))
+
+            // Verify disk stats
+            expect(stats.disk.totalSpace).toBe(4096 * 100000000)
+            expect(stats.disk.availableSpace).toBe(4096 * 50000000)
+            expect(stats.disk.percentFree).toBe(50)
         })
 
         it('should handle missing database files gracefully', async () => {
@@ -280,6 +296,26 @@ describe('StorageRepository - Core Functionality', () => {
             expect(stats.database.totalRuns).toBe(3)
             expect(stats.database.totalResults).toBe(15) // 3 runs * 5 tests
             expect(stats.total.averageSizePerTest).toBeGreaterThan(0)
+        })
+
+        it('should handle disk space statistics failure gracefully', async () => {
+            // Mock statfs failure
+            vi.spyOn(fs.promises, 'statfs').mockRejectedValue(new Error('Disk failure'))
+
+            // Mock attachment stats
+            mockAttachmentManager.getStorageStats.mockResolvedValue({
+                totalFiles: 0,
+                totalSize: 0,
+                testDirectories: 0,
+                typeBreakdown: {},
+            })
+
+            const stats = await storageRepository.getStorageStats()
+
+            // Verify disk stats fall back to 0
+            expect(stats.disk.totalSpace).toBe(0)
+            expect(stats.disk.availableSpace).toBe(0)
+            expect(stats.disk.percentFree).toBe(0)
         })
     })
 })

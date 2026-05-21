@@ -16,6 +16,7 @@ export class StorageService implements IStorageService {
                 totalSize: stats.total.size,
                 databaseSize: stats.database.size,
                 attachmentsSize: stats.attachments.totalSize,
+                diskAvailable: stats.disk.availableSpace,
             })
 
             return stats

@@ -55,6 +55,11 @@ describe('StorageService', () => {
             size: 6 * 1024 * 1024,
             averageSizePerTest: 60 * 1024,
         },
+        disk: {
+            totalSpace: 500 * 1024 * 1024 * 1024,
+            availableSpace: 250 * 1024 * 1024 * 1024,
+            percentFree: 50,
+        },
     }
 
     beforeEach(() => {
@@ -82,6 +87,7 @@ describe('StorageService', () => {
                 totalSize: mockStats.total.size,
                 databaseSize: mockStats.database.size,
                 attachmentsSize: mockStats.attachments.totalSize,
+                diskAvailable: mockStats.disk.availableSpace,
             })
         })
 
@@ -94,6 +100,7 @@ describe('StorageService', () => {
                 totalSize: 6 * 1024 * 1024,
                 databaseSize: 1024 * 1024,
                 attachmentsSize: 5 * 1024 * 1024,
+                diskAvailable: 250 * 1024 * 1024 * 1024,
             })
         })
 
@@ -145,6 +152,11 @@ describe('StorageService', () => {
                     size: 0,
                     averageSizePerTest: 0,
                 },
+                disk: {
+                    totalSpace: 0,
+                    availableSpace: 0,
+                    percentFree: 0,
+                },
             }
 
             mockRepository.getStorageStats.mockResolvedValue(emptyStats)
@@ -179,6 +191,11 @@ describe('StorageService', () => {
                 total: {
                     size: 110 * 1024 * 1024 * 1024, // 110 GB
                     averageSizePerTest: 1.1 * 1024 * 1024, // ~1.1 MB per test
+                },
+                disk: {
+                    totalSpace: 1000 * 1024 * 1024 * 1024,
+                    availableSpace: 890 * 1024 * 1024 * 1024,
+                    percentFree: 89,
                 },
             }
 

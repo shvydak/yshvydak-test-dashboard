@@ -1,6 +1,7 @@
 import {BaseRepository} from './base.repository'
 import {AttachmentManager} from '../storage/attachmentManager'
 import {config} from '../config/environment.config'
+import {Logger} from '../utils/logger.util'
 import path from 'path'
 import fs from 'fs'
 
@@ -26,6 +27,11 @@ export interface StorageStats {
     total: {
         size: number // bytes
         averageSizePerTest: number // bytes
+    }
+    disk: {
+        totalSpace: number // bytes
+        availableSpace: number // bytes
+        percentFree: number // percentage (0-100)
     }
 }
 
@@ -64,6 +70,32 @@ export class StorageRepository extends BaseRepository implements IStorageReposit
         const averageSizePerTest =
             dbStats.totalResults > 0 ? Math.round(totalSize / dbStats.totalResults) : 0
 
+        // Get disk space stats
+        let diskPath = config.storage.outputDir
+        if (diskPath === ':memory:' || !fs.existsSync(diskPath)) {
+            diskPath = process.cwd()
+        }
+
+        let diskStats = {
+            totalSpace: 0,
+            availableSpace: 0,
+            percentFree: 0,
+        }
+
+        try {
+            const fsStats = await fs.promises.statfs(diskPath)
+            const totalSpace = fsStats.bsize * fsStats.blocks
+            const availableSpace = fsStats.bsize * fsStats.bavail
+            const percentFree = totalSpace > 0 ? Math.round((availableSpace / totalSpace) * 100) : 0
+            diskStats = {
+                totalSpace,
+                availableSpace,
+                percentFree,
+            }
+        } catch (error) {
+            Logger.error('Failed to retrieve disk space statistics', error)
+        }
+
         return {
             database: dbStats,
             attachments: {
@@ -76,6 +108,7 @@ export class StorageRepository extends BaseRepository implements IStorageReposit
                 size: totalSize,
                 averageSizePerTest,
             },
+            disk: diskStats,
         }
     }
 

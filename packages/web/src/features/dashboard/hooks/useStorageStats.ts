@@ -25,6 +25,11 @@ export interface StorageStats {
         size: number
         averageSizePerTest: number
     }
+    disk: {
+        totalSpace: number
+        availableSpace: number
+        percentFree: number
+    }
 }
 
 async function fetchStorageStats(): Promise<StorageStats> {

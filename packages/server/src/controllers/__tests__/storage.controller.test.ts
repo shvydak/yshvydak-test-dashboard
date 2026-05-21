@@ -59,6 +59,11 @@ describe('StorageController', () => {
             size: 6 * 1024 * 1024,
             averageSizePerTest: 60 * 1024,
         },
+        disk: {
+            totalSpace: 500 * 1024 * 1024 * 1024,
+            availableSpace: 250 * 1024 * 1024 * 1024,
+            percentFree: 50,
+        },
     }
 
     // Helper function to create mock request
@@ -166,6 +171,11 @@ describe('StorageController', () => {
                     size: 0,
                     averageSizePerTest: 0,
                 },
+                disk: {
+                    totalSpace: 0,
+                    availableSpace: 0,
+                    percentFree: 0,
+                },
             }
 
             mockStorageService.getStorageStats.mockResolvedValue(emptyStats)
@@ -199,6 +209,11 @@ describe('StorageController', () => {
                 total: {
                     size: 110 * 1024 * 1024 * 1024, // 110 GB
                     averageSizePerTest: 1.1 * 1024 * 1024,
+                },
+                disk: {
+                    totalSpace: 1000 * 1024 * 1024 * 1024,
+                    availableSpace: 890 * 1024 * 1024 * 1024,
+                    percentFree: 89,
                 },
             }
 

@@ -37,6 +37,15 @@
 - Survives Playwright's cleanup cycles
 - 📂 `packages/server/src/storage/attachmentManager.ts`
 
+### 7️⃣ app_settings Table - Server-Side Key-Value Config
+
+Shared config stored in SQLite (survives restarts, visible to all users):
+
+- Pattern: `SettingsRepository` + UPSERT `ON CONFLICT(key) DO UPDATE`
+- Existing keys: `global_playwright_project`, `disk_warning_threshold_percent`, `disk_critical_threshold_percent`
+- Default values: handled in repository getter when row absent (e.g. 20%/5% for disk thresholds)
+- 📂 `packages/server/src/repositories/settings.repository.ts`
+
 ### 6️⃣ Context7-MCP Integration - MANDATORY for Dependencies
 
 **ALWAYS check before dependency changes:**
@@ -101,6 +110,9 @@ All agents are in `.claude/agents/` and use `disable-model-invocation: true` (ma
 - DB schema? → `server/src/database/schema.sql` (copied to `dist/database/` by `copy-files` script — rebuild after edits)
 - **Test configurations?** → `vitest.config.ts`, `packages/{package}/vitest.config.ts`
 - **Write tests?** → `packages/{package}/src/__tests__/`
+- Disk space thresholds? → `server/src/repositories/settings.repository.ts`
+- Disk warning banner? → `web/src/features/dashboard/components/DiskSpaceWarningBanner.tsx`
+- Disk warning hook? → `web/src/features/dashboard/hooks/useDiskSpaceWarning.ts`
 
 **Full structure:** See [docs/ai/FILE_LOCATIONS.md](docs/ai/FILE_LOCATIONS.md)
 
@@ -134,6 +146,25 @@ const token = localStorage.getItem('_auth')...
 // RIGHT
 import {getWebSocketUrl} from '@/utils/webSocketUrl'
 const url = getWebSocketUrl(true)
+```
+
+### ❌ Misaligned settings form rows
+
+```tsx
+// WRONG - different label lengths push inputs to different horizontal positions
+<div className="flex items-center justify-between gap-3">
+  <span>Delete runs older than</span>
+  <div className="flex items-center gap-2"><input/>...</div>
+</div>
+
+// RIGHT - grid keeps inputs/buttons in the same column regardless of label width
+<div className="grid grid-cols-[1fr_auto_auto_auto] items-center gap-x-2">
+  <span>Delete runs older than</span>
+  <input className={compactInputClass} />
+  <span className="w-14 text-right text-xs">days</span>
+  <Button size="sm">Delete</Button>
+  ...
+</div>
 ```
 
 ### ❌ Service-layer N+1 over JOIN repositories
@@ -180,7 +211,7 @@ cd packages/reporter && npm run dev   # Reporter watch
 ## 🧪 Testing
 
 **Framework:** Vitest 3.2
-**Status:** 30 test files, 1,274 tests passing
+**Status:** 70 test files, 2,034 tests passing
 
 **Commands:**
 

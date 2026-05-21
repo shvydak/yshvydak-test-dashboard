@@ -55,6 +55,7 @@ describe('StorageService', () => {
             size: 6 * 1024 * 1024,
             averageSizePerTest: 60 * 1024,
         },
+        disk: null,
     }
 
     beforeEach(() => {
@@ -145,6 +146,7 @@ describe('StorageService', () => {
                     size: 0,
                     averageSizePerTest: 0,
                 },
+                disk: null,
             }
 
             mockRepository.getStorageStats.mockResolvedValue(emptyStats)
@@ -180,6 +182,7 @@ describe('StorageService', () => {
                     size: 110 * 1024 * 1024 * 1024, // 110 GB
                     averageSizePerTest: 1.1 * 1024 * 1024, // ~1.1 MB per test
                 },
+                disk: null,
             }
 
             mockRepository.getStorageStats.mockResolvedValue(largeStats)

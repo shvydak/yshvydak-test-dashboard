@@ -1,10 +1,12 @@
-import {SettingsRepository} from '../repositories/settings.repository'
+import {SettingsRepository, DiskThresholds} from '../repositories/settings.repository'
 import {PlaywrightService} from './playwright.service'
 import {Logger} from '../utils/logger.util'
 
 export interface TestExecutionSettings {
     project: string
 }
+
+export type {DiskThresholds}
 
 export class SettingsService {
     constructor(
@@ -34,6 +36,25 @@ export class SettingsService {
         await this.settingsRepository.setGlobalPlaywrightProject('')
 
         return ''
+    }
+
+    async getDiskThresholds(): Promise<DiskThresholds> {
+        return this.settingsRepository.getDiskThresholds()
+    }
+
+    async setDiskThresholds(
+        warningPercent: number,
+        criticalPercent: number
+    ): Promise<DiskThresholds> {
+        if (criticalPercent >= warningPercent) {
+            throw new Error('Critical threshold must be lower than warning threshold')
+        }
+        const thresholds = {warningPercent, criticalPercent}
+        await this.settingsRepository.setDiskThresholds(thresholds)
+        Logger.info(
+            `Disk thresholds updated: warning=${warningPercent}%, critical=${criticalPercent}%`
+        )
+        return thresholds
     }
 
     async setGlobalPlaywrightProject(project: string): Promise<TestExecutionSettings> {

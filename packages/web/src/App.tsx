@@ -1,9 +1,11 @@
-import {useState, useEffect, useMemo} from 'react'
+import {useState, useEffect, useMemo, useCallback} from 'react'
 import {Routes, Route, useLocation, Navigate} from 'react-router-dom'
 import {TestResult} from '@yshvydak/core'
 import {Header} from '@shared/components'
 import {Dashboard} from '@features/dashboard'
 import {SettingsModal} from '@features/dashboard/components/settings'
+import {DiskSpaceWarningBanner} from '@features/dashboard/components/DiskSpaceWarningBanner'
+import {useDiskSpaceWarning} from '@features/dashboard/hooks'
 import {TestsList} from '@features/tests'
 import {FloatingProgressPanel} from '@features/tests/components/progress/FloatingProgressPanel'
 import {LoginPage, setGlobalLogout} from '@features/authentication'
@@ -21,6 +23,15 @@ function App() {
     const [isLoading, setIsLoading] = useState(true)
     const [selectedTest, setSelectedTest] = useState<TestResult | null>(null)
     const [isSettingsOpen, setIsSettingsOpen] = useState(false)
+    const [settingsScrollToDataRetention, setSettingsScrollToDataRetention] = useState(false)
+
+    const {severity, diskStats, thresholds, isDismissed, dismiss, triggerCheck} =
+        useDiskSpaceWarning()
+
+    const handleOpenSettingsToDataRetention = useCallback(() => {
+        setSettingsScrollToDataRetention(true)
+        setIsSettingsOpen(true)
+    }, [])
 
     // Determine current view from URL
     const currentView: ViewMode = location.pathname.includes('/dashboard') ? 'dashboard' : 'tests'
@@ -167,7 +178,7 @@ function App() {
     }, [isAuthenticated, isLoading])
 
     // WebSocket connection for live updates
-    const {isConnected} = useWebSocket(webSocketUrl)
+    const {isConnected} = useWebSocket(webSocketUrl, {onRunCompleted: triggerCheck})
 
     useEffect(() => {
         // Only initialize if authenticated
@@ -240,7 +251,24 @@ function App() {
                 }}
             />
 
-            <SettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
+            <SettingsModal
+                isOpen={isSettingsOpen}
+                onClose={() => {
+                    setIsSettingsOpen(false)
+                    setSettingsScrollToDataRetention(false)
+                }}
+                scrollToDataRetention={settingsScrollToDataRetention}
+            />
+
+            {severity && !isDismissed && diskStats && thresholds && (
+                <DiskSpaceWarningBanner
+                    severity={severity}
+                    diskStats={diskStats}
+                    thresholds={thresholds}
+                    onDismiss={dismiss}
+                    onFreeUpSpace={handleOpenSettingsToDataRetention}
+                />
+            )}
 
             <main className="flex-1 overflow-hidden flex flex-col container mx-auto px-3 md:px-4">
                 <Routes>

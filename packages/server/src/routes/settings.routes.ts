@@ -12,6 +12,8 @@ export function createSettingsRoutes(container: ServiceContainer): Router {
 
     router.get('/test-execution', settingsController.getTestExecutionSettings)
     router.put('/test-execution/project', settingsController.updateGlobalPlaywrightProject)
+    router.get('/disk-thresholds', settingsController.getDiskThresholds)
+    router.put('/disk-thresholds', settingsController.updateDiskThresholds)
 
     return router
 }

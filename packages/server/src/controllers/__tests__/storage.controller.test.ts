@@ -59,6 +59,7 @@ describe('StorageController', () => {
             size: 6 * 1024 * 1024,
             averageSizePerTest: 60 * 1024,
         },
+        disk: null,
     }
 
     // Helper function to create mock request
@@ -166,6 +167,7 @@ describe('StorageController', () => {
                     size: 0,
                     averageSizePerTest: 0,
                 },
+                disk: null,
             }
 
             mockStorageService.getStorageStats.mockResolvedValue(emptyStats)
@@ -200,6 +202,7 @@ describe('StorageController', () => {
                     size: 110 * 1024 * 1024 * 1024, // 110 GB
                     averageSizePerTest: 1.1 * 1024 * 1024,
                 },
+                disk: null,
             }
 
             mockStorageService.getStorageStats.mockResolvedValue(largeStats)

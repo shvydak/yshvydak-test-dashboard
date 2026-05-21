@@ -2,6 +2,13 @@ import {useQuery} from '@tanstack/react-query'
 import {authFetch} from '@features/authentication/utils/authFetch'
 import {config} from '@config/environment.config'
 
+export interface DiskStats {
+    total: number
+    free: number
+    used: number
+    usedPercent: number
+}
+
 export interface StorageStats {
     database: {
         size: number
@@ -25,6 +32,7 @@ export interface StorageStats {
         size: number
         averageSizePerTest: number
     }
+    disk: DiskStats | null
 }
 
 async function fetchStorageStats(): Promise<StorageStats> {

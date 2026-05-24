@@ -50,10 +50,10 @@ describe('useTheme', () => {
     })
 
     describe('Initialization', () => {
-        it('should initialize with "auto" theme when no localStorage value', () => {
+        it('should initialize with "dark" theme when no localStorage value', () => {
             const {result} = renderHook(() => useTheme())
 
-            expect(result.current.themeMode).toBe('auto')
+            expect(result.current.themeMode).toBe('dark')
         })
 
         it('should initialize with saved theme from localStorage', () => {
@@ -157,6 +157,7 @@ describe('useTheme', () => {
 
         it('should set isDark based on system preference when theme is "auto"', () => {
             mockMatchMedia.matches = true
+            localStorage.setItem('theme', 'auto')
 
             const {result} = renderHook(() => useTheme())
 
@@ -166,6 +167,7 @@ describe('useTheme', () => {
 
         it('should set isDark to false when auto mode and system prefers light', () => {
             mockMatchMedia.matches = false
+            localStorage.setItem('theme', 'auto')
 
             const {result} = renderHook(() => useTheme())
 
@@ -198,6 +200,7 @@ describe('useTheme', () => {
 
         it('should update isDark when system preference changes in auto mode', () => {
             mockMatchMedia.matches = false
+            localStorage.setItem('theme', 'auto')
             const {result} = renderHook(() => useTheme())
 
             expect(result.current.isDark).toBe(false)
@@ -262,6 +265,7 @@ describe('useTheme', () => {
         })
 
         it('should update listeners when theme mode changes', () => {
+            localStorage.setItem('theme', 'auto')
             const {result} = renderHook(() => useTheme())
 
             const initialAddCalls = mockMatchMedia.addEventListener.mock.calls.length
@@ -310,6 +314,7 @@ describe('useTheme', () => {
 
         it('should remove "dark" class when auto mode and system prefers light', () => {
             mockMatchMedia.matches = false
+            localStorage.setItem('theme', 'auto')
 
             renderHook(() => useTheme())
 
@@ -415,6 +420,7 @@ describe('useTheme', () => {
     describe('Integration Scenarios', () => {
         it('should handle complete theme cycle: auto -> dark -> light -> auto', () => {
             mockMatchMedia.matches = true
+            localStorage.setItem('theme', 'auto')
             const {result} = renderHook(() => useTheme())
 
             // Start with auto (system dark)
@@ -470,6 +476,7 @@ describe('useTheme', () => {
 
         it('should respond to system preference changes in real-time (auto mode)', () => {
             mockMatchMedia.matches = false
+            localStorage.setItem('theme', 'auto')
             const {result} = renderHook(() => useTheme())
 
             expect(result.current.isDark).toBe(false)
@@ -554,8 +561,8 @@ describe('useTheme', () => {
 
             const {result} = renderHook(() => useTheme())
 
-            // Should default to "auto" when empty
-            expect(result.current.themeMode).toBe('auto')
+            // Should default to "dark" when empty
+            expect(result.current.themeMode).toBe('dark')
         })
 
         it('should work when document element has other classes', () => {

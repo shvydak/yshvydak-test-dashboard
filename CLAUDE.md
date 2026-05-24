@@ -171,6 +171,16 @@ const url = getWebSocketUrl(true)
 
 Repository methods like `getTestResultsByTestId` already JOIN attachments + notes. Don't loop the result and call `getAttachmentsByTestResult(execution.id)` per row — that turns 1 query into N+1.
 
+### ❌ Changing behavior without checking all dependents
+
+Before committing any change to a value, constant, default, or behavior:
+
+1. **Grep for all usages** of the old value across source files — other components may duplicate the same logic independently
+2. **Grep tests** for assertions on the old value — tests that don't set state explicitly will rely on the old behavior and fail silently until the pre-push hook catches them
+3. **Search for parallel implementations** — if a hook/utility has a standalone fallback, pages that don't use that hook (e.g. pre-auth pages) likely have their own copy
+
+Rule: if you change X, ask "where else is X assumed to be true?" before pushing.
+
 **More examples:** [docs/ai/ANTI_PATTERNS.md](docs/ai/ANTI_PATTERNS.md)
 
 ---

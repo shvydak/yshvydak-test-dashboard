@@ -265,6 +265,7 @@ describe('useTheme', () => {
         })
 
         it('should update listeners when theme mode changes', () => {
+            localStorage.setItem('theme', 'auto')
             const {result} = renderHook(() => useTheme())
 
             const initialAddCalls = mockMatchMedia.addEventListener.mock.calls.length
@@ -313,6 +314,7 @@ describe('useTheme', () => {
 
         it('should remove "dark" class when auto mode and system prefers light', () => {
             mockMatchMedia.matches = false
+            localStorage.setItem('theme', 'auto')
 
             renderHook(() => useTheme())
 

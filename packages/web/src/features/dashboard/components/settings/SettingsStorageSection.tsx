@@ -52,6 +52,12 @@ export function SettingsStorageSection() {
     const disk = stats?.disk
     const freePercent = disk ? 100 - disk.usedPercent : null
 
+    const dashboardPercent =
+        stats?.total.size && disk
+            ? Math.min((stats.total.size / disk.total) * 100, disk.usedPercent)
+            : 0
+    const otherUsedPercent = disk ? Math.max(0, disk.usedPercent - dashboardPercent) : 0
+
     const diskStatus =
         !disk || !thresholds
             ? 'unknown'
@@ -131,16 +137,42 @@ export function SettingsStorageSection() {
                                     of {formatBytes(disk.total)}
                                 </span>
                             </div>
-                            <div className="w-full overflow-hidden rounded-full bg-gray-100 dark:bg-white/[0.08]">
-                                <div
-                                    className={`h-2 rounded-full transition-all duration-500 ${barColor}`}
-                                    style={{width: `${disk.usedPercent}%`}}
-                                />
+                            <div
+                                className="w-full overflow-hidden rounded-full bg-gray-100 dark:bg-white/[0.08]"
+                                style={{height: '8px'}}>
+                                <div className="flex h-full">
+                                    {dashboardPercent > 0 && (
+                                        <div
+                                            className="h-full bg-primary-500 transition-all duration-500"
+                                            style={{width: `${dashboardPercent}%`}}
+                                        />
+                                    )}
+                                    {otherUsedPercent > 0 && (
+                                        <div
+                                            className={`h-full transition-all duration-500 ${barColor}`}
+                                            style={{width: `${otherUsedPercent}%`}}
+                                        />
+                                    )}
+                                </div>
                             </div>
                             <div className="mt-1.5 flex justify-between text-xs text-gray-400 dark:text-gray-500">
                                 <span>{formatBytes(disk.used)} used</span>
                                 <span>{disk.usedPercent}%</span>
                             </div>
+                            {dashboardPercent > 0 && (
+                                <div className="mt-1.5 flex gap-3 text-xs text-gray-400 dark:text-gray-500">
+                                    <span className="flex items-center gap-1">
+                                        <span className="h-2 w-2 flex-shrink-0 rounded-full bg-primary-500" />
+                                        Dashboard {formatBytes(stats!.total.size)}
+                                    </span>
+                                    <span className="flex items-center gap-1">
+                                        <span
+                                            className={`h-2 w-2 flex-shrink-0 rounded-full ${barColor}`}
+                                        />
+                                        Other {formatBytes(disk.used - stats!.total.size)}
+                                    </span>
+                                </div>
+                            )}
                         </>
                     ) : (
                         <p className="text-sm text-gray-500 dark:text-gray-400">

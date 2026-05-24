@@ -29,7 +29,7 @@ export function applyThemeMode(themeMode: ThemeMode): void {
 export function useTheme(): UseThemeReturn {
     const [themeMode, setThemeModeState] = useState<ThemeMode>(() => {
         const saved = localStorage.getItem('theme')
-        return (saved as ThemeMode) || 'auto'
+        return (saved as ThemeMode) || 'dark'
     })
 
     const [isDark, setIsDark] = useState(false)

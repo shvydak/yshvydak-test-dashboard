@@ -19,7 +19,7 @@ export default function LoginPage() {
 
     useEffect(() => {
         const savedTheme = localStorage.getItem('theme') as ThemeMode | null
-        const themeMode = savedTheme || 'auto'
+        const themeMode = savedTheme || 'dark'
 
         applyThemeMode(themeMode)
 

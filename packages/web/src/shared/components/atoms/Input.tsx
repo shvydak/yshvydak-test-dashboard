@@ -1,4 +1,4 @@
-import {InputHTMLAttributes, ReactNode} from 'react'
+import {forwardRef, InputHTMLAttributes, ReactNode} from 'react'
 
 export interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
     label?: string
@@ -9,16 +9,19 @@ export interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
     fullWidth?: boolean
 }
 
-export function Input({
-    label,
-    error,
-    helperText,
-    icon,
-    iconPosition = 'left',
-    fullWidth = false,
-    className = '',
-    ...props
-}: InputProps) {
+export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
+    {
+        label,
+        error,
+        helperText,
+        icon,
+        iconPosition = 'left',
+        fullWidth = false,
+        className = '',
+        ...props
+    },
+    ref
+) {
     const baseStyles =
         'px-4 py-2.5 text-sm rounded-xl border bg-white text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-4 focus:ring-primary-500/15 focus:border-primary-400 transition-all duration-150 dark:bg-white/[0.04] dark:text-white dark:placeholder-gray-500 dark:focus:border-primary-400/60'
     const errorStyles = error
@@ -43,6 +46,7 @@ export function Input({
                 )}
 
                 <input
+                    ref={ref}
                     className={[baseStyles, errorStyles, widthStyles, iconPaddingStyles, className]
                         .filter(Boolean)
                         .join(' ')}
@@ -65,4 +69,4 @@ export function Input({
             )}
         </div>
     )
-}
+})

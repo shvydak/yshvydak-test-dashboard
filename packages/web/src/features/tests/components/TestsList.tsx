@@ -26,10 +26,11 @@ export default function TestsList({
 }: TestsListProps) {
     const {tests, error} = useTestsStore()
     const [searchParams, setSearchParams] = useSearchParams()
-    const [searchQuery, setSearchQuery] = useState('')
+    const [searchQuery, setSearchQuery] = useState(() => searchParams.get('q') || '')
     const [detailModalOpen, setDetailModalOpen] = useState(false)
     const [detailModalTest, setDetailModalTest] = useState<TestResult | null>(null)
     const hasProcessedUrlRef = useRef(false)
+    const searchInputRef = useRef<HTMLInputElement>(null)
 
     // Initialize filter from URL or default to 'all'
     const getInitialFilter = (): FilterKey => {
@@ -62,6 +63,16 @@ export default function TestsList({
             setFilter('all')
         }
     }, [searchParams, filter])
+
+    // Focus search input when navigated via Cmd+K
+    useEffect(() => {
+        if (searchParams.get('focusSearch') === '1') {
+            searchInputRef.current?.focus()
+            const params = new URLSearchParams(searchParams)
+            params.delete('focusSearch')
+            setSearchParams(params, {replace: true})
+        }
+    }, [searchParams, setSearchParams])
 
     // Handle deep linking: open modal if testId is in URL
     useEffect(() => {
@@ -161,12 +172,22 @@ export default function TestsList({
     const handleFilterChange = (newFilter: FilterKey) => {
         setFilter(newFilter)
 
-        // Update URL with new filter
         const params = new URLSearchParams(searchParams)
         if (newFilter === 'all') {
             params.delete('filter')
         } else {
             params.set('filter', newFilter)
+        }
+        setSearchParams(params, {replace: true})
+    }
+
+    const handleSearchChange = (query: string) => {
+        setSearchQuery(query)
+        const params = new URLSearchParams(searchParams)
+        if (query) {
+            params.set('q', query)
+        } else {
+            params.delete('q')
         }
         setSearchParams(params, {replace: true})
     }
@@ -180,7 +201,9 @@ export default function TestsList({
                     onFilterChange={handleFilterChange}
                     counts={counts}
                     searchQuery={searchQuery}
-                    onSearchChange={setSearchQuery}
+                    onSearchChange={handleSearchChange}
+                    filteredCount={filteredTests.length}
+                    searchInputRef={searchInputRef}
                 />
             </div>
 

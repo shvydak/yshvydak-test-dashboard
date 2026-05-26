@@ -113,6 +113,8 @@ All agents are in `.claude/agents/` and use `disable-model-invocation: true` (ma
 - Disk space thresholds? → `server/src/repositories/settings.repository.ts`
 - Disk warning banner? → `web/src/features/dashboard/components/DiskSpaceWarningBanner.tsx`
 - Disk warning hook? → `web/src/features/dashboard/hooks/useDiskSpaceWarning.ts`
+- Search input (with ⌘K hint)? → `web/src/shared/components/molecules/SearchInput.tsx` (props: `showShortcutHint`, `onClear`, `resultCount`)
+- Search URL persistence? → `TestsList.tsx` — `?q=` param, same pattern as `?filter=`
 
 **Full structure:** See [docs/ai/FILE_LOCATIONS.md](docs/ai/FILE_LOCATIONS.md)
 
@@ -167,9 +169,44 @@ const url = getWebSocketUrl(true)
 </div>
 ```
 
+### Search is a feature set
+
+When implementing search, always propose the full set together: ESC (clear/blur) + X button + result count + URL persistence (`?q=`). `SearchInput` supports all of these via props: `onClear`, `resultCount`, `showShortcutHint`. Without them, search UX is incomplete.
+
+### ❌ Programmatic focus without forwardRef
+
+`Input` and `SearchInput` are wrapped with `forwardRef` — ref is forwarded down to `<input>`. If programmatic focus is needed on any input component, verify the entire chain (`atom → molecule → feature`) uses `forwardRef`, otherwise `ref.current` will be `null`.
+
+### URL param as a one-shot cross-page signal
+
+For "navigate + side effect" (e.g. go to `/tests` and focus the search input) — add `?signal=1` to the URL, handle it in `useEffect`, and immediately remove it via `setSearchParams(params, {replace: true})`. Cleaner than global state or custom DOM events.
+
+```tsx
+// In App.tsx: navigate(`/tests?focusSearch=1`)
+// In TestsList.tsx:
+useEffect(() => {
+    if (searchParams.get('focusSearch') === '1') {
+        searchInputRef.current?.focus()
+        const params = new URLSearchParams(searchParams)
+        params.delete('focusSearch')
+        setSearchParams(params, {replace: true})
+    }
+}, [searchParams, setSearchParams])
+```
+
 ### ❌ Service-layer N+1 over JOIN repositories
 
 Repository methods like `getTestResultsByTestId` already JOIN attachments + notes. Don't loop the result and call `getAttachmentsByTestResult(execution.id)` per row — that turns 1 query into N+1.
+
+### ❌ Changing behavior without checking all dependents
+
+Before committing any change to a value, constant, default, or behavior:
+
+1. **Grep for all usages** of the old value across source files — other components may duplicate the same logic independently
+2. **Grep tests** for assertions on the old value — tests that don't set state explicitly will rely on the old behavior and fail silently until the pre-push hook catches them
+3. **Search for parallel implementations** — if a hook/utility has a standalone fallback, pages that don't use that hook (e.g. pre-auth pages) likely have their own copy
+
+Rule: if you change X, ask "where else is X assumed to be true?" before pushing.
 
 **More examples:** [docs/ai/ANTI_PATTERNS.md](docs/ai/ANTI_PATTERNS.md)
 

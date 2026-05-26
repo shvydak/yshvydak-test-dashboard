@@ -1,4 +1,5 @@
 import {Play} from 'lucide-react'
+import {RefObject} from 'react'
 import {FilterButtonGroup, SearchInput, Button} from '@shared/components'
 import {FilterKey, FILTER_OPTIONS} from '../constants'
 import {useTestsStore} from '../store/testsStore'
@@ -16,8 +17,10 @@ export interface TestsListFiltersProps {
     }
     searchQuery: string
     onSearchChange: (query: string) => void
+    filteredCount?: number
     onExpandAll?: () => void
     onCollapseAll?: () => void
+    searchInputRef?: RefObject<HTMLInputElement>
 }
 
 export function TestsListFilters({
@@ -26,6 +29,8 @@ export function TestsListFilters({
     counts,
     searchQuery,
     onSearchChange,
+    filteredCount,
+    searchInputRef,
 }: TestsListFiltersProps) {
     const {runAllTests, isRunningAllTests, getIsAnyTestRunning} = useTestsStore()
     const isAnyTestRunning = getIsAnyTestRunning()
@@ -56,10 +61,14 @@ export function TestsListFilters({
                 </Button>
 
                 <SearchInput
+                    ref={searchInputRef}
                     value={searchQuery}
                     onChange={(e) => onSearchChange(e.target.value)}
+                    onClear={() => onSearchChange('')}
                     placeholder="Search tests..."
                     className="flex-1 md:w-96 md:flex-none"
+                    showShortcutHint
+                    resultCount={searchQuery ? filteredCount : undefined}
                 />
             </div>
 

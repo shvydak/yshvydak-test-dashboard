@@ -169,21 +169,21 @@ const url = getWebSocketUrl(true)
 </div>
 ```
 
-### Поиск — всегда комплект
+### Search is a feature set
 
-При реализации поиска предлагать сразу: ESC (очистить/blur) + кнопка X + счётчик найденных + URL-персистентность (`?q=`). `SearchInput` поддерживает всё через props: `onClear`, `resultCount`, `showShortcutHint`. Без этого поиск неполный.
+When implementing search, always propose the full set together: ESC (clear/blur) + X button + result count + URL persistence (`?q=`). `SearchInput` supports all of these via props: `onClear`, `resultCount`, `showShortcutHint`. Without them, search UX is incomplete.
 
-### ❌ Програмний фокус без forwardRef
+### ❌ Programmatic focus without forwardRef
 
-Атомарний `Input` і `SearchInput` обгорнуті `forwardRef` — ref пробрасывается до `<input>`. Якщо потрібен програмний фокус на будь-якому input-компоненті, перевір що весь ланцюг (`atom → molecule → feature`) використовує `forwardRef`, інакше `ref.current` буде `null`.
+`Input` and `SearchInput` are wrapped with `forwardRef` — ref is forwarded down to `<input>`. If programmatic focus is needed on any input component, verify the entire chain (`atom → molecule → feature`) uses `forwardRef`, otherwise `ref.current` will be `null`.
 
-### URL-параметр як одноразовий сигнал між сторінками
+### URL param as a one-shot cross-page signal
 
-Для "navigate + побічна дія" (наприклад, перейти на `/tests` і сфокусувати інпут) — додай `?signal=1` до URL, обробляй в `useEffect` і одразу видаляй через `setSearchParams(params, {replace: true})`. Чистіше ніж global state або custom DOM events.
+For "navigate + side effect" (e.g. go to `/tests` and focus the search input) — add `?signal=1` to the URL, handle it in `useEffect`, and immediately remove it via `setSearchParams(params, {replace: true})`. Cleaner than global state or custom DOM events.
 
 ```tsx
-// В App.tsx: navigate(`/tests?focusSearch=1`)
-// В TestsList.tsx:
+// In App.tsx: navigate(`/tests?focusSearch=1`)
+// In TestsList.tsx:
 useEffect(() => {
     if (searchParams.get('focusSearch') === '1') {
         searchInputRef.current?.focus()

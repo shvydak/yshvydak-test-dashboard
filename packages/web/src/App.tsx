@@ -1,5 +1,5 @@
 import {useState, useEffect, useMemo, useCallback} from 'react'
-import {Routes, Route, useLocation, Navigate} from 'react-router-dom'
+import {Routes, Route, useLocation, useNavigate, Navigate} from 'react-router-dom'
 import {TestResult} from '@yshvydak/core'
 import {Header} from '@shared/components'
 import {Dashboard} from '@features/dashboard'
@@ -19,6 +19,7 @@ type ViewMode = 'dashboard' | 'tests'
 
 function App() {
     const location = useLocation()
+    const navigate = useNavigate()
     const [isAuthenticated, setIsAuthenticated] = useState(false)
     const [isLoading, setIsLoading] = useState(true)
     const [selectedTest, setSelectedTest] = useState<TestResult | null>(null)
@@ -51,6 +52,20 @@ function App() {
 
         setGlobalLogout(handleLogout)
     }, [])
+
+    // Cmd+K / Ctrl+K — focus search on tests page
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (e.key === 'k' && (e.metaKey || e.ctrlKey)) {
+                e.preventDefault()
+                const params = new URLSearchParams(location.search)
+                params.set('focusSearch', '1')
+                navigate(`/tests?${params.toString()}`, {replace: location.pathname === '/tests'})
+            }
+        }
+        document.addEventListener('keydown', handleKeyDown)
+        return () => document.removeEventListener('keydown', handleKeyDown)
+    }, [navigate, location.pathname, location.search])
 
     // Check authentication status and verify token validity
     useEffect(() => {

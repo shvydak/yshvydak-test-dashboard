@@ -495,4 +495,52 @@ describe('TestsList - Shareable URLs', () => {
             expect(screen.getByTestId('filters')).toBeInTheDocument()
         })
     })
+
+    describe('Search query URL persistence (?q=)', () => {
+        it('should render without errors when ?q= param is present', () => {
+            render(
+                <MemoryRouter initialEntries={['/?q=login']}>
+                    <TestsList
+                        onTestSelect={mockOnTestSelect}
+                        onTestRerun={mockOnTestRerun}
+                        selectedTest={null}
+                        loading={false}
+                    />
+                </MemoryRouter>
+            )
+
+            expect(screen.getByTestId('filters')).toBeInTheDocument()
+            expect(screen.getByTestId('content')).toBeInTheDocument()
+        })
+
+        it('should render without errors when ?q= is combined with ?filter=', () => {
+            render(
+                <MemoryRouter initialEntries={['/?q=login&filter=failed']}>
+                    <TestsList
+                        onTestSelect={mockOnTestSelect}
+                        onTestRerun={mockOnTestRerun}
+                        selectedTest={null}
+                        loading={false}
+                    />
+                </MemoryRouter>
+            )
+
+            expect(screen.getByTestId('filters')).toBeInTheDocument()
+        })
+
+        it('should render without errors when ?q= is empty', () => {
+            render(
+                <MemoryRouter initialEntries={['/?q=']}>
+                    <TestsList
+                        onTestSelect={mockOnTestSelect}
+                        onTestRerun={mockOnTestRerun}
+                        selectedTest={null}
+                        loading={false}
+                    />
+                </MemoryRouter>
+            )
+
+            expect(screen.getByTestId('filters')).toBeInTheDocument()
+        })
+    })
 })

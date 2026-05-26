@@ -113,6 +113,8 @@ All agents are in `.claude/agents/` and use `disable-model-invocation: true` (ma
 - Disk space thresholds? → `server/src/repositories/settings.repository.ts`
 - Disk warning banner? → `web/src/features/dashboard/components/DiskSpaceWarningBanner.tsx`
 - Disk warning hook? → `web/src/features/dashboard/hooks/useDiskSpaceWarning.ts`
+- Search input (with ⌘K hint)? → `web/src/shared/components/molecules/SearchInput.tsx` (props: `showShortcutHint`, `onClear`, `resultCount`)
+- Search URL persistence? → `TestsList.tsx` — `?q=` param, same pattern as `?filter=`
 
 **Full structure:** See [docs/ai/FILE_LOCATIONS.md](docs/ai/FILE_LOCATIONS.md)
 
@@ -165,6 +167,31 @@ const url = getWebSocketUrl(true)
   <Button size="sm">Delete</Button>
   ...
 </div>
+```
+
+### Поиск — всегда комплект
+
+При реализации поиска предлагать сразу: ESC (очистить/blur) + кнопка X + счётчик найденных + URL-персистентность (`?q=`). `SearchInput` поддерживает всё через props: `onClear`, `resultCount`, `showShortcutHint`. Без этого поиск неполный.
+
+### ❌ Програмний фокус без forwardRef
+
+Атомарний `Input` і `SearchInput` обгорнуті `forwardRef` — ref пробрасывается до `<input>`. Якщо потрібен програмний фокус на будь-якому input-компоненті, перевір що весь ланцюг (`atom → molecule → feature`) використовує `forwardRef`, інакше `ref.current` буде `null`.
+
+### URL-параметр як одноразовий сигнал між сторінками
+
+Для "navigate + побічна дія" (наприклад, перейти на `/tests` і сфокусувати інпут) — додай `?signal=1` до URL, обробляй в `useEffect` і одразу видаляй через `setSearchParams(params, {replace: true})`. Чистіше ніж global state або custom DOM events.
+
+```tsx
+// В App.tsx: navigate(`/tests?focusSearch=1`)
+// В TestsList.tsx:
+useEffect(() => {
+    if (searchParams.get('focusSearch') === '1') {
+        searchInputRef.current?.focus()
+        const params = new URLSearchParams(searchParams)
+        params.delete('focusSearch')
+        setSearchParams(params, {replace: true})
+    }
+}, [searchParams, setSearchParams])
 ```
 
 ### ❌ Service-layer N+1 over JOIN repositories

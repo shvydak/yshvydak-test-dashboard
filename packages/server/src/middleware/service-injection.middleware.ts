@@ -3,6 +3,7 @@ import {DatabaseManager} from '../database/database.manager'
 import {TestRepository} from '../repositories/test.repository'
 import {RunRepository} from '../repositories/run.repository'
 import {AttachmentRepository} from '../repositories/attachment.repository'
+import {AttachmentCleanupRepository} from '../repositories/attachmentCleanup.repository'
 import {StorageRepository} from '../repositories/storage.repository'
 import {NoteRepository} from '../repositories/note.repository'
 import {NoteImageRepository} from '../repositories/noteImage.repository'
@@ -25,6 +26,7 @@ export interface ServiceContainer {
     testRepository: TestRepository
     runRepository: RunRepository
     attachmentRepository: AttachmentRepository
+    attachmentCleanupRepository: AttachmentCleanupRepository
     storageRepository: StorageRepository
     noteRepository: NoteRepository
     noteImageRepository: NoteImageRepository
@@ -53,6 +55,7 @@ export async function createServiceContainer(): Promise<ServiceContainer> {
     const testRepository = new TestRepository(dbManager)
     const runRepository = new RunRepository(dbManager)
     const attachmentRepository = new AttachmentRepository(dbManager)
+    const attachmentCleanupRepository = new AttachmentCleanupRepository(dbManager)
     const storageRepository = new StorageRepository(dbManager, attachmentManager)
     const noteRepository = new NoteRepository(dbManager)
     const noteImageRepository = new NoteImageRepository(dbManager)
@@ -74,13 +77,15 @@ export async function createServiceContainer(): Promise<ServiceContainer> {
         websocketService,
         attachmentService,
         noteService,
-        settingsService
+        settingsService,
+        attachmentCleanupRepository
     )
 
     return {
         testRepository,
         runRepository,
         attachmentRepository,
+        attachmentCleanupRepository,
         storageRepository,
         noteRepository,
         noteImageRepository,

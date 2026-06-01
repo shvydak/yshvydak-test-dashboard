@@ -13,6 +13,10 @@ export interface ExecutionSidebarProps {
     onRerun: (testId: string) => void
     loading?: boolean
     error?: string
+    total?: number
+    hasMore?: boolean
+    onLoadMore?: () => void
+    loadingMore?: boolean
 }
 
 export function ExecutionSidebar({
@@ -24,6 +28,10 @@ export function ExecutionSidebar({
     onRerun,
     loading,
     error,
+    total,
+    hasMore,
+    onLoadMore,
+    loadingMore,
 }: ExecutionSidebarProps) {
     const {runningTests, getIsAnyTestRunning, activeProgress} = useTestsStore()
     const isAnyTestRunning = getIsAnyTestRunning()
@@ -48,8 +56,11 @@ export function ExecutionSidebar({
                             Execution History
                         </h3>
                         <p className="mt-1.5 inline-flex items-center rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium tabular-nums text-gray-500 ring-1 ring-inset ring-gray-500/10 dark:bg-white/[0.06] dark:text-gray-400 dark:ring-white/10">
-                            {executions.length}{' '}
-                            {executions.length === 1 ? 'execution' : 'executions'}
+                            {typeof total === 'number' && total > executions.length
+                                ? `${executions.length} of ${total}`
+                                : `${executions.length} ${
+                                      executions.length === 1 ? 'execution' : 'executions'
+                                  }`}
                         </p>
                     </div>
                     <ActionButton
@@ -106,6 +117,15 @@ export function ExecutionSidebar({
                                 onDelete={onDeleteExecution}
                             />
                         ))}
+
+                        {hasMore && onLoadMore && (
+                            <button
+                                onClick={onLoadMore}
+                                disabled={loadingMore}
+                                className="w-full rounded-xl border border-dashed border-gray-300 px-3 py-2.5 text-xs font-medium text-gray-500 transition-colors hover:border-gray-400 hover:text-gray-700 disabled:opacity-50 dark:border-white/10 dark:text-gray-400 dark:hover:border-white/20 dark:hover:text-gray-200">
+                                {loadingMore ? 'Loading…' : 'Load more'}
+                            </button>
+                        )}
                     </div>
                 )}
             </div>

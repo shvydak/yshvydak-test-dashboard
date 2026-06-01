@@ -272,7 +272,7 @@ export class TestController {
     // POST /api/tests/cleanup - Selective data cleanup
     cleanupData = async (req: ServiceRequest, res: Response): Promise<Response> => {
         try {
-            const {type, value} = req.body
+            const {type, value, mode = 'strip'} = req.body
 
             if (!type || !value) {
                 return ResponseHelper.badRequest(res, 'Missing required fields: type, value')
@@ -282,7 +282,11 @@ export class TestController {
                 return ResponseHelper.badRequest(res, 'Invalid type. Must be "date" or "count"')
             }
 
-            const result = await this.testService.cleanupData({type, value})
+            if (mode !== 'strip' && mode !== 'full') {
+                return ResponseHelper.badRequest(res, 'Invalid mode. Must be "strip" or "full"')
+            }
+
+            const result = await this.testService.cleanupData({type, value, mode})
 
             return ResponseHelper.success(res, result)
         } catch (error) {
@@ -409,7 +413,7 @@ export class TestController {
     getTestHistory = async (req: ServiceRequest, res: Response): Promise<void> => {
         try {
             const {id} = req.params
-            const {limit = 50, byTestId} = req.query
+            const {limit = 50, byTestId, before} = req.query
 
             const isExplicitTestId = byTestId === 'true' || byTestId === '1' || byTestId === 'yes'
 
@@ -423,12 +427,19 @@ export class TestController {
                 testId = test ? test.testId : id
             }
 
-            const history = await this.testService.getTestHistory(
-                testId,
-                parseInt(limit as string) || 50
-            )
+            // `before` is an ISO created_at cursor for keyset pagination (load more).
+            // The meta `count` is the TOTAL execution count so the UI can show an
+            // honest "N of TOTAL" rather than the page size.
+            const [history, total] = await Promise.all([
+                this.testService.getTestHistory(
+                    testId,
+                    parseInt(limit as string) || 50,
+                    typeof before === 'string' ? before : undefined
+                ),
+                this.testService.getTestExecutionCount(testId),
+            ])
 
-            ResponseHelper.success(res, history, undefined, history.length)
+            ResponseHelper.success(res, history, undefined, total)
             return
         } catch (error) {
             Logger.error('Error fetching test history', error)

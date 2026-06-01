@@ -8,7 +8,11 @@ export interface UseDashboardActionsReturn {
     clearingData: boolean
     cleaningData: boolean
     clearAllData: () => Promise<void>
-    cleanupData: (type: 'date' | 'count', value: string | number) => Promise<void>
+    cleanupData: (
+        type: 'date' | 'count',
+        value: string | number,
+        mode?: 'strip' | 'full'
+    ) => Promise<void>
 }
 
 export function useDashboardActions(): UseDashboardActionsReturn {
@@ -60,7 +64,11 @@ export function useDashboardActions(): UseDashboardActionsReturn {
         }
     }
 
-    const cleanupData = async (type: 'date' | 'count', value: string | number) => {
+    const cleanupData = async (
+        type: 'date' | 'count',
+        value: string | number,
+        mode: 'strip' | 'full' = 'strip'
+    ) => {
         setCleaningData(true)
         try {
             const response = await authFetch(`${config.api.baseUrl}/tests/cleanup`, {
@@ -68,7 +76,7 @@ export function useDashboardActions(): UseDashboardActionsReturn {
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({type, value}),
+                body: JSON.stringify({type, value, mode}),
             })
 
             if (!response.ok) {
@@ -76,11 +84,13 @@ export function useDashboardActions(): UseDashboardActionsReturn {
             }
 
             const result = await response.json()
-            const {deletedExecutions, freedSpace} = result.data
+            const {deletedExecutions, freedSpace, mode: resultMode} = result.data
 
             const freedMb = (freedSpace / (1024 * 1024)).toFixed(2)
             alert(
-                `✅ Cleanup complete! Deleted ${deletedExecutions} executions and freed ${freedMb} MB.`
+                resultMode === 'strip'
+                    ? `✅ Freed ${freedMb} MB from ${deletedExecutions} executions. Test history kept.`
+                    : `✅ Cleanup complete! Deleted ${deletedExecutions} executions and freed ${freedMb} MB.`
             )
 
             fetchTests()

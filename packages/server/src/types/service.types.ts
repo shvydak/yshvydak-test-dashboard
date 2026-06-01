@@ -6,7 +6,8 @@ export interface ITestService {
     discoverTests(): Promise<TestDiscoveryResult>
     getAllTests(filters: TestFilters): Promise<TestResult[]>
     getTestById(id: string): Promise<TestResult | null>
-    getTestHistory(testId: string, limit?: number): Promise<TestResult[]>
+    getTestHistory(testId: string, limit?: number, before?: string): Promise<TestResult[]>
+    getTestExecutionCount(testId: string): Promise<number>
     deleteTest(testId: string): Promise<{deletedExecutions: number}>
     deleteExecution(executionId: string): Promise<{success: boolean}>
     clearAllTests(): Promise<void>
@@ -19,12 +20,17 @@ export interface ITestService {
 export interface CleanupOptions {
     type: 'date' | 'count'
     value: string | number
+    // 'strip' (default): delete attachments only, keep test_results rows so the
+    // timeline and history survive. 'full': delete the executions entirely.
+    mode?: 'strip' | 'full'
 }
 
 export interface CleanupResult {
+    // Number of executions affected (stripped in 'strip' mode, deleted in 'full').
     deletedExecutions: number
     freedSpace: number
     message: string
+    mode: 'strip' | 'full'
 }
 
 export interface IPlaywrightService {
@@ -124,12 +130,20 @@ export interface ITestRepository {
     saveTestResult(testData: TestResultData): Promise<string>
     getTestResult(id: string): Promise<TestResult | null>
     getTestResultsByRun(runId: string): Promise<TestResult[]>
-    getTestResultsByTestId(testId: string, limit?: number): Promise<TestResult[]>
+    getTestResultsByTestId(testId: string, limit?: number, before?: string): Promise<TestResult[]>
+    getTestExecutionCount(testId: string): Promise<number>
     getAllTests(filters: TestFilters): Promise<TestResult[]>
     deleteByTestId(testId: string): Promise<number>
     deleteByExecutionId(executionId: string): Promise<number>
     clearAllTests(): Promise<void>
     getTestStats(): Promise<DatabaseStats>
+    // Retention / cleanup selection
+    getIdsOlderThan(date: Date): Promise<string[]>
+    getIdsPrunedByCount(keepCount: number): Promise<string[]>
+    getStrippableIdsOlderThan(date: Date): Promise<string[]>
+    getStrippableIdsByCount(keepCount: number): Promise<string[]>
+    getAttachmentsSizeForIds(ids: string[]): Promise<{total: number; perId: Record<string, number>}>
+    deleteByIds(ids: string[]): Promise<number>
 }
 
 export interface IRunRepository {

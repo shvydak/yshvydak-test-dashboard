@@ -110,6 +110,10 @@ export function TestDetailModal({test, isOpen, onClose}: TestDetailModalProps) {
 
     const {
         executions,
+        total: historyTotal,
+        hasMore: historyHasMore,
+        loadMore: loadMoreHistory,
+        loadingMore: historyLoadingMore,
         loading: historyLoading,
         error: historyError,
         refetch: refetchHistory,
@@ -338,6 +342,10 @@ export function TestDetailModal({test, isOpen, onClose}: TestDetailModalProps) {
                         <div className="hidden md:block h-full min-h-0">
                             <ExecutionSidebar
                                 executions={executions}
+                                total={historyTotal}
+                                hasMore={historyHasMore}
+                                onLoadMore={loadMoreHistory}
+                                loadingMore={historyLoadingMore}
                                 currentExecutionId={currentExecution?.id || test.id}
                                 onSelectExecution={handleSelectExecution}
                                 onDeleteExecution={handleDeleteExecutionClick}

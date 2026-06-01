@@ -1,5 +1,5 @@
 import {useState} from 'react'
-import {Check, Timer, Paperclip} from 'lucide-react'
+import {Check, Timer, Paperclip, Archive} from 'lucide-react'
 import {TestResult} from '@yshvydak/core'
 import {StatusBadge} from '@shared/components'
 import {formatLastRun, formatDuration} from '../../utils/formatters'
@@ -21,6 +21,8 @@ export function ExecutionItem({
 }: ExecutionItemProps) {
     const [showRemoveButton, setShowRemoveButton] = useState(false)
     const attachmentCount = execution.attachments?.length || 0
+    // Attachments were purged to free disk space; the execution itself is kept.
+    const isStripped = !!execution.attachmentsClearedAt && attachmentCount === 0
 
     const handleDeleteClick = (e: React.MouseEvent) => {
         e.stopPropagation()
@@ -33,12 +35,25 @@ export function ExecutionItem({
         onSelect(execution.id)
     }
 
+    const handleKeyDown = (e: React.KeyboardEvent) => {
+        // Mirror native button activation: Enter and Space select the execution.
+        if (isCurrent) return
+        if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault()
+            onSelect(execution.id)
+        }
+    }
+
     return (
-        <button
+        <div
+            role="button"
+            tabIndex={isCurrent ? -1 : 0}
+            aria-disabled={isCurrent || undefined}
             onClick={handleClick}
+            onKeyDown={handleKeyDown}
             onMouseEnter={() => setShowRemoveButton(true)}
             onMouseLeave={() => setShowRemoveButton(false)}
-            className={`group w-full text-left rounded-xl p-3 transition-all duration-200 ${
+            className={`group w-full text-left rounded-xl p-3 transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 ${
                 isCurrent
                     ? 'bg-primary-50 ring-1 ring-inset ring-primary-600/20 shadow-soft cursor-default dark:bg-primary-500/15 dark:ring-primary-400/25'
                     : 'bg-white border border-gray-200/80 hover:-translate-y-0.5 hover:border-gray-300 hover:shadow-card-hover cursor-pointer dark:bg-gray-800/70 dark:border-white/[0.07] dark:hover:border-white/[0.12]'
@@ -68,6 +83,16 @@ export function ExecutionItem({
                         <span>•</span>
                         <span className="flex items-center gap-1">
                             <Paperclip className="h-3 w-3" /> {attachmentCount}
+                        </span>
+                    </>
+                )}
+                {isStripped && (
+                    <>
+                        <span>•</span>
+                        <span
+                            className="flex items-center gap-1 text-gray-400 dark:text-gray-500"
+                            title="Attachments removed to free disk space">
+                            <Archive className="h-3 w-3" /> archived
                         </span>
                     </>
                 )}
@@ -101,6 +126,6 @@ export function ExecutionItem({
                     </button>
                 )}
             </div>
-        </button>
+        </div>
     )
 }

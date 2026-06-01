@@ -1,6 +1,14 @@
-import {useState} from 'react'
-import {ChevronDown, ChevronRight, Database, HardDrive, Paperclip, RefreshCw} from 'lucide-react'
-import {Button} from '@shared/components'
+import {useEffect, useState} from 'react'
+import {
+    AlertTriangle,
+    ChevronDown,
+    ChevronRight,
+    Database,
+    HardDrive,
+    Paperclip,
+    RefreshCw,
+} from 'lucide-react'
+import {Button, ConfirmationDialog} from '@shared/components'
 import {SettingsSection} from './SettingsSection'
 import {useStorageStats, useDiskThresholds} from '../../hooks'
 import {useDashboardActions} from '../../hooks'
@@ -23,6 +31,18 @@ export function SettingsStorageSection() {
     const [thresholdsSynced, setThresholdsSynced] = useState(false)
     const [daysToKeep, setDaysToKeep] = useState('30')
     const [runsToKeep, setRunsToKeep] = useState('20')
+    // 'strip' frees space but keeps history; 'full' permanently deletes executions.
+    const [cleanupMode, setCleanupMode] = useState<'strip' | 'full'>('strip')
+    // Pending full-delete action awaiting confirmation (null = dialog closed).
+    const [confirmFull, setConfirmFull] = useState<null | {type: 'date' | 'count'}>(null)
+    // Which criterion is currently running, so only its button shows the spinner
+    // (cleaningData is shared across both rows).
+    const [pendingAction, setPendingAction] = useState<'date' | 'count' | null>(null)
+
+    // Clear the in-flight marker once the shared cleanup flag settles.
+    useEffect(() => {
+        if (!cleaningData) setPendingAction(null)
+    }, [cleaningData])
 
     if (thresholds && !thresholdsSynced) {
         setWarningInput(String(thresholds.warningPercent))
@@ -37,16 +57,44 @@ export function SettingsStorageSection() {
         saveThresholds({warningPercent: warning, criticalPercent: critical})
     }
 
-    const handleDeleteOld = () => {
-        if (!daysToKeep || isNaN(parseInt(daysToKeep))) return
+    const daysValid = !!daysToKeep && parseInt(daysToKeep) >= 1
+    const runsValid = !!runsToKeep && parseInt(runsToKeep) >= 1
+
+    // Convert "older than N days" into a cutoff at the START of the day N days ago,
+    // so the whole Nth day is kept (avoids the time-of-day off-by-one where a run
+    // made earlier on day N would otherwise count as older than the criterion).
+    const dateCutoff = () => {
         const date = new Date()
         date.setDate(date.getDate() - parseInt(daysToKeep))
-        cleanupData('date', date.toISOString())
+        date.setHours(0, 0, 0, 0)
+        return date.toISOString()
     }
 
-    const handlePruneCount = () => {
-        if (!runsToKeep || isNaN(parseInt(runsToKeep))) return
-        cleanupData('count', parseInt(runsToKeep))
+    // Single entry point for both criteria. In 'full' mode we route through the
+    // confirmation dialog; in 'strip' mode we run immediately.
+    const runAction = (type: 'date' | 'count') => {
+        if (type === 'date' ? !daysValid : !runsValid) return
+        if (cleanupMode === 'full') {
+            setConfirmFull({type})
+            return
+        }
+        setPendingAction(type)
+        if (type === 'date') {
+            cleanupData('date', dateCutoff(), 'strip')
+        } else {
+            cleanupData('count', parseInt(runsToKeep), 'strip')
+        }
+    }
+
+    const handleConfirmFull = () => {
+        if (!confirmFull) return
+        setPendingAction(confirmFull.type)
+        if (confirmFull.type === 'date') {
+            if (daysValid) cleanupData('date', dateCutoff(), 'full')
+        } else {
+            if (runsValid) cleanupData('count', parseInt(runsToKeep), 'full')
+        }
+        setConfirmFull(null)
     }
 
     const disk = stats?.disk
@@ -387,13 +435,52 @@ export function SettingsStorageSection() {
 
                 {/* ── CLEAN UP ──────────────────────────────── */}
                 <div className="border-t border-gray-200/70 pt-4 dark:border-white/[0.06]">
-                    <p className="mb-3.5 text-[11px] font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500">
+                    <p className="mb-1 text-[11px] font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500">
                         Clean Up
+                    </p>
+                    {/* Mode toggle: 'strip' keeps history, 'full' deletes executions */}
+                    <div className="mb-3 inline-flex rounded-lg bg-gray-100 p-0.5 dark:bg-white/[0.05]">
+                        <button
+                            onClick={() => setCleanupMode('strip')}
+                            className={`rounded-md px-3 py-1 text-xs font-medium transition-colors ${
+                                cleanupMode === 'strip'
+                                    ? 'bg-white text-gray-900 shadow-sm dark:bg-white/[0.12] dark:text-white'
+                                    : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'
+                            }`}>
+                            Free space
+                        </button>
+                        <button
+                            onClick={() => setCleanupMode('full')}
+                            className={`rounded-md px-3 py-1 text-xs font-medium transition-colors ${
+                                cleanupMode === 'full'
+                                    ? 'bg-danger-500 text-white shadow-sm'
+                                    : 'text-gray-500 hover:text-danger-600 dark:text-gray-400 dark:hover:text-danger-400'
+                            }`}>
+                            Delete permanently
+                        </button>
+                    </div>
+
+                    <p
+                        className={`mb-3.5 flex items-start gap-1.5 text-xs ${
+                            cleanupMode === 'full'
+                                ? 'font-medium text-danger-600 dark:text-danger-400'
+                                : 'text-gray-500 dark:text-gray-400'
+                        }`}>
+                        {cleanupMode === 'full' && (
+                            <AlertTriangle className="mt-0.5 h-3.5 w-3.5 flex-shrink-0" />
+                        )}
+                        <span>
+                            {cleanupMode === 'strip'
+                                ? 'Frees disk space by deleting attachments (videos, traces, screenshots). Test history and the timeline are kept.'
+                                : 'Permanently deletes the matching executions, including their history. This shrinks the timeline and cannot be undone.'}
+                        </span>
                     </p>
 
                     <div className="grid grid-cols-[1fr_auto_auto_auto] items-center gap-x-2 gap-y-3">
                         <span className="text-sm text-gray-700 dark:text-gray-300">
-                            Delete runs older than
+                            {cleanupMode === 'strip'
+                                ? 'Remove attachments older than'
+                                : 'Delete runs older than'}
                         </span>
                         <input
                             type="number"
@@ -407,16 +494,18 @@ export function SettingsStorageSection() {
                             days
                         </span>
                         <Button
-                            variant="secondary"
+                            variant={cleanupMode === 'strip' ? 'secondary' : 'danger'}
                             size="sm"
-                            loading={cleaningData}
-                            disabled={isAnyTestRunning || cleaningData}
-                            onClick={handleDeleteOld}>
-                            Delete
+                            loading={cleaningData && pendingAction === 'date'}
+                            disabled={isAnyTestRunning || cleaningData || !daysValid}
+                            onClick={() => runAction('date')}>
+                            {cleanupMode === 'strip' ? 'Free space' : 'Delete'}
                         </Button>
 
                         <span className="text-sm text-gray-700 dark:text-gray-300">
-                            Keep only latest
+                            {cleanupMode === 'strip'
+                                ? 'Keep attachments for latest'
+                                : 'Keep only latest'}
                         </span>
                         <input
                             type="number"
@@ -430,16 +519,32 @@ export function SettingsStorageSection() {
                             runs/test
                         </span>
                         <Button
-                            variant="secondary"
+                            variant={cleanupMode === 'strip' ? 'secondary' : 'danger'}
                             size="sm"
-                            loading={cleaningData}
-                            disabled={isAnyTestRunning || cleaningData}
-                            onClick={handlePruneCount}>
-                            Prune
+                            loading={cleaningData && pendingAction === 'count'}
+                            disabled={isAnyTestRunning || cleaningData || !runsValid}
+                            onClick={() => runAction('count')}>
+                            {cleanupMode === 'strip' ? 'Free space' : 'Prune'}
                         </Button>
                     </div>
                 </div>
             </div>
+
+            <ConfirmationDialog
+                isOpen={confirmFull !== null}
+                title="Delete permanently?"
+                description={
+                    confirmFull?.type === 'date'
+                        ? `This permanently deletes all executions older than ${daysToKeep} days, including their history. The timeline will shrink for that period. This cannot be undone.`
+                        : `This permanently deletes all but the latest ${runsToKeep} runs per test, including their history. The timeline will shrink. This cannot be undone.`
+                }
+                confirmText="Delete permanently"
+                cancelText="Cancel"
+                variant="danger"
+                isLoading={cleaningData}
+                onConfirm={handleConfirmFull}
+                onCancel={() => setConfirmFull(null)}
+            />
         </SettingsSection>
     )
 }

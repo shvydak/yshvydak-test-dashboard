@@ -28,6 +28,7 @@ vi.mock('../activeProcesses.service', () => ({
         addProcess: vi.fn(),
         removeProcess: vi.fn(),
         isProcessRunning: vi.fn(() => true),
+        isAnyProcessRunning: vi.fn(() => false),
         isRunAllActive: vi.fn(() => false),
         getActiveProcesses: vi.fn(() => []),
     },
@@ -42,6 +43,7 @@ describe('TestService', () => {
     let mockAttachmentService: any
     let mockNoteService: any
     let mockSettingsService: any
+    let mockAttachmentCleanupRepository: any
 
     // Helper to create mock child process
     const createMockProcess = (): ChildProcess => {
@@ -73,6 +75,13 @@ describe('TestService', () => {
             getTestStats: vi.fn(),
             getFlakyTests: vi.fn(),
             getTestTimeline: vi.fn(),
+            getTestExecutionCount: vi.fn(),
+            getIdsOlderThan: vi.fn(),
+            getIdsPrunedByCount: vi.fn(),
+            getStrippableIdsOlderThan: vi.fn(),
+            getStrippableIdsByCount: vi.fn(),
+            getAttachmentsSizeForIds: vi.fn().mockResolvedValue({total: 0, perId: {}}),
+            deleteByIds: vi.fn().mockResolvedValue(0),
         }
 
         mockRunRepository = {
@@ -119,6 +128,10 @@ describe('TestService', () => {
             setGlobalPlaywrightProject: vi.fn(),
         }
 
+        mockAttachmentCleanupRepository = {
+            markCleared: vi.fn().mockResolvedValue(undefined),
+        }
+
         // Create service instance
         testService = new TestService(
             mockTestRepository,
@@ -127,7 +140,8 @@ describe('TestService', () => {
             mockWebSocketService,
             mockAttachmentService,
             mockNoteService,
-            mockSettingsService
+            mockSettingsService,
+            mockAttachmentCleanupRepository
         )
     })
 
@@ -398,7 +412,11 @@ describe('TestService', () => {
             const history = await testService.getTestHistory('hash-1', 50)
 
             expect(history).toEqual(mockHistory)
-            expect(mockTestRepository.getTestResultsByTestId).toHaveBeenCalledWith('hash-1', 50)
+            expect(mockTestRepository.getTestResultsByTestId).toHaveBeenCalledWith(
+                'hash-1',
+                50,
+                undefined
+            )
             // Critical: history must NOT issue per-execution attachment queries
             expect(mockAttachmentService.getAttachmentsByTestResult).not.toHaveBeenCalled()
         })
@@ -408,7 +426,11 @@ describe('TestService', () => {
 
             await testService.getTestHistory('hash-1')
 
-            expect(mockTestRepository.getTestResultsByTestId).toHaveBeenCalledWith('hash-1', 50)
+            expect(mockTestRepository.getTestResultsByTestId).toHaveBeenCalledWith(
+                'hash-1',
+                50,
+                undefined
+            )
         })
 
         it('should handle custom limit', async () => {
@@ -416,7 +438,23 @@ describe('TestService', () => {
 
             await testService.getTestHistory('hash-1', 10)
 
-            expect(mockTestRepository.getTestResultsByTestId).toHaveBeenCalledWith('hash-1', 10)
+            expect(mockTestRepository.getTestResultsByTestId).toHaveBeenCalledWith(
+                'hash-1',
+                10,
+                undefined
+            )
+        })
+
+        it('should forward the keyset cursor for load-more', async () => {
+            mockTestRepository.getTestResultsByTestId.mockResolvedValue([])
+
+            await testService.getTestHistory('hash-1', 50, '2026-05-01T00:00:00.000Z')
+
+            expect(mockTestRepository.getTestResultsByTestId).toHaveBeenCalledWith(
+                'hash-1',
+                50,
+                '2026-05-01T00:00:00.000Z'
+            )
         })
 
         it('should handle empty history', async () => {
@@ -1698,6 +1736,104 @@ describe('TestService', () => {
             expect(mockAttachmentService.deleteAttachmentsForTestResult).toHaveBeenCalledWith(
                 executionId
             )
+        })
+    })
+
+    describe('getTestExecutionCount', () => {
+        it('should delegate to the repository', async () => {
+            mockTestRepository.getTestExecutionCount.mockResolvedValue(42)
+
+            const count = await testService.getTestExecutionCount('test-1')
+
+            expect(count).toBe(42)
+            expect(mockTestRepository.getTestExecutionCount).toHaveBeenCalledWith('test-1')
+        })
+    })
+
+    describe('cleanupData', () => {
+        it('should default to strip mode: delete attachments, keep rows, mark cleared', async () => {
+            mockTestRepository.getStrippableIdsByCount.mockResolvedValue(['a', 'b'])
+            mockTestRepository.getAttachmentsSizeForIds.mockResolvedValue({
+                total: 300,
+                perId: {a: 100, b: 200},
+            })
+            mockAttachmentService.deleteAttachmentsForTestResult.mockResolvedValue(1)
+
+            const result = await testService.cleanupData({type: 'count', value: 20})
+
+            expect(result.mode).toBe('strip')
+            expect(result.deletedExecutions).toBe(2)
+            expect(result.freedSpace).toBe(300)
+            // rows are NOT deleted in strip mode
+            expect(mockTestRepository.deleteByIds).not.toHaveBeenCalled()
+            // cleared markers recorded with per-execution freed bytes
+            expect(mockAttachmentCleanupRepository.markCleared).toHaveBeenCalledWith([
+                {testResultId: 'a', freedBytes: 100},
+                {testResultId: 'b', freedBytes: 200},
+            ])
+            expect(mockTestRepository.getStrippableIdsByCount).toHaveBeenCalledWith(20)
+        })
+
+        it('should use strip date selection that preserves the latest run', async () => {
+            mockTestRepository.getStrippableIdsOlderThan.mockResolvedValue(['old-1'])
+            mockTestRepository.getAttachmentsSizeForIds.mockResolvedValue({
+                total: 50,
+                perId: {'old-1': 50},
+            })
+
+            const result = await testService.cleanupData({
+                type: 'date',
+                value: '2026-01-01T00:00:00.000Z',
+                mode: 'strip',
+            })
+
+            expect(mockTestRepository.getStrippableIdsOlderThan).toHaveBeenCalledTimes(1)
+            expect(result.freedSpace).toBe(50)
+            expect(mockTestRepository.deleteByIds).not.toHaveBeenCalled()
+        })
+
+        it('should delete rows in full mode and not record cleanups', async () => {
+            mockTestRepository.getIdsPrunedByCount.mockResolvedValue(['a', 'b', 'c'])
+            mockTestRepository.getAttachmentsSizeForIds.mockResolvedValue({
+                total: 900,
+                perId: {a: 300, b: 300, c: 300},
+            })
+            mockTestRepository.deleteByIds.mockResolvedValue(3)
+
+            const result = await testService.cleanupData({
+                type: 'count',
+                value: 5,
+                mode: 'full',
+            })
+
+            expect(result.mode).toBe('full')
+            expect(result.deletedExecutions).toBe(3)
+            expect(result.freedSpace).toBe(900)
+            expect(mockTestRepository.deleteByIds).toHaveBeenCalledWith(['a', 'b', 'c'])
+            expect(mockAttachmentCleanupRepository.markCleared).not.toHaveBeenCalled()
+        })
+
+        it('should no-op when nothing matches', async () => {
+            mockTestRepository.getStrippableIdsByCount.mockResolvedValue([])
+
+            const result = await testService.cleanupData({type: 'count', value: 20})
+
+            expect(result.deletedExecutions).toBe(0)
+            expect(result.freedSpace).toBe(0)
+            expect(mockAttachmentService.deleteAttachmentsForTestResult).not.toHaveBeenCalled()
+            expect(mockAttachmentCleanupRepository.markCleared).not.toHaveBeenCalled()
+        })
+
+        it('should reject invalid count', async () => {
+            await expect(testService.cleanupData({type: 'count', value: 0})).rejects.toThrow(
+                'Invalid count provided'
+            )
+        })
+
+        it('should reject invalid date', async () => {
+            await expect(
+                testService.cleanupData({type: 'date', value: 'not-a-date'})
+            ).rejects.toThrow('Invalid date provided')
         })
     })
 })

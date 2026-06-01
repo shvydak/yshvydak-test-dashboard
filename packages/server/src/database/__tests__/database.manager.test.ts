@@ -938,8 +938,8 @@ describe('DatabaseManager', () => {
                 expect(totalSizeAfter).toBeLessThan(totalSizeBefore * 0.2)
 
                 // Database should be minimal size (just schema + indexes)
-                // Typical empty schema size is 32-150 KB depending on indexes
-                expect(totalSizeAfter).toBeLessThan(150 * 1024) // Less than 150 KB
+                // Typical empty schema size is 32-160 KB depending on indexes
+                expect(totalSizeAfter).toBeLessThan(160 * 1024) // Less than 160 KB
             } finally {
                 // Cleanup
                 fileDb.close()

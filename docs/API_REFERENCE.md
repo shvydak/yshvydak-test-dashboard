@@ -314,25 +314,34 @@ Clear all test data from the database.
 
 **✨ New in v1.4.0** - Selective data cleanup to manage storage.
 
-**Description**: Clean up historical test data based on date or retention count per test. This action permanently deletes database records and their associated physical attachment files.
+**Description**: Free disk space from historical test data based on date or retention count per test.
+
+Two modes (`mode` parameter):
+
+- **`strip`** (default): deletes only the physical attachments (videos, traces, screenshots) and their `attachments` rows. The `test_results` rows are **kept**, so the Test Execution Timeline and per-test history are preserved. Stripped executions are recorded in `attachment_cleanups` so the UI can show "Attachments removed to free space". The most recent execution per test is never stripped.
+- **`full`**: permanently deletes the matching `test_results` rows _and_ their attachments (the original behaviour). This shrinks the timeline.
+
+**✨ Updated in v1.8.0** — added the `strip`/`full` mode. Prior versions always behaved like `full`.
 
 **Authentication**: Required (JWT token)
 
-**Request Body (Date-based):**
+**Request Body (Date-based, strip default):**
 
 ```json
 {
     "type": "date",
-    "value": "2023-01-01T00:00:00.000Z"
+    "value": "2023-01-01T00:00:00.000Z",
+    "mode": "strip"
 }
 ```
 
-**Request Body (Count-based):**
+**Request Body (Count-based, full delete):**
 
 ```json
 {
     "type": "count",
-    "value": 20
+    "value": 20,
+    "mode": "full"
 }
 ```
 
@@ -340,6 +349,7 @@ Clear all test data from the database.
 
 - `type` (required) - Cleanup strategy: `"date"` (older than date) or `"count"` (retain latest N per test)
 - `value` (required) - ISO date string for `"date"` type, or integer number for `"count"` type
+- `mode` (optional) - `"strip"` (default, keeps history) or `"full"` (deletes executions)
 
 **Response (200 - Success):**
 
@@ -349,10 +359,13 @@ Clear all test data from the database.
     "data": {
         "deletedExecutions": 45,
         "freedSpace": 52428800,
-        "message": "Successfully deleted 45 executions"
+        "message": "Freed space from 45 executions (history kept)",
+        "mode": "strip"
     }
 }
 ```
+
+`freedSpace` is computed from the `attachments.file_size` column (an indexed aggregate), and `deletedExecutions` counts the executions stripped (or deleted in `full` mode).
 
 **Response (400 - Bad Request):**
 
@@ -378,15 +391,15 @@ Clear all test data from the database.
 }
 ```
 
-**What Gets Deleted:**
+**What Gets Removed:**
 
-1. **Database Records**: Rows in `test_results` matching the criteria
-2. **Physical Files**: Attachments for the deleted executions are removed _before_ DB deletion
+- **`strip` mode**: physical attachment files + `attachments` rows only. `test_results` rows are kept and marked in `attachment_cleanups`.
+- **`full` mode**: physical attachment files _and_ the matching `test_results` rows.
 
 **Use Cases:**
 
-- "Delete data older than 30 days"
-- "Keep only the last 20 runs for each test" to cap database size
+- "Free space but keep the timeline" → `strip` (default): remove attachments older than 30 days, or keep attachments only for the latest 20 runs per test
+- "Permanently prune history" → `full`: delete executions older than 30 days, or keep only the last 20 runs per test
 
 ## Test Execution
 
@@ -1026,6 +1039,10 @@ Get complete execution history for a specific test.
 **Query Parameters:**
 
 - `limit` - Maximum number of historical executions to return (default: 50)
+- `byTestId` - Set `true`/`1`/`yes` when `id` is already the stable `testId` (skips an extra lookup)
+- `before` - ISO `createdAt` cursor for keyset pagination. Returns the next page of executions older than this timestamp. Pass the `createdAt` of the last item from the previous page to "load more".
+
+The response `count` field is the **total** execution count for the test (excludes pending/skipped placeholders), not the page length — use it to show "N of TOTAL" and to decide whether more pages remain. Each execution may include `attachmentsClearedAt` (ISO timestamp) when its attachments were stripped to free space via `strip` cleanup.
 
 **Response:**
 

@@ -111,6 +111,9 @@ All agents are in `.claude/agents/` and use `disable-model-invocation: true` (ma
 - **Test configurations?** → `vitest.config.ts`, `packages/{package}/vitest.config.ts`
 - **Write tests?** → `packages/{package}/src/__tests__/`
 - Disk space thresholds? → `server/src/repositories/settings.repository.ts`
+- **Free space but keep history (strip attachments)?** → `server/src/services/test.service.ts` (`cleanupData` with `mode: 'strip' | 'full'`) + `server/src/repositories/attachmentCleanup.repository.ts` (`attachment_cleanups` table — INSERT-only marker, never UPDATE `test_results`)
+- Execution history pagination (keyset "load more" + honest total)? → `web/src/features/tests/hooks/useTestExecutionHistory.ts` + `getTestResultsByTestId(testId, limit, before)` / `getTestExecutionCount` in `test.repository.ts`
+- "Attachments removed to free space" UI? → `web/src/features/tests/components/testDetail/TestOverviewTab.tsx` + `history/ExecutionItem.tsx` (driven by `attachmentsClearedAt`)
 - Disk warning banner? → `web/src/features/dashboard/components/DiskSpaceWarningBanner.tsx`
 - Disk warning hook? → `web/src/features/dashboard/hooks/useDiskSpaceWarning.ts`
 - Search input (with ⌘K hint)? → `web/src/shared/components/molecules/SearchInput.tsx` (props: `showShortcutHint`, `onClear`, `resultCount`)

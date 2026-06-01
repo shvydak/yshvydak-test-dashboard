@@ -86,6 +86,7 @@ describe('TestController', () => {
             getTestById: vi.fn(),
             rerunTest: vi.fn(),
             getTestHistory: vi.fn(),
+            getTestExecutionCount: vi.fn().mockResolvedValue(0),
             getDiagnostics: vi.fn(),
             getTraceFileById: vi.fn(),
         }
@@ -771,11 +772,13 @@ describe('TestController', () => {
             mockReq.params = {id: 'result-1'}
             mockTestService.getTestById.mockResolvedValue(test)
             mockTestService.getTestHistory.mockResolvedValue(history)
+            mockTestService.getTestExecutionCount.mockResolvedValue(2)
 
             await controller.getTestHistory(mockReq as ServiceRequest, mockRes as Response)
 
             expect(mockTestService.getTestById).toHaveBeenCalledWith('result-1')
-            expect(mockTestService.getTestHistory).toHaveBeenCalledWith('test-1', 50)
+            expect(mockTestService.getTestHistory).toHaveBeenCalledWith('test-1', 50, undefined)
+            // count meta is the TOTAL execution count, not the page length
             expect(ResponseHelper.success).toHaveBeenCalledWith(mockRes, history, undefined, 2)
         })
 
@@ -784,10 +787,11 @@ describe('TestController', () => {
             mockReq.params = {id: 'test-1'}
             mockTestService.getTestById.mockResolvedValue(null)
             mockTestService.getTestHistory.mockResolvedValue(history)
+            mockTestService.getTestExecutionCount.mockResolvedValue(2)
 
             await controller.getTestHistory(mockReq as ServiceRequest, mockRes as Response)
 
-            expect(mockTestService.getTestHistory).toHaveBeenCalledWith('test-1', 50)
+            expect(mockTestService.getTestHistory).toHaveBeenCalledWith('test-1', 50, undefined)
             expect(ResponseHelper.success).toHaveBeenCalledWith(mockRes, history, undefined, 2)
         })
 
@@ -800,7 +804,21 @@ describe('TestController', () => {
 
             await controller.getTestHistory(mockReq as ServiceRequest, mockRes as Response)
 
-            expect(mockTestService.getTestHistory).toHaveBeenCalledWith('test-1', 10)
+            expect(mockTestService.getTestHistory).toHaveBeenCalledWith('test-1', 10, undefined)
+        })
+
+        it('should forward the keyset cursor when before is provided', async () => {
+            mockReq.params = {id: 'test-1'}
+            mockReq.query = {byTestId: 'true', before: '2026-05-01T00:00:00.000Z'}
+            mockTestService.getTestHistory.mockResolvedValue([])
+
+            await controller.getTestHistory(mockReq as ServiceRequest, mockRes as Response)
+
+            expect(mockTestService.getTestHistory).toHaveBeenCalledWith(
+                'test-1',
+                50,
+                '2026-05-01T00:00:00.000Z'
+            )
         })
 
         it('should skip getTestById lookup when byTestId=true', async () => {
@@ -808,11 +826,16 @@ describe('TestController', () => {
             mockReq.params = {id: 'stable-test-id'}
             mockReq.query = {byTestId: 'true'}
             mockTestService.getTestHistory.mockResolvedValue(history)
+            mockTestService.getTestExecutionCount.mockResolvedValue(2)
 
             await controller.getTestHistory(mockReq as ServiceRequest, mockRes as Response)
 
             expect(mockTestService.getTestById).not.toHaveBeenCalled()
-            expect(mockTestService.getTestHistory).toHaveBeenCalledWith('stable-test-id', 50)
+            expect(mockTestService.getTestHistory).toHaveBeenCalledWith(
+                'stable-test-id',
+                50,
+                undefined
+            )
             expect(ResponseHelper.success).toHaveBeenCalledWith(mockRes, history, undefined, 2)
         })
 
@@ -824,7 +847,11 @@ describe('TestController', () => {
             await controller.getTestHistory(mockReq as ServiceRequest, mockRes as Response)
 
             expect(mockTestService.getTestById).not.toHaveBeenCalled()
-            expect(mockTestService.getTestHistory).toHaveBeenCalledWith('stable-test-id', 50)
+            expect(mockTestService.getTestHistory).toHaveBeenCalledWith(
+                'stable-test-id',
+                50,
+                undefined
+            )
         })
 
         it('should handle errors when fetching history', async () => {

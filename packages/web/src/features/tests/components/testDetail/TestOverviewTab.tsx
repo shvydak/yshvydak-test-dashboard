@@ -1,4 +1,4 @@
-import {Paperclip, Copy} from 'lucide-react'
+import {Paperclip, Copy, Archive} from 'lucide-react'
 import {TestResult} from '@yshvydak/core'
 import {LoadingSpinner} from '@shared/components'
 import {AttachmentWithBlobURL} from '../../types/attachment.types'
@@ -27,6 +27,11 @@ export function TestOverviewTab({
     onDeleteNote,
 }: TestOverviewTabProps) {
     const hasConsoleOutput = (test.metadata?.console?.entries?.length ?? 0) > 0
+    // Attachments were purged to free disk space (the execution itself is kept).
+    const isStripped = !!test.attachmentsClearedAt
+    const strippedDate = test.attachmentsClearedAt
+        ? new Date(test.attachmentsClearedAt).toLocaleDateString()
+        : ''
 
     return (
         <div className="space-y-6 animate-fade-in">
@@ -72,13 +77,21 @@ export function TestOverviewTab({
                 {!attachmentsLoading && !attachmentsError && attachments.length === 0 && (
                     <div className="flex flex-col items-center justify-center text-center py-12 bg-gray-50 dark:bg-white/[0.03] rounded-2xl border border-gray-200/70 dark:border-white/[0.06]">
                         <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gray-100 text-xl dark:bg-white/[0.04]">
-                            <Paperclip className="h-3.5 w-3.5" />
+                            {isStripped ? (
+                                <Archive className="h-3.5 w-3.5" />
+                            ) : (
+                                <Paperclip className="h-3.5 w-3.5" />
+                            )}
                         </div>
                         <p className="mt-3 text-sm font-medium text-gray-600 dark:text-gray-300">
-                            No attachments
+                            {isStripped ? 'Attachments removed to free space' : 'No attachments'}
                         </p>
                         <p className="mt-1 text-xs text-gray-400 dark:text-gray-500">
-                            No attachments found for this test
+                            {isStripped
+                                ? `Videos, traces and screenshots were cleaned up${
+                                      strippedDate ? ` on ${strippedDate}` : ''
+                                  }. The execution is kept for history.`
+                                : 'No attachments found for this test'}
                         </p>
                     </div>
                 )}

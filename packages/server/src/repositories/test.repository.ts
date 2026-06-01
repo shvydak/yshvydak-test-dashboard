@@ -17,7 +17,16 @@ const TEST_RESULT_WITH_RELATIONS_COLUMNS = `
     a.mime_type   as attachment_mime_type,
     tn.content    as note_content,
     tn.created_at as note_created_at,
-    tn.updated_at as note_updated_at
+    tn.updated_at as note_updated_at,
+    ac.cleared_at as attachments_cleared_at
+`
+
+// Shared JOIN clause for the relations projection above. attachment_cleanups marks
+// executions whose attachments were stripped to free space (history kept).
+const TEST_RESULT_RELATIONS_JOINS = `
+    LEFT JOIN attachments a ON tr.id = a.test_result_id
+    LEFT JOIN test_notes tn ON tr.test_id = tn.test_id
+    LEFT JOIN attachment_cleanups ac ON tr.id = ac.test_result_id
 `
 
 export class TestRepository extends BaseRepository implements ITestRepository {
@@ -26,21 +35,27 @@ export class TestRepository extends BaseRepository implements ITestRepository {
     }
 
     async getTestResult(id: string): Promise<TestResult | null> {
-        const row = await this.queryOne<TestResultRow>(`SELECT * FROM test_results WHERE id = ?`, [
-            id,
-        ])
+        // Use the same relations projection as the bulk reads so a single-execution
+        // lookup also carries attachments, note and attachmentsClearedAt — otherwise
+        // the "Attachments removed to free space" indicator breaks on this path.
+        const rows = await this.queryAll<TestResultRow>(
+            `SELECT ${TEST_RESULT_WITH_RELATIONS_COLUMNS}
+             FROM test_results tr
+             ${TEST_RESULT_RELATIONS_JOINS}
+             WHERE tr.id = ?`,
+            [id]
+        )
 
-        if (!row) return null
+        if (rows.length === 0) return null
 
-        return this.mapRowToTestResult(row)
+        return this.mapRowsToTestResults(rows)[0]
     }
 
     async getTestResultsByRun(runId: string): Promise<TestResult[]> {
         const rows = await this.queryAll<TestResultRow>(
             `SELECT ${TEST_RESULT_WITH_RELATIONS_COLUMNS}
              FROM test_results tr
-             LEFT JOIN attachments a ON tr.id = a.test_result_id
-             LEFT JOIN test_notes tn ON tr.test_id = tn.test_id
+             ${TEST_RESULT_RELATIONS_JOINS}
              WHERE tr.run_id = ?
              ORDER BY tr.created_at DESC`,
             [runId]
@@ -51,25 +66,51 @@ export class TestRepository extends BaseRepository implements ITestRepository {
 
     async getTestResultsByTestId(
         testId: string,
-        limit = DEFAULT_LIMITS.TEST_HISTORY
+        limit = DEFAULT_LIMITS.TEST_HISTORY,
+        before?: string
     ): Promise<TestResult[]> {
+        // Keyset pagination: when `before` (an ISO created_at cursor) is supplied we
+        // fetch the next page of older executions. This stays O(limit) regardless of
+        // how deep the history is, leaning on idx_test_results_test_id_created_at.
+        //
         // Important: LIMIT is applied to the inner subquery so that history depth
         // is bounded by execution count, not by the row count after attachment JOIN.
+        const params: any[] = [testId]
+        let cursorClause = ''
+        if (before) {
+            cursorClause = ' AND created_at < ?'
+            params.push(before)
+        }
+        params.push(limit)
+
         const rows = await this.queryAll<TestResultRow>(
             `SELECT ${TEST_RESULT_WITH_RELATIONS_COLUMNS}
              FROM (
                 SELECT * FROM test_results
-                WHERE test_id = ? AND status NOT IN ('pending', 'skipped')
+                WHERE test_id = ? AND status NOT IN ('pending', 'skipped')${cursorClause}
                 ORDER BY created_at DESC
                 LIMIT ?
              ) tr
-             LEFT JOIN attachments a ON tr.id = a.test_result_id
-             LEFT JOIN test_notes tn ON tr.test_id = tn.test_id
+             ${TEST_RESULT_RELATIONS_JOINS}
              ORDER BY tr.created_at DESC`,
-            [testId, limit]
+            params
         )
 
         return this.mapRowsToTestResults(rows)
+    }
+
+    /**
+     * Total number of real executions (excludes discovered/skipped placeholders)
+     * for a test. Used so the history sidebar can show an honest "N of TOTAL"
+     * count instead of silently capping at the page size.
+     */
+    async getTestExecutionCount(testId: string): Promise<number> {
+        const row = await this.queryOne<{count: number}>(
+            `SELECT COUNT(*) as count FROM test_results
+             WHERE test_id = ? AND status NOT IN ('pending', 'skipped')`,
+            [testId]
+        )
+        return row?.count || 0
     }
 
     async getAllTests(filters: TestFilters): Promise<TestResult[]> {
@@ -106,8 +147,7 @@ export class TestRepository extends BaseRepository implements ITestRepository {
         const sql = `
             SELECT ${TEST_RESULT_WITH_RELATIONS_COLUMNS}
             FROM (${innerSql}) tr
-            LEFT JOIN attachments a ON tr.id = a.test_result_id
-            LEFT JOIN test_notes tn ON tr.test_id = tn.test_id
+            ${TEST_RESULT_RELATIONS_JOINS}
             ORDER BY tr.updated_at DESC
         `
 
@@ -242,6 +282,81 @@ export class TestRepository extends BaseRepository implements ITestRepository {
         return rows.map((row) => row.id)
     }
 
+    /**
+     * Executions older than `date` whose attachments can be stripped to free space.
+     * The most recent execution per test (rn = 1) is always preserved regardless of
+     * age — it's the one most likely to be opened for debugging. Already-stripped or
+     * never-had-attachments executions are skipped via the EXISTS check.
+     */
+    async getStrippableIdsOlderThan(date: Date): Promise<string[]> {
+        const sql = `
+            SELECT tr.id FROM (
+                SELECT id, created_at,
+                       ROW_NUMBER() OVER (PARTITION BY test_id ORDER BY created_at DESC) AS rn
+                FROM test_results
+            ) tr
+            WHERE tr.created_at < ?
+                AND tr.rn > 1
+                AND EXISTS (SELECT 1 FROM attachments a WHERE a.test_result_id = tr.id)
+        `
+        const rows = await this.queryAll<{id: string}>(sql, [date.toISOString()])
+        return rows.map((row) => row.id)
+    }
+
+    /**
+     * Executions beyond the latest `keepCount` per test whose attachments can be
+     * stripped. Mirrors getIdsPrunedByCount but only targets rows that still have
+     * attachments, so re-running the cleanup is a no-op once stripped.
+     */
+    async getStrippableIdsByCount(keepCount: number): Promise<string[]> {
+        const sql = `
+            SELECT tr.id FROM test_results tr
+            WHERE tr.id NOT IN (
+                SELECT id FROM (
+                    SELECT id, ROW_NUMBER() OVER (PARTITION BY test_id ORDER BY created_at DESC) as rn
+                    FROM test_results
+                ) t
+                WHERE t.rn <= ?
+            )
+            AND EXISTS (SELECT 1 FROM attachments a WHERE a.test_result_id = tr.id)
+        `
+        const rows = await this.queryAll<{id: string}>(sql, [keepCount])
+        return rows.map((row) => row.id)
+    }
+
+    /**
+     * Sums attachment file sizes for the given executions, both in total and broken
+     * down per execution. Replaces scanning the attachments directory twice — the
+     * sizes are already in the DB, so this is a single indexed aggregate.
+     */
+    async getAttachmentsSizeForIds(
+        ids: string[]
+    ): Promise<{total: number; perId: Record<string, number>}> {
+        if (ids.length === 0) return {total: 0, perId: {}}
+
+        const BATCH_SIZE = 900
+        const perId: Record<string, number> = {}
+        let total = 0
+
+        for (let i = 0; i < ids.length; i += BATCH_SIZE) {
+            const batch = ids.slice(i, i + BATCH_SIZE)
+            const placeholders = batch.map(() => '?').join(',')
+            const rows = await this.queryAll<{id: string; size: number}>(
+                `SELECT test_result_id as id, COALESCE(SUM(file_size), 0) as size
+                 FROM attachments
+                 WHERE test_result_id IN (${placeholders})
+                 GROUP BY test_result_id`,
+                batch
+            )
+            rows.forEach((row) => {
+                perId[row.id] = row.size
+                total += row.size
+            })
+        }
+
+        return {total, perId}
+    }
+
     async deleteByIds(ids: string[]): Promise<number> {
         if (ids.length === 0) return 0
 
@@ -281,6 +396,7 @@ export class TestRepository extends BaseRepository implements ITestRepository {
             timestamp: row.created_at,
             createdAt: row.created_at,
             updatedAt: row.updated_at,
+            attachmentsClearedAt: row.attachments_cleared_at || undefined,
             attachments: [],
         }
     }

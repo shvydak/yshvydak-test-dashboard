@@ -16,6 +16,10 @@ export interface TestResult {
     steps?: TestStep[]
     attachments?: Attachment[]
     note?: TestNote
+    // ISO timestamp set when this execution's attachments were stripped to free
+    // disk space (the execution itself is kept for history/timeline). Undefined
+    // means attachments were never purged.
+    attachmentsClearedAt?: string
 }
 
 export type ConsoleEntryType = 'stdout' | 'stderr'

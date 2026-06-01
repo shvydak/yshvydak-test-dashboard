@@ -8,6 +8,7 @@ import {
 import {TestResultData} from '../types/database.types'
 import {TestRepository} from '../repositories/test.repository'
 import {RunRepository} from '../repositories/run.repository'
+import {AttachmentCleanupRepository} from '../repositories/attachmentCleanup.repository'
 import {PlaywrightService} from './playwright.service'
 import {WebSocketService} from './websocket.service'
 import {AttachmentService} from './attachment.service'
@@ -25,7 +26,8 @@ export class TestService implements ITestService {
         private websocketService: WebSocketService,
         private attachmentService: AttachmentService,
         private noteService: NoteService,
-        private settingsService: SettingsService
+        private settingsService: SettingsService,
+        private attachmentCleanupRepository: AttachmentCleanupRepository
     ) {}
 
     private async getExecutionProject(): Promise<string | undefined> {
@@ -85,10 +87,19 @@ export class TestService implements ITestService {
         return test
     }
 
-    async getTestHistory(testId: string, limit: number = 50): Promise<TestResult[]> {
+    async getTestHistory(
+        testId: string,
+        limit: number = 50,
+        before?: string
+    ): Promise<TestResult[]> {
         // Attachments and notes are loaded via JOIN inside the repository, so a
         // single SQL roundtrip is sufficient — no per-execution N+1 fan-out here.
-        return this.testRepository.getTestResultsByTestId(testId, limit)
+        // `before` enables keyset pagination for long histories.
+        return this.testRepository.getTestResultsByTestId(testId, limit, before)
+    }
+
+    async getTestExecutionCount(testId: string): Promise<number> {
+        return this.testRepository.getTestExecutionCount(testId)
     }
 
     async deleteTest(testId: string): Promise<{deletedExecutions: number}> {
@@ -148,50 +159,72 @@ export class TestService implements ITestService {
         await this.attachmentService.clearAllAttachments()
     }
 
-    async cleanupData(options: {type: 'date' | 'count'; value: string | number}): Promise<{
+    async cleanupData(options: {
+        type: 'date' | 'count'
+        value: string | number
+        mode?: 'strip' | 'full'
+    }): Promise<{
         deletedExecutions: number
         freedSpace: number
         message: string
+        mode: 'strip' | 'full'
     }> {
         // Prevent cleanup if tests are running
         if (activeProcessesTracker.isAnyProcessRunning()) {
             throw new Error('Cannot clean up data while tests are running')
         }
 
-        let idsToDelete: string[] = []
+        // 'strip' (default) frees disk space but keeps test_results rows, so the
+        // timeline and history survive. 'full' removes the executions entirely.
+        const mode: 'strip' | 'full' = options.mode ?? 'strip'
 
+        // Resolve & validate the selection criterion once.
+        let date: Date | null = null
+        let count = 0
         if (options.type === 'date') {
-            const date = new Date(options.value as string)
+            date = new Date(options.value as string)
             if (isNaN(date.getTime())) {
                 throw new Error('Invalid date provided')
             }
-            idsToDelete = await this.testRepository.getIdsOlderThan(date)
         } else if (options.type === 'count') {
-            const count = parseInt(options.value as string)
+            count = parseInt(options.value as string)
             if (isNaN(count) || count < 1) {
                 throw new Error('Invalid count provided')
             }
-            idsToDelete = await this.testRepository.getIdsPrunedByCount(count)
         }
 
-        if (idsToDelete.length === 0) {
+        // Select the affected executions. In strip mode we only target rows that
+        // still have attachments (and never the latest run per test).
+        let ids: string[] = []
+        if (mode === 'strip') {
+            ids =
+                options.type === 'date'
+                    ? await this.testRepository.getStrippableIdsOlderThan(date!)
+                    : await this.testRepository.getStrippableIdsByCount(count)
+        } else {
+            ids =
+                options.type === 'date'
+                    ? await this.testRepository.getIdsOlderThan(date!)
+                    : await this.testRepository.getIdsPrunedByCount(count)
+        }
+
+        if (ids.length === 0) {
             return {
                 deletedExecutions: 0,
                 freedSpace: 0,
                 message: 'No data matched the cleanup criteria',
+                mode,
             }
         }
 
-        Logger.info(`Cleanup: found ${idsToDelete.length} executions to delete`)
+        Logger.info(`Cleanup (${mode}): found ${ids.length} executions to process`)
 
-        // 1. Delete attachments (physical files)
-        let totalFreedSpace = 0
-        const statsBefore = await this.attachmentService.getStorageStats()
+        // Measure freed space from the DB (file_size column) before deleting files —
+        // a single indexed aggregate, no double directory scan.
+        const {total: freedSpace, perId} = await this.testRepository.getAttachmentsSizeForIds(ids)
 
-        // We can't easily track per-file size deleted here without extra queries,
-        // so we'll just check stats before/after or rely on attachment service logs.
-        // For now, let's just delete.
-        for (const id of idsToDelete) {
+        // Delete physical attachment files + their DB rows for every affected execution.
+        for (const id of ids) {
             try {
                 await this.attachmentService.deleteAttachmentsForTestResult(id)
             } catch (error) {
@@ -199,20 +232,36 @@ export class TestService implements ITestService {
             }
         }
 
-        const statsAfter = await this.attachmentService.getStorageStats()
-        totalFreedSpace = statsBefore.totalSize - statsAfter.totalSize
+        if (mode === 'strip') {
+            // Keep the test_results rows; record that artifacts were purged so the UI
+            // can show "Attachments removed to free space" instead of "No attachments".
+            await this.attachmentCleanupRepository.markCleared(
+                ids.map((id) => ({testResultId: id, freedBytes: perId[id] || 0}))
+            )
 
-        // 2. Delete DB records
-        const deletedCount = await this.testRepository.deleteByIds(idsToDelete)
+            Logger.info(
+                `Cleanup complete (strip): freed ${freedSpace} bytes from ${ids.length} executions, history kept`
+            )
+
+            return {
+                deletedExecutions: ids.length,
+                freedSpace,
+                message: `Freed space from ${ids.length} executions (history kept)`,
+                mode,
+            }
+        }
+
+        const deletedCount = await this.testRepository.deleteByIds(ids)
 
         Logger.info(
-            `Cleanup complete: deleted ${deletedCount} records, freed ${totalFreedSpace} bytes`
+            `Cleanup complete (full): deleted ${deletedCount} records, freed ${freedSpace} bytes`
         )
 
         return {
             deletedExecutions: deletedCount,
-            freedSpace: totalFreedSpace,
+            freedSpace,
             message: `Successfully deleted ${deletedCount} executions`,
+            mode,
         }
     }
 

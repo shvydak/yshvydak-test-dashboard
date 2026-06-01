@@ -266,4 +266,69 @@ describe('useDashboardActions', () => {
             })
         })
     })
+
+    describe('cleanupData', () => {
+        const cleanupResponse = (mode: 'strip' | 'full') => ({
+            ok: true,
+            json: async () => ({
+                data: {deletedExecutions: 4, freedSpace: 2 * 1024 * 1024, mode},
+            }),
+        })
+
+        it('should default to strip mode and send mode in the request body', async () => {
+            vi.mocked(authFetch.authFetch).mockResolvedValue(cleanupResponse('strip') as any)
+
+            const {result} = renderHook(() => useDashboardActions(), {wrapper})
+            await result.current.cleanupData('count', 20)
+
+            const [, options] = vi.mocked(authFetch.authFetch).mock.calls[0]
+            expect(JSON.parse((options as any).body)).toEqual({
+                type: 'count',
+                value: 20,
+                mode: 'strip',
+            })
+        })
+
+        it('should show a history-preserving message in strip mode', async () => {
+            vi.mocked(authFetch.authFetch).mockResolvedValue(cleanupResponse('strip') as any)
+
+            const {result} = renderHook(() => useDashboardActions(), {wrapper})
+            await result.current.cleanupData('count', 20, 'strip')
+
+            await waitFor(() => {
+                expect(alertSpy).toHaveBeenCalledWith(
+                    '✅ Freed 2.00 MB from 4 executions. Test history kept.'
+                )
+            })
+        })
+
+        it('should send full mode and show a deletion message', async () => {
+            vi.mocked(authFetch.authFetch).mockResolvedValue(cleanupResponse('full') as any)
+
+            const {result} = renderHook(() => useDashboardActions(), {wrapper})
+            await result.current.cleanupData('date', '2026-01-01T00:00:00.000Z', 'full')
+
+            const [, options] = vi.mocked(authFetch.authFetch).mock.calls[0]
+            expect(JSON.parse((options as any).body).mode).toBe('full')
+
+            await waitFor(() => {
+                expect(alertSpy).toHaveBeenCalledWith(
+                    '✅ Cleanup complete! Deleted 4 executions and freed 2.00 MB.'
+                )
+            })
+        })
+
+        it('should invalidate storage-stats after a successful cleanup', async () => {
+            vi.mocked(authFetch.authFetch).mockResolvedValue(cleanupResponse('strip') as any)
+            const invalidateQueriesSpy = vi.spyOn(queryClient, 'invalidateQueries')
+
+            const {result} = renderHook(() => useDashboardActions(), {wrapper})
+            await result.current.cleanupData('count', 20)
+
+            await waitFor(() => {
+                expect(invalidateQueriesSpy).toHaveBeenCalledWith({queryKey: ['storage-stats']})
+                expect(mockFetchTests).toHaveBeenCalled()
+            })
+        })
+    })
 })

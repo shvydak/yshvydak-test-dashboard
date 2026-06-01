@@ -65,6 +65,17 @@ CREATE TABLE IF NOT EXISTS note_images (
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
+-- Attachment cleanups (executions whose attachments were stripped to free disk space).
+-- The test_results row is intentionally KEPT so the timeline and execution history
+-- survive; this table only records that the artifacts (video/trace/screenshot/log)
+-- were purged and when. It lets the UI distinguish "removed to free space" from
+-- "this execution never had any attachments". INSERT-only — test_results is never mutated.
+CREATE TABLE IF NOT EXISTS attachment_cleanups (
+    test_result_id TEXT PRIMARY KEY REFERENCES test_results(id) ON DELETE CASCADE,
+    cleared_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    freed_bytes INTEGER DEFAULT 0
+);
+
 -- Application settings (global dashboard configuration)
 CREATE TABLE IF NOT EXISTS app_settings (
     key TEXT PRIMARY KEY,

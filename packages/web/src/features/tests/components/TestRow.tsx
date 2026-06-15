@@ -5,7 +5,6 @@ import {StatusBadge, ActionButton, LoadingSpinner, Badge} from '@shared/componen
 import {formatDuration, formatLastRun} from '../utils'
 import {useTestsStore} from '../store/testsStore'
 import {LinkifiedText} from '@/components/atoms/LinkifiedText'
-import {truncateText} from '@/utils/linkify.util'
 import {useNoteImages} from '../hooks/useNoteImages'
 import {parseNoteContent} from '@/utils/noteContent.util'
 import {createProtectedFileURL} from '@features/authentication/utils/authFetch'
@@ -91,7 +90,7 @@ export function TestRow({test, selected, onSelect, onRerun}: TestRowProps) {
                                 return (
                                     <LinkifiedText
                                         key={`text-${index}`}
-                                        text={truncateText(part.content, 50)}
+                                        text={part.content}
                                         className="truncate"
                                     />
                                 )

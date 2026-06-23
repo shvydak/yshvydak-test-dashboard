@@ -5,17 +5,18 @@ import {Header} from '@shared/components'
 import {Dashboard} from '@features/dashboard'
 import {SettingsModal} from '@features/dashboard/components/settings'
 import {DiskSpaceWarningBanner} from '@features/dashboard/components/DiskSpaceWarningBanner'
+import {CIAutoRunPauseBanner} from '@features/dashboard/components/CIAutoRunPauseBanner'
 import {useDiskSpaceWarning} from '@features/dashboard/hooks'
+import {useCIAutoRun} from '@/hooks/useCIAutoRun'
 import {TestsList} from '@features/tests'
 import {FloatingProgressPanel} from '@features/tests/components/progress/FloatingProgressPanel'
 import {LoginPage, setGlobalLogout} from '@features/authentication'
 import {useTestsStore} from '@features/tests/store/testsStore'
+import {useProjectTabs} from '@/hooks/useProjectTabs'
 import {VERSION} from '@/config/version'
 import {useWebSocket} from './hooks/useWebSocket'
 import {config} from '@config/environment.config'
 import {verifyToken} from '@features/authentication/utils/tokenValidator'
-
-type ViewMode = 'dashboard' | 'tests'
 
 function App() {
     const location = useLocation()
@@ -28,14 +29,21 @@ function App() {
 
     const {severity, diskStats, thresholds, isDismissed, dismiss, triggerCheck} =
         useDiskSpaceWarning()
+    const {pause: ciPause, resume: resumeCIAutoRun, reload: reloadCIAutoRun} = useCIAutoRun()
 
     const handleOpenSettingsToDataRetention = useCallback(() => {
         setSettingsScrollToDataRetention(true)
         setIsSettingsOpen(true)
     }, [])
 
-    // Determine current view from URL
-    const currentView: ViewMode = location.pathname.includes('/dashboard') ? 'dashboard' : 'tests'
+    // Active project from URL query param
+    const activeProject = useMemo(() => {
+        const params = new URLSearchParams(location.search)
+        return params.get('project') || ''
+    }, [location.search])
+
+    const {visibleTabs, isLoading: tabsLoading} = useProjectTabs()
+
     const {
         fetchTests,
         isLoading: testsLoading,
@@ -248,10 +256,9 @@ function App() {
     return (
         <div className="flex flex-col h-screen bg-gray-50 dark:bg-gray-950">
             <Header
-                currentView={currentView}
-                onViewChange={() => {
-                    // View change is handled by navigation in Header component
-                }}
+                activeProject={activeProject}
+                projectTabs={visibleTabs}
+                tabsLoading={tabsLoading}
                 wsConnected={isConnected}
                 onOpenSettings={() => setIsSettingsOpen(true)}
                 user={() => {
@@ -271,9 +278,14 @@ function App() {
                 onClose={() => {
                     setIsSettingsOpen(false)
                     setSettingsScrollToDataRetention(false)
+                    void reloadCIAutoRun()
                 }}
                 scrollToDataRetention={settingsScrollToDataRetention}
             />
+
+            {ciPause?.paused && (
+                <CIAutoRunPauseBanner resumeAt={ciPause.resumeAt} onResume={resumeCIAutoRun} />
+            )}
 
             {severity && !isDismissed && diskStats && thresholds && (
                 <DiskSpaceWarningBanner
@@ -296,6 +308,7 @@ function App() {
                                 onTestRerun={handleTestRerun}
                                 selectedTest={selectedTest}
                                 loading={testsLoading}
+                                activeProject={activeProject}
                             />
                         }
                     />

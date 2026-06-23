@@ -89,4 +89,67 @@ describe('SettingsRepository', () => {
             expect(project).toBe('chromium')
         })
     })
+
+    describe('Project Tab Configs', () => {
+        it('getProjectTabConfigs returns empty array when no row exists', async () => {
+            const configs = await repository.getProjectTabConfigs()
+
+            expect(configs).toEqual([])
+        })
+
+        it('getProjectTabConfigs returns saved configs after setProjectTabConfigs', async () => {
+            const input = [
+                {project: 'Frontend', displayName: 'Frontend Tests', visible: true},
+                {project: 'Backend', displayName: 'Backend Tests', visible: false},
+            ]
+
+            await repository.setProjectTabConfigs(input)
+            const configs = await repository.getProjectTabConfigs()
+
+            expect(configs).toEqual(input)
+        })
+
+        it('setProjectTabConfigs called twice overwrites (UPSERT, not append)', async () => {
+            const first = [{project: 'Frontend', displayName: 'Frontend', visible: true}]
+            const second = [
+                {project: 'Backend', displayName: 'Backend', visible: false},
+                {project: 'Mobile', displayName: 'Mobile', visible: true},
+            ]
+
+            await repository.setProjectTabConfigs(first)
+            await repository.setProjectTabConfigs(second)
+
+            const configs = await repository.getProjectTabConfigs()
+
+            expect(configs).toHaveLength(2)
+            expect(configs).toEqual(second)
+        })
+
+        it('returns empty array and does not throw on malformed JSON in DB', async () => {
+            // Insert raw bad JSON directly to simulate corruption
+            const db = (dbManager as any).db
+            await new Promise<void>((resolve, reject) =>
+                db.run(
+                    `INSERT INTO app_settings (key, value) VALUES ('project_tab_configs', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value`,
+                    ['{not valid json['],
+                    (err: any) => (err ? reject(err) : resolve())
+                )
+            )
+
+            const configs = await repository.getProjectTabConfigs()
+
+            expect(configs).toEqual([])
+        })
+
+        it('setting tab configs does not affect global_playwright_project key', async () => {
+            await repository.setGlobalPlaywrightProject('Sanity')
+            await repository.setProjectTabConfigs([
+                {project: 'Frontend', displayName: 'FE', visible: true},
+            ])
+
+            const project = await repository.getGlobalPlaywrightProject()
+
+            expect(project).toBe('Sanity')
+        })
+    })
 })

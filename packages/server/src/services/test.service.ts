@@ -266,6 +266,14 @@ export class TestService implements ITestService {
     }
 
     async saveTestResult(testData: TestResultData): Promise<string> {
+        // If reporter didn't send project, fall back to the run's metadata.project
+        if (!(testData as any).project && testData.runId) {
+            const run = await this.runRepository.getTestRun(testData.runId)
+            if (run?.metadata?.project) {
+                ;(testData as any).project = run.metadata.project
+            }
+        }
+
         const resultId = await this.testRepository.saveTestResult(testData)
 
         // Save attachments if provided
@@ -298,8 +306,28 @@ export class TestService implements ITestService {
     async runAllTests(
         maxWorkers?: number,
         skipAutoDiscovery?: boolean,
-        _project?: string
+        requestedProject?: string,
+        source?: string
     ): Promise<any> {
+        // Block CI script triggers when paused
+        if (source === 'script') {
+            const pause = await this.settingsService.getCIAutoRunPause()
+            if (pause.paused) {
+                if (pause.resumeAt && new Date(pause.resumeAt) <= new Date()) {
+                    // Auto-resume: time has passed
+                    await this.settingsService.setCIAutoRunPause(false)
+                } else {
+                    throw new Error(
+                        JSON.stringify({
+                            code: 'CI_AUTORUN_PAUSED',
+                            message: 'CI auto-run is paused',
+                            resumeAt: pause.resumeAt,
+                        })
+                    )
+                }
+            }
+        }
+
         // Check if tests are already running
         if (activeProcessesTracker.isRunAllActive()) {
             const activeRuns = activeProcessesTracker.getActiveProcesses()
@@ -329,7 +357,10 @@ export class TestService implements ITestService {
             await this.discoverTests()
         }
 
-        const project = await this.getExecutionProject()
+        const project =
+            requestedProject !== undefined && requestedProject !== ''
+                ? requestedProject
+                : await this.getExecutionProject()
         const result = await this.playwrightService.runAllTests(maxWorkers, project)
 
         // Add process to tracker
@@ -377,7 +408,8 @@ export class TestService implements ITestService {
     }
 
     async runTestGroup(filePath: string, maxWorkers?: number, testNames?: string[]): Promise<any> {
-        const project = await this.getExecutionProject()
+        const projectFromFile = await this.testRepository.getProjectByFilePath(filePath)
+        const project = projectFromFile || (await this.getExecutionProject())
         const result = await this.playwrightService.runTestGroup(
             filePath,
             maxWorkers,
@@ -443,7 +475,7 @@ export class TestService implements ITestService {
             throw new Error('Test not found')
         }
 
-        const project = await this.getExecutionProject()
+        const project = test.project || (await this.getExecutionProject())
         const result = await this.playwrightService.rerunSingleTest(
             test.filePath,
             test.name,

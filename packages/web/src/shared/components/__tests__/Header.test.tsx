@@ -3,6 +3,7 @@ import {render, screen} from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import {MemoryRouter} from 'react-router-dom'
 import Header from '../Header'
+import {ProjectTabConfig} from '@/hooks/useProjectTabs'
 
 // Mock useTheme hook
 vi.mock('@/hooks/useTheme', () => ({
@@ -19,13 +20,16 @@ vi.mock('react-router-dom', async () => {
     }
 })
 
-describe('Header - Filter Preservation', () => {
-    const mockOnViewChange = vi.fn()
+const sampleTabs: ProjectTabConfig[] = [
+    {project: 'All_Tests', displayName: 'All Tests', visible: true},
+    {project: 'Frontend', displayName: 'Frontend', visible: true},
+]
+
+describe('Header', () => {
     const mockOnOpenSettings = vi.fn()
 
     beforeEach(() => {
         mockNavigate.mockClear()
-        mockOnViewChange.mockClear()
         mockOnOpenSettings.mockClear()
     })
 
@@ -33,216 +37,122 @@ describe('Header - Filter Preservation', () => {
         return render(<MemoryRouter initialEntries={initialEntries}>{ui}</MemoryRouter>)
     }
 
-    describe('Navigation - Dashboard', () => {
+    describe('Navigation - Dashboard icon', () => {
         it('should navigate to /dashboard when Dashboard button is clicked', async () => {
             const user = userEvent.setup()
 
             renderWithRouter(
-                <Header currentView="tests" onViewChange={mockOnViewChange} wsConnected={true} />
+                <Header activeProject="" projectTabs={sampleTabs} wsConnected={true} />
             )
 
-            const dashboardButton = screen.getByText('Dashboard')
+            const dashboardButton = screen.getByTitle('Dashboard')
             await user.click(dashboardButton)
 
             expect(mockNavigate).toHaveBeenCalledWith('/dashboard')
-            expect(mockOnViewChange).toHaveBeenCalledWith('dashboard')
         })
+    })
 
-        it('should not preserve filter when navigating to dashboard', async () => {
+    describe('Navigation - Project tabs', () => {
+        it('should navigate to /tests?project=<name> when a project tab is clicked', async () => {
             const user = userEvent.setup()
 
             renderWithRouter(
-                <Header currentView="tests" onViewChange={mockOnViewChange} wsConnected={true} />,
-                ['/?filter=failed']
+                <Header activeProject="" projectTabs={sampleTabs} wsConnected={true} />
             )
 
-            const dashboardButton = screen.getByText('Dashboard')
-            await user.click(dashboardButton)
+            const allTestsTab = screen.getAllByText('All Tests')[0]
+            await user.click(allTestsTab)
 
-            expect(mockNavigate).toHaveBeenCalledWith('/dashboard')
+            expect(mockNavigate).toHaveBeenCalledWith('/tests?project=All_Tests')
+        })
+
+        it('should preserve filter parameter when clicking a project tab', async () => {
+            const user = userEvent.setup()
+
+            renderWithRouter(
+                <Header activeProject="" projectTabs={sampleTabs} wsConnected={true} />,
+                ['/tests?filter=failed']
+            )
+
+            const frontendTab = screen.getAllByText('Frontend')[0]
+            await user.click(frontendTab)
+
+            expect(mockNavigate).toHaveBeenCalledWith('/tests?project=Frontend&filter=failed')
+        })
+
+        it('should not include filter param if none is present', async () => {
+            const user = userEvent.setup()
+
+            renderWithRouter(
+                <Header activeProject="" projectTabs={sampleTabs} wsConnected={true} />,
+                ['/tests']
+            )
+
+            const allTestsTab = screen.getAllByText('All Tests')[0]
+            await user.click(allTestsTab)
+
+            expect(mockNavigate).toHaveBeenCalledWith('/tests?project=All_Tests')
             expect(mockNavigate).not.toHaveBeenCalledWith(expect.stringContaining('filter'))
         })
     })
 
-    describe('Navigation - Tests', () => {
-        it('should navigate to /tests when Tests button is clicked', async () => {
+    describe('Navigation - Fallback Tests button', () => {
+        it('should show "Tests" button when projectTabs is empty', () => {
+            renderWithRouter(<Header activeProject="" projectTabs={[]} wsConnected={true} />)
+
+            expect(screen.getByText('Tests')).toBeInTheDocument()
+        })
+
+        it('should navigate to /tests when fallback Tests button is clicked', async () => {
             const user = userEvent.setup()
 
-            renderWithRouter(
-                <Header
-                    currentView="dashboard"
-                    onViewChange={mockOnViewChange}
-                    wsConnected={true}
-                />
-            )
+            renderWithRouter(<Header activeProject="" projectTabs={[]} wsConnected={true} />)
 
-            const testsButton = screen.getByText('Tests')
-            await user.click(testsButton)
+            await user.click(screen.getByText('Tests'))
 
             expect(mockNavigate).toHaveBeenCalledWith('/tests')
-            expect(mockOnViewChange).toHaveBeenCalledWith('tests')
-        })
-
-        it('should preserve filter parameter when navigating to tests', async () => {
-            const user = userEvent.setup()
-
-            renderWithRouter(
-                <Header
-                    currentView="dashboard"
-                    onViewChange={mockOnViewChange}
-                    wsConnected={true}
-                />,
-                ['/?filter=failed']
-            )
-
-            const testsButton = screen.getByText('Tests')
-            await user.click(testsButton)
-
-            expect(mockNavigate).toHaveBeenCalledWith('/tests?filter=failed')
-            expect(mockOnViewChange).toHaveBeenCalledWith('tests')
-        })
-
-        it('should preserve "passed" filter when navigating to tests', async () => {
-            const user = userEvent.setup()
-
-            renderWithRouter(
-                <Header
-                    currentView="dashboard"
-                    onViewChange={mockOnViewChange}
-                    wsConnected={true}
-                />,
-                ['/?filter=passed']
-            )
-
-            const testsButton = screen.getByText('Tests')
-            await user.click(testsButton)
-
-            expect(mockNavigate).toHaveBeenCalledWith('/tests?filter=passed')
-        })
-
-        it('should preserve "skipped" filter when navigating to tests', async () => {
-            const user = userEvent.setup()
-
-            renderWithRouter(
-                <Header
-                    currentView="dashboard"
-                    onViewChange={mockOnViewChange}
-                    wsConnected={true}
-                />,
-                ['/?filter=skipped']
-            )
-
-            const testsButton = screen.getByText('Tests')
-            await user.click(testsButton)
-
-            expect(mockNavigate).toHaveBeenCalledWith('/tests?filter=skipped')
-        })
-
-        it('should preserve "pending" filter when navigating to tests', async () => {
-            const user = userEvent.setup()
-
-            renderWithRouter(
-                <Header
-                    currentView="dashboard"
-                    onViewChange={mockOnViewChange}
-                    wsConnected={true}
-                />,
-                ['/?filter=pending']
-            )
-
-            const testsButton = screen.getByText('Tests')
-            await user.click(testsButton)
-
-            expect(mockNavigate).toHaveBeenCalledWith('/tests?filter=pending')
-        })
-
-        it('should navigate to /tests without filter when no filter is present', async () => {
-            const user = userEvent.setup()
-
-            renderWithRouter(
-                <Header
-                    currentView="dashboard"
-                    onViewChange={mockOnViewChange}
-                    wsConnected={true}
-                />,
-                ['/']
-            )
-
-            const testsButton = screen.getByText('Tests')
-            await user.click(testsButton)
-
-            expect(mockNavigate).toHaveBeenCalledWith('/tests')
-            expect(mockNavigate).not.toHaveBeenCalledWith(expect.stringContaining('filter'))
         })
     })
 
     describe('Visual States', () => {
-        it('should highlight Dashboard button when on dashboard view', () => {
+        it('should highlight active project tab', () => {
             renderWithRouter(
-                <Header
-                    currentView="dashboard"
-                    onViewChange={mockOnViewChange}
-                    wsConnected={true}
-                />
+                <Header activeProject="All_Tests" projectTabs={sampleTabs} wsConnected={true} />,
+                ['/tests?project=All_Tests']
             )
 
-            const dashboardButton = screen.getByText('Dashboard')
-            expect(dashboardButton).toHaveClass('bg-primary-50')
+            const activeTab = screen.getAllByText('All Tests')[0]
+            expect(activeTab).toHaveClass('bg-primary-50')
         })
 
-        it('should highlight Tests button when on tests view', () => {
+        it('should not highlight inactive project tab', () => {
             renderWithRouter(
-                <Header currentView="tests" onViewChange={mockOnViewChange} wsConnected={true} />
+                <Header activeProject="All_Tests" projectTabs={sampleTabs} wsConnected={true} />,
+                ['/tests?project=All_Tests']
             )
 
-            const testsButton = screen.getByText('Tests')
-            expect(testsButton).toHaveClass('bg-primary-50')
+            const inactiveTab = screen.getAllByText('Frontend')[0]
+            expect(inactiveTab).not.toHaveClass('bg-primary-50')
         })
 
-        it('should not highlight Dashboard button when on tests view', () => {
-            renderWithRouter(
-                <Header currentView="tests" onViewChange={mockOnViewChange} wsConnected={true} />
-            )
+        it('should highlight Tests fallback button when on tests page with no tabs', () => {
+            renderWithRouter(<Header activeProject="" projectTabs={[]} wsConnected={true} />, [
+                '/tests',
+            ])
 
-            const dashboardButton = screen.getByText('Dashboard')
-            expect(dashboardButton).not.toHaveClass('bg-primary-50')
-        })
-
-        it('should not highlight Tests button when on dashboard view', () => {
-            renderWithRouter(
-                <Header
-                    currentView="dashboard"
-                    onViewChange={mockOnViewChange}
-                    wsConnected={true}
-                />
-            )
-
-            const testsButton = screen.getByText('Tests')
-            expect(testsButton).not.toHaveClass('bg-primary-50')
+            expect(screen.getByText('Tests')).toHaveClass('bg-primary-50')
         })
     })
 
     describe('WebSocket Connection Status', () => {
         it('should show connected status when wsConnected is true', () => {
-            renderWithRouter(
-                <Header
-                    currentView="dashboard"
-                    onViewChange={mockOnViewChange}
-                    wsConnected={true}
-                />
-            )
+            renderWithRouter(<Header activeProject="" projectTabs={[]} wsConnected={true} />)
 
             expect(screen.getByText('Live')).toBeInTheDocument()
         })
 
         it('should show disconnected status when wsConnected is false', () => {
-            renderWithRouter(
-                <Header
-                    currentView="dashboard"
-                    onViewChange={mockOnViewChange}
-                    wsConnected={false}
-                />
-            )
+            renderWithRouter(<Header activeProject="" projectTabs={[]} wsConnected={false} />)
 
             expect(screen.getByText('Offline')).toBeInTheDocument()
         })
@@ -250,15 +160,10 @@ describe('Header - Filter Preservation', () => {
 
     describe('User Menu', () => {
         it('should display user email when user is provided', () => {
-            const user = {email: 'test@example.com', role: 'admin'}
+            const testUser = {email: 'test@example.com', role: 'admin'}
 
             renderWithRouter(
-                <Header
-                    currentView="dashboard"
-                    onViewChange={mockOnViewChange}
-                    wsConnected={true}
-                    user={user}
-                />
+                <Header activeProject="" projectTabs={[]} wsConnected={true} user={testUser} />
             )
 
             expect(screen.getByText('test@example.com')).toBeInTheDocument()
@@ -270,132 +175,61 @@ describe('Header - Filter Preservation', () => {
 
             renderWithRouter(
                 <Header
-                    currentView="dashboard"
-                    onViewChange={mockOnViewChange}
+                    activeProject=""
+                    projectTabs={[]}
                     wsConnected={true}
                     user={testUser}
                     onOpenSettings={mockOnOpenSettings}
                 />
             )
 
-            // Click on user menu button
-            const userButton = screen.getByText('test@example.com')
-            await user.click(userButton)
-
-            // Click on Settings option
-            const settingsButton = screen.getByText('Settings')
-            await user.click(settingsButton)
+            await user.click(screen.getByText('test@example.com'))
+            await user.click(screen.getByText('Settings'))
 
             expect(mockOnOpenSettings).toHaveBeenCalledTimes(1)
         })
     })
 
-    describe('Multiple Navigation Actions', () => {
-        it('should handle multiple navigation clicks', async () => {
+    describe('Multiple navigation clicks', () => {
+        it('should handle clicking the same tab twice', async () => {
             const user = userEvent.setup()
 
             renderWithRouter(
-                <Header
-                    currentView="dashboard"
-                    onViewChange={mockOnViewChange}
-                    wsConnected={true}
-                />,
-                ['/?filter=failed']
+                <Header activeProject="" projectTabs={sampleTabs} wsConnected={true} />,
+                ['/tests?filter=failed']
             )
 
-            const testsButton = screen.getByText('Tests')
-            await user.click(testsButton)
-            await user.click(testsButton)
+            const tab = screen.getAllByText('All Tests')[0]
+            await user.click(tab)
+            await user.click(tab)
 
             expect(mockNavigate).toHaveBeenCalledTimes(2)
-            expect(mockNavigate).toHaveBeenCalledWith('/tests?filter=failed')
-        })
-
-        it('should handle switching between views', async () => {
-            const user = userEvent.setup()
-
-            const {rerender} = renderWithRouter(
-                <Header
-                    currentView="dashboard"
-                    onViewChange={mockOnViewChange}
-                    wsConnected={true}
-                />,
-                ['/?filter=failed']
-            )
-
-            const testsButton = screen.getByText('Tests')
-            await user.click(testsButton)
-
-            expect(mockNavigate).toHaveBeenCalledWith('/tests?filter=failed')
-
-            // Switch to tests view and then back to dashboard
-            rerender(
-                <MemoryRouter initialEntries={['/?filter=failed']}>
-                    <Header
-                        currentView="tests"
-                        onViewChange={mockOnViewChange}
-                        wsConnected={true}
-                    />
-                </MemoryRouter>
-            )
-
-            const dashboardButton = screen.getByText('Dashboard')
-            await user.click(dashboardButton)
-
-            expect(mockNavigate).toHaveBeenCalledWith('/dashboard')
+            expect(mockNavigate).toHaveBeenCalledWith('/tests?project=All_Tests&filter=failed')
         })
     })
 
     describe('Edge Cases', () => {
-        it('should handle navigation with multiple query parameters', async () => {
+        it('should ignore non-filter query params when building project tab URL', async () => {
             const user = userEvent.setup()
 
             renderWithRouter(
-                <Header
-                    currentView="dashboard"
-                    onViewChange={mockOnViewChange}
-                    wsConnected={true}
-                />,
-                ['/?filter=failed&testId=test-123']
+                <Header activeProject="" projectTabs={sampleTabs} wsConnected={true} />,
+                ['/tests?filter=failed&testId=test-123']
             )
 
-            const testsButton = screen.getByText('Tests')
-            await user.click(testsButton)
+            const tab = screen.getAllByText('Frontend')[0]
+            await user.click(tab)
 
-            // Should preserve filter but navigation will handle testId separately
-            expect(mockNavigate).toHaveBeenCalledWith('/tests?filter=failed')
+            expect(mockNavigate).toHaveBeenCalledWith('/tests?project=Frontend&filter=failed')
         })
 
-        it('should handle navigation from tests back to tests', async () => {
-            const user = userEvent.setup()
-
+        it('should render all provided project tab labels', () => {
             renderWithRouter(
-                <Header currentView="tests" onViewChange={mockOnViewChange} wsConnected={true} />,
-                ['/?filter=passed']
+                <Header activeProject="" projectTabs={sampleTabs} wsConnected={true} />
             )
 
-            const testsButton = screen.getByText('Tests')
-            await user.click(testsButton)
-
-            expect(mockNavigate).toHaveBeenCalledWith('/tests?filter=passed')
-        })
-
-        it('should handle navigation with special characters in filter', async () => {
-            const user = userEvent.setup()
-
-            renderWithRouter(
-                <Header
-                    currentView="dashboard"
-                    onViewChange={mockOnViewChange}
-                    wsConnected={true}
-                />,
-                ['/?filter=failed&other=value%20with%20spaces']
-            )
-
-            const testsButton = screen.getByText('Tests')
-            await user.click(testsButton)
-
-            expect(mockNavigate).toHaveBeenCalledWith('/tests?filter=failed')
+            expect(screen.getAllByText('All Tests').length).toBeGreaterThan(0)
+            expect(screen.getAllByText('Frontend').length).toBeGreaterThan(0)
         })
     })
 })

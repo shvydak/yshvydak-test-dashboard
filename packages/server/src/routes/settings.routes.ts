@@ -14,6 +14,10 @@ export function createSettingsRoutes(container: ServiceContainer): Router {
     router.put('/test-execution/project', settingsController.updateGlobalPlaywrightProject)
     router.get('/disk-thresholds', settingsController.getDiskThresholds)
     router.put('/disk-thresholds', settingsController.updateDiskThresholds)
+    router.get('/project-tabs', settingsController.getProjectTabConfigs)
+    router.put('/project-tabs', settingsController.updateProjectTabConfigs)
+    router.get('/ci-autorun-pause', settingsController.getCIAutoRunPause)
+    router.put('/ci-autorun-pause', settingsController.updateCIAutoRunPause)
 
     return router
 }

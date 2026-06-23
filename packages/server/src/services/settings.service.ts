@@ -1,4 +1,9 @@
-import {SettingsRepository, DiskThresholds} from '../repositories/settings.repository'
+import {
+    SettingsRepository,
+    DiskThresholds,
+    ProjectTabConfig,
+    CIAutoRunPause,
+} from '../repositories/settings.repository'
 import {PlaywrightService} from './playwright.service'
 import {Logger} from '../utils/logger.util'
 
@@ -6,7 +11,7 @@ export interface TestExecutionSettings {
     project: string
 }
 
-export type {DiskThresholds}
+export type {DiskThresholds, ProjectTabConfig, CIAutoRunPause}
 
 export class SettingsService {
     constructor(
@@ -55,6 +60,44 @@ export class SettingsService {
             `Disk thresholds updated: warning=${warningPercent}%, critical=${criticalPercent}%`
         )
         return thresholds
+    }
+
+    async getProjectTabConfigs(): Promise<ProjectTabConfig[]> {
+        return this.settingsRepository.getProjectTabConfigs()
+    }
+
+    async setProjectTabConfigs(configs: ProjectTabConfig[]): Promise<ProjectTabConfig[]> {
+        const validated = configs.map((c) => ({
+            project: String(c.project || '').trim(),
+            displayName: String(c.displayName || c.project || '').trim(),
+            visible: Boolean(c.visible),
+        }))
+        await this.settingsRepository.setProjectTabConfigs(validated)
+        Logger.info(`Project tab configs updated: ${validated.length} entries`)
+        return validated
+    }
+
+    async getCIAutoRunPause(): Promise<CIAutoRunPause> {
+        return this.settingsRepository.getCIAutoRunPause()
+    }
+
+    async setCIAutoRunPause(paused: boolean, durationHours?: number): Promise<CIAutoRunPause> {
+        let resumeAt: string | null = null
+
+        if (paused && durationHours && durationHours > 0) {
+            const resume = new Date()
+            resume.setHours(resume.getHours() + durationHours)
+            resumeAt = resume.toISOString()
+        }
+
+        const pause: CIAutoRunPause = {paused, resumeAt}
+        await this.settingsRepository.setCIAutoRunPause(pause)
+        Logger.info(
+            paused
+                ? `CI auto-run paused${resumeAt ? ` until ${resumeAt}` : ' indefinitely'}`
+                : 'CI auto-run resumed'
+        )
+        return pause
     }
 
     async setGlobalPlaywrightProject(project: string): Promise<TestExecutionSettings> {

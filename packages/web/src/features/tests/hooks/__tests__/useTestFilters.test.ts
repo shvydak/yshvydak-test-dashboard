@@ -232,6 +232,119 @@ describe('useTestFilters', () => {
         })
     })
 
+    describe('projectFilter', () => {
+        const createMockTestWithProject = (
+            id: string,
+            status: 'passed' | 'failed' | 'skipped' | 'pending',
+            name: string,
+            project: string | undefined
+        ): TestResult => ({
+            id,
+            testId: `test-${id}`,
+            name,
+            filePath: `/path/to/${name}.spec.ts`,
+            status,
+            duration: 100,
+            timestamp: new Date().toISOString(),
+            runId: 'run-1',
+            project,
+        })
+
+        const mixedProjectTests: TestResult[] = [
+            createMockTestWithProject('1', 'passed', 'FE Test 1', 'Frontend'),
+            createMockTestWithProject('2', 'failed', 'FE Test 2', 'Frontend'),
+            createMockTestWithProject('3', 'passed', 'BE Test 1', 'Backend'),
+            createMockTestWithProject('4', 'skipped', 'BE Test 2', 'Backend'),
+            createMockTestWithProject('5', 'pending', 'No Project Test', undefined),
+        ]
+
+        it('should show only tests matching projectFilter', () => {
+            const {result} = renderHook(() =>
+                useTestFilters({
+                    tests: mixedProjectTests,
+                    filter: 'all',
+                    searchQuery: '',
+                    projectFilter: 'Frontend',
+                })
+            )
+
+            expect(result.current.filteredTests).toHaveLength(2)
+            expect(result.current.filteredTests.every((t) => t.project === 'Frontend')).toBe(true)
+        })
+
+        it('should apply intersection of projectFilter and status filter', () => {
+            const {result} = renderHook(() =>
+                useTestFilters({
+                    tests: mixedProjectTests,
+                    filter: 'failed',
+                    searchQuery: '',
+                    projectFilter: 'Frontend',
+                })
+            )
+
+            expect(result.current.filteredTests).toHaveLength(1)
+            expect(result.current.filteredTests[0].id).toBe('2')
+            expect(result.current.filteredTests[0].status).toBe('failed')
+            expect(result.current.filteredTests[0].project).toBe('Frontend')
+        })
+
+        it('should apply intersection of projectFilter and searchQuery', () => {
+            const {result} = renderHook(() =>
+                useTestFilters({
+                    tests: mixedProjectTests,
+                    filter: 'all',
+                    searchQuery: 'FE Test 1',
+                    projectFilter: 'Frontend',
+                })
+            )
+
+            expect(result.current.filteredTests).toHaveLength(1)
+            expect(result.current.filteredTests[0].name).toBe('FE Test 1')
+        })
+
+        it('should treat test with undefined project as empty string — does not appear for projectFilter=Frontend', () => {
+            const {result} = renderHook(() =>
+                useTestFilters({
+                    tests: mixedProjectTests,
+                    filter: 'all',
+                    searchQuery: '',
+                    projectFilter: 'Frontend',
+                })
+            )
+
+            const ids = result.current.filteredTests.map((t) => t.id)
+            expect(ids).not.toContain('5')
+        })
+
+        it('counts.all reflects only project-scoped tests when projectFilter is set', () => {
+            const {result} = renderHook(() =>
+                useTestFilters({
+                    tests: mixedProjectTests,
+                    filter: 'all',
+                    searchQuery: '',
+                    projectFilter: 'Frontend',
+                })
+            )
+
+            expect(result.current.counts.all).toBe(2)
+            expect(result.current.counts.passed).toBe(1)
+            expect(result.current.counts.failed).toBe(1)
+        })
+
+        it('should show all tests when projectFilter is not set (no regression)', () => {
+            const {result} = renderHook(() =>
+                useTestFilters({
+                    tests: mixedProjectTests,
+                    filter: 'all',
+                    searchQuery: '',
+                })
+            )
+
+            expect(result.current.filteredTests).toHaveLength(5)
+            expect(result.current.counts.all).toBe(5)
+        })
+    })
+
     describe('Edge cases', () => {
         it('should handle empty test array', () => {
             const {result} = renderHook(() =>

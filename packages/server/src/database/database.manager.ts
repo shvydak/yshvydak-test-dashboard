@@ -140,7 +140,7 @@ export class DatabaseManager {
                         reject(error)
                     } else {
                         Logger.critical('Database schema initialized successfully')
-                        resolve()
+                        this.runMigrations().then(resolve).catch(reject)
                     }
                 })
                 return
@@ -157,9 +157,55 @@ export class DatabaseManager {
                 reject(error)
             } else {
                 Logger.critical('Database schema initialized successfully')
-                resolve()
+                this.runMigrations().then(resolve).catch(reject)
             }
         })
+    }
+
+    private async runMigrations(): Promise<void> {
+        // Add project column if missing (existing DBs pre-feature)
+        try {
+            await new Promise<void>((resolve, reject) => {
+                this.db.run(
+                    `ALTER TABLE test_results ADD COLUMN project TEXT DEFAULT ''`,
+                    (err) => {
+                        if (err && !err.message.includes('duplicate column name')) {
+                            reject(err)
+                        } else {
+                            resolve()
+                        }
+                    }
+                )
+            })
+            Logger.info('Migration: project column ensured on test_results')
+        } catch (err) {
+            Logger.error('Migration: failed to add project column', err)
+            throw err
+        }
+
+        // Backfill project from test_runs.metadata for existing rows
+        try {
+            await new Promise<void>((resolve, reject) => {
+                this.db.run(
+                    `UPDATE test_results
+                     SET project = (
+                         SELECT json_extract(r.metadata, '$.project')
+                         FROM test_runs r
+                         WHERE r.id = test_results.run_id
+                           AND json_extract(r.metadata, '$.project') IS NOT NULL
+                     )
+                     WHERE (project IS NULL OR project = '')
+                       AND run_id IS NOT NULL`,
+                    (err) => {
+                        if (err) reject(err)
+                        else resolve()
+                    }
+                )
+            })
+            Logger.info('Migration: project backfill from test_runs.metadata completed')
+        } catch (err) {
+            Logger.warn('Migration: project backfill failed (non-fatal)', err)
+        }
     }
 
     // Helper method to promisify database operations
@@ -291,12 +337,14 @@ export class DatabaseManager {
     }
 
     // Test Results
-    async saveTestResult(testData: TestResultData & {timestamp?: string}): Promise<string> {
+    async saveTestResult(
+        testData: TestResultData & {timestamp?: string; project?: string}
+    ): Promise<string> {
         const timestamp = (testData as any).timestamp || new Date().toISOString()
         const insertSql = `
             INSERT INTO test_results
-            (id, run_id, test_id, name, file_path, status, duration, error_message, error_stack, retry_count, metadata, created_at, updated_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            (id, run_id, test_id, name, file_path, status, duration, error_message, error_stack, retry_count, project, metadata, created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `
         await this.run(insertSql, [
             testData.id,
@@ -309,6 +357,7 @@ export class DatabaseManager {
             testData.errorMessage || null,
             testData.errorStack || null,
             testData.retryCount || 0,
+            (testData as any).project || '',
             testData.metadata ? JSON.stringify(testData.metadata) : null,
             timestamp, // Use timestamp from reporter (already in UTC ISO format)
             timestamp, // Set both created_at and updated_at to the same value

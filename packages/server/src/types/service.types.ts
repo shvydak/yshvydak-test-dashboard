@@ -116,6 +116,7 @@ export interface DiscoveredTest {
     filePath: string
     status: 'pending'
     duration: number
+    project?: string
     metadata: string
     timestamp: string
 }
@@ -144,6 +145,7 @@ export interface ITestRepository {
     getStrippableIdsByCount(keepCount: number): Promise<string[]>
     getAttachmentsSizeForIds(ids: string[]): Promise<{total: number; perId: Record<string, number>}>
     deleteByIds(ids: string[]): Promise<number>
+    getProjectByFilePath(filePath: string): Promise<string>
 }
 
 export interface IRunRepository {

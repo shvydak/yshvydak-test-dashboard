@@ -50,11 +50,12 @@ export class TestController {
     // POST /api/tests/run-all - Run all tests
     runAllTests = async (req: ServiceRequest, res: Response): Promise<void> => {
         try {
-            const {maxWorkers, skipAutoDiscovery, project} = req.body
+            const {maxWorkers, skipAutoDiscovery, project, source} = req.body
             const result = await this.testService.runAllTests(
                 maxWorkers,
                 skipAutoDiscovery,
-                project
+                project,
+                source
             )
             ResponseHelper.success(res, result)
         } catch (error) {
@@ -81,6 +82,23 @@ export class TestController {
                         'Tests are already running',
                         409
                     )
+                    return
+                }
+            }
+
+            if (error instanceof Error && error.message.includes('CI_AUTORUN_PAUSED')) {
+                try {
+                    const errorData = JSON.parse(error.message)
+                    res.status(423).json({
+                        success: false,
+                        code: errorData.code,
+                        message: errorData.message,
+                        resumeAt: errorData.resumeAt,
+                        timestamp: new Date().toISOString(),
+                    })
+                    return
+                } catch {
+                    ResponseHelper.error(res, 'CI auto-run is paused', 'CI auto-run is paused', 423)
                     return
                 }
             }
@@ -324,6 +342,7 @@ export class TestController {
                 errorMessage: testData.errorMessage || null,
                 errorStack: testData.errorStack || null,
                 retryCount: testData.retryCount || 0,
+                project: testData.project || '',
                 metadata: testData.metadata || {},
                 timestamp: testData.timestamp || new Date().toISOString(), // Use reporter's timestamp
                 attachments: testData.attachments,

@@ -16,6 +16,7 @@ export interface TestsListProps {
     onTestRerun: (testId: string) => void
     selectedTest: TestResult | null
     loading: boolean
+    activeProject?: string
 }
 
 export default function TestsList({
@@ -23,6 +24,7 @@ export default function TestsList({
     onTestRerun,
     selectedTest,
     loading,
+    activeProject,
 }: TestsListProps) {
     const {tests, error} = useTestsStore()
     const [searchParams, setSearchParams] = useSearchParams()
@@ -50,6 +52,7 @@ export default function TestsList({
         tests,
         filter,
         searchQuery,
+        projectFilter: activeProject || undefined,
     })
 
     // Sync filter with URL parameter changes
@@ -204,6 +207,7 @@ export default function TestsList({
                     onSearchChange={handleSearchChange}
                     filteredCount={filteredTests.length}
                     searchInputRef={searchInputRef}
+                    activeProject={activeProject}
                 />
             </div>
 

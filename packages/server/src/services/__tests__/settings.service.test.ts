@@ -18,6 +18,8 @@ describe('SettingsService', () => {
         setGlobalPlaywrightProject: Mock
         getDiskThresholds: Mock
         setDiskThresholds: Mock
+        getProjectTabConfigs: Mock
+        setProjectTabConfigs: Mock
     }
     let mockPlaywrightService: {
         getAvailableProjects: Mock
@@ -34,6 +36,8 @@ describe('SettingsService', () => {
             setGlobalPlaywrightProject: vi.fn(),
             getDiskThresholds: vi.fn(),
             setDiskThresholds: vi.fn(),
+            getProjectTabConfigs: vi.fn(),
+            setProjectTabConfigs: vi.fn(),
         }
         mockPlaywrightService = {
             getAvailableProjects: vi.fn(),
@@ -118,6 +122,53 @@ describe('SettingsService', () => {
             const result = await service.setDiskThresholds(2, 1)
 
             expect(result).toEqual({warningPercent: 2, criticalPercent: 1})
+        })
+    })
+
+    describe('setProjectTabConfigs normalization', () => {
+        it('should fall back displayName to project value when displayName is absent (empty string)', async () => {
+            mockRepository.setProjectTabConfigs.mockResolvedValue(undefined)
+
+            const result = await service.setProjectTabConfigs([
+                {project: 'Frontend', displayName: '', visible: true},
+            ])
+
+            expect(result[0].displayName).toBe('Frontend')
+            expect(result[0].project).toBe('Frontend')
+        })
+
+        it('should trim whitespace from project field', async () => {
+            mockRepository.setProjectTabConfigs.mockResolvedValue(undefined)
+
+            const result = await service.setProjectTabConfigs([
+                {project: '  Backend  ', displayName: 'Backend Tests', visible: true},
+            ])
+
+            expect(result[0].project).toBe('Backend')
+        })
+
+        it('should coerce truthy non-boolean visible to boolean true', async () => {
+            mockRepository.setProjectTabConfigs.mockResolvedValue(undefined)
+
+            const input = [
+                {project: 'A', displayName: 'A', visible: 'true' as any},
+                {project: 'B', displayName: 'B', visible: 1 as any},
+            ]
+            const result = await service.setProjectTabConfigs(input)
+
+            expect(result[0].visible).toBe(true)
+            expect(typeof result[0].visible).toBe('boolean')
+            expect(result[1].visible).toBe(true)
+            expect(typeof result[1].visible).toBe('boolean')
+        })
+
+        it('should persist empty array without error', async () => {
+            mockRepository.setProjectTabConfigs.mockResolvedValue(undefined)
+
+            const result = await service.setProjectTabConfigs([])
+
+            expect(result).toEqual([])
+            expect(mockRepository.setProjectTabConfigs).toHaveBeenCalledWith([])
         })
     })
 })

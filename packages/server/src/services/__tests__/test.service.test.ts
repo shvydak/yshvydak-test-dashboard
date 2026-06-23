@@ -82,6 +82,7 @@ describe('TestService', () => {
             getStrippableIdsByCount: vi.fn(),
             getAttachmentsSizeForIds: vi.fn().mockResolvedValue({total: 0, perId: {}}),
             deleteByIds: vi.fn().mockResolvedValue(0),
+            getProjectByFilePath: vi.fn().mockResolvedValue(''),
         }
 
         mockRunRepository = {
@@ -369,6 +370,103 @@ describe('TestService', () => {
                 'exec-1',
                 []
             )
+        })
+
+        describe('project fallback from run metadata', () => {
+            it('should backfill project from run metadata when project is empty and runId present', async () => {
+                const testData: any = {
+                    id: 'exec-1',
+                    testId: 'hash-1',
+                    runId: 'run-1',
+                    name: 'Test 1',
+                    filePath: '/path/to/test.spec.ts',
+                    status: 'passed',
+                    duration: 100,
+                    metadata: '{}',
+                    timestamp: '2025-10-21T10:00:00.000Z',
+                }
+
+                mockRunRepository.getTestRun.mockResolvedValue({
+                    id: 'run-1',
+                    status: 'running',
+                    metadata: {project: 'Frontend'},
+                })
+                mockTestRepository.saveTestResult.mockResolvedValue('exec-1')
+
+                await testService.saveTestResult(testData)
+
+                expect(mockRunRepository.getTestRun).toHaveBeenCalledTimes(1)
+                expect(mockRunRepository.getTestRun).toHaveBeenCalledWith('run-1')
+                expect(testData.project).toBe('Frontend')
+                expect(mockTestRepository.saveTestResult).toHaveBeenCalledWith(testData)
+            })
+
+            it('should leave project empty when run has no metadata.project', async () => {
+                const testData: any = {
+                    id: 'exec-2',
+                    testId: 'hash-2',
+                    runId: 'run-2',
+                    name: 'Test 2',
+                    filePath: '/path/to/test.spec.ts',
+                    status: 'passed',
+                    duration: 100,
+                    metadata: '{}',
+                    timestamp: '2025-10-21T10:00:00.000Z',
+                }
+
+                mockRunRepository.getTestRun.mockResolvedValue({
+                    id: 'run-2',
+                    status: 'running',
+                    metadata: {},
+                })
+                mockTestRepository.saveTestResult.mockResolvedValue('exec-2')
+
+                await expect(testService.saveTestResult(testData)).resolves.toBe('exec-2')
+                expect(mockRunRepository.getTestRun).toHaveBeenCalledTimes(1)
+                expect(testData.project).toBeUndefined()
+            })
+
+            it('should NOT call getTestRun when project is empty and runId is absent', async () => {
+                const testData: any = {
+                    id: 'exec-3',
+                    testId: 'hash-3',
+                    runId: null,
+                    name: 'Test 3',
+                    filePath: '/path/to/test.spec.ts',
+                    status: 'passed',
+                    duration: 100,
+                    metadata: '{}',
+                    timestamp: '2025-10-21T10:00:00.000Z',
+                }
+
+                mockTestRepository.saveTestResult.mockResolvedValue('exec-3')
+
+                await testService.saveTestResult(testData)
+
+                expect(mockRunRepository.getTestRun).not.toHaveBeenCalled()
+            })
+
+            it('should NOT call getTestRun when project is already set', async () => {
+                const testData: any = {
+                    id: 'exec-4',
+                    testId: 'hash-4',
+                    runId: 'run-4',
+                    project: 'Backend',
+                    name: 'Test 4',
+                    filePath: '/path/to/test.spec.ts',
+                    status: 'passed',
+                    duration: 100,
+                    metadata: '{}',
+                    timestamp: '2025-10-21T10:00:00.000Z',
+                }
+
+                mockTestRepository.saveTestResult.mockResolvedValue('exec-4')
+
+                await testService.saveTestResult(testData)
+
+                expect(mockRunRepository.getTestRun).not.toHaveBeenCalled()
+                expect(testData.project).toBe('Backend')
+            })
         })
     })
 
@@ -692,22 +790,41 @@ describe('TestService', () => {
             )
         })
 
-        it('should use global project from settings service', async () => {
+        it('should use requestedProject when provided, ignoring global settings', async () => {
             // Arrange
             const mockProcess = createMockProcess()
             mockSettingsService.getGlobalPlaywrightProject.mockResolvedValue('Sanity')
             mockPlaywrightService.runAllTests.mockResolvedValue({
                 runId: 'run-proj-1',
-                message: 'Tests started for project: Sanity',
+                message: 'Tests started for project: Frontend',
                 timestamp: '2025-10-21T10:00:00.000Z',
                 process: mockProcess,
             })
             mockRunRepository.createTestRun.mockResolvedValue('run-proj-1')
 
             // Act
-            await testService.runAllTests(2, false, 'Ignored_By_Request')
+            await testService.runAllTests(2, false, 'Frontend')
 
-            // Assert - project resolved from global settings
+            // Assert - requestedProject takes precedence over global settings
+            expect(mockPlaywrightService.runAllTests).toHaveBeenCalledWith(2, 'Frontend')
+        })
+
+        it('should fall back to global project from settings when no requestedProject', async () => {
+            // Arrange
+            const mockProcess = createMockProcess()
+            mockSettingsService.getGlobalPlaywrightProject.mockResolvedValue('Sanity')
+            mockPlaywrightService.runAllTests.mockResolvedValue({
+                runId: 'run-proj-2',
+                message: 'Tests started for project: Sanity',
+                timestamp: '2025-10-21T10:00:00.000Z',
+                process: mockProcess,
+            })
+            mockRunRepository.createTestRun.mockResolvedValue('run-proj-2')
+
+            // Act
+            await testService.runAllTests(2)
+
+            // Assert - global settings used as fallback
             expect(mockPlaywrightService.runAllTests).toHaveBeenCalledWith(2, 'Sanity')
         })
 
@@ -902,6 +1019,30 @@ describe('TestService', () => {
             )
         })
 
+        it('should use project from getProjectByFilePath when available', async () => {
+            const mockProcess = createMockProcess()
+            const mockResult = {
+                runId: 'run-456',
+                message: 'Group tests started',
+                timestamp: '2025-10-21T10:00:00.000Z',
+                process: mockProcess,
+            }
+
+            mockTestRepository.getProjectByFilePath.mockResolvedValue('Staging')
+            mockPlaywrightService.runTestGroup.mockResolvedValue(mockResult)
+            mockRunRepository.createTestRun.mockResolvedValue('run-456')
+
+            await testService.runTestGroup('/path/to/staging.spec.ts', 2)
+
+            expect(mockPlaywrightService.runTestGroup).toHaveBeenCalledWith(
+                '/path/to/staging.spec.ts',
+                2,
+                undefined,
+                'Staging'
+            )
+            expect(mockSettingsService.getGlobalPlaywrightProject).not.toHaveBeenCalled()
+        })
+
         it('should handle group process completion', async () => {
             const mockProcess = createMockProcess()
             const mockResult = {
@@ -983,6 +1124,38 @@ describe('TestService', () => {
                     project: 'All_Tests',
                 },
             })
+        })
+
+        it('should use test.project from DB record instead of global setting', async () => {
+            const mockTest = {
+                id: 'exec-1',
+                testId: 'hash-1',
+                name: 'Test 1',
+                filePath: '/path/to/staging.spec.ts',
+                status: 'failed',
+                project: 'Staging',
+            }
+            const mockProcess = createMockProcess()
+            const mockResult = {
+                runId: 'rerun-789',
+                message: 'Test rerun started',
+                timestamp: '2025-10-21T10:00:00.000Z',
+                process: mockProcess,
+            }
+
+            mockTestRepository.getTestResult.mockResolvedValue(mockTest)
+            mockPlaywrightService.rerunSingleTest.mockResolvedValue(mockResult)
+            mockRunRepository.createTestRun.mockResolvedValue('rerun-789')
+
+            await testService.rerunTest('exec-1', 1)
+
+            expect(mockPlaywrightService.rerunSingleTest).toHaveBeenCalledWith(
+                '/path/to/staging.spec.ts',
+                'Test 1',
+                1,
+                'Staging'
+            )
+            expect(mockSettingsService.getGlobalPlaywrightProject).not.toHaveBeenCalled()
         })
 
         it('should throw error if test not found', async () => {

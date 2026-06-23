@@ -2,14 +2,21 @@
  * TypeScript interfaces for Playwright test discovery and execution
  */
 
+export interface PlaywrightTestEntry {
+    projectId?: string
+    projectName?: string
+}
+
 export interface PlaywrightSpec {
     id?: string
     title: string
     file: string
     line?: number
+    tests?: PlaywrightTestEntry[]
 }
 
 export interface PlaywrightSuite {
+    title?: string
     specs?: PlaywrightSpec[]
     suites?: PlaywrightSuite[]
 }

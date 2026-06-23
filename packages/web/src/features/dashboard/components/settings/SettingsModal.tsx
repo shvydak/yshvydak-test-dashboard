@@ -3,6 +3,7 @@ import {X} from 'lucide-react'
 import {ModalBackdrop} from '@shared/components/molecules'
 import {SettingsThemeSection} from './SettingsThemeSection'
 import {SettingsTestExecutionSection} from './SettingsTestExecutionSection'
+import {SettingsProjectTabsSection} from './SettingsProjectTabsSection'
 import {SettingsActionsSection} from './SettingsActionsSection'
 import {SettingsStorageSection} from './SettingsStorageSection'
 
@@ -50,6 +51,7 @@ export function SettingsModal({isOpen, onClose, scrollToDataRetention}: Settings
 
                     <div className="p-5 space-y-4 max-h-[calc(100vh-200px)] overflow-y-auto md:p-6 md:space-y-5">
                         <SettingsThemeSection />
+                        <SettingsProjectTabsSection />
                         <SettingsTestExecutionSection />
                         <SettingsActionsSection />
                         <div ref={dataRetentionRef}>

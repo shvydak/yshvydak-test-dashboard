@@ -29,7 +29,7 @@ interface TestsState {
     deleteTest: (testId: string) => Promise<void>
     deleteExecution: (testId: string, executionId: string) => Promise<void>
     discoverTests: () => Promise<void>
-    runAllTests: () => Promise<void>
+    runAllTests: (project?: string) => Promise<void>
     runTestsGroup: (filePath: string, testNames?: string[]) => Promise<void>
     clearError: () => void
     setTestRunning: (testId: string, isRunning: boolean) => void
@@ -263,7 +263,7 @@ export const useTestsStore = create<TestsState>()(
                 }
             },
 
-            runAllTests: async () => {
+            runAllTests: async (project?: string) => {
                 try {
                     const autoDiscover = getAutoDiscoverFromStorage()
 
@@ -302,6 +302,7 @@ export const useTestsStore = create<TestsState>()(
                     const maxWorkers = getMaxWorkersFromStorage()
                     const response = await authPost(`${API_BASE_URL}/tests/run-all`, {
                         maxWorkers,
+                        project: project || undefined,
                         skipAutoDiscovery: true, // discovery already handled above (or disabled)
                     })
 

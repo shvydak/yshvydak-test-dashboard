@@ -267,6 +267,86 @@ describe('PlaywrightService', () => {
             )
         })
 
+        it('should extract project from spec.tests[0].projectName', async () => {
+            // Arrange
+            const mockPlaywrightOutput = {
+                suites: [
+                    {
+                        specs: [
+                            {
+                                title: 'login test',
+                                file: 'auth.spec.ts',
+                                line: 1,
+                                tests: [{projectName: 'Frontend'}],
+                            },
+                        ],
+                    },
+                ],
+            }
+
+            mockSpawn.mockReturnValue(createMockProcess(JSON.stringify(mockPlaywrightOutput)))
+
+            // Act
+            const tests = await service.discoverTests()
+
+            // Assert
+            expect(tests).toHaveLength(1)
+            expect(tests[0].project).toBe('Frontend')
+        })
+
+        it('should set project to empty string when spec.tests is empty array', async () => {
+            // Arrange
+            const mockPlaywrightOutput = {
+                suites: [
+                    {
+                        specs: [
+                            {
+                                title: 'no-project test',
+                                file: 'test.spec.ts',
+                                line: 1,
+                                tests: [],
+                            },
+                        ],
+                    },
+                ],
+            }
+
+            mockSpawn.mockReturnValue(createMockProcess(JSON.stringify(mockPlaywrightOutput)))
+
+            // Act
+            const tests = await service.discoverTests()
+
+            // Assert
+            expect(tests).toHaveLength(1)
+            expect(tests[0].project).toBe('')
+        })
+
+        it('should set project to empty string when spec has no tests field', async () => {
+            // Arrange
+            const mockPlaywrightOutput = {
+                suites: [
+                    {
+                        specs: [
+                            {
+                                title: 'test without tests field',
+                                file: 'test.spec.ts',
+                                line: 1,
+                            },
+                        ],
+                    },
+                ],
+            }
+
+            mockSpawn.mockReturnValue(createMockProcess(JSON.stringify(mockPlaywrightOutput)))
+
+            // Act
+            const tests = await service.discoverTests()
+
+            // Assert
+            expect(tests).toHaveLength(1)
+            expect(tests[0].project).toBe('')
+        })
+
         it('should handle process spawn error', async () => {
             // Arrange
             const mockProcess = new EventEmitter() as ChildProcess & {

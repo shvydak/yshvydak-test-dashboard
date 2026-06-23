@@ -21,6 +21,7 @@ export interface TestsListFiltersProps {
     onExpandAll?: () => void
     onCollapseAll?: () => void
     searchInputRef?: RefObject<HTMLInputElement>
+    activeProject?: string
 }
 
 export function TestsListFilters({
@@ -31,6 +32,7 @@ export function TestsListFilters({
     onSearchChange,
     filteredCount,
     searchInputRef,
+    activeProject,
 }: TestsListFiltersProps) {
     const {runAllTests, isRunningAllTests, getIsAnyTestRunning} = useTestsStore()
     const isAnyTestRunning = getIsAnyTestRunning()
@@ -48,7 +50,7 @@ export function TestsListFilters({
                     variant="primary"
                     loading={isRunningAllTests}
                     disabled={isAnyTestRunning}
-                    onClick={runAllTests}
+                    onClick={() => runAllTests(activeProject || undefined)}
                     className="shrink-0">
                     {isRunningAllTests ? (
                         'Running...'

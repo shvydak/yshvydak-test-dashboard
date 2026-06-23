@@ -1468,4 +1468,48 @@ describe('TestRepository - Core Functionality', () => {
             }
         })
     })
+
+    describe('getProjectByFilePath()', () => {
+        it('should return project name for a known file path', async () => {
+            await repository.saveTestResult(
+                createTestResult('test-1', 'passed', {
+                    filePath: 'e2e/tests/staging/login.test.ts',
+                    project: 'Staging',
+                })
+            )
+
+            const project = await repository.getProjectByFilePath('e2e/tests/staging/login.test.ts')
+            expect(project).toBe('Staging')
+        })
+
+        it('should return empty string when file path has no matching records', async () => {
+            const project = await repository.getProjectByFilePath('e2e/tests/nonexistent.test.ts')
+            expect(project).toBe('')
+        })
+
+        it('should return empty string when matching records have empty project', async () => {
+            await repository.saveTestResult(
+                createTestResult('test-2', 'passed', {
+                    filePath: 'e2e/tests/general.test.ts',
+                    project: '',
+                })
+            )
+
+            const project = await repository.getProjectByFilePath('e2e/tests/general.test.ts')
+            expect(project).toBe('')
+        })
+
+        it('should return the most recent project when file has multiple executions', async () => {
+            const filePath = 'e2e/tests/budget.test.ts'
+            await repository.saveTestResult(
+                createTestResult('test-3', 'failed', {filePath, project: 'All_Tests'})
+            )
+            await repository.saveTestResult(
+                createTestResult('test-3', 'passed', {filePath, project: 'All_Tests'})
+            )
+
+            const project = await repository.getProjectByFilePath(filePath)
+            expect(project).toBe('All_Tests')
+        })
+    })
 })

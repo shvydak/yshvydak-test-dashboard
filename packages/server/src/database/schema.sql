@@ -27,6 +27,7 @@ CREATE TABLE IF NOT EXISTS test_results (
     error_message TEXT,
     error_stack TEXT,
     retry_count INTEGER DEFAULT 0,
+    project TEXT DEFAULT '',
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     metadata TEXT -- JSON string for test steps, annotations, etc.

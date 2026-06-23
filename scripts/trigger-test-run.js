@@ -24,9 +24,10 @@
  *
  * Exit codes:
  *   0 - Success (all tests passed or --wait not used)
- *   1 - Test execution failed or API error
- *   2 - Configuration error
- *   3 - Authentication error
+ *   1 - Test execution failed, API error, or timeout waiting for busy dashboard
+ *   2 - CI auto-run is paused (intentional skip)
+ *   3 - Configuration error
+ *   4 - Authentication error
  *
  * Example:
  *   node scripts/trigger-test-run.js --wait --max-workers 2
@@ -38,6 +39,9 @@ const path = require('path')
 // ============================================================================
 // Configuration
 // ============================================================================
+
+const BUSY_WAIT_TIMEOUT = 30 * 60 // 30 minutes max wait when dashboard is busy
+const BUSY_POLL_INTERVAL = 10000 // 10 seconds between polls
 
 const SCRIPT_DIR = __dirname
 const PROJECT_ROOT = path.resolve(SCRIPT_DIR, '..')
@@ -88,7 +92,7 @@ function exitWithError(message, code = 1) {
 
 function loadEnvConfig() {
     if (!fs.existsSync(ENV_FILE)) {
-        exitWithError(`Configuration file not found: ${ENV_FILE}`, 2)
+        exitWithError(`Configuration file not found: ${ENV_FILE}`, 3)
     }
 
     const envContent = fs.readFileSync(ENV_FILE, 'utf-8')
@@ -180,7 +184,7 @@ async function checkDashboardHealth(baseUrl) {
 
         throw new Error(`Unexpected health check response: ${JSON.stringify(data)}`)
     } catch (error) {
-        exitWithError(`Dashboard health check failed: ${error.message}`, 2)
+        exitWithError(`Dashboard health check failed: ${error.message}`, 3)
     }
 }
 
@@ -200,7 +204,7 @@ async function authenticate(baseUrl, email, password) {
 
         throw new Error('Invalid authentication response')
     } catch (error) {
-        exitWithError(`Authentication failed: ${error.message}`, 3)
+        exitWithError(`Authentication failed: ${error.message}`, 4)
     }
 }
 
@@ -228,28 +232,7 @@ async function triggerTestRun(baseUrl, token, maxWorkers) {
     } catch (error) {
         // Handle "tests already running" case
         if (error.code === 'TESTS_ALREADY_RUNNING') {
-            const errorData = error.data
-            log('Tests are already running', 'warning')
-            log(`  Current Run ID: ${errorData.currentRunId}`, 'warning')
-            log(`  Started: ${new Date(errorData.startedAt).toLocaleString()}`, 'warning')
-            log(`  Estimated time remaining: ${errorData.estimatedTimeRemaining}s`, 'warning')
-
-            if (config.silent) {
-                console.log(
-                    JSON.stringify({
-                        success: false,
-                        error: 'Tests already running',
-                        code: 'TESTS_ALREADY_RUNNING',
-                        currentRunId: errorData.currentRunId,
-                        estimatedTimeRemaining: errorData.estimatedTimeRemaining,
-                        startedAt: errorData.startedAt,
-                        message:
-                            'Tests are already running. Please wait for completion or try again later.',
-                    })
-                )
-            }
-
-            process.exit(2) // Exit with code 2 for "already running"
+            throw error // let caller handle wait-and-retry
         }
 
         if (error.code === 'CI_AUTORUN_PAUSED') {
@@ -360,6 +343,42 @@ async function getRunStats(baseUrl, token) {
     }
 }
 
+async function waitUntilFree(baseUrl, token, currentRunId) {
+    const startTime = Date.now()
+    const headers = token ? {Authorization: `Bearer ${token}`} : {}
+
+    if (!config.silent) process.stdout.write('\n')
+
+    while (true) {
+        const elapsed = Math.floor((Date.now() - startTime) / 1000)
+
+        if (elapsed >= BUSY_WAIT_TIMEOUT) {
+            if (!config.silent) process.stdout.write('\n')
+            return false
+        }
+
+        await new Promise((resolve) => setTimeout(resolve, BUSY_POLL_INTERVAL))
+
+        if (!config.silent) {
+            process.stdout.write(`\r⏳ Waiting for running tests to finish... ${elapsed}s elapsed`)
+        }
+
+        try {
+            const data = await makeRequest(`${baseUrl}/api/runs?limit=50`, {headers})
+
+            if ((data.status === 'success' || data.success) && data.data) {
+                const run = data.data.find((r) => r.id === currentRunId)
+                if (!run || run.status !== 'running') {
+                    if (!config.silent) process.stdout.write('\n')
+                    return true
+                }
+            }
+        } catch (error) {
+            log(`Error polling run status: ${error.message}`, 'warning')
+        }
+    }
+}
+
 // ============================================================================
 // Main Execution
 // ============================================================================
@@ -394,9 +413,10 @@ Examples:
 
 Exit Codes:
   0 - Success
-  1 - Test execution failed
-  2 - Configuration error
-  3 - Authentication error
+  1 - Test execution failed or timeout waiting for busy dashboard
+  2 - CI auto-run is paused (intentional skip)
+  3 - Configuration error
+  4 - Authentication error
         `)
         process.exit(0)
     }
@@ -416,13 +436,39 @@ Exit Codes:
     let token = null
     if (envConfig.enableAuth) {
         if (!envConfig.adminEmail || !envConfig.adminPassword) {
-            exitWithError('ADMIN_EMAIL and ADMIN_PASSWORD must be set when ENABLE_AUTH=true', 2)
+            exitWithError('ADMIN_EMAIL and ADMIN_PASSWORD must be set when ENABLE_AUTH=true', 3)
         }
         token = await authenticate(envConfig.baseUrl, envConfig.adminEmail, envConfig.adminPassword)
     }
 
-    // Trigger test run
-    const runData = await triggerTestRun(envConfig.baseUrl, token, config.maxWorkers)
+    // Trigger test run (with wait-and-retry if dashboard is busy)
+    let runData
+    while (true) {
+        try {
+            runData = await triggerTestRun(envConfig.baseUrl, token, config.maxWorkers)
+            break
+        } catch (error) {
+            if (error.code === 'TESTS_ALREADY_RUNNING') {
+                const errorData = error.data
+                log('Tests are already running — waiting for completion before retrying', 'warning')
+                log(`  Current Run ID: ${errorData.currentRunId}`, 'warning')
+                log(`  Started: ${new Date(errorData.startedAt).toLocaleString()}`, 'warning')
+                log(`  Estimated time remaining: ${errorData.estimatedTimeRemaining}s`, 'warning')
+
+                const free = await waitUntilFree(envConfig.baseUrl, token, errorData.currentRunId)
+                if (!free) {
+                    exitWithError(
+                        `Timed out waiting for running tests to finish (${BUSY_WAIT_TIMEOUT / 60} minutes)`,
+                        1
+                    )
+                }
+                log('Dashboard is now free. Retrying test run...', 'info')
+                // loop retries triggerTestRun
+            } else {
+                throw error
+            }
+        }
+    }
 
     // If not waiting, return immediately
     if (!config.wait) {

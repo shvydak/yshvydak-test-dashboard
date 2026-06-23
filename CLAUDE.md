@@ -42,9 +42,18 @@
 Shared config stored in SQLite (survives restarts, visible to all users):
 
 - Pattern: `SettingsRepository` + UPSERT `ON CONFLICT(key) DO UPDATE`
-- Existing keys: `global_playwright_project`, `disk_warning_threshold_percent`, `disk_critical_threshold_percent`
+- Existing keys: `global_playwright_project`, `disk_warning_threshold_percent`, `disk_critical_threshold_percent`, `project_tab_configs`, `ci_autorun_paused`, `ci_autorun_resume_at`
 - Default values: handled in repository getter when row absent (e.g. 20%/5% for disk thresholds)
 - 📂 `packages/server/src/repositories/settings.repository.ts`
+
+### 8️⃣ CI Auto-run Pause — Temporarily Block CI-Triggered Runs
+
+- Toggle in Settings → CI Trigger Script → "Pause CI auto-run"
+- Stored in `app_settings`: keys `ci_autorun_paused`, `ci_autorun_resume_at`
+- Blocks only `source: 'script'` calls (from `trigger-test-run.js`) — UI-triggered runs still work
+- HTTP 423 `CI_AUTORUN_PAUSED` → script exits with code 2
+- Header banner: `CIAutoRunPauseBanner.tsx` + hook `useCIAutoRun.ts`
+- Two `useCIAutoRun()` instances don't share state — App.tsx calls `reload()` on Settings close
 
 ### 6️⃣ Context7-MCP Integration - MANDATORY for Dependencies
 
@@ -118,6 +127,9 @@ All agents are in `.claude/agents/` and use `disable-model-invocation: true` (ma
 - Disk warning hook? → `web/src/features/dashboard/hooks/useDiskSpaceWarning.ts`
 - Search input (with ⌘K hint)? → `web/src/shared/components/molecules/SearchInput.tsx` (props: `showShortcutHint`, `onClear`, `resultCount`)
 - Search URL persistence? → `TestsList.tsx` — `?q=` param, same pattern as `?filter=`
+- Project tabs (nav config)? → `web/src/hooks/useProjectTabs.ts` + `server/src/repositories/settings.repository.ts` (`project_tab_configs` key)
+- Project tab settings UI? → `web/src/features/dashboard/components/settings/SettingsProjectTabsSection.tsx`
+- Active project filter? → `web/src/features/tests/hooks/useTestFilters.ts` (`projectFilter` — strict match, `project === projectFilter`)
 
 **Full structure:** See [docs/ai/FILE_LOCATIONS.md](docs/ai/FILE_LOCATIONS.md)
 
@@ -210,6 +222,23 @@ Before committing any change to a value, constant, default, or behavior:
 3. **Search for parallel implementations** — if a hook/utility has a standalone fallback, pages that don't use that hook (e.g. pre-auth pages) likely have their own copy
 
 Rule: if you change X, ask "where else is X assumed to be true?" before pushing.
+
+### ❌ Assuming `playwright test --list --reporter=json` groups by project
+
+Top-level suites are per-FILE, not per-project. Project name is at `spec.tests[0].projectName`.
+The text output (`[All_Tests] › file`) looks project-grouped — the JSON output is NOT.
+
+### ❌ Editing reporter source without npm link
+
+`packages/reporter/src/index.ts` changes have NO effect on test projects (`probuild-qa` etc.)
+that install the reporter from npm. Changes only apply via `npm link` or publishing a new version.
+Prefer server-side fallbacks (e.g. `test_runs.metadata.project`) over reporter changes when possible.
+
+### ❌ Trusting tsx watch without a restart
+
+`tsx watch` may not pick up server file changes if the process has been running for a long time.
+After significant changes to `packages/server/src/` — restart the server manually (`Ctrl+C` → `npm run dev`).
+Symptom: authenticated requests to new routes return 404 while unauthenticated return 401 (old auth middleware fires, new handler never registered).
 
 **More examples:** [docs/ai/ANTI_PATTERNS.md](docs/ai/ANTI_PATTERNS.md)
 

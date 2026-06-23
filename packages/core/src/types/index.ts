@@ -20,6 +20,8 @@ export interface TestResult {
     // disk space (the execution itself is kept for history/timeline). Undefined
     // means attachments were never purged.
     attachmentsClearedAt?: string
+    // Playwright project this test was run under. Empty string = discovered/unrun.
+    project?: string
 }
 
 export type ConsoleEntryType = 'stdout' | 'stderr'

@@ -1,29 +1,22 @@
 import {useState, useEffect} from 'react'
 import {useNavigate, useLocation} from 'react-router-dom'
-import {
-    Settings,
-    LogOut,
-    LayoutDashboard,
-    FlaskConical,
-    ChevronDown,
-    Menu,
-    X,
-    Moon,
-    Sun,
-} from 'lucide-react'
+import {Settings, LogOut, LayoutDashboard, ChevronDown, Menu, X, Moon, Sun} from 'lucide-react'
 import {useTheme} from '@/hooks/useTheme'
+import {ProjectTabConfig} from '@/hooks/useProjectTabs'
 
 interface HeaderProps {
-    currentView: 'dashboard' | 'tests'
-    onViewChange: (view: 'dashboard' | 'tests') => void
+    activeProject: string
+    projectTabs: ProjectTabConfig[]
+    tabsLoading?: boolean
     wsConnected?: boolean
     user?: (() => {email: string; role?: string}) | {email: string; role?: string}
     onOpenSettings?: () => void
 }
 
 export default function Header({
-    currentView,
-    onViewChange,
+    activeProject,
+    projectTabs,
+    tabsLoading = false,
     wsConnected = false,
     user,
     onOpenSettings,
@@ -71,7 +64,6 @@ export default function Header({
         window.location.reload()
     }
 
-    // Get user data (handle both function and object types)
     const getUserData = () => {
         if (typeof user === 'function') {
             return user()
@@ -79,32 +71,42 @@ export default function Header({
         return user || null
     }
 
-    // Handle view changes with URL preservation
-    const handleViewChange = (view: 'dashboard' | 'tests') => {
-        if (view === 'tests') {
-            const params = new URLSearchParams(location.search)
-            const filter = params.get('filter')
-            navigate(filter ? `/tests?filter=${filter}` : '/tests')
-        } else {
-            navigate('/dashboard')
-        }
-        onViewChange(view)
+    const handleProjectTabClick = (project: string) => {
+        const params = new URLSearchParams(location.search)
+        params.set('project', project)
+        // Preserve filter param if present
+        const filter = params.get('filter')
+        const newParams = new URLSearchParams()
+        newParams.set('project', project)
+        if (filter) newParams.set('filter', filter)
+        navigate(`/tests?${newParams.toString()}`)
         setMobileMenuOpen(false)
     }
 
-    const navItemClass = (active: boolean) =>
+    const handleDashboardClick = () => {
+        navigate('/dashboard')
+        setMobileMenuOpen(false)
+    }
+
+    const isDashboard = location.pathname.includes('/dashboard')
+
+    const tabClass = (active: boolean) =>
         `relative px-4 py-2 text-sm font-medium rounded-xl transition-all duration-200 ${
             active
                 ? 'bg-primary-50 text-primary-700 shadow-soft dark:bg-primary-500/15 dark:text-primary-300'
                 : 'text-gray-500 hover:text-gray-900 hover:bg-gray-100/80 dark:text-gray-400 dark:hover:text-white dark:hover:bg-white/[0.06]'
         }`
 
+    const dashboardIconClass = isDashboard
+        ? 'flex items-center justify-center w-9 h-9 rounded-xl bg-primary-50 text-primary-700 dark:bg-primary-500/15 dark:text-primary-300 transition-all duration-200'
+        : 'flex items-center justify-center w-9 h-9 rounded-xl text-gray-500 hover:text-gray-900 hover:bg-gray-100/80 dark:text-gray-400 dark:hover:text-white dark:hover:bg-white/[0.06] transition-all duration-200'
+
     return (
         <>
             <header className="sticky top-0 z-50 border-b border-gray-200/70 bg-white/80 backdrop-blur-xl dark:border-white/[0.06] dark:bg-gray-950/70">
                 <div className="container mx-auto px-4">
                     <div className="flex items-center justify-between h-14 md:h-16">
-                        {/* Logo and title */}
+                        {/* Logo */}
                         <div className="flex items-center space-x-2 md:space-x-4 min-w-0">
                             <div className="flex items-center space-x-3 min-w-0">
                                 <a
@@ -144,18 +146,42 @@ export default function Header({
                         </div>
 
                         {/* Desktop Navigation */}
-                        <nav className="hidden md:flex items-center gap-1 rounded-2xl bg-gray-100/60 p-1 dark:bg-white/[0.04]">
+                        <div className="hidden md:flex items-center gap-2">
+                            {/* Dashboard icon button */}
                             <button
-                                onClick={() => handleViewChange('dashboard')}
-                                className={navItemClass(currentView === 'dashboard')}>
-                                Dashboard
+                                onClick={handleDashboardClick}
+                                title="Dashboard"
+                                className={dashboardIconClass}>
+                                <LayoutDashboard className="w-4 h-4" />
                             </button>
-                            <button
-                                onClick={() => handleViewChange('tests')}
-                                className={navItemClass(currentView === 'tests')}>
-                                Tests
-                            </button>
-                        </nav>
+
+                            {/* Project tabs */}
+                            <nav className="flex items-center gap-1 rounded-2xl bg-gray-100/60 p-1 dark:bg-white/[0.04]">
+                                {tabsLoading ? (
+                                    <>
+                                        <div className="h-8 w-20 animate-pulse rounded-xl bg-gray-200/80 dark:bg-white/[0.08]" />
+                                        <div className="h-8 w-20 animate-pulse rounded-xl bg-gray-200/80 dark:bg-white/[0.08]" />
+                                    </>
+                                ) : projectTabs.length > 0 ? (
+                                    projectTabs.map((tab) => (
+                                        <button
+                                            key={tab.project}
+                                            onClick={() => handleProjectTabClick(tab.project)}
+                                            className={tabClass(
+                                                !isDashboard && activeProject === tab.project
+                                            )}>
+                                            {tab.displayName}
+                                        </button>
+                                    ))
+                                ) : (
+                                    <button
+                                        onClick={() => navigate('/tests')}
+                                        className={tabClass(!isDashboard)}>
+                                        Tests
+                                    </button>
+                                )}
+                            </nav>
+                        </div>
 
                         {/* Desktop: status + user menu */}
                         <div className="hidden md:flex items-center gap-3">
@@ -280,23 +306,47 @@ export default function Header({
                                 Navigation
                             </p>
                             <button
-                                onClick={() => handleViewChange('dashboard')}
+                                onClick={handleDashboardClick}
                                 className={`flex w-full items-center gap-3 rounded-xl px-3 py-3 text-sm font-medium transition-colors ${
-                                    currentView === 'dashboard'
+                                    isDashboard
                                         ? 'bg-primary-50 text-primary-700 dark:bg-primary-500/15 dark:text-primary-300'
                                         : 'text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-white/[0.06]'
                                 }`}>
                                 <LayoutDashboard className="h-4 w-4 flex-shrink-0" /> Dashboard
                             </button>
-                            <button
-                                onClick={() => handleViewChange('tests')}
-                                className={`flex w-full items-center gap-3 rounded-xl px-3 py-3 text-sm font-medium transition-colors ${
-                                    currentView === 'tests'
-                                        ? 'bg-primary-50 text-primary-700 dark:bg-primary-500/15 dark:text-primary-300'
-                                        : 'text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-white/[0.06]'
-                                }`}>
-                                <FlaskConical className="h-4 w-4 flex-shrink-0" /> Tests
-                            </button>
+
+                            {tabsLoading ? (
+                                <>
+                                    <div className="h-10 animate-pulse rounded-xl bg-gray-100 dark:bg-white/[0.06]" />
+                                    <div className="h-10 animate-pulse rounded-xl bg-gray-100 dark:bg-white/[0.06]" />
+                                </>
+                            ) : projectTabs.length > 0 ? (
+                                projectTabs.map((tab) => (
+                                    <button
+                                        key={tab.project}
+                                        onClick={() => handleProjectTabClick(tab.project)}
+                                        className={`flex w-full items-center gap-3 rounded-xl px-3 py-3 text-sm font-medium transition-colors ${
+                                            !isDashboard && activeProject === tab.project
+                                                ? 'bg-primary-50 text-primary-700 dark:bg-primary-500/15 dark:text-primary-300'
+                                                : 'text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-white/[0.06]'
+                                        }`}>
+                                        {tab.displayName}
+                                    </button>
+                                ))
+                            ) : (
+                                <button
+                                    onClick={() => {
+                                        navigate('/tests')
+                                        setMobileMenuOpen(false)
+                                    }}
+                                    className={`flex w-full items-center gap-3 rounded-xl px-3 py-3 text-sm font-medium transition-colors ${
+                                        !isDashboard
+                                            ? 'bg-primary-50 text-primary-700 dark:bg-primary-500/15 dark:text-primary-300'
+                                            : 'text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-white/[0.06]'
+                                    }`}>
+                                    Tests
+                                </button>
+                            )}
 
                             <div className="my-3 border-t border-gray-200/70 dark:border-white/[0.06]" />
 

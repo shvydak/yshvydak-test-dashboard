@@ -78,6 +78,78 @@ export class SettingsController {
         }
     }
 
+    getProjectTabConfigs = async (_req: ServiceRequest, res: Response): Promise<Response> => {
+        try {
+            const configs = await this.settingsService.getProjectTabConfigs()
+            return ResponseHelper.success(res, configs)
+        } catch (error) {
+            Logger.error('Error getting project tab configs', error)
+            return ResponseHelper.error(
+                res,
+                error instanceof Error ? error.message : 'Unknown error',
+                'Failed to get project tab configs',
+                500
+            )
+        }
+    }
+
+    updateProjectTabConfigs = async (req: ServiceRequest, res: Response): Promise<Response> => {
+        try {
+            const {configs} = req.body
+
+            if (!Array.isArray(configs)) {
+                return ResponseHelper.badRequest(res, 'configs must be an array')
+            }
+
+            const saved = await this.settingsService.setProjectTabConfigs(configs)
+            return ResponseHelper.success(res, saved)
+        } catch (error) {
+            Logger.error('Error updating project tab configs', error)
+            return ResponseHelper.error(
+                res,
+                error instanceof Error ? error.message : 'Unknown error',
+                'Failed to update project tab configs',
+                500
+            )
+        }
+    }
+
+    getCIAutoRunPause = async (_req: ServiceRequest, res: Response): Promise<Response> => {
+        try {
+            const pause = await this.settingsService.getCIAutoRunPause()
+            return ResponseHelper.success(res, pause)
+        } catch (error) {
+            Logger.error('Error getting CI auto-run pause', error)
+            return ResponseHelper.error(
+                res,
+                error instanceof Error ? error.message : 'Unknown error',
+                'Failed to get CI auto-run pause',
+                500
+            )
+        }
+    }
+
+    updateCIAutoRunPause = async (req: ServiceRequest, res: Response): Promise<Response> => {
+        try {
+            const {paused, durationHours} = req.body
+
+            if (typeof paused !== 'boolean') {
+                return ResponseHelper.badRequest(res, 'paused must be a boolean')
+            }
+
+            const pause = await this.settingsService.setCIAutoRunPause(paused, durationHours)
+            return ResponseHelper.success(res, pause)
+        } catch (error) {
+            Logger.error('Error updating CI auto-run pause', error)
+            return ResponseHelper.error(
+                res,
+                error instanceof Error ? error.message : 'Unknown error',
+                'Failed to update CI auto-run pause',
+                500
+            )
+        }
+    }
+
     updateGlobalPlaywrightProject = async (
         req: ServiceRequest,
         res: Response

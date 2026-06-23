@@ -34,7 +34,8 @@ export class PlaywrightService implements IPlaywrightService {
 
         const discoveredTests: DiscoveredTest[] = []
 
-        // Extract all tests from both top-level and nested structures
+        // Extract all tests from both top-level and nested structures.
+        // Project comes from spec.tests[0].projectName (Playwright JSON reporter field).
         for (const suite of playwrightData.suites || []) {
             // Handle top-level specs directly under the suite
             for (const spec of suite.specs || []) {
@@ -81,6 +82,7 @@ export class PlaywrightService implements IPlaywrightService {
             type: 'run-all',
             env: {
                 RUN_ID: runId,
+                PLAYWRIGHT_PROJECT: project || '',
             },
         })
 
@@ -128,6 +130,7 @@ export class PlaywrightService implements IPlaywrightService {
             filePath,
             env: {
                 RUN_ID: runId,
+                PLAYWRIGHT_PROJECT: project || '',
             },
         })
 
@@ -172,6 +175,7 @@ export class PlaywrightService implements IPlaywrightService {
             env: {
                 RERUN_MODE: 'true',
                 RERUN_ID: runId,
+                PLAYWRIGHT_PROJECT: project || '',
             },
         })
 
@@ -314,6 +318,8 @@ export class PlaywrightService implements IPlaywrightService {
         // Use file path directly from Playwright - it handles path resolution based on testDir
         const filePath = spec.file
         const stableTestId = this.generateStableTestId(filePath, spec.title)
+        // Project comes from the first test entry's projectName (Playwright JSON reporter)
+        const project = spec.tests?.[0]?.projectName || ''
 
         return {
             id: uuidv4(),
@@ -323,6 +329,7 @@ export class PlaywrightService implements IPlaywrightService {
             filePath: filePath,
             status: 'pending',
             duration: 0,
+            project,
             metadata: JSON.stringify({
                 line: spec.line || 0,
                 playwrightId: spec.id || null,

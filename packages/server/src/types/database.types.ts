@@ -28,6 +28,7 @@ export interface TestResultData {
     // ISO timestamp when this execution's attachments were stripped to free disk
     // space (history kept). Undefined means attachments were never purged.
     attachmentsClearedAt?: string
+    project?: string
 }
 
 export interface AttachmentData {
@@ -70,6 +71,7 @@ export interface TestResultRow {
     note_updated_at?: string
     // Joined attachment_cleanups field
     attachments_cleared_at?: string
+    project?: string
 }
 
 // Discovered test from Playwright
@@ -84,6 +86,7 @@ export interface DiscoveredTest {
     errorMessage?: undefined
     errorStack?: undefined
     retryCount: number
+    project?: string
     metadata: string
     timestamp: string
 }

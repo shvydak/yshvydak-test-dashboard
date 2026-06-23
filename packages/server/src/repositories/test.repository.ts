@@ -185,6 +185,14 @@ export class TestRepository extends BaseRepository implements ITestRepository {
         return this.dbManager.getDataStats()
     }
 
+    async getProjectByFilePath(filePath: string): Promise<string> {
+        const row = await this.queryOne<{project: string}>(
+            `SELECT project FROM test_results WHERE file_path = ? AND project != '' ORDER BY updated_at DESC LIMIT 1`,
+            [filePath]
+        )
+        return row?.project ?? ''
+    }
+
     async getFlakyTests(days: number = 30, thresholdPercent: number = 10): Promise<any[]> {
         const sql = `
             SELECT
@@ -392,6 +400,7 @@ export class TestRepository extends BaseRepository implements ITestRepository {
             errorMessage: row.error_message,
             errorStack: row.error_stack,
             retryCount: row.retry_count,
+            project: row.project || '',
             metadata: row.metadata ? JSON.parse(row.metadata) : undefined,
             timestamp: row.created_at,
             createdAt: row.created_at,

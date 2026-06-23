@@ -6,6 +6,7 @@ export interface UseTestFiltersProps {
     tests: TestResult[]
     filter: FilterKey
     searchQuery: string
+    projectFilter?: string
 }
 
 export interface UseTestFiltersReturn {
@@ -24,9 +25,14 @@ export function useTestFilters({
     tests,
     filter,
     searchQuery,
+    projectFilter,
 }: UseTestFiltersProps): UseTestFiltersReturn {
     const filteredTests = useMemo(() => {
         return tests.filter((test) => {
+            // Project filter: strict match — only tests belonging to this project
+            if (projectFilter) {
+                if ((test.project || '') !== projectFilter) return false
+            }
             // Handle 'noted' filter - show only tests with notes
             if (filter === 'noted') {
                 const hasNote = test.note && test.note.content && test.note.content.trim() !== ''
@@ -55,19 +61,25 @@ export function useTestFilters({
 
             return statusMatch && searchMatch
         })
-    }, [tests, filter, searchQuery])
+    }, [tests, filter, searchQuery, projectFilter])
+
+    const projectTests = useMemo(
+        () => (projectFilter ? tests.filter((t) => (t.project || '') === projectFilter) : tests),
+        [tests, projectFilter]
+    )
 
     const counts = useMemo(
         () => ({
-            all: tests.length,
-            passed: tests.filter((t) => t.status === 'passed').length,
-            failed: tests.filter((t) => t.status === 'failed').length,
-            skipped: tests.filter((t) => t.status === 'skipped').length,
-            pending: tests.filter((t) => t.status === 'pending').length,
-            noted: tests.filter((t) => t.note && t.note.content && t.note.content.trim() !== '')
-                .length,
+            all: projectTests.length,
+            passed: projectTests.filter((t) => t.status === 'passed').length,
+            failed: projectTests.filter((t) => t.status === 'failed').length,
+            skipped: projectTests.filter((t) => t.status === 'skipped').length,
+            pending: projectTests.filter((t) => t.status === 'pending').length,
+            noted: projectTests.filter(
+                (t) => t.note && t.note.content && t.note.content.trim() !== ''
+            ).length,
         }),
-        [tests]
+        [projectTests]
     )
 
     return {filteredTests, counts}

@@ -144,6 +144,13 @@ async function makeRequest(url, options = {}) {
                 throw error
             }
 
+            if (response.status === 423 && data.code === 'CI_AUTORUN_PAUSED') {
+                const error = new Error(data.message || 'CI auto-run is paused')
+                error.code = 'CI_AUTORUN_PAUSED'
+                error.data = data
+                throw error
+            }
+
             throw new Error(data.message || `HTTP ${response.status}: ${response.statusText}`)
         }
 
@@ -209,7 +216,7 @@ async function triggerTestRun(baseUrl, token, maxWorkers) {
         const data = await makeRequest(`${baseUrl}/api/tests/run-all`, {
             method: 'POST',
             headers,
-            body: JSON.stringify({maxWorkers}),
+            body: JSON.stringify({maxWorkers, source: 'script'}),
         })
 
         if (data.status === 'success' || data.success) {
@@ -243,6 +250,25 @@ async function triggerTestRun(baseUrl, token, maxWorkers) {
             }
 
             process.exit(2) // Exit with code 2 for "already running"
+        }
+
+        if (error.code === 'CI_AUTORUN_PAUSED') {
+            const resumeAt = error.data?.resumeAt
+            const resumeMsg = resumeAt
+                ? ` Resumes at ${new Date(resumeAt).toLocaleString()}.`
+                : ' No auto-resume scheduled.'
+            log(`CI auto-run is paused.${resumeMsg}`, 'warning')
+            if (config.silent) {
+                console.log(
+                    JSON.stringify({
+                        success: false,
+                        code: 'CI_AUTORUN_PAUSED',
+                        message: 'CI auto-run is paused',
+                        resumeAt,
+                    })
+                )
+            }
+            process.exit(2)
         }
 
         exitWithError(`Failed to trigger test run: ${error.message}`, 1)

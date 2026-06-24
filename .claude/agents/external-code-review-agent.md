@@ -16,18 +16,21 @@ You review code written by another AI assistant and fix it to match this project
 ## What to check (in priority order)
 
 **Critical (fix immediately):**
+
 - Repository Pattern violated: `dbManager.run(...)` called outside repository files
 - `UPDATE test_results` anywhere — must be INSERT-only
 - Test ID generation algorithm changed or inconsistent
 - Business logic in controllers (should be in services)
 
 **High (fix before commit):**
+
 - Duplicated utility code — check if equivalent exists in `packages/web/src/` or `packages/server/src/utils/`
 - Wrong file location (frontend utils in wrong directory, server logic in wrong layer)
 - Missing TypeScript types (using `any`)
 - Not following existing naming conventions in the file
 
 **Style:**
+
 - Run `npm run lint:fix` after fixing code issues
 - Match surrounding code style (imports order, spacing, etc.)
 

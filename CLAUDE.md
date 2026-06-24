@@ -74,23 +74,23 @@ Use for post-development checks (`disable-model-invocation: true` — manual onl
 
 ## Quick File Finder
 
-| Need to... | File |
-|---|---|
-| Generate testId | `packages/reporter/src/index.ts` |
-| WebSocket URL | `packages/web/src/features/authentication/utils/webSocketUrl.ts` |
-| Apply theme | `packages/web/src/hooks/useTheme.ts` |
-| Rerun button | `packages/web/src/features/tests/components/history/ExecutionSidebar.tsx` |
-| Copy attachments | `packages/server/src/storage/attachmentManager.ts` |
-| Flaky detection | `packages/server/src/repositories/test.repository.ts` |
-| DB schema | `packages/server/src/database/schema.sql` |
-| Disk thresholds | `packages/server/src/repositories/settings.repository.ts` |
-| Strip attachments | `packages/server/src/services/test.service.ts` (`cleanupData mode: 'strip'|'full'`) |
-| Execution history pagination | `packages/web/src/features/tests/hooks/useTestExecutionHistory.ts` |
-| Disk warning banner | `packages/web/src/features/dashboard/components/DiskSpaceWarningBanner.tsx` |
-| Search input | `packages/web/src/shared/components/molecules/SearchInput.tsx` |
-| Project tabs config | `packages/web/src/hooks/useProjectTabs.ts` |
-| Active project filter | `packages/web/src/features/tests/hooks/useTestFilters.ts` |
-| CI auto-run pause | `packages/web/src/hooks/useCIAutoRun.ts` + `packages/web/src/features/dashboard/components/CIAutoRunPauseBanner.tsx` |
+| Need to...                   | File                                                                                                                 |
+| ---------------------------- | -------------------------------------------------------------------------------------------------------------------- | -------- |
+| Generate testId              | `packages/reporter/src/index.ts`                                                                                     |
+| WebSocket URL                | `packages/web/src/features/authentication/utils/webSocketUrl.ts`                                                     |
+| Apply theme                  | `packages/web/src/hooks/useTheme.ts`                                                                                 |
+| Rerun button                 | `packages/web/src/features/tests/components/history/ExecutionSidebar.tsx`                                            |
+| Copy attachments             | `packages/server/src/storage/attachmentManager.ts`                                                                   |
+| Flaky detection              | `packages/server/src/repositories/test.repository.ts`                                                                |
+| DB schema                    | `packages/server/src/database/schema.sql`                                                                            |
+| Disk thresholds              | `packages/server/src/repositories/settings.repository.ts`                                                            |
+| Strip attachments            | `packages/server/src/services/test.service.ts` (`cleanupData mode: 'strip'                                           | 'full'`) |
+| Execution history pagination | `packages/web/src/features/tests/hooks/useTestExecutionHistory.ts`                                                   |
+| Disk warning banner          | `packages/web/src/features/dashboard/components/DiskSpaceWarningBanner.tsx`                                          |
+| Search input                 | `packages/web/src/shared/components/molecules/SearchInput.tsx`                                                       |
+| Project tabs config          | `packages/web/src/hooks/useProjectTabs.ts`                                                                           |
+| Active project filter        | `packages/web/src/features/tests/hooks/useTestFilters.ts`                                                            |
+| CI auto-run pause            | `packages/web/src/hooks/useCIAutoRun.ts` + `packages/web/src/features/dashboard/components/CIAutoRunPauseBanner.tsx` |
 
 **Full structure:** [docs/ai/FILE_LOCATIONS.md](docs/ai/FILE_LOCATIONS.md)
 
@@ -112,7 +112,7 @@ Full catalog with examples: [docs/ai/ANTI_PATTERNS.md](docs/ai/ANTI_PATTERNS.md)
 - **Reporter changes without npm link** — changes to `packages/reporter/src/` only apply via `npm link` or publish
 
 **Frontend rules (auto-loaded for packages/web/**):** [.claude/rules/frontend.md](.claude/rules/frontend.md)  
-**Testing rules (auto-loaded for test files):** [.claude/rules/testing.md](.claude/rules/testing.md)
+**Testing rules (auto-loaded for test files):\*\* [.claude/rules/testing.md](.claude/rules/testing.md)
 
 ---
 

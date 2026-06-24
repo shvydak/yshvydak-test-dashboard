@@ -26,7 +26,11 @@ Instead: `npx vitest run path/to/test.ts` — if it fails without touching that 
 ## useSearchParams in web tests requires MemoryRouter
 
 ```tsx
-render(<MemoryRouter initialEntries={['/?project=All_Tests']}><Component /></MemoryRouter>)
+render(
+    <MemoryRouter initialEntries={['/?project=All_Tests']}>
+        <Component />
+    </MemoryRouter>
+)
 ```
 
 Vary `initialEntries` URL per test case to test different URL states.

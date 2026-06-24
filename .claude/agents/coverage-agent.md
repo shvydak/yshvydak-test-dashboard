@@ -13,12 +13,14 @@ Run `npm run test:coverage` and analyze results against targets:
 - Web (`packages/web`): **70%+** — hooks and utilities
 
 For each package below target:
+
 1. Find uncovered lines (look for lines marked `0x` in coverage report)
 2. Identify which functions/branches are untested
 3. Prioritize: public service methods > repository methods > utilities > UI components
 4. Offer to write the missing tests
 
 When writing tests:
+
 - Follow existing test patterns in the same package
 - Use in-memory DB for server integration tests: `new DatabaseManager(':memory:')`
 - Use `MemoryRouter` for React components that use `useSearchParams`

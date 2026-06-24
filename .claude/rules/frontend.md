@@ -3,7 +3,7 @@ paths:
     - 'packages/web/**'
 ---
 
-# Frontend Rules (auto-loaded for packages/web/**)
+# Frontend Rules (auto-loaded for packages/web/\*\*)
 
 ## Layout
 

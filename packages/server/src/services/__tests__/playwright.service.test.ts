@@ -42,6 +42,7 @@ vi.mock('../../config/environment.config', () => ({
         },
         server: {
             environment: 'test',
+            port: 3000,
         },
     },
 }))

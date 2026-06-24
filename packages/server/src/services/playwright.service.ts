@@ -179,6 +179,16 @@ export class PlaywrightService implements IPlaywrightService {
             },
         })
 
+        // Log reporter stdout/stderr to diagnose sendTestResult failures
+        process.stdout?.on('data', (data: Buffer) => {
+            const text = data.toString().trim()
+            if (text) Logger.debug(`[REPORTER-OUT] ${text}`)
+        })
+        process.stderr?.on('data', (data: Buffer) => {
+            const text = data.toString().trim()
+            if (text) Logger.debug(`[REPORTER-ERR] ${text}`)
+        })
+
         return {
             runId,
             message: 'Test rerun started',

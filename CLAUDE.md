@@ -1,383 +1,169 @@
 # CLAUDE.md - Quick Reference for AI Development
 
-## 🔥 CRITICAL CONTEXT (30 seconds to read)
+## CRITICAL: Architecture Invariants
 
-### 1️⃣ Repository Pattern - NEVER Bypass
+### Repository Pattern — NEVER Bypass
 
 **Controller → Service → Repository → Database**
 
-- ❌ NEVER: Direct DatabaseManager calls
-- ✅ ALWAYS: Full chain for all operations
-- 📂 Location: `packages/server/src/{controllers,services,repositories}/`
-- 💾 Engine: **SQLite** (`sqlite3` + WAL). Not MongoDB. Schema: `packages/server/src/database/schema.sql`
+- NEVER direct `DatabaseManager` calls from services or controllers
+- ALWAYS use full chain for all operations
+- Location: `packages/server/src/{controllers,services,repositories}/`
+- Engine: **SQLite** (`sqlite3` + WAL). Schema: `packages/server/src/database/schema.sql`
 
-### 2️⃣ Reporter Integration - npm package + npm link
+### Test ID Generation — IDENTICAL algorithm
 
-**Production:** `playwright-dashboard-reporter` from node_modules
-**Development:** `npm link` for live changes
+Discovery & Reporter use the SAME hash function — ensures historical tracking works.  
+`packages/reporter/src/index.ts` + `packages/server/src/services/playwright.service.ts`
 
-- NO config changes to `playwright.config.ts`
-- CLI injection: `--reporter=playwright-dashboard-reporter`
+### INSERT-only Strategy — NEVER UPDATE test results
 
-### 3️⃣ Test ID Generation - IDENTICAL algorithm
+Each execution = NEW database row. `testId` same, `id` changes → history.  
+`database.manager.ts` → `saveTestResult()`
 
-- Discovery & Reporter use SAME hash function
-- Ensures historical tracking works
-- 📂 `packages/reporter/src/index.ts` + `playwright.service.ts`
+### app_settings Table — Server-Side Key-Value Config
 
-### 4️⃣ INSERT-only Strategy - NEVER UPDATE
+Pattern: `SettingsRepository` + UPSERT `ON CONFLICT(key) DO UPDATE`
 
-- Each execution = NEW database row (unique ID)
-- `testId` same, `id` changes → history
-- 📂 `database.manager.ts` - `saveTestResult()`
+Existing keys: `global_playwright_project`, `disk_warning_threshold_percent`, `disk_critical_threshold_percent`, `project_tab_configs`, `ci_autorun_paused`, `ci_autorun_resume_at`
 
-### 5️⃣ Attachment Storage - Permanent
+Default values handled in repository getter when row absent.  
+`packages/server/src/repositories/settings.repository.ts`
 
-- Files copied from Playwright temp → permanent storage
-- Survives Playwright's cleanup cycles
-- 📂 `packages/server/src/storage/attachmentManager.ts`
+### Reporter Integration
 
-### 7️⃣ app_settings Table - Server-Side Key-Value Config
+Production: `playwright-dashboard-reporter` from node_modules  
+Development: `npm link` for live changes — NO config changes to `playwright.config.ts`  
+CLI injection: `--reporter=playwright-dashboard-reporter`
 
-Shared config stored in SQLite (survives restarts, visible to all users):
+### Attachment Storage — Permanent
 
-- Pattern: `SettingsRepository` + UPSERT `ON CONFLICT(key) DO UPDATE`
-- Existing keys: `global_playwright_project`, `disk_warning_threshold_percent`, `disk_critical_threshold_percent`, `project_tab_configs`, `ci_autorun_paused`, `ci_autorun_resume_at`
-- Default values: handled in repository getter when row absent (e.g. 20%/5% for disk thresholds)
-- 📂 `packages/server/src/repositories/settings.repository.ts`
+Files copied from Playwright temp → permanent storage. Survives Playwright's cleanup cycles.  
+`packages/server/src/storage/attachmentManager.ts`
 
-### 8️⃣ CI Auto-run Pause — Temporarily Block CI-Triggered Runs
+### Context7-MCP — MANDATORY before dependency changes
 
-- Toggle in Settings → CI Trigger Script → "Pause CI auto-run"
-- Stored in `app_settings`: keys `ci_autorun_paused`, `ci_autorun_resume_at`
-- Blocks only `source: 'script'` calls (from `trigger-test-run.js`) — UI-triggered runs still work
-- HTTP 423 `CI_AUTORUN_PAUSED` → script exits with code 2
-- Header banner: `CIAutoRunPauseBanner.tsx` + hook `useCIAutoRun.ts`
-- Two `useCIAutoRun()` instances don't share state — App.tsx calls `reload()` on Settings close
-
-### 6️⃣ Context7-MCP Integration - MANDATORY for Dependencies
-
-**ALWAYS check before dependency changes:**
-
-- Adding package? → Check Context7-MCP first
-- Updating package? → Check Context7-MCP first
-- Changing config? → Check Context7-MCP first
-
-**Why:** Latest docs, breaking changes, best practices
-**Priority:** P0 (Critical) - blocks development until checked
-📂 Rule: `docs/ai/DOCUMENTATION_UPDATE_RULES.md`
+ALWAYS check before adding/updating packages or changing config. Gets latest docs + breaking changes.
 
 ---
 
-## 🗺️ Concept Flow (30 seconds)
+## Concept Flow
 
 ```
 User clicks "Run All"
-  ↓ PlaywrightService
-  ↓ CLI: --reporter=playwright-dashboard-reporter
-  ↓ Reporter: testId (hash) + execution id (UUID)
-  ↓ POST /api/tests → Controller → Service → Repository
-  ↓ INSERT (never UPDATE)
-  ↓ AttachmentService → Permanent storage
-  ↓ WebSocket → Frontend updates
-  ↓ TestDetailModal → ExecutionSidebar (history)
+  → PlaywrightService → CLI: --reporter=playwright-dashboard-reporter
+  → Reporter: testId (hash) + execution id (UUID)
+  → POST /api/tests → Controller → Service → Repository → INSERT
+  → AttachmentService → Permanent storage
+  → WebSocket → Frontend → TestDetailModal → ExecutionSidebar (history)
 ```
-
-**Key Dependencies:**
-
-- Historical Tracking ← Test ID Generation
-- Attachment Storage ← INSERT-only Strategy
-- Rerun from Modal ← WebSocket + History
-- Dashboard Redesign ← History + Flaky Detection
 
 ---
 
-## 🤖 Specialized Agents
+## Specialized Agents
 
-Use these agents for post-development checks:
+Use for post-development checks (`disable-model-invocation: true` — manual only):
 
-- **`validation-agent`** — format, type-check, lint, tests, build. Run after any code changes.
-- **`coverage-agent`** — test coverage vs targets (Reporter 90%, Server 80%, Web 70%).
-- **`documentation-agent`** — detects docs needing updates after API/feature changes.
-- **`architecture-review-agent`** — Repository Pattern, dead code, duplicated logic.
-- **`external-code-review-agent`** — review & fix code written by other AI assistants.
-
-All agents are in `.claude/agents/` and use `disable-model-invocation: true` (manual-only).
+- `validation-agent` — format, type-check, lint, tests, build
+- `coverage-agent` — coverage vs targets (Reporter 90%, Server 80%, Web 70%)
+- `documentation-agent` — detects docs needing updates after API/feature changes
+- `architecture-review-agent` — Repository Pattern, dead code, duplicated logic
+- `external-code-review-agent` — review & fix code from other AI assistants
 
 ---
 
-## 📂 Quick File Finder
+## Quick File Finder
 
-**Need to:**
+| Need to...                   | File                                                                                                                 |
+| ---------------------------- | -------------------------------------------------------------------------------------------------------------------- | -------- |
+| Generate testId              | `packages/reporter/src/index.ts`                                                                                     |
+| WebSocket URL                | `packages/web/src/features/authentication/utils/webSocketUrl.ts`                                                     |
+| Apply theme                  | `packages/web/src/hooks/useTheme.ts`                                                                                 |
+| Rerun button                 | `packages/web/src/features/tests/components/history/ExecutionSidebar.tsx`                                            |
+| Copy attachments             | `packages/server/src/storage/attachmentManager.ts`                                                                   |
+| Flaky detection              | `packages/server/src/repositories/test.repository.ts`                                                                |
+| DB schema                    | `packages/server/src/database/schema.sql`                                                                            |
+| Disk thresholds              | `packages/server/src/repositories/settings.repository.ts`                                                            |
+| Strip attachments            | `packages/server/src/services/test.service.ts` (`cleanupData mode: 'strip'                                           | 'full'`) |
+| Execution history pagination | `packages/web/src/features/tests/hooks/useTestExecutionHistory.ts`                                                   |
+| Disk warning banner          | `packages/web/src/features/dashboard/components/DiskSpaceWarningBanner.tsx`                                          |
+| Search input                 | `packages/web/src/shared/components/molecules/SearchInput.tsx`                                                       |
+| Project tabs config          | `packages/web/src/hooks/useProjectTabs.ts`                                                                           |
+| Active project filter        | `packages/web/src/features/tests/hooks/useTestFilters.ts`                                                            |
+| CI auto-run pause            | `packages/web/src/hooks/useCIAutoRun.ts` + `packages/web/src/features/dashboard/components/CIAutoRunPauseBanner.tsx` |
 
-- Generate testId? → `packages/reporter/src/index.ts`
-- WebSocket URL? → `web/src/features/authentication/utils/webSocketUrl.ts`
-- Apply theme? → `web/src/hooks/useTheme.ts`
-- Rerun button? → `web/src/features/tests/components/history/ExecutionSidebar.tsx`
-- Copy attachments? → `server/src/storage/attachmentManager.ts`
-- Flaky detection? → `server/src/repositories/test.repository.ts`
-- DB schema? → `server/src/database/schema.sql` (copied to `dist/database/` by `copy-files` script — rebuild after edits)
-- **Test configurations?** → `vitest.config.ts`, `packages/{package}/vitest.config.ts`
-- **Write tests?** → `packages/{package}/src/__tests__/`
-- Disk space thresholds? → `server/src/repositories/settings.repository.ts`
-- **Free space but keep history (strip attachments)?** → `server/src/services/test.service.ts` (`cleanupData` with `mode: 'strip' | 'full'`) + `server/src/repositories/attachmentCleanup.repository.ts` (`attachment_cleanups` table — INSERT-only marker, never UPDATE `test_results`)
-- Execution history pagination (keyset "load more" + honest total)? → `web/src/features/tests/hooks/useTestExecutionHistory.ts` + `getTestResultsByTestId(testId, limit, before)` / `getTestExecutionCount` in `test.repository.ts`
-- "Attachments removed to free space" UI? → `web/src/features/tests/components/testDetail/TestOverviewTab.tsx` + `history/ExecutionItem.tsx` (driven by `attachmentsClearedAt`)
-- Disk warning banner? → `web/src/features/dashboard/components/DiskSpaceWarningBanner.tsx`
-- Disk warning hook? → `web/src/features/dashboard/hooks/useDiskSpaceWarning.ts`
-- Search input (with ⌘K hint)? → `web/src/shared/components/molecules/SearchInput.tsx` (props: `showShortcutHint`, `onClear`, `resultCount`)
-- Search URL persistence? → `TestsList.tsx` — `?q=` param, same pattern as `?filter=`
-- Project tabs (nav config)? → `web/src/hooks/useProjectTabs.ts` + `server/src/repositories/settings.repository.ts` (`project_tab_configs` key)
-- Project tab settings UI? → `web/src/features/dashboard/components/settings/SettingsProjectTabsSection.tsx`
-- Active project filter? → `web/src/features/tests/hooks/useTestFilters.ts` (`projectFilter` — strict match, `project === projectFilter`)
-
-**Full structure:** See [docs/ai/FILE_LOCATIONS.md](docs/ai/FILE_LOCATIONS.md)
+**Full structure:** [docs/ai/FILE_LOCATIONS.md](docs/ai/FILE_LOCATIONS.md)
 
 ---
 
-## ⚠️ Top 3 Anti-Patterns
+## Top Anti-Patterns
 
-### ❌ Bypassing Repository
+Full catalog with examples: [docs/ai/ANTI_PATTERNS.md](docs/ai/ANTI_PATTERNS.md)
 
-```typescript
-// WRONG
-await this.dbManager.run("UPDATE...")
-// RIGHT
-await this.testService.updateTest(...)
-```
+**Critical (memorize these):**
 
-### ❌ UPDATE-ing Test Results
+- **Bypass Repository** — never `this.dbManager.run(...)` directly, always go through Repository
+- **UPDATE test results** — WRONG: `UPDATE test_results SET ...` / RIGHT: `INSERT INTO test_results ...`
+- **Duplicate utilities** — always check for existing utils before writing (WebSocket URL, auth, etc.)
+- **N+1 over JOIN** — `getTestResultsByTestId` already JOINs attachments+notes; don't loop & re-query
+- **Change without checking dependents** — grep all usages + tests before changing any value/default
+- **tsx watch stale** — restart server after significant changes; symptom: new routes return 404 while old return 401
+- **Playwright JSON not project-grouped** — top-level suites are per-FILE; project name at `spec.tests[0].projectName`
+- **Reporter changes without npm link** — changes to `packages/reporter/src/` only apply via `npm link` or publish
 
-```typescript
-// WRONG
-UPDATE test_results SET status = ? WHERE testId = ?
-// RIGHT
-INSERT INTO test_results (id, testId, ...) VALUES (?, ?, ...)
-```
-
-### ❌ Duplicating Utilities
-
-```typescript
-// WRONG - 45 lines of WebSocket URL logic
-const token = localStorage.getItem('_auth')...
-// RIGHT
-import {getWebSocketUrl} from '@/utils/webSocketUrl'
-const url = getWebSocketUrl(true)
-```
-
-### ❌ Misaligned settings form rows
-
-```tsx
-// WRONG - different label lengths push inputs to different horizontal positions
-<div className="flex items-center justify-between gap-3">
-  <span>Delete runs older than</span>
-  <div className="flex items-center gap-2"><input/>...</div>
-</div>
-
-// RIGHT - grid keeps inputs/buttons in the same column regardless of label width
-<div className="grid grid-cols-[1fr_auto_auto_auto] items-center gap-x-2">
-  <span>Delete runs older than</span>
-  <input className={compactInputClass} />
-  <span className="w-14 text-right text-xs">days</span>
-  <Button size="sm">Delete</Button>
-  ...
-</div>
-```
-
-### Search is a feature set
-
-When implementing search, always propose the full set together: ESC (clear/blur) + X button + result count + URL persistence (`?q=`). `SearchInput` supports all of these via props: `onClear`, `resultCount`, `showShortcutHint`. Without them, search UX is incomplete.
-
-### ❌ Programmatic focus without forwardRef
-
-`Input` and `SearchInput` are wrapped with `forwardRef` — ref is forwarded down to `<input>`. If programmatic focus is needed on any input component, verify the entire chain (`atom → molecule → feature`) uses `forwardRef`, otherwise `ref.current` will be `null`.
-
-### URL param as a one-shot cross-page signal
-
-For "navigate + side effect" (e.g. go to `/tests` and focus the search input) — add `?signal=1` to the URL, handle it in `useEffect`, and immediately remove it via `setSearchParams(params, {replace: true})`. Cleaner than global state or custom DOM events.
-
-```tsx
-// In App.tsx: navigate(`/tests?focusSearch=1`)
-// In TestsList.tsx:
-useEffect(() => {
-    if (searchParams.get('focusSearch') === '1') {
-        searchInputRef.current?.focus()
-        const params = new URLSearchParams(searchParams)
-        params.delete('focusSearch')
-        setSearchParams(params, {replace: true})
-    }
-}, [searchParams, setSearchParams])
-```
-
-### ❌ Service-layer N+1 over JOIN repositories
-
-Repository methods like `getTestResultsByTestId` already JOIN attachments + notes. Don't loop the result and call `getAttachmentsByTestResult(execution.id)` per row — that turns 1 query into N+1.
-
-### ❌ Changing behavior without checking all dependents
-
-Before committing any change to a value, constant, default, or behavior:
-
-1. **Grep for all usages** of the old value across source files — other components may duplicate the same logic independently
-2. **Grep tests** for assertions on the old value — tests that don't set state explicitly will rely on the old behavior and fail silently until the pre-push hook catches them
-3. **Search for parallel implementations** — if a hook/utility has a standalone fallback, pages that don't use that hook (e.g. pre-auth pages) likely have their own copy
-
-Rule: if you change X, ask "where else is X assumed to be true?" before pushing.
-
-### ❌ Assuming `playwright test --list --reporter=json` groups by project
-
-Top-level suites are per-FILE, not per-project. Project name is at `spec.tests[0].projectName`.
-The text output (`[All_Tests] › file`) looks project-grouped — the JSON output is NOT.
-
-### ❌ Editing reporter source without npm link
-
-`packages/reporter/src/index.ts` changes have NO effect on test projects (`probuild-qa` etc.)
-that install the reporter from npm. Changes only apply via `npm link` or publishing a new version.
-Prefer server-side fallbacks (e.g. `test_runs.metadata.project`) over reporter changes when possible.
-
-### ❌ Trusting tsx watch without a restart
-
-`tsx watch` may not pick up server file changes if the process has been running for a long time.
-After significant changes to `packages/server/src/` — restart the server manually (`Ctrl+C` → `npm run dev`).
-Symptom: authenticated requests to new routes return 404 while unauthenticated return 401 (old auth middleware fires, new handler never registered).
-
-**More examples:** [docs/ai/ANTI_PATTERNS.md](docs/ai/ANTI_PATTERNS.md)
+**Frontend rules (auto-loaded for packages/web/**):** [.claude/rules/frontend.md](.claude/rules/frontend.md)  
+**Testing rules (auto-loaded for test files):\*\* [.claude/rules/testing.md](.claude/rules/testing.md)
 
 ---
 
-## 🎯 Architecture Quick Ref
+## Architecture Quick Ref
 
-**Backend:** Controller → Service → Repository → Database
-**Frontend:** Feature-Based (`features/{name}/`) + Atomic Design
-**Reporter:** npm package, CLI injection, environment config
-**Database:** INSERT-only, testId grouping, execution history
-**Attachments:** Permanent storage, unique filenames, isolated dirs
+- Backend: Controller → Service → Repository → Database
+- Frontend: Feature-Based (`features/{name}/`) + Atomic Design (`shared/components/atoms/`, `molecules/`)
+- Reporter: npm package, CLI injection, environment config
+- Database: INSERT-only, testId grouping, execution history
+- Attachments: Permanent storage, unique filenames, isolated dirs
 
-**Deep dive:** [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
+Deep dive: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
 
 ---
 
-## 🚀 Essential Commands
+## Essential Commands
 
 ```bash
-npm run dev              # All packages
-npm run type-check       # TypeScript validation
-npm run lint:fix         # Auto-fix issues
-npm test                 # Run all tests
-npm run test:watch       # Test watch mode
-npm run test:coverage    # Coverage report
-```
-
-**Package-specific:**
-
-```bash
-cd packages/server && npm run dev     # API only
-cd packages/web && npm run dev        # React only
-cd packages/reporter && npm run dev   # Reporter watch
+npm run dev          # All packages (web + server + reporter watch)
+npm run type-check   # TypeScript validation
+npm run lint:fix     # ESLint auto-fix
+npm test             # All tests (73 files, 2111+ tests)
+npm run test:watch   # Watch mode
+npm run test:coverage
+npm run build
+npm run format       # Prettier
 ```
 
 ---
 
-## 🧪 Testing
+## Development Checklist (after any code change)
 
-**Framework:** Vitest 3.2
-**Status:** 70 test files, 2,034 tests passing
+1. `npm run format`
+2. `npm run type-check`
+3. `npm run lint:fix`
+4. `npm test`
+5. `npm run build`
 
-**Commands:**
+Run via `@validation-agent` or manually.
 
-- `npm test` - Run all tests
-- `npm run test:watch` - Watch mode
-- `npm run test:coverage` - Coverage report
-
-**Coverage Targets:**
-
-- Reporter: 90%+ (Test ID generation - CRITICAL)
-- Server: 80%+ (Services, repositories)
-- Web: 70%+ (Hooks, utilities)
-
-**Full guide:** [TESTING.md](docs/TESTING.md)
+**NEVER commit unless explicitly asked.**  
+**NEVER skip hooks (`--no-verify`).**
 
 ---
 
-## 🔧 Development Rules
+## CI Auto-run Pause
 
-### ✅ DO:
-
-**Use Context7-MCP** for all dependency documentation lookup
-
-- ALWAYS check before adding/updating dependencies
-- ALWAYS check before changing dependency configuration
-- Get latest docs, breaking changes, migration guides
-
-**Complete Development Checklist:**
-
-1. `npm run format` - Format all files with Prettier
-2. `npm run type-check` - Verify TypeScript
-3. `npm run lint:fix` - Fix linting issues
-4. `npm test` - Run all tests (update affected tests if needed)
-5. `npm run build` - Ensure build succeeds
-
-**Run via:** `@validation-agent`
-**Manual fallback:** Run commands above directly
-
-**IMPORTANT**: These checks are MANDATORY after ANY code changes!
-
-### ❌ DON'T:
-
-**Git Operations:**
-
-- ❌ NEVER commit changes unless explicitly requested by the user
+Blocks `source: 'script'` calls (from `trigger-test-run.js`) — UI-triggered runs still work.  
+HTTP 423 `CI_AUTORUN_PAUSED` → script exits code 2 (no retry). HTTP 409 `TESTS_ALREADY_RUNNING` → polls 10s, max 30 min.  
+Two `useCIAutoRun()` instances don't share state — `App.tsx` calls `reload()` on Settings close.
 
 ---
 
-## 📖 Navigation (by role)
-
-### First-Time Setup
-
-- [QUICKSTART.md](docs/QUICKSTART.md) - 5 minutes
-- [REPORTER.md](docs/REPORTER.md) - npm package setup
-- [CONFIGURATION.md](docs/CONFIGURATION.md) - 5 core variables
-
-### Development
-
-- [ARCHITECTURE.md](docs/ARCHITECTURE.md) - Complete system design
-- [DEVELOPMENT.md](docs/DEVELOPMENT.md) - Best practices
-- [API_REFERENCE.md](docs/API_REFERENCE.md) - Endpoints
-- [TESTING.md](docs/TESTING.md) - Testing infrastructure & guide
-
-### AI Deep Dive
-
-- [docs/ai/ANTI_PATTERNS.md](docs/ai/ANTI_PATTERNS.md) - Code examples
-- [docs/ai/FILE_LOCATIONS.md](docs/ai/FILE_LOCATIONS.md) - Full structure
-- [docs/ai/CONCEPT_MAP.md](docs/ai/CONCEPT_MAP.md) - Detailed flows
-
-### Features
-
-- [HISTORICAL_TRACKING](docs/features/HISTORICAL_TEST_TRACKING.md)
-- [ATTACHMENTS](docs/features/PER_RUN_ATTACHMENTS.md)
-- [AUTHENTICATION](docs/features/AUTHENTICATION_IMPLEMENTATION.md)
-
----
-
-## 📦 Version Info
-
-**Dashboard:** 1.0.0 (October 2025)
-**Reporter:** `playwright-dashboard-reporter@1.0.2`
-**Dev workflow:** `npm link` for local changes
-**Breaking changes:** v0.x → v1.0.0 (npm package migration)
-
----
-
-## 🐛 Quick Fixes
-
-| Issue                                    | Solution                                                                                                                                                                                      |
-| ---------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Reporter not found                       | `npm install --save-dev playwright-dashboard-reporter`                                                                                                                                        |
-| WebSocket fails                          | Check JWT token in URL params                                                                                                                                                                 |
-| Tests not appearing                      | Verify `PLAYWRIGHT_PROJECT_DIR` in `.env`                                                                                                                                                     |
-| Attachments 404                          | Check permanent storage permissions                                                                                                                                                           |
-| Attachment URLs differ between endpoints | JOIN-based mappers in `TestRepository` must apply the same URL rewrite as `AttachmentRepository.getAttachmentsWithUrls()` (`/attachments/...` passthrough, otherwise rebuild from `filePath`) |
-
----
-
-**For detailed examples:** See [docs/ai/](docs/ai/)
-**Last Updated:** May 2026 | **Maintained by:** Yurii Shvydak
+**Docs:** [docs/ai/](docs/ai/) | **Last Updated:** June 2026

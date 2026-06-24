@@ -323,7 +323,7 @@ packages/web/src/
 │       │   │   ├── Automatic JWT inclusion
 │       │   │   ├── 401 handling → global logout
 │       │   │   └── createProtectedFileURL() for attachments
-│       │   ├── __tests__/              # Authentication utility tests (2 test files, 84 tests)
+│       │   ├── __tests__/              # Authentication utility tests (2 test files, 143 tests)
 │       │   ├── webSocketUrl.ts         # WebSocket URL utility (DRY)
 │       │   │   └── getWebSocketUrl(includeAuth)  # Single source of truth
 │       │   └── tokenValidator.ts       # Token validation
@@ -387,7 +387,7 @@ packages/reporter/
 │   │       ├── RUN_ID (from dashboard)
 │   │       └── NODE_ENV (from dashboard)
 │   │
-│   └── __tests__/                      # Reporter tests (2 test files, 55 tests - CRITICAL)
+│   └── __tests__/                      # Reporter tests (2 test files, 63 tests - CRITICAL)
 │
 ├── vitest.config.ts                    # Vitest test configuration
 ├── package.json                        # npm package configuration

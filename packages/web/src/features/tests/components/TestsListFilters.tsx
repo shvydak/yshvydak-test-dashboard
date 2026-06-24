@@ -46,21 +46,28 @@ export function TestsListFilters({
         <div className="space-y-2 md:space-y-0 md:flex md:items-center md:gap-3">
             {/* Row 1 on mobile / left part on desktop: Run All + Search */}
             <div className="flex items-center gap-2 shrink-0">
-                <Button
-                    variant="primary"
-                    loading={isRunningAllTests}
-                    disabled={isAnyTestRunning}
-                    onClick={() => runAllTests(activeProject || undefined)}
-                    className="shrink-0">
-                    {isRunningAllTests ? (
-                        'Running...'
-                    ) : (
-                        <span className="flex items-center gap-1.5">
-                            <Play className="h-3.5 w-3.5" />
-                            <span>Run All</span>
+                <div className="relative inline-flex shrink-0 group/noproject">
+                    <Button
+                        variant="primary"
+                        loading={isRunningAllTests}
+                        disabled={isAnyTestRunning || !activeProject}
+                        onClick={() => runAllTests(activeProject || undefined)}>
+                        {isRunningAllTests ? (
+                            'Running...'
+                        ) : (
+                            <span className="flex items-center gap-1.5">
+                                <Play className="h-3.5 w-3.5" />
+                                <span>Run All</span>
+                            </span>
+                        )}
+                    </Button>
+                    {!activeProject && (
+                        <span className="pointer-events-none absolute top-full left-0 z-50 mt-3 whitespace-nowrap rounded-xl bg-primary-600 px-4 py-2.5 text-sm font-medium text-white opacity-0 shadow-xl shadow-primary-900/30 transition-opacity group-hover/noproject:opacity-100 dark:bg-primary-500">
+                            Select a project tab to run tests
+                            <span className="absolute -top-1.5 left-4 h-3 w-3 rotate-45 bg-primary-600 dark:bg-primary-500" />
                         </span>
                     )}
-                </Button>
+                </div>
 
                 <SearchInput
                     ref={searchInputRef}

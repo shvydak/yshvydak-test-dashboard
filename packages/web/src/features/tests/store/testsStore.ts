@@ -30,7 +30,7 @@ interface TestsState {
     deleteExecution: (testId: string, executionId: string) => Promise<void>
     discoverTests: () => Promise<void>
     runAllTests: (project?: string) => Promise<void>
-    runTestsGroup: (filePath: string, testNames?: string[]) => Promise<void>
+    runTestsGroup: (filePath: string, testNames?: string[], project?: string) => Promise<void>
     clearError: () => void
     setTestRunning: (testId: string, isRunning: boolean) => void
     setGroupRunning: (filePath: string, isRunning: boolean) => void
@@ -336,7 +336,7 @@ export const useTestsStore = create<TestsState>()(
                 }
             },
 
-            runTestsGroup: async (filePath: string, testNames?: string[]) => {
+            runTestsGroup: async (filePath: string, testNames?: string[], project?: string) => {
                 try {
                     // Set this specific group as running
                     get().setGroupRunning(filePath, true)
@@ -347,6 +347,7 @@ export const useTestsStore = create<TestsState>()(
                         filePath,
                         maxWorkers,
                         testNames,
+                        project: project || undefined,
                     })
 
                     if (!response.ok) {

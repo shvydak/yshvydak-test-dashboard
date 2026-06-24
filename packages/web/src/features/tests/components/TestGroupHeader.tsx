@@ -1,4 +1,5 @@
 import {ChevronDown, Play, CheckCircle2, XCircle, SkipForward, CircleDot} from 'lucide-react'
+import {useSearchParams} from 'react-router-dom'
 import {ActionButton} from '@shared/components'
 import {TestGroupData} from '../hooks/useTestGroups'
 import {useTestsStore} from '../store/testsStore'
@@ -13,8 +14,11 @@ export interface TestGroupHeaderProps {
 
 export function TestGroupHeader({group, expanded, onToggle, filter}: TestGroupHeaderProps) {
     const {runningGroups, getIsAnyTestRunning, runTestsGroup} = useTestsStore()
+    const [searchParams] = useSearchParams()
+    const activeProject = searchParams.get('project') || ''
     const isRunning = runningGroups.has(group.filePath)
     const isAnyTestRunning = getIsAnyTestRunning()
+    const noProject = !activeProject
 
     // When in "failed" filter, extract only failed test names
     const testNames = filter === 'failed' ? group.tests.map((t) => t.name) : undefined
@@ -60,22 +64,30 @@ export function TestGroupHeader({group, expanded, onToggle, filter}: TestGroupHe
                             </span>
                         )}
                     </div>
-                    <ActionButton
-                        size="sm"
-                        variant="secondary"
-                        isRunning={isRunning}
-                        runningText="Running..."
-                        icon={<Play className="h-3.5 w-3.5" />}
-                        disabled={isAnyTestRunning}
-                        onClick={(e) => {
-                            e.stopPropagation()
-                            if (!isAnyTestRunning) {
-                                runTestsGroup(group.filePath, testNames)
-                            }
-                        }}>
-                        <span className="hidden sm:inline">Run Tests Group</span>
-                        <span className="sm:hidden">Run</span>
-                    </ActionButton>
+                    <div className="relative inline-flex shrink-0 group/noproject">
+                        <ActionButton
+                            size="sm"
+                            variant="secondary"
+                            isRunning={isRunning}
+                            runningText="Running..."
+                            icon={<Play className="h-3.5 w-3.5" />}
+                            disabled={isAnyTestRunning || noProject}
+                            onClick={(e) => {
+                                e.stopPropagation()
+                                if (!isAnyTestRunning && activeProject) {
+                                    runTestsGroup(group.filePath, testNames, activeProject)
+                                }
+                            }}>
+                            <span className="hidden sm:inline">Run Tests Group</span>
+                            <span className="sm:hidden">Run</span>
+                        </ActionButton>
+                        {noProject && (
+                            <span className="pointer-events-none absolute bottom-full right-0 z-50 mb-3 whitespace-nowrap rounded-xl bg-primary-600 px-4 py-2.5 text-sm font-medium text-white opacity-0 shadow-xl shadow-primary-900/30 transition-opacity group-hover/noproject:opacity-100 dark:bg-primary-500">
+                                Select a project tab to run tests
+                                <span className="absolute -bottom-1.5 right-4 h-3 w-3 rotate-45 bg-primary-600 dark:bg-primary-500" />
+                            </span>
+                        )}
+                    </div>
                 </div>
             </div>
         </div>

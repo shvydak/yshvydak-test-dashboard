@@ -6,7 +6,6 @@ import {errorHandler, notFoundHandler} from './middleware/error.middleware'
 import {createServiceContainer, injectServices} from './middleware/service-injection.middleware'
 import {createAuthMiddleware} from './middleware/auth.middleware'
 import {createApiRoutes} from './routes/index.routes'
-import {Logger} from './utils/logger.util'
 
 export async function createApp() {
     const app = express()
@@ -18,16 +17,6 @@ export async function createApp() {
     app.use(corsMiddleware)
     app.use(express.json({limit: config.api.requestLimit}))
     app.use(express.urlencoded({extended: true, limit: config.api.requestLimit}))
-
-    // Temporary diagnostic: log all POST requests to /api/tests
-    app.use((req, _res, next) => {
-        if (req.method === 'POST' && req.path.startsWith('/api/tests')) {
-            Logger.debug(
-                `[DIAG] POST ${req.path} received, body keys: ${Object.keys(req.body || {}).join(', ')}`
-            )
-        }
-        next()
-    })
 
     // Service injection middleware
     app.use(injectServices(serviceContainer))

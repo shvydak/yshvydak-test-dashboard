@@ -28,8 +28,12 @@ function App() {
     const [settingsScrollToDataRetention, setSettingsScrollToDataRetention] = useState(false)
 
     const {severity, diskStats, thresholds, isDismissed, dismiss, triggerCheck} =
-        useDiskSpaceWarning()
-    const {pause: ciPause, resume: resumeCIAutoRun, reload: reloadCIAutoRun} = useCIAutoRun()
+        useDiskSpaceWarning(isAuthenticated)
+    const {
+        pause: ciPause,
+        resume: resumeCIAutoRun,
+        reload: reloadCIAutoRun,
+    } = useCIAutoRun(isAuthenticated)
 
     const handleOpenSettingsToDataRetention = useCallback(() => {
         setSettingsScrollToDataRetention(true)
@@ -42,7 +46,7 @@ function App() {
         return params.get('project') || ''
     }, [location.search])
 
-    const {visibleTabs, isLoading: tabsLoading} = useProjectTabs()
+    const {visibleTabs, isLoading: tabsLoading} = useProjectTabs(isAuthenticated)
 
     const {
         fetchTests,

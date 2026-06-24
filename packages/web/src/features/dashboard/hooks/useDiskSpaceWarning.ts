@@ -14,12 +14,12 @@ export interface UseDiskSpaceWarningReturn {
     triggerCheck: () => void
 }
 
-export function useDiskSpaceWarning(): UseDiskSpaceWarningReturn {
+export function useDiskSpaceWarning(isAuthenticated = true): UseDiskSpaceWarningReturn {
     const [isDismissed, setIsDismissed] = useState(false)
     const queryClient = useQueryClient()
 
-    const {data: storageStats} = useStorageStats(true)
-    const {thresholds} = useDiskThresholds()
+    const {data: storageStats} = useStorageStats(isAuthenticated)
+    const {thresholds} = useDiskThresholds(isAuthenticated)
 
     const triggerCheck = useCallback(() => {
         setIsDismissed(false)

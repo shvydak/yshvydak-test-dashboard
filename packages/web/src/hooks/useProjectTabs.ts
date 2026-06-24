@@ -18,7 +18,7 @@ export interface UseProjectTabsReturn {
     reload: () => Promise<void>
 }
 
-export function useProjectTabs(): UseProjectTabsReturn {
+export function useProjectTabs(isAuthenticated = true): UseProjectTabsReturn {
     const [tabs, setTabs] = useState<ProjectTabConfig[]>([])
     const [isLoading, setIsLoading] = useState(false)
     const [isSaving, setIsSaving] = useState(false)
@@ -85,8 +85,9 @@ export function useProjectTabs(): UseProjectTabsReturn {
     }, [])
 
     useEffect(() => {
+        if (!isAuthenticated) return
         reload()
-    }, [reload])
+    }, [reload, isAuthenticated])
 
     const visibleTabs = tabs.filter((t) => t.visible)
 

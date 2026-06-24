@@ -30,13 +30,14 @@ async function saveDiskThresholds(thresholds: DiskThresholds): Promise<DiskThres
     return result.data
 }
 
-export function useDiskThresholds() {
+export function useDiskThresholds(enabled = true) {
     const queryClient = useQueryClient()
 
     const query = useQuery({
         queryKey: ['disk-thresholds'],
         queryFn: fetchDiskThresholds,
         staleTime: 60000,
+        enabled,
     })
 
     const mutation = useMutation({

@@ -16,7 +16,7 @@ export interface UseCIAutoRunReturn {
     reload: () => Promise<void>
 }
 
-export function useCIAutoRun(): UseCIAutoRunReturn {
+export function useCIAutoRun(isAuthenticated = true): UseCIAutoRunReturn {
     const [pause, setPause] = useState<CIAutoRunPause | null>(null)
     const [isLoading, setIsLoading] = useState(false)
     const [isSaving, setIsSaving] = useState(false)
@@ -70,8 +70,9 @@ export function useCIAutoRun(): UseCIAutoRunReturn {
     }, [])
 
     useEffect(() => {
+        if (!isAuthenticated) return
         reload()
-    }, [reload])
+    }, [reload, isAuthenticated])
 
     return {pause, isLoading, isSaving, pauseFor, resume, reload}
 }

@@ -353,9 +353,12 @@ export class PlaywrightService implements IPlaywrightService {
      * Spawns a Playwright process with the given arguments and options
      */
     private spawnPlaywrightProcess(args: string[], options: PlaywrightSpawnOptions): ChildProcess {
+        // Use localhost directly so the reporter bypasses any reverse proxy (Nginx/WAF)
+        // that may block certain API endpoints based on request body content (e.g. stack traces)
+        const internalApiUrl = `http://localhost:${config.server.port}`
         const env = {
             ...process.env,
-            DASHBOARD_API_URL: config.api.baseUrl,
+            DASHBOARD_API_URL: internalApiUrl,
             ...options.env,
             NODE_ENV: config.server.environment,
         }

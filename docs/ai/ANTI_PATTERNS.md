@@ -652,14 +652,64 @@ const App = () => {
 
 ---
 
+## Development Workflow Anti-Patterns
+
+### ❌ Service-layer N+1 over JOIN repositories
+
+`getTestResultsByTestId` already JOINs attachments + notes. Don't loop result and call `getAttachmentsByTestResult(execution.id)` per row — that turns 1 query into N+1.
+
+### ❌ Changing behavior without checking all dependents
+
+Before changing any value, constant, or default:
+
+1. Grep all usages across source files — other components may duplicate the logic
+2. Grep tests for assertions on the old value — silent failures until pre-push hook catches them
+3. Search for parallel implementations (e.g. pre-auth pages with their own copy of a hook)
+
+Rule: if you change X, ask "where else is X assumed to be true?" before pushing.
+
+### ❌ Assuming `playwright test --list --reporter=json` groups by project
+
+Top-level suites are per-FILE, not per-project. Project name is at `spec.tests[0].projectName`.
+The text output (`[All_Tests] › file`) looks project-grouped — the JSON output is NOT.
+
+### ❌ Editing reporter source without npm link
+
+`packages/reporter/src/index.ts` changes have NO effect on external test projects that install from npm.
+Changes only apply via `npm link` or publishing a new version.
+Prefer server-side fallbacks (e.g. `test_runs.metadata.project`) over reporter changes.
+
+### ❌ Trusting tsx watch without a restart
+
+`tsx watch` may not pick up server file changes after running for a long time.
+After significant changes to `packages/server/src/` — restart manually (`Ctrl+C` → `npm run dev`).
+Symptom: authenticated requests to new routes return 404, unauthenticated return 401 (old middleware fires, new handler never registered).
+
+### ❌ Hooks firing before authentication completes
+
+Hooks called unconditionally in `App.tsx` fire before `checkAuth()` resolves → `WARN: No authentication provided` in server logs.
+
+- React Query hooks: `enabled: isAuthenticated`
+- `useEffect` hooks: `if (!isAuthenticated) return` as first line + add to deps array
+- Accept `isAuthenticated = true` param (default keeps Settings callers working — they render only in auth context)
+
+### ❌ Using `git stash` to verify pre-existing test failures
+
+`git stash` stashes ALL WIP changes including unrelated work-in-progress.
+Instead: `npx vitest run path/to/test.ts` — if it fails without touching that file, it's pre-existing.
+
+---
+
 ## Related Documentation
 
-- [CLAUDE.md](../../CLAUDE.md) - Quick reference with top 3 anti-patterns
+- [CLAUDE.md](../../CLAUDE.md) - Quick reference
+- [.claude/rules/frontend.md](../../.claude/rules/frontend.md) - Frontend-specific patterns
+- [.claude/rules/testing.md](../../.claude/rules/testing.md) - Testing patterns
 - [docs/ARCHITECTURE.md](../ARCHITECTURE.md) - Layered architecture explanation
 - [docs/DEVELOPMENT.md](../DEVELOPMENT.md) - Development best practices
 - [docs/features/HISTORICAL_TEST_TRACKING.md](../features/HISTORICAL_TEST_TRACKING.md) - Why INSERT-only matters
 
 ---
 
-**Last Updated:** October 2025
+**Last Updated:** June 2026
 **Maintained by:** Yurii Shvydak

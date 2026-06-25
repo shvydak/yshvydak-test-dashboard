@@ -36,6 +36,9 @@ Production: `playwright-dashboard-reporter` from node_modules
 Development: `npm link` for live changes — NO config changes to `playwright.config.ts`  
 CLI injection: `--reporter=playwright-dashboard-reporter`
 
+**Spawned Playwright env:** Server always passes `DASHBOARD_API_URL=http://localhost:PORT` to child Playwright process — bypasses Nginx/WAF. NEVER use the external `BASE_URL` here; WAF blocks `POST /api/tests` when the body contains stack traces / file paths (HTTP 403).  
+`packages/server/src/services/playwright.service.ts` → `spawnPlaywrightProcess()`
+
 ### Attachment Storage — Permanent
 
 Files copied from Playwright temp → permanent storage. Survives Playwright's cleanup cycles.  
@@ -110,6 +113,7 @@ Full catalog with examples: [docs/ai/ANTI_PATTERNS.md](docs/ai/ANTI_PATTERNS.md)
 - **tsx watch stale** — restart server after significant changes; symptom: new routes return 404 while old return 401
 - **Playwright JSON not project-grouped** — top-level suites are per-FILE; project name at `spec.tests[0].projectName`
 - **Reporter changes without npm link** — changes to `packages/reporter/src/` only apply via `npm link` or publish
+- **Rerun reporter output invisible** — `type: 'rerun'` uses `stdio: pipe` but has no listeners by default; add `process.stdout?.on('data', ...)` to rerun process temporarily to see reporter warnings (e.g. `⚠️ Failed to send test result`)
 
 **Frontend rules (auto-loaded for packages/web/**):** [.claude/rules/frontend.md](.claude/rules/frontend.md)  
 **Testing rules (auto-loaded for test files):\*\* [.claude/rules/testing.md](.claude/rules/testing.md)

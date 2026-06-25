@@ -274,6 +274,17 @@ export class TestService implements ITestService {
             }
         }
 
+        // Second fallback: look up project from the most recent result for the same file path.
+        // Covers script-triggered runs where no project is passed and run metadata is empty.
+        if (!(testData as any).project && testData.filePath) {
+            const projectFromFile = await this.testRepository.getProjectByFilePath(
+                testData.filePath
+            )
+            if (projectFromFile) {
+                ;(testData as any).project = projectFromFile
+            }
+        }
+
         const resultId = await this.testRepository.saveTestResult(testData)
 
         // Save attachments if provided

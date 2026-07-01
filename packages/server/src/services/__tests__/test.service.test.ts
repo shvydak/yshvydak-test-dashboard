@@ -83,6 +83,9 @@ describe('TestService', () => {
             getAttachmentsSizeForIds: vi.fn().mockResolvedValue({total: 0, perId: {}}),
             deleteByIds: vi.fn().mockResolvedValue(0),
             getProjectByFilePath: vi.fn().mockResolvedValue(''),
+            getExecutionIdsByProject: vi.fn().mockResolvedValue([]),
+            getDistinctTestIdsByProject: vi.fn().mockResolvedValue([]),
+            deleteByProject: vi.fn().mockResolvedValue(0),
         }
 
         mockRunRepository = {
@@ -200,7 +203,11 @@ describe('TestService', () => {
             expect(mockTestRepository.saveTestResult).toHaveBeenCalledTimes(2)
 
             // Verify WebSocket broadcast
-            expect(mockWebSocketService.broadcastDiscoveryCompleted).toHaveBeenCalledWith(2, 2)
+            expect(mockWebSocketService.broadcastDiscoveryCompleted).toHaveBeenCalledWith(
+                2,
+                2,
+                undefined
+            )
         })
 
         it('should continue if some tests fail to save', async () => {
@@ -231,7 +238,11 @@ describe('TestService', () => {
 
             expect(result.discovered).toBe(2)
             expect(result.saved).toBe(1) // Only 1 saved successfully
-            expect(mockWebSocketService.broadcastDiscoveryCompleted).toHaveBeenCalledWith(2, 1)
+            expect(mockWebSocketService.broadcastDiscoveryCompleted).toHaveBeenCalledWith(
+                2,
+                1,
+                undefined
+            )
         })
 
         it('should throw error if discovery fails', async () => {
@@ -245,6 +256,25 @@ describe('TestService', () => {
             mockTestRepository.execute.mockRejectedValue(new Error('DB error'))
 
             await expect(testService.discoverTests()).rejects.toThrow('DB error')
+        })
+
+        it('should scope pending-cleanup, Playwright discovery, and broadcast to a single project when provided', async () => {
+            mockTestRepository.execute.mockResolvedValue(undefined)
+            mockPlaywrightService.discoverTests.mockResolvedValue([])
+            mockTestRepository.saveTestResult.mockResolvedValue('saved-id')
+
+            await testService.discoverTests('chromium')
+
+            expect(mockTestRepository.execute).toHaveBeenCalledWith(
+                'DELETE FROM test_results WHERE status = ? AND project = ?',
+                ['pending', 'chromium']
+            )
+            expect(mockPlaywrightService.discoverTests).toHaveBeenCalledWith('chromium')
+            expect(mockWebSocketService.broadcastDiscoveryCompleted).toHaveBeenCalledWith(
+                0,
+                0,
+                'chromium'
+            )
         })
     })
 
@@ -661,6 +691,58 @@ describe('TestService', () => {
         })
     })
 
+    describe('clearProjectData', () => {
+        it('should delete attachments and notes per test, then bulk-delete by project', async () => {
+            mockTestRepository.getExecutionIdsByProject.mockResolvedValue(['exec-1', 'exec-2'])
+            mockTestRepository.getDistinctTestIdsByProject.mockResolvedValue(['test-1', 'test-2'])
+            mockTestRepository.deleteByProject.mockResolvedValue(2)
+            mockAttachmentService.deleteAttachmentsForTestResult.mockResolvedValue(0)
+            mockNoteService.deleteNote.mockResolvedValue(undefined)
+
+            const result = await testService.clearProjectData('API_Tests')
+
+            expect(mockTestRepository.getExecutionIdsByProject).toHaveBeenCalledWith('API_Tests')
+            expect(mockTestRepository.getDistinctTestIdsByProject).toHaveBeenCalledWith('API_Tests')
+            expect(mockAttachmentService.deleteAttachmentsForTestResult).toHaveBeenCalledWith(
+                'exec-1'
+            )
+            expect(mockAttachmentService.deleteAttachmentsForTestResult).toHaveBeenCalledWith(
+                'exec-2'
+            )
+            expect(mockNoteService.deleteNote).toHaveBeenCalledWith('test-1')
+            expect(mockNoteService.deleteNote).toHaveBeenCalledWith('test-2')
+            expect(mockTestRepository.deleteByProject).toHaveBeenCalledWith('API_Tests')
+            expect(result).toEqual({deletedExecutions: 2})
+        })
+
+        it('should not touch other projects data (only deleteByProject with the given project)', async () => {
+            mockTestRepository.getExecutionIdsByProject.mockResolvedValue([])
+            mockTestRepository.getDistinctTestIdsByProject.mockResolvedValue([])
+            mockTestRepository.deleteByProject.mockResolvedValue(0)
+
+            await testService.clearProjectData('Staging')
+
+            expect(mockTestRepository.clearAllTests).not.toHaveBeenCalled()
+            expect(mockAttachmentService.deleteAttachmentsForTestResult).not.toHaveBeenCalled()
+            expect(mockTestRepository.deleteByProject).toHaveBeenCalledWith('Staging')
+        })
+
+        it('should continue clearing even if an attachment or note deletion fails', async () => {
+            mockTestRepository.getExecutionIdsByProject.mockResolvedValue(['exec-1'])
+            mockTestRepository.getDistinctTestIdsByProject.mockResolvedValue(['test-1'])
+            mockAttachmentService.deleteAttachmentsForTestResult.mockRejectedValue(
+                new Error('disk error')
+            )
+            mockNoteService.deleteNote.mockRejectedValue(new Error('note error'))
+            mockTestRepository.deleteByProject.mockResolvedValue(1)
+
+            const result = await testService.clearProjectData('API_Tests')
+
+            expect(mockTestRepository.deleteByProject).toHaveBeenCalledWith('API_Tests')
+            expect(result).toEqual({deletedExecutions: 1})
+        })
+    })
+
     describe('getTestStats', () => {
         it('should get database statistics', async () => {
             const mockStats = {
@@ -826,6 +908,34 @@ describe('TestService', () => {
 
             // Assert - global settings used as fallback
             expect(mockPlaywrightService.runAllTests).toHaveBeenCalledWith(2, 'Sanity')
+        })
+
+        it('should scope auto-discovery to the Settings-configured project for CI script triggers', async () => {
+            // Mirrors scripts/trigger-test-run.js, which posts {maxWorkers, source: 'script'}
+            // with no project and no skipAutoDiscovery — relying entirely on the
+            // Settings-configured global_playwright_project as the scope.
+            const mockProcess = createMockProcess()
+            mockSettingsService.getGlobalPlaywrightProject.mockResolvedValue('API_Tests')
+            mockSettingsService.getCIAutoRunPause = vi.fn().mockResolvedValue({paused: false})
+            mockPlaywrightService.discoverTests.mockResolvedValue([])
+            mockPlaywrightService.runAllTests.mockResolvedValue({
+                runId: 'run-ci-1',
+                message: 'Tests started for project: API_Tests',
+                timestamp: '2025-10-21T10:00:00.000Z',
+                process: mockProcess,
+            })
+            mockRunRepository.createTestRun.mockResolvedValue('run-ci-1')
+
+            await testService.runAllTests(undefined, undefined, undefined, 'script')
+
+            // Discovery (and its pending-cleanup DELETE) must be scoped to the same
+            // project the run itself uses — never a global, cross-project reset.
+            expect(mockPlaywrightService.discoverTests).toHaveBeenCalledWith('API_Tests')
+            expect(mockTestRepository.execute).toHaveBeenCalledWith(
+                'DELETE FROM test_results WHERE status = ? AND project = ?',
+                ['pending', 'API_Tests']
+            )
+            expect(mockPlaywrightService.runAllTests).toHaveBeenCalledWith(undefined, 'API_Tests')
         })
 
         it('should pass undefined project when no global project is configured', async () => {

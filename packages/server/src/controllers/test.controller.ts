@@ -15,10 +15,11 @@ export class TestController {
         private authService: AuthService
     ) {}
 
-    // POST /api/tests/discovery - Discover all available tests
+    // POST /api/tests/discovery - Discover tests (optionally scoped to a single project)
     discoverTests = async (req: ServiceRequest, res: Response): Promise<Response> => {
         try {
-            const result = await this.testService.discoverTests()
+            const {project} = req.body
+            const result = await this.testService.discoverTests(project)
             return ResponseHelper.success(res, result)
         } catch (error) {
             Logger.error('Error during test discovery', error)
@@ -266,9 +267,20 @@ export class TestController {
         }
     }
 
-    // DELETE /api/tests/all - Clear all test data
+    // DELETE /api/tests/all - Clear all test data (optionally scoped to ?project=)
     clearAllTests = async (req: ServiceRequest, res: Response): Promise<Response> => {
         try {
+            const project = typeof req.query.project === 'string' ? req.query.project : undefined
+
+            if (project) {
+                const {deletedExecutions} = await this.testService.clearProjectData(project)
+
+                return ResponseHelper.success(res, {
+                    message: `Test data for project "${project}" cleared successfully`,
+                    deletedExecutions,
+                })
+            }
+
             const statsBefore = await this.testService.getTestStats()
             await this.testService.clearAllTests()
 

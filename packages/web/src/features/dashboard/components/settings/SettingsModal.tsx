@@ -11,9 +11,15 @@ export interface SettingsModalProps {
     isOpen: boolean
     onClose: () => void
     scrollToDataRetention?: boolean
+    activeProject?: string
 }
 
-export function SettingsModal({isOpen, onClose, scrollToDataRetention}: SettingsModalProps) {
+export function SettingsModal({
+    isOpen,
+    onClose,
+    scrollToDataRetention,
+    activeProject,
+}: SettingsModalProps) {
     const dataRetentionRef = useRef<HTMLDivElement>(null)
 
     useEffect(() => {
@@ -53,7 +59,7 @@ export function SettingsModal({isOpen, onClose, scrollToDataRetention}: Settings
                         <SettingsThemeSection />
                         <SettingsProjectTabsSection />
                         <SettingsTestExecutionSection />
-                        <SettingsActionsSection />
+                        <SettingsActionsSection activeProject={activeProject} />
                         <div ref={dataRetentionRef}>
                             <SettingsStorageSection />
                         </div>

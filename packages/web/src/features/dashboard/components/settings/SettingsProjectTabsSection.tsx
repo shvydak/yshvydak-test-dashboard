@@ -1,5 +1,5 @@
 import {useState, useEffect} from 'react'
-import {RefreshCw} from 'lucide-react'
+import {RefreshCw, ChevronUp, ChevronDown} from 'lucide-react'
 import {useProjectTabs, ProjectTabConfig} from '@/hooks/useProjectTabs'
 import {SettingsSection} from './SettingsSection'
 
@@ -42,6 +42,17 @@ export function SettingsProjectTabsSection() {
         await updateTabs(updated)
     }
 
+    const handleMove = async (project: string, direction: 'up' | 'down') => {
+        const index = localTabs.findIndex((t) => t.project === project)
+        const targetIndex = direction === 'up' ? index - 1 : index + 1
+        if (index === -1 || targetIndex < 0 || targetIndex >= localTabs.length) return
+
+        const updated = [...localTabs]
+        ;[updated[index], updated[targetIndex]] = [updated[targetIndex], updated[index]]
+        setLocalTabs(updated)
+        await updateTabs(updated)
+    }
+
     const compactInputClass =
         'rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 text-sm text-gray-900 ' +
         'focus:border-transparent focus:outline-none focus:ring-2 focus:ring-primary-500/60 ' +
@@ -77,7 +88,10 @@ export function SettingsProjectTabsSection() {
                 {localTabs.length > 0 && (
                     <div className="space-y-2">
                         {/* Header row */}
-                        <div className="grid grid-cols-[1fr_auto_auto] items-center gap-x-3 px-1">
+                        <div className="grid grid-cols-[auto_1fr_auto_auto] items-center gap-x-3 px-1">
+                            <span className="text-xs font-medium text-gray-400 dark:text-gray-500 w-14">
+                                Order
+                            </span>
                             <span className="text-xs font-medium text-gray-400 dark:text-gray-500">
                                 Project
                             </span>
@@ -89,10 +103,28 @@ export function SettingsProjectTabsSection() {
                             </span>
                         </div>
 
-                        {localTabs.map((tab) => (
+                        {localTabs.map((tab, index) => (
                             <div
                                 key={tab.project}
-                                className="grid grid-cols-[1fr_auto_auto] items-center gap-x-3 rounded-xl border border-gray-200/70 bg-white/60 px-3 py-2.5 dark:border-white/[0.06] dark:bg-white/[0.02]">
+                                className="grid grid-cols-[auto_1fr_auto_auto] items-center gap-x-3 rounded-xl border border-gray-200/70 bg-white/60 px-3 py-2.5 dark:border-white/[0.06] dark:bg-white/[0.02]">
+                                <div className="flex w-14 items-center gap-0.5">
+                                    <button
+                                        type="button"
+                                        aria-label={`Move ${tab.project} up`}
+                                        onClick={() => handleMove(tab.project, 'up')}
+                                        disabled={isSaving || index === 0}
+                                        className="rounded-md p-1 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-700 disabled:pointer-events-none disabled:opacity-30 dark:text-gray-500 dark:hover:bg-white/[0.06] dark:hover:text-gray-200">
+                                        <ChevronUp className="h-3.5 w-3.5" />
+                                    </button>
+                                    <button
+                                        type="button"
+                                        aria-label={`Move ${tab.project} down`}
+                                        onClick={() => handleMove(tab.project, 'down')}
+                                        disabled={isSaving || index === localTabs.length - 1}
+                                        className="rounded-md p-1 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-700 disabled:pointer-events-none disabled:opacity-30 dark:text-gray-500 dark:hover:bg-white/[0.06] dark:hover:text-gray-200">
+                                        <ChevronDown className="h-3.5 w-3.5" />
+                                    </button>
+                                </div>
                                 <span className="text-sm text-gray-700 dark:text-gray-300 truncate font-mono text-xs">
                                     {tab.project}
                                 </span>

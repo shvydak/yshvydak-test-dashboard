@@ -7,7 +7,7 @@ import {useTestsStore} from '@features/tests/store/testsStore'
 export interface UseDashboardActionsReturn {
     clearingData: boolean
     cleaningData: boolean
-    clearAllData: () => Promise<void>
+    clearAllData: (project?: string) => Promise<void>
     cleanupData: (
         type: 'date' | 'count',
         value: string | number,
@@ -21,18 +21,21 @@ export function useDashboardActions(): UseDashboardActionsReturn {
     const [clearingData, setClearingData] = useState(false)
     const [cleaningData, setCleaningData] = useState(false)
 
-    const clearAllData = async () => {
-        if (
-            !confirm(
-                '⚠️ Are you sure you want to clear ALL test data? This action cannot be undone.'
-            )
-        ) {
+    const clearAllData = async (project?: string) => {
+        const confirmMessage = project
+            ? `⚠️ Are you sure you want to clear ALL test data for project "${project}"? This action cannot be undone.`
+            : '⚠️ Are you sure you want to clear ALL test data? This action cannot be undone.'
+
+        if (!confirm(confirmMessage)) {
             return
         }
 
         setClearingData(true)
         try {
-            const response = await authFetch(`${config.api.baseUrl}/tests/all`, {
+            const url = project
+                ? `${config.api.baseUrl}/tests/all?project=${encodeURIComponent(project)}`
+                : `${config.api.baseUrl}/tests/all`
+            const response = await authFetch(url, {
                 method: 'DELETE',
             })
 
@@ -41,14 +44,22 @@ export function useDashboardActions(): UseDashboardActionsReturn {
             }
 
             const result = await response.json()
-            const statsBefore = result.data?.statsBefore || {}
-            const totalRuns = statsBefore.totalRuns || 0
-            const totalResults = statsBefore.totalTests || 0
-            const totalAttachments = statsBefore.totalAttachments || 0
 
-            alert(
-                `✅ Success! Cleared ${totalRuns} runs, ${totalResults} results, ${totalAttachments} attachments`
-            )
+            if (project) {
+                const deletedExecutions = result.data?.deletedExecutions || 0
+                alert(
+                    `✅ Success! Cleared ${deletedExecutions} executions for project "${project}"`
+                )
+            } else {
+                const statsBefore = result.data?.statsBefore || {}
+                const totalRuns = statsBefore.totalRuns || 0
+                const totalResults = statsBefore.totalTests || 0
+                const totalAttachments = statsBefore.totalAttachments || 0
+
+                alert(
+                    `✅ Success! Cleared ${totalRuns} runs, ${totalResults} results, ${totalAttachments} attachments`
+                )
+            }
 
             fetchTests()
 

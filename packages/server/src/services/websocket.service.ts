@@ -33,12 +33,13 @@ export class WebSocketService implements IWebSocketService {
         })
     }
 
-    broadcastDiscoveryCompleted(total: number, saved: number): void {
+    broadcastDiscoveryCompleted(total: number, saved: number, project?: string): void {
         this.broadcast({
             type: 'discovery:completed',
             data: {
                 total,
                 saved,
+                project,
                 timestamp: new Date().toISOString(),
             },
         })

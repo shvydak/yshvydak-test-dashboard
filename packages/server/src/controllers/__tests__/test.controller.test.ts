@@ -82,6 +82,7 @@ describe('TestController', () => {
             deleteTest: vi.fn(),
             deleteExecution: vi.fn(),
             clearAllTests: vi.fn(),
+            clearProjectData: vi.fn(),
             saveTestResult: vi.fn(),
             getTestById: vi.fn(),
             rerunTest: vi.fn(),
@@ -125,6 +126,16 @@ describe('TestController', () => {
             expect(mockTestService.discoverTests).toHaveBeenCalledTimes(1)
             expect(ResponseHelper.success).toHaveBeenCalledWith(mockRes, discoveryResult)
             expect(Logger.error).not.toHaveBeenCalled()
+        })
+
+        it('should scope discovery to the project from the request body when provided', async () => {
+            const discoveryResult = {discovered: 3, saved: 3, timestamp: '2025-01-01T00:00:00Z'}
+            mockTestService.discoverTests.mockResolvedValue(discoveryResult)
+            mockReq.body = {project: 'Frontend'}
+
+            await controller.discoverTests(mockReq as ServiceRequest, mockRes as Response)
+
+            expect(mockTestService.discoverTests).toHaveBeenCalledWith('Frontend')
         })
 
         it('should handle discovery errors', async () => {
@@ -543,6 +554,21 @@ describe('TestController', () => {
             expect(ResponseHelper.success).toHaveBeenCalledWith(mockRes, {
                 message: 'All test data cleared successfully',
                 statsBefore,
+            })
+        })
+
+        it('should clear only the given project when ?project= is provided', async () => {
+            mockTestService.clearProjectData.mockResolvedValue({deletedExecutions: 30})
+            mockReq.query = {project: 'API_Tests'}
+
+            await controller.clearAllTests(mockReq as ServiceRequest, mockRes as Response)
+
+            expect(mockTestService.clearProjectData).toHaveBeenCalledWith('API_Tests')
+            expect(mockTestService.clearAllTests).not.toHaveBeenCalled()
+            expect(mockTestService.getTestStats).not.toHaveBeenCalled()
+            expect(ResponseHelper.success).toHaveBeenCalledWith(mockRes, {
+                message: 'Test data for project "API_Tests" cleared successfully',
+                deletedExecutions: 30,
             })
         })
 

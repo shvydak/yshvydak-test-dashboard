@@ -23,6 +23,10 @@ Write tests in: `packages/{package}/src/__tests__/`
 `git stash` stashes ALL WIP and may lose in-progress work.  
 Instead: `npx vitest run path/to/test.ts` — if it fails without touching that file, it's pre-existing.
 
+## Run vitest from the repo root, not from a package directory
+
+`cd packages/server && npx vitest run ...` fails with "Projects definition references a non-existing file" — the root `vitest.config.ts` defines workspace projects. Run from repo root with a path filter instead: `npx vitest run packages/server/src/services/__tests__/foo.test.ts`, or `npx vitest run --project server --project web` for full suites.
+
 ## useSearchParams in web tests requires MemoryRouter
 
 ```tsx

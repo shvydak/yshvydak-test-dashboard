@@ -6,6 +6,7 @@ import {IPlaywrightService, TestRunProcess, DiscoveredTest} from '../types/servi
 import {
     PlaywrightListOutput,
     PlaywrightSpec,
+    PlaywrightSuite,
     PlaywrightSpawnOptions,
     ValidationResult,
 } from '../types/playwright.types'
@@ -18,13 +19,13 @@ export class PlaywrightService implements IPlaywrightService {
     // TEST DISCOVERY & EXECUTION
     // ============================================================================
 
-    async discoverTests(): Promise<DiscoveredTest[]> {
-        Logger.info('Discovering tests', {projectDir: config.playwright.projectDir})
+    async discoverTests(project?: string): Promise<DiscoveredTest[]> {
+        Logger.info('Discovering tests', {projectDir: config.playwright.projectDir, project})
 
         let playwrightData: PlaywrightListOutput
 
         try {
-            playwrightData = await this.executePlaywrightListCommand()
+            playwrightData = await this.executePlaywrightListCommand(project)
         } catch (error) {
             throw new Error(
                 `Test discovery failed: ${error instanceof Error ? error.message : 'Unknown error'}. ` +
@@ -34,23 +35,21 @@ export class PlaywrightService implements IPlaywrightService {
 
         const discoveredTests: DiscoveredTest[] = []
 
-        // Extract all tests from both top-level and nested structures.
+        // Suites nest arbitrarily deep (file > describe > nested describe > ...),
+        // so specs must be collected recursively rather than at fixed levels.
         // Project comes from spec.tests[0].projectName (Playwright JSON reporter field).
-        for (const suite of playwrightData.suites || []) {
-            // Handle top-level specs directly under the suite
-            for (const spec of suite.specs || []) {
-                discoveredTests.push(this.createDiscoveredTest(spec))
-            }
-
-            // Handle nested specs within sub-suites
-            for (const subSuite of suite.suites || []) {
-                for (const spec of subSuite.specs || []) {
-                    discoveredTests.push(this.createDiscoveredTest(spec))
-                }
-            }
-        }
+        this.collectSpecs(playwrightData.suites || [], discoveredTests)
 
         return discoveredTests
+    }
+
+    private collectSpecs(suites: PlaywrightSuite[] | undefined, out: DiscoveredTest[]): void {
+        for (const suite of suites || []) {
+            for (const spec of suite.specs || []) {
+                out.push(this.createDiscoveredTest(spec))
+            }
+            this.collectSpecs(suite.suites, out)
+        }
     }
 
     async getAvailableProjects(): Promise<string[]> {
@@ -369,21 +368,21 @@ export class PlaywrightService implements IPlaywrightService {
     /**
      * Executes the playwright test --list command and returns parsed JSON output
      */
-    private async executePlaywrightListCommand(): Promise<PlaywrightListOutput> {
+    private async executePlaywrightListCommand(project?: string): Promise<PlaywrightListOutput> {
         return new Promise((resolve, reject) => {
-            const process = spawn(
-                'npx',
-                [
-                    'playwright',
-                    'test',
-                    '--list',
-                    `--reporter=${PLAYWRIGHT_CONSTANTS.LIST_REPORTER}`,
-                ],
-                {
-                    cwd: config.playwright.projectDir,
-                    stdio: ['ignore', 'pipe', 'pipe'],
-                }
-            )
+            const args = [
+                'playwright',
+                'test',
+                '--list',
+                `--reporter=${PLAYWRIGHT_CONSTANTS.LIST_REPORTER}`,
+            ]
+            if (project) {
+                args.push(`--project=${project}`)
+            }
+            const process = spawn('npx', args, {
+                cwd: config.playwright.projectDir,
+                stdio: ['ignore', 'pipe', 'pipe'],
+            })
 
             let stdout = ''
             let stderr = ''

@@ -46,7 +46,11 @@ function App() {
         return params.get('project') || ''
     }, [location.search])
 
-    const {visibleTabs, isLoading: tabsLoading} = useProjectTabs(isAuthenticated)
+    const {
+        visibleTabs,
+        isLoading: tabsLoading,
+        reload: reloadProjectTabs,
+    } = useProjectTabs(isAuthenticated)
 
     const {
         fetchTests,
@@ -283,8 +287,10 @@ function App() {
                     setIsSettingsOpen(false)
                     setSettingsScrollToDataRetention(false)
                     void reloadCIAutoRun()
+                    void reloadProjectTabs()
                 }}
                 scrollToDataRetention={settingsScrollToDataRetention}
+                activeProject={activeProject || undefined}
             />
 
             {ciPause?.paused && (

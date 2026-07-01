@@ -111,9 +111,11 @@ Full catalog with examples: [docs/ai/ANTI_PATTERNS.md](docs/ai/ANTI_PATTERNS.md)
 - **N+1 over JOIN** — `getTestResultsByTestId` already JOINs attachments+notes; don't loop & re-query
 - **Change without checking dependents** — grep all usages + tests before changing any value/default
 - **tsx watch stale** — restart server after significant changes; symptom: new routes return 404 while old return 401
-- **Playwright JSON not project-grouped** — top-level suites are per-FILE; project name at `spec.tests[0].projectName`
+- **Playwright JSON not project-grouped** — top-level suites are per-FILE; project name at `spec.tests[0].projectName`. Suite nesting depth is arbitrary (file > describe > nested describe > ...) — traverse recursively, not at fixed levels; a 2-level traversal silently drops deeper-nested tests.
 - **Reporter changes without npm link** — changes to `packages/reporter/src/` only apply via `npm link` or publish
 - **Rerun reporter output invisible** — `type: 'rerun'` uses `stdio: pipe` but has no listeners by default; add `process.stdout?.on('data', ...)` to rerun process temporarily to see reporter warnings (e.g. `⚠️ Failed to send test result`)
+- **testId has no project dimension** — hash is `filePath:title` only. `test_notes`/`note_images` are keyed by `test_id` alone (no `project` column) — any per-project feature (discovery, clear-data) must scope via `test_results.project`, not testId, and can't cleanly scope notes if two projects share a file+title.
+- **`activeProcessesTracker` run-all lock is global by design** — one active run blocks ALL projects, not just one. Intentional: concurrent Playwright processes conflict and the reporter drops results. Don't "fix" this to be per-project.
 
 **Frontend rules (auto-loaded for packages/web/**):** [.claude/rules/frontend.md](.claude/rules/frontend.md)  
 **Testing rules (auto-loaded for test files):\*\* [.claude/rules/testing.md](.claude/rules/testing.md)
@@ -166,7 +168,7 @@ Run via `@validation-agent` or manually.
 
 Blocks `source: 'script'` calls (from `trigger-test-run.js`) — UI-triggered runs still work.  
 HTTP 423 `CI_AUTORUN_PAUSED` → script exits code 2 (no retry). HTTP 409 `TESTS_ALREADY_RUNNING` → polls 10s, max 30 min.  
-Two `useCIAutoRun()` instances don't share state — `App.tsx` calls `reload()` on Settings close.
+Settings-modal hooks don't share state with their `App.tsx` instance (separate `useCIAutoRun()`/`useProjectTabs()` calls) — `App.tsx` must call each hook's `reload()` on Settings close, or changes (pause state, tab order/rename/visibility) look "stuck" until a full page refresh.
 
 ---
 

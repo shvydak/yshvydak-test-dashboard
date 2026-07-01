@@ -121,6 +121,25 @@ describe('PlaywrightService', () => {
             )
         })
 
+        it('should pass --project flag when scoping discovery to a single project', async () => {
+            // Arrange
+            const mockPlaywrightOutput = {suites: []}
+            mockSpawn.mockReturnValue(createMockProcess(JSON.stringify(mockPlaywrightOutput)))
+
+            // Act
+            await service.discoverTests('chromium')
+
+            // Assert
+            expect(mockSpawn).toHaveBeenCalledWith(
+                'npx',
+                ['playwright', 'test', '--list', '--reporter=json', '--project=chromium'],
+                expect.objectContaining({
+                    cwd: '/test/project',
+                    stdio: ['ignore', 'pipe', 'pipe'],
+                })
+            )
+        })
+
         it('should discover tests from nested suites', async () => {
             // Arrange
             const mockPlaywrightOutput = {
@@ -155,6 +174,46 @@ describe('PlaywrightService', () => {
             expect(tests).toHaveLength(2)
             expect(tests[0].name).toBe('nested test 1')
             expect(tests[0].filePath).toBe('nested/test.spec.ts')
+        })
+
+        it('should discover tests nested 3+ levels deep (file > describe > nested describe > test)', async () => {
+            // Arrange - mirrors real-world configs where describe blocks nest inside
+            // describe blocks, e.g. api-tests/accounts/accounts.api.test.ts:
+            // "Accounts API" > "POST /accounts/accountCompany" > test
+            const mockPlaywrightOutput = {
+                suites: [
+                    {
+                        title: 'api-tests/accounts/accounts.api.test.ts',
+                        suites: [
+                            {
+                                title: 'Accounts API',
+                                suites: [
+                                    {
+                                        title: 'POST /accounts/accountCompany',
+                                        specs: [
+                                            {
+                                                title: 'creates main contractor company for account',
+                                                file: 'api-tests/accounts/accounts.api.test.ts',
+                                                line: 12,
+                                            },
+                                        ],
+                                    },
+                                ],
+                            },
+                        ],
+                    },
+                ],
+            }
+
+            mockSpawn.mockReturnValue(createMockProcess(JSON.stringify(mockPlaywrightOutput)))
+
+            // Act
+            const tests = await service.discoverTests('API_Tests')
+
+            // Assert
+            expect(tests).toHaveLength(1)
+            expect(tests[0].name).toBe('creates main contractor company for account')
+            expect(tests[0].filePath).toBe('api-tests/accounts/accounts.api.test.ts')
         })
 
         it('should discover tests from both top-level and nested suites', async () => {

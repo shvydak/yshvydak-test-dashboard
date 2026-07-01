@@ -3,7 +3,7 @@ import {TestResultData, TestRunData, AttachmentData} from './database.types'
 
 // Service interfaces
 export interface ITestService {
-    discoverTests(): Promise<TestDiscoveryResult>
+    discoverTests(project?: string): Promise<TestDiscoveryResult>
     getAllTests(filters: TestFilters): Promise<TestResult[]>
     getTestById(id: string): Promise<TestResult | null>
     getTestHistory(testId: string, limit?: number, before?: string): Promise<TestResult[]>
@@ -11,6 +11,7 @@ export interface ITestService {
     deleteTest(testId: string): Promise<{deletedExecutions: number}>
     deleteExecution(executionId: string): Promise<{success: boolean}>
     clearAllTests(): Promise<void>
+    clearProjectData(project: string): Promise<{deletedExecutions: number}>
     cleanupData(options: CleanupOptions): Promise<CleanupResult>
     saveTestResult(testData: TestResultData): Promise<string>
     getTestStats(): Promise<DatabaseStats>
@@ -34,7 +35,7 @@ export interface CleanupResult {
 }
 
 export interface IPlaywrightService {
-    discoverTests(): Promise<DiscoveredTest[]>
+    discoverTests(project?: string): Promise<DiscoveredTest[]>
     getAvailableProjects(): Promise<string[]>
     runAllTests(maxWorkers?: number, project?: string): Promise<TestRunProcess>
     runTestGroup(
@@ -146,6 +147,10 @@ export interface ITestRepository {
     getAttachmentsSizeForIds(ids: string[]): Promise<{total: number; perId: Record<string, number>}>
     deleteByIds(ids: string[]): Promise<number>
     getProjectByFilePath(filePath: string): Promise<string>
+    // Per-project bulk clear ("Clear Project Data")
+    getExecutionIdsByProject(project: string): Promise<string[]>
+    getDistinctTestIdsByProject(project: string): Promise<string[]>
+    deleteByProject(project: string): Promise<number>
 }
 
 export interface IRunRepository {

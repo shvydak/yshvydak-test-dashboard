@@ -965,6 +965,92 @@ describe('TestRepository - Core Functionality', () => {
         })
     })
 
+    describe('per-project bulk clear', () => {
+        it('getExecutionIdsByProject() returns only ids for the given project', async () => {
+            const apiResult = createTestResult('test-api-1', 'passed', {project: 'API_Tests'})
+            const stagingResult = createTestResult('test-staging-1', 'passed', {
+                project: 'Staging',
+            })
+            await repository.saveTestResult(apiResult)
+            await repository.saveTestResult(stagingResult)
+
+            const ids = await repository.getExecutionIdsByProject('API_Tests')
+
+            expect(ids).toEqual([apiResult.id])
+        })
+
+        it('getDistinctTestIdsByProject() dedupes testIds within a project', async () => {
+            await repository.saveTestResult(
+                createTestResult('test-api-1', 'passed', {project: 'API_Tests'})
+            )
+            await repository.saveTestResult(
+                createTestResult('test-api-1', 'failed', {project: 'API_Tests'})
+            )
+            await repository.saveTestResult(
+                createTestResult('test-staging-1', 'passed', {project: 'Staging'})
+            )
+
+            const testIds = await repository.getDistinctTestIdsByProject('API_Tests')
+
+            expect(testIds).toEqual(['test-api-1'])
+        })
+
+        it('deleteByProject() deletes only that project and leaves others intact', async () => {
+            await repository.saveTestResult(
+                createTestResult('test-api-1', 'passed', {project: 'API_Tests'})
+            )
+            await repository.saveTestResult(
+                createTestResult('test-staging-1', 'passed', {project: 'Staging'})
+            )
+
+            const deletedCount = await repository.deleteByProject('API_Tests')
+
+            expect(deletedCount).toBe(1)
+            expect(await repository.getExecutionIdsByProject('API_Tests')).toEqual([])
+            expect(await repository.getExecutionIdsByProject('Staging')).toHaveLength(1)
+        })
+
+        it('deleteByProject() cascade deletes attachments for that project only', async () => {
+            const apiResult = createTestResult('test-api-1', 'passed', {project: 'API_Tests'})
+            const apiResultId = await repository.saveTestResult(apiResult)
+            const stagingResult = createTestResult('test-staging-1', 'passed', {
+                project: 'Staging',
+            })
+            const stagingResultId = await repository.saveTestResult(stagingResult)
+
+            await attachmentRepository.saveAttachment({
+                id: `att-${Date.now()}-api`,
+                testResultId: apiResultId,
+                type: 'screenshot',
+                fileName: 'api.png',
+                filePath: '/path/to/api.png',
+                fileSize: 1024,
+                url: '/attachments/api.png',
+            })
+            await attachmentRepository.saveAttachment({
+                id: `att-${Date.now()}-staging`,
+                testResultId: stagingResultId,
+                type: 'screenshot',
+                fileName: 'staging.png',
+                filePath: '/path/to/staging.png',
+                fileSize: 1024,
+                url: '/attachments/staging.png',
+            })
+
+            await repository.deleteByProject('API_Tests')
+
+            // CASCADE removed the API_Tests attachment...
+            expect(await attachmentRepository.getAttachmentsByTestResult(apiResultId)).toHaveLength(
+                0
+            )
+            // ...but left the Staging attachment (and row) untouched
+            expect(
+                await attachmentRepository.getAttachmentsByTestResult(stagingResultId)
+            ).toHaveLength(1)
+            expect(await repository.getExecutionIdsByProject('Staging')).toEqual([stagingResultId])
+        })
+    })
+
     describe('deleteByTestId()', () => {
         it('should delete all executions for a specific testId', async () => {
             const testId = 'test-to-delete'

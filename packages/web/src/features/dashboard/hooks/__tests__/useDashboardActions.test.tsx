@@ -5,6 +5,7 @@ import {describe, it, expect, vi, beforeEach, afterEach} from 'vitest'
 import {useDashboardActions} from '../useDashboardActions'
 import * as authFetch from '@features/authentication/utils/authFetch'
 import * as testsStore from '@features/tests/store/testsStore'
+import {config} from '@config/environment.config'
 
 // Mock dependencies
 vi.mock('@features/authentication/utils/authFetch')
@@ -264,6 +265,73 @@ describe('useDashboardActions', () => {
                 )
                 expect(invalidateQueriesSpy).toHaveBeenCalled()
             })
+        })
+    })
+
+    describe('clearAllData with a project', () => {
+        it('should confirm with a project-specific message and call the scoped endpoint', async () => {
+            confirmSpy.mockReturnValue(true)
+
+            const mockResponse = {
+                ok: true,
+                json: async () => ({data: {deletedExecutions: 30}}),
+            }
+            vi.mocked(authFetch.authFetch).mockResolvedValue(mockResponse as any)
+
+            const {result} = renderHook(() => useDashboardActions(), {wrapper})
+            await result.current.clearAllData('API_Tests')
+
+            expect(confirmSpy).toHaveBeenCalledWith(
+                expect.stringContaining('clear ALL test data for project "API_Tests"')
+            )
+            const [url] = vi.mocked(authFetch.authFetch).mock.calls[0]
+            expect(url).toBe(`${config.api.baseUrl}/tests/all?project=API_Tests`)
+        })
+
+        it('should show a project-scoped success alert using deletedExecutions', async () => {
+            confirmSpy.mockReturnValue(true)
+
+            const mockResponse = {
+                ok: true,
+                json: async () => ({data: {deletedExecutions: 30}}),
+            }
+            vi.mocked(authFetch.authFetch).mockResolvedValue(mockResponse as any)
+
+            const {result} = renderHook(() => useDashboardActions(), {wrapper})
+            await result.current.clearAllData('API_Tests')
+
+            await waitFor(() => {
+                expect(alertSpy).toHaveBeenCalledWith(
+                    '✅ Success! Cleared 30 executions for project "API_Tests"'
+                )
+            })
+            expect(mockFetchTests).toHaveBeenCalled()
+        })
+
+        it('should URL-encode the project name in the request', async () => {
+            confirmSpy.mockReturnValue(true)
+
+            const mockResponse = {
+                ok: true,
+                json: async () => ({data: {deletedExecutions: 1}}),
+            }
+            vi.mocked(authFetch.authFetch).mockResolvedValue(mockResponse as any)
+
+            const {result} = renderHook(() => useDashboardActions(), {wrapper})
+            await result.current.clearAllData('Mobile Chrome')
+
+            const [url] = vi.mocked(authFetch.authFetch).mock.calls[0]
+            expect(url).toContain('project=Mobile%20Chrome')
+        })
+
+        it('should not call the API when the user cancels the scoped confirmation', async () => {
+            confirmSpy.mockReturnValue(false)
+
+            const {result} = renderHook(() => useDashboardActions(), {wrapper})
+            await result.current.clearAllData('API_Tests')
+
+            expect(authFetch.authFetch).not.toHaveBeenCalled()
+            expect(mockFetchTests).not.toHaveBeenCalled()
         })
     })
 

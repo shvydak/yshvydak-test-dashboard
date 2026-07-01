@@ -35,15 +35,24 @@ export class TestService implements ITestService {
         return project || undefined
     }
 
-    async discoverTests(): Promise<TestDiscoveryResult> {
+    async discoverTests(project?: string): Promise<TestDiscoveryResult> {
         try {
-            // Clear existing pending tests before adding discovered ones
-            await this.testRepository['execute']('DELETE FROM test_results WHERE status = ?', [
-                'pending',
-            ])
+            // Clear existing pending tests before adding discovered ones.
+            // Scoped to a single project when provided, so discovering/running one
+            // project's tests never resets pending status for other project tabs.
+            if (project) {
+                await this.testRepository['execute'](
+                    'DELETE FROM test_results WHERE status = ? AND project = ?',
+                    ['pending', project]
+                )
+            } else {
+                await this.testRepository['execute']('DELETE FROM test_results WHERE status = ?', [
+                    'pending',
+                ])
+            }
 
             // Discover tests using Playwright
-            const discoveredTests = await this.playwrightService.discoverTests()
+            const discoveredTests = await this.playwrightService.discoverTests(project)
 
             // Save discovered tests to database
             let savedCount = 0
@@ -57,7 +66,11 @@ export class TestService implements ITestService {
             }
 
             // Broadcast discovery update via WebSocket
-            this.websocketService.broadcastDiscoveryCompleted(discoveredTests.length, savedCount)
+            this.websocketService.broadcastDiscoveryCompleted(
+                discoveredTests.length,
+                savedCount,
+                project
+            )
 
             Logger.testDiscovery(discoveredTests.length, savedCount)
 
@@ -149,6 +162,38 @@ export class TestService implements ITestService {
         Logger.info(`Deleted execution ${executionId}`)
 
         return {success: true}
+    }
+
+    async clearProjectData(project: string): Promise<{deletedExecutions: number}> {
+        // Get all executions and distinct test_ids for this project up front,
+        // since deleting test_results rows first would make them unrecoverable.
+        const executionIds = await this.testRepository.getExecutionIdsByProject(project)
+        const testIds = await this.testRepository.getDistinctTestIdsByProject(project)
+
+        // Delete physical attachment files for each execution
+        for (const executionId of executionIds) {
+            try {
+                await this.attachmentService.deleteAttachmentsForTestResult(executionId)
+            } catch (error) {
+                Logger.error(`Failed to delete attachments for execution ${executionId}`, error)
+            }
+        }
+
+        // Delete test notes for each test in this project
+        for (const testId of testIds) {
+            try {
+                await this.noteService.deleteNote(testId)
+            } catch (error) {
+                Logger.error(`Failed to delete note for test ${testId}`, error)
+            }
+        }
+
+        // Delete all test_results records for this project (CASCADE will delete attachment records)
+        const deletedCount = await this.testRepository.deleteByProject(project)
+
+        Logger.info(`Cleared project ${project}: ${deletedCount} executions`)
+
+        return {deletedExecutions: deletedCount}
     }
 
     async clearAllTests(): Promise<void> {
@@ -363,15 +408,17 @@ export class TestService implements ITestService {
             }
         }
 
-        // Auto-discover tests before running unless explicitly skipped
-        if (!skipAutoDiscovery) {
-            await this.discoverTests()
-        }
-
         const project =
             requestedProject !== undefined && requestedProject !== ''
                 ? requestedProject
                 : await this.getExecutionProject()
+
+        // Auto-discover tests before running unless explicitly skipped.
+        // Scoped to the resolved project so this never resets other projects' pending status.
+        if (!skipAutoDiscovery) {
+            await this.discoverTests(project)
+        }
+
         const result = await this.playwrightService.runAllTests(maxWorkers, project)
 
         // Add process to tracker

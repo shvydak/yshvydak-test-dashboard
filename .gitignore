@@ -84,3 +84,4 @@ Thumbs.db
 packages/server/test-results/
 .turbo/cookies
 .env.production
+runScript.txt

@@ -193,6 +193,33 @@ export class TestRepository extends BaseRepository implements ITestRepository {
         return row?.project ?? ''
     }
 
+    async getExecutionIdsByProject(project: string): Promise<string[]> {
+        const rows = await this.queryAll<{id: string}>(
+            `SELECT id FROM test_results WHERE project = ?`,
+            [project]
+        )
+        return rows.map((r) => r.id)
+    }
+
+    async getDistinctTestIdsByProject(project: string): Promise<string[]> {
+        const rows = await this.queryAll<{test_id: string}>(
+            `SELECT DISTINCT test_id FROM test_results WHERE project = ?`,
+            [project]
+        )
+        return rows.map((r) => r.test_id)
+    }
+
+    async deleteByProject(project: string): Promise<number> {
+        const result = await this.dbManager.execute(`DELETE FROM test_results WHERE project = ?`, [
+            project,
+        ])
+
+        // Compact database to reclaim space after deletion
+        await this.dbManager.compactDatabase()
+
+        return result.changes || 0
+    }
+
     async getFlakyTests(days: number = 30, thresholdPercent: number = 10): Promise<any[]> {
         const sql = `
             SELECT

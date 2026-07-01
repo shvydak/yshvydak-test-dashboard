@@ -28,7 +28,7 @@ interface TestsState {
     rerunTest: (testId: string) => Promise<void>
     deleteTest: (testId: string) => Promise<void>
     deleteExecution: (testId: string, executionId: string) => Promise<void>
-    discoverTests: () => Promise<void>
+    discoverTests: (project?: string) => Promise<void>
     runAllTests: (project?: string) => Promise<void>
     runTestsGroup: (filePath: string, testNames?: string[], project?: string) => Promise<void>
     clearError: () => void
@@ -235,11 +235,13 @@ export const useTestsStore = create<TestsState>()(
                 }
             },
 
-            discoverTests: async () => {
+            discoverTests: async (project?: string) => {
                 try {
                     set({isDiscovering: true, error: null})
 
-                    const response = await authPost(`${API_BASE_URL}/tests/discovery`)
+                    const response = await authPost(`${API_BASE_URL}/tests/discovery`, {
+                        project: project || undefined,
+                    })
 
                     if (!response.ok) {
                         throw new Error(`HTTP error! status: ${response.status}`)
@@ -272,7 +274,8 @@ export const useTestsStore = create<TestsState>()(
                         set({isDiscovering: true, error: null})
                         try {
                             const discoveryResponse = await authPost(
-                                `${API_BASE_URL}/tests/discovery`
+                                `${API_BASE_URL}/tests/discovery`,
+                                {project: project || undefined}
                             )
                             if (!discoveryResponse.ok) {
                                 throw new Error(`HTTP error! status: ${discoveryResponse.status}`)

@@ -3,12 +3,17 @@ import {useNavigate, useLocation} from 'react-router-dom'
 import {Settings, LogOut, LayoutDashboard, ChevronDown, Menu, X, Moon, Sun} from 'lucide-react'
 import {useTheme} from '@/hooks/useTheme'
 import {ProjectTabConfig} from '@/hooks/useProjectTabs'
+import {PipelineState} from '@/hooks/usePipelineStatus'
+import {ProjectStatusSummary} from '@/hooks/useProjectStatusSummary'
 
 interface HeaderProps {
     activeProject: string
     projectTabs: ProjectTabConfig[]
     tabsLoading?: boolean
     wsConnected?: boolean
+    pipeline?: PipelineState | null
+    projectStatusSummary?: ProjectStatusSummary[]
+    runningProjects?: Set<string>
     user?: (() => {email: string; role?: string}) | {email: string; role?: string}
     onOpenSettings?: () => void
 }
@@ -18,6 +23,9 @@ export default function Header({
     projectTabs,
     tabsLoading = false,
     wsConnected = false,
+    pipeline = null,
+    projectStatusSummary = [],
+    runningProjects = new Set(),
     user,
     onOpenSettings,
 }: HeaderProps) {
@@ -97,6 +105,58 @@ export default function Header({
                 : 'text-gray-500 hover:text-gray-900 hover:bg-gray-100/80 dark:text-gray-400 dark:hover:text-white dark:hover:bg-white/[0.06]'
         }`
 
+    // "Queued" only has meaning while a pipeline is actively working through its
+    // ordered steps — manual runs have no queue, so this never applies to them.
+    const isQueuedInPipeline = (project: string) =>
+        pipeline?.status === 'running' &&
+        pipeline.steps.some((s) => s.project === project && s.status === 'queued')
+
+    // The running dot is shared across every trigger (manual Run All, group run,
+    // single-test rerun, or a pipeline step) — sourced from the live active-process
+    // set, not from pipeline state.
+    const renderStatusDot = (project: string) => {
+        if (runningProjects.has(project)) {
+            return (
+                <span
+                    className="inline-block h-1.5 w-1.5 flex-shrink-0 rounded-full bg-primary-500 animate-pulse"
+                    aria-hidden="true"
+                />
+            )
+        }
+        if (isQueuedInPipeline(project)) {
+            return (
+                <span
+                    className="inline-block h-1.5 w-1.5 flex-shrink-0 rounded-full border border-dashed border-gray-400 dark:border-gray-500"
+                    aria-hidden="true"
+                />
+            )
+        }
+        return null
+    }
+
+    // The badge always reflects the project's real current state (latest status of
+    // every test in it), regardless of what triggered the last change — a manual
+    // rerun of one flaky test updates it just as much as a full pipeline run.
+    const renderStatusBadge = (project: string) => {
+        const summary = projectStatusSummary.find((s) => s.project === project)
+        if (!summary) return null
+        if (summary.failed > 0) {
+            return (
+                <span className="font-mono text-[10px] font-semibold text-danger-600 dark:text-danger-400">
+                    {summary.failed} failed
+                </span>
+            )
+        }
+        if (summary.passed > 0) {
+            return (
+                <span className="font-mono text-[10px] font-semibold text-success-600 dark:text-success-400">
+                    {summary.passed} passed
+                </span>
+            )
+        }
+        return null
+    }
+
     const dashboardIconClass = isDashboard
         ? 'flex items-center justify-center w-9 h-9 rounded-xl bg-primary-50 text-primary-700 dark:bg-primary-500/15 dark:text-primary-300 transition-all duration-200'
         : 'flex items-center justify-center w-9 h-9 rounded-xl text-gray-500 hover:text-gray-900 hover:bg-gray-100/80 dark:text-gray-400 dark:hover:text-white dark:hover:bg-white/[0.06] transition-all duration-200'
@@ -170,7 +230,11 @@ export default function Header({
                                             className={tabClass(
                                                 !isDashboard && activeProject === tab.project
                                             )}>
-                                            {tab.displayName}
+                                            <span className="flex items-center gap-1.5">
+                                                {renderStatusDot(tab.project)}
+                                                {tab.displayName}
+                                                {renderStatusBadge(tab.project)}
+                                            </span>
                                         </button>
                                     ))
                                 ) : (
@@ -325,12 +389,14 @@ export default function Header({
                                     <button
                                         key={tab.project}
                                         onClick={() => handleProjectTabClick(tab.project)}
-                                        className={`flex w-full items-center gap-3 rounded-xl px-3 py-3 text-sm font-medium transition-colors ${
+                                        className={`flex w-full items-center gap-1.5 rounded-xl px-3 py-3 text-sm font-medium transition-colors ${
                                             !isDashboard && activeProject === tab.project
                                                 ? 'bg-primary-50 text-primary-700 dark:bg-primary-500/15 dark:text-primary-300'
                                                 : 'text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-white/[0.06]'
                                         }`}>
+                                        {renderStatusDot(tab.project)}
                                         {tab.displayName}
+                                        {renderStatusBadge(tab.project)}
                                     </button>
                                 ))
                             ) : (

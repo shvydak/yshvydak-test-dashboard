@@ -6,6 +6,7 @@ import {createRunRoutes} from './run.routes'
 import {createAuthRoutes} from './auth.routes'
 import {createStorageRoutes} from './storage.routes'
 import {createSettingsRoutes} from './settings.routes'
+import {createPipelineRoutes} from './pipeline.routes'
 
 export function createApiRoutes(container: ServiceContainer): Router {
     const router = Router()
@@ -20,6 +21,7 @@ export function createApiRoutes(container: ServiceContainer): Router {
     router.use('/runs', createRunRoutes(container))
     router.use('/storage', createStorageRoutes(container))
     router.use('/settings', createSettingsRoutes(container))
+    router.use('/pipeline', createPipelineRoutes(container))
     // Note: Attachments are handled via /tests/:id/attachments endpoint
 
     return router

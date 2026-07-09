@@ -128,6 +128,7 @@ export interface ActiveProcessInfo {
         filePath?: string
         totalTests?: number
         originalTestId?: string
+        project?: string
     }
     progress?: TestProgress
 }
@@ -150,6 +151,7 @@ export interface ProcessStartData {
     filePath?: string
     testId?: string
     originalTestId?: string
+    project?: string
 }
 
 export interface ProcessEndData {

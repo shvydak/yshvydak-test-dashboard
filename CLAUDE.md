@@ -94,6 +94,9 @@ Use for post-development checks (`disable-model-invocation: true` — manual onl
 | Project tabs config          | `packages/web/src/hooks/useProjectTabs.ts`                                                                           |
 | Active project filter        | `packages/web/src/features/tests/hooks/useTestFilters.ts`                                                            |
 | CI auto-run pause            | `packages/web/src/hooks/useCIAutoRun.ts` + `packages/web/src/features/dashboard/components/CIAutoRunPauseBanner.tsx` |
+| CI pipeline (ordered multi-project runs) | `packages/server/src/services/pipelineExecution.service.ts` + `packages/web/src/hooks/usePipelineStatus.ts` |
+| Tab status badge/dot (general, any run trigger) | `packages/server/src/repositories/test.repository.ts` (`getProjectStatusSummary`) + `packages/web/src/hooks/useProjectRunStatus.ts` |
+| GitHub Actions CI workflow    | **Separate repo**, not this one — `probuildGit/test-dashboard` (`.github/workflows/trigger-tests.yml`), used by the self-hosted qa01 runner |
 
 **Full structure:** [docs/ai/FILE_LOCATIONS.md](docs/ai/FILE_LOCATIONS.md)
 
@@ -116,6 +119,7 @@ Full catalog with examples: [docs/ai/ANTI_PATTERNS.md](docs/ai/ANTI_PATTERNS.md)
 - **Rerun reporter output invisible** — `type: 'rerun'` uses `stdio: pipe` but has no listeners by default; add `process.stdout?.on('data', ...)` to rerun process temporarily to see reporter warnings (e.g. `⚠️ Failed to send test result`)
 - **testId has no project dimension** — hash is `filePath:title` only. `test_notes`/`note_images` are keyed by `test_id` alone (no `project` column) — any per-project feature (discovery, clear-data) must scope via `test_results.project`, not testId, and can't cleanly scope notes if two projects share a file+title.
 - **`activeProcessesTracker` run-all lock is global by design** — one active run blocks ALL projects, not just one. Intentional: concurrent Playwright processes conflict and the reporter drops results. Don't "fix" this to be per-project.
+- **`activeProcessesTracker.addProcess()` fires twice per run** — the dashboard registers the process first (knows `project`, not `totalTests`), then the Playwright reporter's own `/process-start` call registers again for the same `runId` (knows `totalTests`, not `project`). Must merge fields, never overwrite — an overwrite silently drops `project`/other details and resets in-flight `progress` back to zero (symptom: progress bar shows "N of 0 tests").
 
 **Frontend rules (auto-loaded for packages/web/**):** [.claude/rules/frontend.md](.claude/rules/frontend.md)  
 **Testing rules (auto-loaded for test files):\*\* [.claude/rules/testing.md](.claude/rules/testing.md)
@@ -143,6 +147,8 @@ npm run lint:fix     # ESLint auto-fix
 npm test             # All tests (73 files, 2111+ tests)
 npm run test:watch   # Watch mode
 npm run test:coverage
+npx vitest run --project server <path>   # single file — MUST run from repo root, not packages/*
+npx vitest run --project web <path>
 npm run build
 npm run format       # Prettier
 ```

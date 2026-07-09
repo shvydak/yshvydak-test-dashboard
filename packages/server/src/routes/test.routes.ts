@@ -27,6 +27,7 @@ export function createTestRoutes(container: ServiceContainer): Router {
     // Note: Specific routes must come before parameterized routes to avoid conflicts
     router.get('/', testController.getAllTests)
     router.get('/stats', testController.getTestStats)
+    router.get('/summary-by-project', testController.getProjectStatusSummary)
     router.get('/flaky', testController.getFlakyTests)
     router.get('/timeline', testController.getTestTimeline)
     router.get('/diagnostics', testController.getDiagnostics)

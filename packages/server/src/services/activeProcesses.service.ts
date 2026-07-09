@@ -12,28 +12,46 @@ export class ActiveProcessesTracker {
      * Add a new active process
      */
     addProcess(data: ProcessStartData): void {
+        // The dashboard registers a process the moment it spawns (with `project` in
+        // scope), then the Playwright reporter running inside that same process makes
+        // its own /process-start notification for the same runId (without `project` —
+        // the reporter has no way to know it). Merge instead of overwrite so the second
+        // call doesn't wipe out details only the first call had, and so in-flight
+        // progress isn't reset back to zero.
+        const existing = this.activeProcesses.get(data.runId)
+
         const processInfo: ActiveProcessInfo = {
             id: data.runId,
             type: data.type,
-            startedAt: new Date().toISOString(),
+            startedAt: existing?.startedAt ?? new Date().toISOString(),
             details: {
                 runId: data.runId,
-                testId: data.testId,
-                filePath: data.filePath,
-                totalTests: data.totalTests,
-                originalTestId: data.originalTestId,
+                testId: data.testId ?? existing?.details.testId,
+                filePath: data.filePath ?? existing?.details.filePath,
+                totalTests: data.totalTests ?? existing?.details.totalTests,
+                originalTestId: data.originalTestId ?? existing?.details.originalTestId,
+                project: data.project ?? existing?.details.project,
             },
-            progress: {
-                processId: data.runId,
-                type: data.type,
-                totalTests: data.totalTests || 0,
-                completedTests: 0,
-                passedTests: 0,
-                failedTests: 0,
-                skippedTests: 0,
-                runningTests: [],
-                startTime: Date.now(),
-            },
+            // Keep accumulated progress (completed/passed/failed/runningTests) across the
+            // dashboard's initial call and the reporter's later one, but still let
+            // totalTests be corrected once the reporter reports the real count — the
+            // dashboard's own call never knows it (totalTests: undefined) up front.
+            progress: existing?.progress
+                ? {
+                      ...existing.progress,
+                      totalTests: data.totalTests ?? existing.progress.totalTests,
+                  }
+                : {
+                      processId: data.runId,
+                      type: data.type,
+                      totalTests: data.totalTests || 0,
+                      completedTests: 0,
+                      passedTests: 0,
+                      failedTests: 0,
+                      skippedTests: 0,
+                      runningTests: [],
+                      startTime: Date.now(),
+                  },
         }
 
         this.activeProcesses.set(data.runId, processInfo)

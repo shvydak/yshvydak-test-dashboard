@@ -86,13 +86,13 @@ export function SettingsTestExecutionSection() {
                     </p>
                 </div>
 
-                {/* Divider: CI trigger script settings */}
+                {/* Manual run defaults — only affect the dashboard's own Run All / rerun buttons */}
                 <div className="rounded-2xl border border-gray-200/70 bg-gray-50/50 px-4 py-3 space-y-4 dark:border-white/[0.06] dark:bg-white/[0.02]">
                     <p className="text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500">
-                        CI Trigger Script
+                        Manual Run Defaults
                     </p>
 
-                    {/* Trigger script project */}
+                    {/* Default project for Run All */}
                     <div>
                         <div className="flex items-center justify-between mb-2">
                             <label
@@ -128,8 +128,10 @@ export function SettingsTestExecutionSection() {
                         </select>
                         <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">
                             {selectedProject
-                                ? `trigger-test-run.sh will use "${selectedProject}"`
-                                : 'trigger-test-run.sh will run all projects'}
+                                ? `Dashboard's Run All button will use "${selectedProject}" when no project tab is selected.`
+                                : "Dashboard's Run All button will run all projects when no project tab is selected."}{' '}
+                            The CI pipeline always uses the steps configured above under Project
+                            Tabs.
                         </p>
                         {projectError && (
                             <p className="mt-2 text-sm text-danger-600 dark:text-danger-400">
@@ -145,7 +147,7 @@ export function SettingsTestExecutionSection() {
                                 Auto-discover before run
                             </p>
                             <p className="text-sm text-gray-500 dark:text-gray-400">
-                                Discover new tests automatically before each run
+                                Discover new tests automatically before each dashboard Run All
                             </p>
                         </div>
                         <button
@@ -156,53 +158,62 @@ export function SettingsTestExecutionSection() {
                             <span className={toggleKnobClass(autoDiscover)} />
                         </button>
                     </div>
+                </div>
 
-                    {/* CI auto-run pause */}
-                    <div className="space-y-3">
-                        <div className="flex items-center justify-between gap-4">
-                            <div>
-                                <p className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                                    Pause CI auto-run
-                                </p>
-                                <p className="text-sm text-gray-500 dark:text-gray-400">
-                                    {isPaused && resumeAt
-                                        ? `Active · resumes at ${formatResumeTime(resumeAt)}`
-                                        : isPaused
-                                          ? 'Active · no auto-resume'
-                                          : 'Block trigger-test-run.sh from starting runs'}
-                                </p>
-                            </div>
-                            <button
-                                role="switch"
-                                aria-checked={isPaused}
-                                disabled={isSavingPause}
-                                onClick={() => (isPaused ? resume() : pauseFor(3))}
-                                className={toggleClass(isPaused) + ' disabled:opacity-50'}>
-                                <span className={toggleKnobClass(isPaused)} />
-                            </button>
+                {/* CI pipeline controls — apply to trigger-test-run.sh / the CI pipeline as a whole */}
+                <div className="rounded-2xl border border-gray-200/70 bg-gray-50/50 px-4 py-3 space-y-3 dark:border-white/[0.06] dark:bg-white/[0.02]">
+                    <p className="text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500">
+                        CI Pipeline
+                    </p>
+
+                    <div className="flex items-center justify-between gap-4">
+                        <div>
+                            <p className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                                Pause CI auto-run
+                            </p>
+                            <p className="text-sm text-gray-500 dark:text-gray-400">
+                                {isPaused && resumeAt
+                                    ? `Active · resumes at ${formatResumeTime(resumeAt)}`
+                                    : isPaused
+                                      ? 'Active · no auto-resume'
+                                      : 'Block trigger-test-run.sh from starting the pipeline'}
+                            </p>
                         </div>
-
-                        {/* Duration picker — visible when about to pause or already paused */}
-                        {isPaused && (
-                            <div className="flex items-center gap-2">
-                                <span className="text-xs text-gray-500 dark:text-gray-400">
-                                    Change duration:
-                                </span>
-                                <div className="flex gap-1.5">
-                                    {DURATION_OPTIONS.map(({label, hours}) => (
-                                        <button
-                                            key={hours}
-                                            disabled={isSavingPause}
-                                            onClick={() => pauseFor(hours)}
-                                            className="rounded-lg border border-gray-200 bg-white px-2.5 py-1 text-xs font-medium text-gray-600 transition-colors hover:border-primary-400 hover:text-primary-600 disabled:opacity-50
-                                                     dark:border-white/10 dark:bg-white/[0.04] dark:text-gray-400 dark:hover:border-primary-400 dark:hover:text-primary-400">
-                                            {label}
-                                        </button>
-                                    ))}
-                                </div>
-                            </div>
-                        )}
+                        <button
+                            role="switch"
+                            aria-checked={isPaused}
+                            disabled={isSavingPause}
+                            onClick={() => (isPaused ? resume() : pauseFor(3))}
+                            className={toggleClass(isPaused) + ' disabled:opacity-50'}>
+                            <span className={toggleKnobClass(isPaused)} />
+                        </button>
                     </div>
+
+                    {/* Duration picker — visible when about to pause or already paused */}
+                    {isPaused && (
+                        <div className="flex items-center gap-2">
+                            <span className="text-xs text-gray-500 dark:text-gray-400">
+                                Change duration:
+                            </span>
+                            <div className="flex gap-1.5">
+                                {DURATION_OPTIONS.map(({label, hours}) => (
+                                    <button
+                                        key={hours}
+                                        disabled={isSavingPause}
+                                        onClick={() => pauseFor(hours)}
+                                        className="rounded-lg border border-gray-200 bg-white px-2.5 py-1 text-xs font-medium text-gray-600 transition-colors hover:border-primary-400 hover:text-primary-600 disabled:opacity-50
+                                                 dark:border-white/10 dark:bg-white/[0.04] dark:text-gray-400 dark:hover:border-primary-400 dark:hover:text-primary-400">
+                                        {label}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
+                    <p className="text-sm text-gray-500 dark:text-gray-400">
+                        Which projects run, in what order, and whether a failure stops the chain is
+                        configured above under Project Tabs.
+                    </p>
                 </div>
             </div>
         </SettingsSection>

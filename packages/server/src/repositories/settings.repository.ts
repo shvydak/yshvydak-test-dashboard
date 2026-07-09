@@ -24,6 +24,8 @@ export interface ProjectTabConfig {
     project: string
     displayName: string
     visible: boolean
+    inPipeline: boolean
+    stopPipelineOnFailure: boolean
 }
 
 export interface CIAutoRunPause {
@@ -107,7 +109,16 @@ export class SettingsRepository extends BaseRepository implements ISettingsRepos
         if (!row?.value) return []
 
         try {
-            return JSON.parse(row.value) as ProjectTabConfig[]
+            const parsed = JSON.parse(row.value) as Partial<ProjectTabConfig>[]
+            // Rows saved before inPipeline/stopPipelineOnFailure existed default to
+            // false, so nothing enters the CI pipeline until explicitly opted in.
+            return parsed.map((c) => ({
+                project: c.project ?? '',
+                displayName: c.displayName ?? c.project ?? '',
+                visible: c.visible ?? true,
+                inPipeline: c.inPipeline ?? false,
+                stopPipelineOnFailure: c.stopPipelineOnFailure ?? false,
+            }))
         } catch {
             return []
         }

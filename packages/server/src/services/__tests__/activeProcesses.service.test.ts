@@ -162,6 +162,74 @@ describe('ActiveProcessesTracker', () => {
             expect(processes).toHaveLength(1)
             expect(processes[0].type).toBe('run-group')
         })
+
+        it('should preserve project from the first call when the second call (e.g. from the reporter) omits it', () => {
+            // Mirrors real flow: the dashboard registers the process with `project` in
+            // scope, then the Playwright reporter running inside that process makes its
+            // own /process-start notification for the same runId without knowing project.
+            tracker.addProcess({runId: 'run-1', type: 'run-all', project: 'API_Tests'})
+            tracker.addProcess({runId: 'run-1', type: 'run-all'})
+
+            const processes = tracker.getActiveProcesses()
+            expect(processes).toHaveLength(1)
+            expect(processes[0].details.project).toBe('API_Tests')
+        })
+
+        it('should not reset in-flight progress when the same runId is registered again', () => {
+            tracker.addProcess({runId: 'run-1', type: 'run-all', project: 'API_Tests'})
+            tracker.startTest('run-1', {
+                testId: 'test-1',
+                name: 'Some test',
+                filePath: 'test.spec.ts',
+            })
+            tracker.updateProgress('run-1', {
+                testId: 'test-1',
+                name: 'Some test',
+                filePath: 'test.spec.ts',
+                status: 'passed',
+            })
+
+            // Reporter's own process-start notification arrives after progress already started
+            tracker.addProcess({runId: 'run-1', type: 'run-all'})
+
+            const progress = tracker.getProgress('run-1')
+            expect(progress?.completedTests).toBe(1)
+            expect(progress?.passedTests).toBe(1)
+        })
+
+        it("should correct totalTests from the reporter's second call while keeping accumulated progress", () => {
+            // Dashboard registers the process before totalTests is known.
+            tracker.addProcess({runId: 'run-1', type: 'run-all', project: 'API_Tests'})
+            tracker.startTest('run-1', {
+                testId: 'test-1',
+                name: 'Some test',
+                filePath: 'test.spec.ts',
+            })
+            tracker.updateProgress('run-1', {
+                testId: 'test-1',
+                name: 'Some test',
+                filePath: 'test.spec.ts',
+                status: 'passed',
+            })
+
+            // Reporter's own process-start notification arrives with the real total.
+            tracker.addProcess({runId: 'run-1', type: 'run-all', totalTests: 60})
+
+            const progress = tracker.getProgress('run-1')
+            expect(progress?.totalTests).toBe(60)
+            expect(progress?.completedTests).toBe(1)
+            expect(progress?.passedTests).toBe(1)
+        })
+
+        it('should keep the original startedAt across a duplicate registration', () => {
+            tracker.addProcess({runId: 'run-1', type: 'run-all', project: 'API_Tests'})
+            const firstStartedAt = tracker.getActiveProcesses()[0].startedAt
+
+            tracker.addProcess({runId: 'run-1', type: 'run-all'})
+            const secondStartedAt = tracker.getActiveProcesses()[0].startedAt
+
+            expect(secondStartedAt).toBe(firstStartedAt)
+        })
     })
 
     describe('removeProcess()', () => {

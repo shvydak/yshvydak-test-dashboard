@@ -42,6 +42,30 @@ export function SettingsProjectTabsSection() {
         await updateTabs(updated)
     }
 
+    const handlePipelineToggle = async (project: string) => {
+        const updated = localTabs.map((t) =>
+            t.project === project
+                ? {
+                      ...t,
+                      inPipeline: !t.inPipeline,
+                      // Turning a step out of the pipeline also clears its stop-on-failure
+                      // flag, since it has no meaning outside the pipeline.
+                      stopPipelineOnFailure: !t.inPipeline ? t.stopPipelineOnFailure : false,
+                  }
+                : t
+        )
+        setLocalTabs(updated)
+        await updateTabs(updated)
+    }
+
+    const handleStopOnFailureToggle = async (project: string) => {
+        const updated = localTabs.map((t) =>
+            t.project === project ? {...t, stopPipelineOnFailure: !t.stopPipelineOnFailure} : t
+        )
+        setLocalTabs(updated)
+        await updateTabs(updated)
+    }
+
     const handleMove = async (project: string, direction: 'up' | 'down') => {
         const index = localTabs.findIndex((t) => t.project === project)
         const targetIndex = direction === 'up' ? index - 1 : index + 1
@@ -88,7 +112,7 @@ export function SettingsProjectTabsSection() {
                 {localTabs.length > 0 && (
                     <div className="space-y-2">
                         {/* Header row */}
-                        <div className="grid grid-cols-[auto_1fr_auto_auto] items-center gap-x-3 px-1">
+                        <div className="grid grid-cols-[auto_1fr_auto_auto_auto_auto] items-center gap-x-3 px-1">
                             <span className="text-xs font-medium text-gray-400 dark:text-gray-500 w-14">
                                 Order
                             </span>
@@ -101,12 +125,18 @@ export function SettingsProjectTabsSection() {
                             <span className="text-xs font-medium text-gray-400 dark:text-gray-500">
                                 Visible
                             </span>
+                            <span className="text-xs font-medium text-gray-400 dark:text-gray-500">
+                                In CI pipeline
+                            </span>
+                            <span className="text-xs font-medium text-gray-400 dark:text-gray-500">
+                                Stop pipeline on failure
+                            </span>
                         </div>
 
                         {localTabs.map((tab, index) => (
                             <div
                                 key={tab.project}
-                                className="grid grid-cols-[auto_1fr_auto_auto] items-center gap-x-3 rounded-xl border border-gray-200/70 bg-white/60 px-3 py-2.5 dark:border-white/[0.06] dark:bg-white/[0.02]">
+                                className="grid grid-cols-[auto_1fr_auto_auto_auto_auto] items-center gap-x-3 rounded-xl border border-gray-200/70 bg-white/60 px-3 py-2.5 dark:border-white/[0.06] dark:bg-white/[0.02]">
                                 <div className="flex w-14 items-center gap-0.5">
                                     <button
                                         type="button"
@@ -159,6 +189,47 @@ export function SettingsProjectTabsSection() {
                                         }`}
                                     />
                                 </button>
+                                <button
+                                    role="switch"
+                                    aria-checked={tab.inPipeline}
+                                    aria-label={`Include ${tab.project} in CI pipeline`}
+                                    onClick={() => handlePipelineToggle(tab.project)}
+                                    disabled={isSaving}
+                                    className={`relative inline-flex h-6 w-11 flex-shrink-0 items-center rounded-full transition-colors duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/60 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-gray-800 disabled:opacity-50 ${
+                                        tab.inPipeline
+                                            ? 'bg-primary-600 dark:bg-primary-500'
+                                            : 'bg-gray-200 dark:bg-white/10'
+                                    }`}>
+                                    <span
+                                        className={`inline-block h-4 w-4 transform rounded-full bg-white shadow-soft transition-transform duration-200 ${
+                                            tab.inPipeline ? 'translate-x-6' : 'translate-x-1'
+                                        }`}
+                                    />
+                                </button>
+                                <button
+                                    role="switch"
+                                    aria-checked={tab.stopPipelineOnFailure}
+                                    aria-label={`Stop the pipeline if ${tab.project} fails`}
+                                    onClick={() => handleStopOnFailureToggle(tab.project)}
+                                    disabled={isSaving || !tab.inPipeline}
+                                    title={
+                                        !tab.inPipeline
+                                            ? 'Enable "In CI pipeline" first'
+                                            : undefined
+                                    }
+                                    className={`relative inline-flex h-6 w-11 flex-shrink-0 items-center rounded-full transition-colors duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-danger-500/60 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-gray-800 disabled:opacity-30 ${
+                                        tab.stopPipelineOnFailure
+                                            ? 'bg-danger-600 dark:bg-danger-500'
+                                            : 'bg-gray-200 dark:bg-white/10'
+                                    }`}>
+                                    <span
+                                        className={`inline-block h-4 w-4 transform rounded-full bg-white shadow-soft transition-transform duration-200 ${
+                                            tab.stopPipelineOnFailure
+                                                ? 'translate-x-6'
+                                                : 'translate-x-1'
+                                        }`}
+                                    />
+                                </button>
                             </div>
                         ))}
                     </div>
@@ -166,7 +237,9 @@ export function SettingsProjectTabsSection() {
 
                 <p className="text-xs text-gray-400 dark:text-gray-500">
                     Changes apply globally for all users. Tab label can be renamed without affecting
-                    which project it tracks.
+                    which project it tracks. Tabs with "In CI pipeline" enabled run in order during
+                    a CI trigger; "Stop pipeline on failure" skips the remaining steps if this one
+                    has any failed tests.
                 </p>
             </div>
         </SettingsSection>

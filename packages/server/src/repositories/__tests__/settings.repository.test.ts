@@ -99,8 +99,20 @@ describe('SettingsRepository', () => {
 
         it('getProjectTabConfigs returns saved configs after setProjectTabConfigs', async () => {
             const input = [
-                {project: 'Frontend', displayName: 'Frontend Tests', visible: true},
-                {project: 'Backend', displayName: 'Backend Tests', visible: false},
+                {
+                    project: 'Frontend',
+                    displayName: 'Frontend Tests',
+                    visible: true,
+                    inPipeline: false,
+                    stopPipelineOnFailure: false,
+                },
+                {
+                    project: 'Backend',
+                    displayName: 'Backend Tests',
+                    visible: false,
+                    inPipeline: true,
+                    stopPipelineOnFailure: true,
+                },
             ]
 
             await repository.setProjectTabConfigs(input)
@@ -110,10 +122,30 @@ describe('SettingsRepository', () => {
         })
 
         it('setProjectTabConfigs called twice overwrites (UPSERT, not append)', async () => {
-            const first = [{project: 'Frontend', displayName: 'Frontend', visible: true}]
+            const first = [
+                {
+                    project: 'Frontend',
+                    displayName: 'Frontend',
+                    visible: true,
+                    inPipeline: false,
+                    stopPipelineOnFailure: false,
+                },
+            ]
             const second = [
-                {project: 'Backend', displayName: 'Backend', visible: false},
-                {project: 'Mobile', displayName: 'Mobile', visible: true},
+                {
+                    project: 'Backend',
+                    displayName: 'Backend',
+                    visible: false,
+                    inPipeline: false,
+                    stopPipelineOnFailure: false,
+                },
+                {
+                    project: 'Mobile',
+                    displayName: 'Mobile',
+                    visible: true,
+                    inPipeline: false,
+                    stopPipelineOnFailure: false,
+                },
             ]
 
             await repository.setProjectTabConfigs(first)
@@ -123,6 +155,29 @@ describe('SettingsRepository', () => {
 
             expect(configs).toHaveLength(2)
             expect(configs).toEqual(second)
+        })
+
+        it('defaults inPipeline/stopPipelineOnFailure to false for legacy rows missing those fields', async () => {
+            const db = (dbManager as any).db
+            await new Promise<void>((resolve, reject) =>
+                db.run(
+                    `INSERT INTO app_settings (key, value) VALUES ('project_tab_configs', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value`,
+                    [JSON.stringify([{project: 'Legacy', displayName: 'Legacy', visible: true}])],
+                    (err: any) => (err ? reject(err) : resolve())
+                )
+            )
+
+            const configs = await repository.getProjectTabConfigs()
+
+            expect(configs).toEqual([
+                {
+                    project: 'Legacy',
+                    displayName: 'Legacy',
+                    visible: true,
+                    inPipeline: false,
+                    stopPipelineOnFailure: false,
+                },
+            ])
         })
 
         it('returns empty array and does not throw on malformed JSON in DB', async () => {
@@ -144,7 +199,13 @@ describe('SettingsRepository', () => {
         it('setting tab configs does not affect global_playwright_project key', async () => {
             await repository.setGlobalPlaywrightProject('Sanity')
             await repository.setProjectTabConfigs([
-                {project: 'Frontend', displayName: 'FE', visible: true},
+                {
+                    project: 'Frontend',
+                    displayName: 'FE',
+                    visible: true,
+                    inPipeline: false,
+                    stopPipelineOnFailure: false,
+                },
             ])
 
             const project = await repository.getGlobalPlaywrightProject()

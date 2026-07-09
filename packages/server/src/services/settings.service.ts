@@ -71,10 +71,21 @@ export class SettingsService {
             project: String(c.project || '').trim(),
             displayName: String(c.displayName || c.project || '').trim(),
             visible: Boolean(c.visible),
+            inPipeline: Boolean(c.inPipeline),
+            stopPipelineOnFailure: Boolean(c.stopPipelineOnFailure),
         }))
         await this.settingsRepository.setProjectTabConfigs(validated)
         Logger.info(`Project tab configs updated: ${validated.length} entries`)
         return validated
+    }
+
+    /**
+     * Ordered list of tabs configured to run in the CI pipeline, in the same
+     * order as they appear in project_tab_configs (pipeline order = tab order).
+     */
+    async getPipelineSteps(): Promise<ProjectTabConfig[]> {
+        const tabs = await this.getProjectTabConfigs()
+        return tabs.filter((t) => t.inPipeline)
     }
 
     async getCIAutoRunPause(): Promise<CIAutoRunPause> {

@@ -86,6 +86,7 @@ describe('TestService', () => {
             getExecutionIdsByProject: vi.fn().mockResolvedValue([]),
             getDistinctTestIdsByProject: vi.fn().mockResolvedValue([]),
             deleteByProject: vi.fn().mockResolvedValue(0),
+            getProjectStatusSummary: vi.fn().mockResolvedValue([]),
         }
 
         mockRunRepository = {
@@ -832,6 +833,21 @@ describe('TestService', () => {
 
             // Assert
             expect(result).toEqual([])
+        })
+    })
+
+    describe('getProjectStatusSummary', () => {
+        it('should delegate to testRepository', async () => {
+            const mockSummary = [
+                {project: 'API_Tests', total: 62, passed: 62, failed: 0},
+                {project: 'All_Tests', total: 8, passed: 5, failed: 3},
+            ]
+            mockTestRepository.getProjectStatusSummary.mockResolvedValue(mockSummary)
+
+            const result = await testService.getProjectStatusSummary()
+
+            expect(result).toEqual(mockSummary)
+            expect(mockTestRepository.getProjectStatusSummary).toHaveBeenCalledTimes(1)
         })
     })
 

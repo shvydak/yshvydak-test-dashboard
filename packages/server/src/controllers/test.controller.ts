@@ -159,6 +159,22 @@ export class TestController {
         }
     }
 
+    // GET /api/tests/summary-by-project - Latest passed/failed counts per project (tab-bar badge)
+    getProjectStatusSummary = async (_req: ServiceRequest, res: Response): Promise<Response> => {
+        try {
+            const summary = await this.testService.getProjectStatusSummary()
+            return ResponseHelper.success(res, summary)
+        } catch (error) {
+            Logger.error('Error fetching project status summary', error)
+            return ResponseHelper.error(
+                res,
+                error instanceof Error ? error.message : 'Unknown error',
+                'Failed to fetch project status summary',
+                500
+            )
+        }
+    }
+
     // GET /api/tests/stats - Get database statistics
     getTestStats = async (req: ServiceRequest, res: Response): Promise<Response> => {
         try {

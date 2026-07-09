@@ -55,4 +55,46 @@ export class WebSocketService implements IWebSocketService {
             },
         })
     }
+
+    broadcastPipelineStarted(pipelineRunId: string, steps: PipelineStepSummary[]): void {
+        this.broadcast({
+            type: 'pipeline:started',
+            data: {pipelineRunId, steps},
+        })
+    }
+
+    broadcastPipelineStepStarted(pipelineRunId: string, project: string, runId: string): void {
+        this.broadcast({
+            type: 'pipeline:step-started',
+            data: {pipelineRunId, project, runId},
+        })
+    }
+
+    broadcastPipelineStepCompleted(pipelineRunId: string, step: PipelineStepSummary): void {
+        this.broadcast({
+            type: 'pipeline:step-completed',
+            data: {pipelineRunId, step},
+        })
+    }
+
+    broadcastPipelineCompleted(
+        pipelineRunId: string,
+        status: 'completed' | 'stopped_early',
+        steps: PipelineStepSummary[]
+    ): void {
+        this.broadcast({
+            type: 'pipeline:completed',
+            data: {pipelineRunId, status, steps},
+        })
+    }
+}
+
+export interface PipelineStepSummary {
+    project: string
+    displayName: string
+    stopOnFailure: boolean
+    status: 'queued' | 'running' | 'success' | 'failed' | 'skipped'
+    runId?: string
+    passed?: number
+    failed?: number
 }

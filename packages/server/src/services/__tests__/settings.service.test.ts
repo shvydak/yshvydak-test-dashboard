@@ -130,7 +130,13 @@ describe('SettingsService', () => {
             mockRepository.setProjectTabConfigs.mockResolvedValue(undefined)
 
             const result = await service.setProjectTabConfigs([
-                {project: 'Frontend', displayName: '', visible: true},
+                {
+                    project: 'Frontend',
+                    displayName: '',
+                    visible: true,
+                    inPipeline: false,
+                    stopPipelineOnFailure: false,
+                },
             ])
 
             expect(result[0].displayName).toBe('Frontend')
@@ -141,7 +147,13 @@ describe('SettingsService', () => {
             mockRepository.setProjectTabConfigs.mockResolvedValue(undefined)
 
             const result = await service.setProjectTabConfigs([
-                {project: '  Backend  ', displayName: 'Backend Tests', visible: true},
+                {
+                    project: '  Backend  ',
+                    displayName: 'Backend Tests',
+                    visible: true,
+                    inPipeline: false,
+                    stopPipelineOnFailure: false,
+                },
             ])
 
             expect(result[0].project).toBe('Backend')
@@ -151,8 +163,20 @@ describe('SettingsService', () => {
             mockRepository.setProjectTabConfigs.mockResolvedValue(undefined)
 
             const input = [
-                {project: 'A', displayName: 'A', visible: 'true' as any},
-                {project: 'B', displayName: 'B', visible: 1 as any},
+                {
+                    project: 'A',
+                    displayName: 'A',
+                    visible: 'true' as any,
+                    inPipeline: false,
+                    stopPipelineOnFailure: false,
+                },
+                {
+                    project: 'B',
+                    displayName: 'B',
+                    visible: 1 as any,
+                    inPipeline: false,
+                    stopPipelineOnFailure: false,
+                },
             ]
             const result = await service.setProjectTabConfigs(input)
 
@@ -169,6 +193,71 @@ describe('SettingsService', () => {
 
             expect(result).toEqual([])
             expect(mockRepository.setProjectTabConfigs).toHaveBeenCalledWith([])
+        })
+
+        it('should coerce inPipeline/stopPipelineOnFailure to boolean', async () => {
+            mockRepository.setProjectTabConfigs.mockResolvedValue(undefined)
+
+            const result = await service.setProjectTabConfigs([
+                {
+                    project: 'API_Tests',
+                    displayName: 'API Tests',
+                    visible: true,
+                    inPipeline: 'yes' as any,
+                    stopPipelineOnFailure: 1 as any,
+                },
+            ])
+
+            expect(result[0].inPipeline).toBe(true)
+            expect(result[0].stopPipelineOnFailure).toBe(true)
+        })
+    })
+
+    describe('getPipelineSteps()', () => {
+        it('should return only tabs with inPipeline=true, preserving order', async () => {
+            mockRepository.getProjectTabConfigs.mockResolvedValue([
+                {
+                    project: 'API_Tests',
+                    displayName: 'API Tests',
+                    visible: true,
+                    inPipeline: true,
+                    stopPipelineOnFailure: true,
+                },
+                {
+                    project: 'Staging',
+                    displayName: 'Staging',
+                    visible: true,
+                    inPipeline: false,
+                    stopPipelineOnFailure: false,
+                },
+                {
+                    project: 'All_Tests',
+                    displayName: 'WEB Tests (CI)',
+                    visible: true,
+                    inPipeline: true,
+                    stopPipelineOnFailure: false,
+                },
+            ])
+
+            const steps = await service.getPipelineSteps()
+
+            expect(steps.map((s) => s.project)).toEqual(['API_Tests', 'All_Tests'])
+        })
+
+        it('should return an empty array when no tabs are in the pipeline', async () => {
+            mockRepository.getProjectTabConfigs.mockResolvedValue([
+                {
+                    project: 'Staging',
+                    displayName: 'Staging',
+                    visible: true,
+                    inPipeline: false,
+                    stopPipelineOnFailure: false,
+                },
+            ])
+
+            const steps = await service.getPipelineSteps()
+
+            expect(steps).toEqual([])
         })
     })
 })

@@ -13,6 +13,9 @@ import {FloatingProgressPanel} from '@features/tests/components/progress/Floatin
 import {LoginPage, setGlobalLogout} from '@features/authentication'
 import {useTestsStore} from '@features/tests/store/testsStore'
 import {useProjectTabs} from '@/hooks/useProjectTabs'
+import {usePipelineStatus} from '@/hooks/usePipelineStatus'
+import {useProjectStatusSummary} from '@/hooks/useProjectStatusSummary'
+import {useProjectRunStatus} from '@/hooks/useProjectRunStatus'
 import {VERSION} from '@/config/version'
 import {useWebSocket} from './hooks/useWebSocket'
 import {config} from '@config/environment.config'
@@ -51,6 +54,10 @@ function App() {
         isLoading: tabsLoading,
         reload: reloadProjectTabs,
     } = useProjectTabs(isAuthenticated)
+
+    const {pipeline, applyPipelineEvent} = usePipelineStatus(isAuthenticated)
+    const {summary: projectStatusSummary} = useProjectStatusSummary(isAuthenticated)
+    const {runningProjects, applyRunStatusEvent} = useProjectRunStatus()
 
     const {
         fetchTests,
@@ -209,7 +216,11 @@ function App() {
     }, [isAuthenticated, isLoading])
 
     // WebSocket connection for live updates
-    const {isConnected} = useWebSocket(webSocketUrl, {onRunCompleted: triggerCheck})
+    const {isConnected} = useWebSocket(webSocketUrl, {
+        onRunCompleted: triggerCheck,
+        onPipelineEvent: applyPipelineEvent,
+        onRunStatusEvent: applyRunStatusEvent,
+    })
 
     useEffect(() => {
         // Only initialize if authenticated
@@ -268,6 +279,9 @@ function App() {
                 projectTabs={visibleTabs}
                 tabsLoading={tabsLoading}
                 wsConnected={isConnected}
+                pipeline={pipeline}
+                projectStatusSummary={projectStatusSummary}
+                runningProjects={runningProjects}
                 onOpenSettings={() => setIsSettingsOpen(true)}
                 user={() => {
                     try {

@@ -214,6 +214,41 @@ describe('TestController', () => {
         })
     })
 
+    describe('getProjectStatusSummary', () => {
+        it('should return the per-project summary successfully', async () => {
+            const mockSummary = [
+                {project: 'API_Tests', total: 62, passed: 62, failed: 0},
+                {project: 'All_Tests', total: 8, passed: 5, failed: 3},
+            ]
+            mockTestService.getProjectStatusSummary = vi.fn().mockResolvedValue(mockSummary)
+            mockReq = createMockRequest()
+
+            await controller.getProjectStatusSummary(mockReq as ServiceRequest, mockRes as Response)
+
+            expect(mockTestService.getProjectStatusSummary).toHaveBeenCalledTimes(1)
+            expect(ResponseHelper.success).toHaveBeenCalledWith(mockRes, mockSummary)
+        })
+
+        it('should return 500 on service error', async () => {
+            const error = new Error('Database error')
+            mockTestService.getProjectStatusSummary = vi.fn().mockRejectedValue(error)
+            mockReq = createMockRequest()
+
+            await controller.getProjectStatusSummary(mockReq as ServiceRequest, mockRes as Response)
+
+            expect(Logger.error).toHaveBeenCalledWith(
+                'Error fetching project status summary',
+                error
+            )
+            expect(ResponseHelper.error).toHaveBeenCalledWith(
+                mockRes,
+                'Database error',
+                'Failed to fetch project status summary',
+                500
+            )
+        })
+    })
+
     describe('runAllTests', () => {
         it('should run all tests with maxWorkers', async () => {
             const runResult = {runId: 'run-123', message: 'Tests started'}

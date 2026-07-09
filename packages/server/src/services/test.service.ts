@@ -359,6 +359,12 @@ export class TestService implements ITestService {
         return this.playwrightService.getAvailableProjects()
     }
 
+    async getProjectStatusSummary(): Promise<
+        {project: string; total: number; passed: number; failed: number}[]
+    > {
+        return this.testRepository.getProjectStatusSummary()
+    }
+
     async runAllTests(
         maxWorkers?: number,
         skipAutoDiscovery?: boolean,
@@ -426,6 +432,7 @@ export class TestService implements ITestService {
             runId: result.runId,
             type: 'run-all',
             totalTests: undefined, // Will be determined during execution
+            project,
         })
 
         // Create test run record
@@ -480,6 +487,7 @@ export class TestService implements ITestService {
             runId: result.runId,
             type: 'run-group',
             filePath: filePath,
+            project,
         })
 
         // Create test run record
@@ -548,6 +556,7 @@ export class TestService implements ITestService {
             testId: testId,
             originalTestId: testId,
             filePath: test.filePath,
+            project,
         })
 
         // Create a new run for this rerun

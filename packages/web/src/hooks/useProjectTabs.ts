@@ -6,6 +6,8 @@ export interface ProjectTabConfig {
     project: string
     displayName: string
     visible: boolean
+    inPipeline: boolean
+    stopPipelineOnFailure: boolean
 }
 
 export interface UseProjectTabsReturn {
@@ -50,7 +52,13 @@ export function useProjectTabs(isAuthenticated = true): UseProjectTabsReturn {
 
             for (const project of available) {
                 if (!savedProjects.has(project)) {
-                    merged.push({project, displayName: project, visible: true})
+                    merged.push({
+                        project,
+                        displayName: project,
+                        visible: true,
+                        inPipeline: false,
+                        stopPipelineOnFailure: false,
+                    })
                 }
             }
 

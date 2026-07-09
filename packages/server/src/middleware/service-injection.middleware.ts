@@ -17,6 +17,7 @@ import {AuthService} from '../services/auth.service'
 import {NoteService} from '../services/note.service'
 import {NoteImageService} from '../services/noteImage.service'
 import {SettingsService} from '../services/settings.service'
+import {PipelineExecutionService} from '../services/pipelineExecution.service'
 import {AttachmentManager} from '../storage/attachmentManager'
 import {config} from '../config/environment.config'
 
@@ -40,6 +41,7 @@ export interface ServiceContainer {
     noteService: NoteService
     noteImageService: NoteImageService
     settingsService: SettingsService
+    pipelineExecutionService: PipelineExecutionService
 }
 
 // Create service container
@@ -80,6 +82,12 @@ export async function createServiceContainer(): Promise<ServiceContainer> {
         settingsService,
         attachmentCleanupRepository
     )
+    const pipelineExecutionService = new PipelineExecutionService(
+        testService,
+        settingsService,
+        runRepository,
+        websocketService
+    )
 
     return {
         testRepository,
@@ -99,6 +107,7 @@ export async function createServiceContainer(): Promise<ServiceContainer> {
         noteService,
         noteImageService,
         settingsService,
+        pipelineExecutionService,
     }
 }
 

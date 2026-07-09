@@ -292,6 +292,42 @@ export class TestRepository extends BaseRepository implements ITestRepository {
         }))
     }
 
+    /**
+     * Latest status per test_id, aggregated by project. Powers the tab-bar status badge —
+     * reflects the current state of every project regardless of what triggered each test's
+     * last run (manual rerun, group run, Run All, or a CI-pipeline step).
+     */
+    async getProjectStatusSummary(): Promise<
+        {project: string; total: number; passed: number; failed: number}[]
+    > {
+        const sql = `
+            WITH latest AS (
+                SELECT
+                    project,
+                    status,
+                    ROW_NUMBER() OVER (PARTITION BY test_id ORDER BY created_at DESC) as rn
+                FROM test_results
+            )
+            SELECT
+                project,
+                COUNT(*) as total,
+                SUM(CASE WHEN status = 'passed' THEN 1 ELSE 0 END) as passed,
+                SUM(CASE WHEN status = 'failed' THEN 1 ELSE 0 END) as failed
+            FROM latest
+            WHERE rn = 1 AND project != ''
+            GROUP BY project
+        `
+
+        const rows = await this.queryAll<any>(sql)
+
+        return rows.map((row) => ({
+            project: row.project,
+            total: row.total,
+            passed: row.passed,
+            failed: row.failed,
+        }))
+    }
+
     async getIdsOlderThan(date: Date): Promise<string[]> {
         const rows = await this.queryAll<{id: string}>(
             `SELECT id FROM test_results WHERE created_at < ?`,

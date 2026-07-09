@@ -12,6 +12,8 @@ interface WebSocketMessage {
 interface WebSocketOptions {
     onTestCompleted?: (data: any) => void
     onRunCompleted?: (data: any) => void
+    onPipelineEvent?: (type: string, data: any) => void
+    onRunStatusEvent?: (type: string, data: any) => void
 }
 
 export function useWebSocket(url: string | null, options?: WebSocketOptions) {
@@ -145,6 +147,7 @@ export function useWebSocket(url: string | null, options?: WebSocketOptions) {
                 })
                 queryClient.invalidateQueries({queryKey: ['tests']})
                 queryClient.invalidateQueries({queryKey: ['runs']})
+                queryClient.invalidateQueries({queryKey: ['project-status-summary']})
                 fetchTests()
                 fetchRuns()
 
@@ -159,6 +162,7 @@ export function useWebSocket(url: string | null, options?: WebSocketOptions) {
                 queryClient.invalidateQueries({
                     queryKey: ['dashboard-stats'],
                 })
+                queryClient.invalidateQueries({queryKey: ['project-status-summary']})
                 fetchTests()
                 break
 
@@ -186,6 +190,7 @@ export function useWebSocket(url: string | null, options?: WebSocketOptions) {
                 queryClient.invalidateQueries({
                     queryKey: ['dashboard-stats'],
                 })
+                queryClient.invalidateQueries({queryKey: ['project-status-summary']})
                 fetchTests()
                 fetchRuns()
                 break
@@ -201,6 +206,7 @@ export function useWebSocket(url: string | null, options?: WebSocketOptions) {
                 queryClient.invalidateQueries({
                     queryKey: ['dashboard-stats'],
                 })
+                queryClient.invalidateQueries({queryKey: ['project-status-summary']})
                 fetchTests()
                 fetchRuns()
 
@@ -233,12 +239,14 @@ export function useWebSocket(url: string | null, options?: WebSocketOptions) {
 
             case 'connection:status':
                 handleConnectionStatus(message.data)
+                options?.onRunStatusEvent?.('connection:status', message.data)
                 break
 
             case 'process:started':
                 // Refresh data when process starts
                 fetchTests()
                 fetchRuns()
+                options?.onRunStatusEvent?.('process:started', message.data)
                 break
 
             case 'process:ended':
@@ -249,6 +257,13 @@ export function useWebSocket(url: string | null, options?: WebSocketOptions) {
 
             case 'pong':
                 // Keep-alive response
+                break
+
+            case 'pipeline:started':
+            case 'pipeline:step-started':
+            case 'pipeline:step-completed':
+            case 'pipeline:completed':
+                options?.onPipelineEvent?.(message.type, message.data)
                 break
 
             default:

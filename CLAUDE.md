@@ -77,26 +77,26 @@ Use for post-development checks (`disable-model-invocation: true` — manual onl
 
 ## Quick File Finder
 
-| Need to...                   | File                                                                                                                 |
-| ---------------------------- | -------------------------------------------------------------------------------------------------------------------- | -------- |
-| Generate testId              | `packages/reporter/src/index.ts`                                                                                     |
-| WebSocket URL                | `packages/web/src/features/authentication/utils/webSocketUrl.ts`                                                     |
-| Apply theme                  | `packages/web/src/hooks/useTheme.ts`                                                                                 |
-| Rerun button                 | `packages/web/src/features/tests/components/history/ExecutionSidebar.tsx`                                            |
-| Copy attachments             | `packages/server/src/storage/attachmentManager.ts`                                                                   |
-| Flaky detection              | `packages/server/src/repositories/test.repository.ts`                                                                |
-| DB schema                    | `packages/server/src/database/schema.sql`                                                                            |
-| Disk thresholds              | `packages/server/src/repositories/settings.repository.ts`                                                            |
-| Strip attachments            | `packages/server/src/services/test.service.ts` (`cleanupData mode: 'strip'                                           | 'full'`) |
-| Execution history pagination | `packages/web/src/features/tests/hooks/useTestExecutionHistory.ts`                                                   |
-| Disk warning banner          | `packages/web/src/features/dashboard/components/DiskSpaceWarningBanner.tsx`                                          |
-| Search input                 | `packages/web/src/shared/components/molecules/SearchInput.tsx`                                                       |
-| Project tabs config          | `packages/web/src/hooks/useProjectTabs.ts`                                                                           |
-| Active project filter        | `packages/web/src/features/tests/hooks/useTestFilters.ts`                                                            |
-| CI auto-run pause            | `packages/web/src/hooks/useCIAutoRun.ts` + `packages/web/src/features/dashboard/components/CIAutoRunPauseBanner.tsx` |
-| CI pipeline (ordered multi-project runs) | `packages/server/src/services/pipelineExecution.service.ts` + `packages/web/src/hooks/usePipelineStatus.ts` |
-| Tab status badge/dot (general, any run trigger) | `packages/server/src/repositories/test.repository.ts` (`getProjectStatusSummary`) + `packages/web/src/hooks/useProjectRunStatus.ts` |
-| GitHub Actions CI workflow    | **Separate repo**, not this one — `probuildGit/test-dashboard` (`.github/workflows/trigger-tests.yml`), used by the self-hosted qa01 runner |
+| Need to...                                      | File                                                                                                                                        |
+| ----------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- | -------- |
+| Generate testId                                 | `packages/reporter/src/index.ts`                                                                                                            |
+| WebSocket URL                                   | `packages/web/src/features/authentication/utils/webSocketUrl.ts`                                                                            |
+| Apply theme                                     | `packages/web/src/hooks/useTheme.ts`                                                                                                        |
+| Rerun button                                    | `packages/web/src/features/tests/components/history/ExecutionSidebar.tsx`                                                                   |
+| Copy attachments                                | `packages/server/src/storage/attachmentManager.ts`                                                                                          |
+| Flaky detection                                 | `packages/server/src/repositories/test.repository.ts`                                                                                       |
+| DB schema                                       | `packages/server/src/database/schema.sql`                                                                                                   |
+| Disk thresholds                                 | `packages/server/src/repositories/settings.repository.ts`                                                                                   |
+| Strip attachments                               | `packages/server/src/services/test.service.ts` (`cleanupData mode: 'strip'                                                                  | 'full'`) |
+| Execution history pagination                    | `packages/web/src/features/tests/hooks/useTestExecutionHistory.ts`                                                                          |
+| Disk warning banner                             | `packages/web/src/features/dashboard/components/DiskSpaceWarningBanner.tsx`                                                                 |
+| Search input                                    | `packages/web/src/shared/components/molecules/SearchInput.tsx`                                                                              |
+| Project tabs config                             | `packages/web/src/hooks/useProjectTabs.ts`                                                                                                  |
+| Active project filter                           | `packages/web/src/features/tests/hooks/useTestFilters.ts`                                                                                   |
+| CI auto-run pause                               | `packages/web/src/hooks/useCIAutoRun.ts` + `packages/web/src/features/dashboard/components/CIAutoRunPauseBanner.tsx`                        |
+| CI pipeline (ordered multi-project runs)        | `packages/server/src/services/pipelineExecution.service.ts` + `packages/web/src/hooks/usePipelineStatus.ts`                                 |
+| Tab status badge/dot (general, any run trigger) | `packages/server/src/repositories/test.repository.ts` (`getProjectStatusSummary`) + `packages/web/src/hooks/useProjectRunStatus.ts`         |
+| GitHub Actions CI workflow                      | **Separate repo**, not this one — `probuildGit/test-dashboard` (`.github/workflows/trigger-tests.yml`), used by the self-hosted qa01 runner |
 
 **Full structure:** [docs/ai/FILE_LOCATIONS.md](docs/ai/FILE_LOCATIONS.md)
 

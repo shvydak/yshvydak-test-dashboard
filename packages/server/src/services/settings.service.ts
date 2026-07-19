@@ -67,13 +67,20 @@ export class SettingsService {
     }
 
     async setProjectTabConfigs(configs: ProjectTabConfig[]): Promise<ProjectTabConfig[]> {
-        const validated = configs.map((c) => ({
-            project: String(c.project || '').trim(),
-            displayName: String(c.displayName || c.project || '').trim(),
-            visible: Boolean(c.visible),
-            inPipeline: Boolean(c.inPipeline),
-            stopPipelineOnFailure: Boolean(c.stopPipelineOnFailure),
-        }))
+        const validated = configs.map((c) => {
+            const workers = Number(c.workers)
+            return {
+                project: String(c.project || '').trim(),
+                displayName: String(c.displayName || c.project || '').trim(),
+                visible: Boolean(c.visible),
+                inPipeline: Boolean(c.inPipeline),
+                stopPipelineOnFailure: Boolean(c.stopPipelineOnFailure),
+                workers:
+                    Number.isInteger(workers) && workers >= 1 && workers <= 16
+                        ? workers
+                        : undefined,
+            }
+        })
         await this.settingsRepository.setProjectTabConfigs(validated)
         Logger.info(`Project tab configs updated: ${validated.length} entries`)
         return validated

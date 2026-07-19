@@ -1,6 +1,6 @@
 import {describe, it, expect, vi, beforeEach, afterEach} from 'vitest'
-import {renderHook, waitFor} from '@testing-library/react'
-import {useProjectTabs} from '../useProjectTabs'
+import {renderHook, waitFor, act} from '@testing-library/react'
+import {useProjectTabs, getProjectWorkersOverride} from '../useProjectTabs'
 
 // Mock authFetch so we can control responses without a real server
 vi.mock('@features/authentication/utils/authFetch', () => ({
@@ -17,9 +17,10 @@ vi.mock('@config/environment.config', () => ({
     },
 }))
 
-import {authGet} from '@features/authentication/utils/authFetch'
+import {authGet, authPut} from '@features/authentication/utils/authFetch'
 
 const mockAuthGet = authGet as ReturnType<typeof vi.fn>
+const mockAuthPut = authPut as ReturnType<typeof vi.fn>
 
 function makeResponse(body: unknown, ok = true): Response {
     return {
@@ -139,6 +140,76 @@ describe('useProjectTabs', () => {
             expect(result.current.visibleTabs).toHaveLength(2)
             expect(result.current.visibleTabs.every((t) => t.visible)).toBe(true)
             expect(result.current.visibleTabs.map((t) => t.project)).toEqual(['Frontend', 'Mobile'])
+        })
+    })
+
+    describe('getProjectWorkersOverride', () => {
+        it('returns undefined when called without a project', () => {
+            expect(getProjectWorkersOverride(undefined)).toBeUndefined()
+        })
+
+        it('returns undefined for a project that has no override', async () => {
+            const savedConfigs = [{project: 'NoOverride', displayName: 'NoOverride', visible: true}]
+
+            mockAuthGet
+                .mockResolvedValueOnce(makeResponse({data: savedConfigs}))
+                .mockResolvedValueOnce(makeResponse({data: ['NoOverride']}))
+
+            const {result} = renderHook(() => useProjectTabs())
+            await waitFor(() => expect(result.current.isLoading).toBe(false))
+
+            expect(getProjectWorkersOverride('NoOverride')).toBeUndefined()
+        })
+
+        it('returns undefined for a project the cache has never seen', () => {
+            expect(getProjectWorkersOverride('NeverLoaded')).toBeUndefined()
+        })
+
+        it('returns the workers override once the hook loads tabs containing it', async () => {
+            const savedConfigs = [
+                {project: 'API_Tests', displayName: 'API Tests', visible: true, workers: 4},
+            ]
+
+            mockAuthGet
+                .mockResolvedValueOnce(makeResponse({data: savedConfigs}))
+                .mockResolvedValueOnce(makeResponse({data: ['API_Tests']}))
+
+            const {result} = renderHook(() => useProjectTabs())
+            await waitFor(() => expect(result.current.isLoading).toBe(false))
+
+            expect(getProjectWorkersOverride('API_Tests')).toBe(4)
+        })
+
+        it('reflects the new value after updateTabs() saves a changed override', async () => {
+            const savedConfigs = [
+                {project: 'API_Tests', displayName: 'API Tests', visible: true, workers: 4},
+            ]
+
+            mockAuthGet
+                .mockResolvedValueOnce(makeResponse({data: savedConfigs}))
+                .mockResolvedValueOnce(makeResponse({data: ['API_Tests']}))
+
+            const {result} = renderHook(() => useProjectTabs())
+            await waitFor(() => expect(result.current.isLoading).toBe(false))
+            expect(getProjectWorkersOverride('API_Tests')).toBe(4)
+
+            const updatedConfigs = [
+                {
+                    project: 'API_Tests',
+                    displayName: 'API Tests',
+                    visible: true,
+                    inPipeline: false,
+                    stopPipelineOnFailure: false,
+                    workers: 8,
+                },
+            ]
+            mockAuthPut.mockResolvedValueOnce(makeResponse({data: updatedConfigs}))
+
+            await act(async () => {
+                await result.current.updateTabs(updatedConfigs)
+            })
+
+            expect(getProjectWorkersOverride('API_Tests')).toBe(8)
         })
     })
 })

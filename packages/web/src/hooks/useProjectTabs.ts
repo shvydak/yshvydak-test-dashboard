@@ -8,6 +8,16 @@ export interface ProjectTabConfig {
     visible: boolean
     inPipeline: boolean
     stopPipelineOnFailure: boolean
+    workers?: number
+}
+
+// Module-level cache mirrors the last-loaded tab configs so non-React code
+// (testsStore) can resolve a project's workers override without a hook.
+let projectTabsCache: ProjectTabConfig[] = []
+
+export function getProjectWorkersOverride(project?: string): number | undefined {
+    if (!project) return undefined
+    return projectTabsCache.find((t) => t.project === project)?.workers
 }
 
 export interface UseProjectTabsReturn {
@@ -62,6 +72,7 @@ export function useProjectTabs(isAuthenticated = true): UseProjectTabsReturn {
                 }
             }
 
+            projectTabsCache = merged
             setTabs(merged)
         } catch (err) {
             setError(err instanceof Error ? err.message : 'Failed to load project tabs')
@@ -83,7 +94,8 @@ export function useProjectTabs(isAuthenticated = true): UseProjectTabsReturn {
             }
 
             const data = await res.json()
-            setTabs(data.data ?? configs)
+            projectTabsCache = data.data ?? configs
+            setTabs(projectTabsCache)
         } catch (err) {
             setError(err instanceof Error ? err.message : 'Failed to save project tabs')
             throw err

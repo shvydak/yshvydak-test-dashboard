@@ -240,6 +240,100 @@ describe('PipelineExecutionService', () => {
         })
     })
 
+    describe('per-step workers override', () => {
+        it('uses a step-level workers override instead of the global maxWorkers', async () => {
+            mockSettingsService.getPipelineSteps.mockResolvedValue([
+                {
+                    project: 'API_Tests',
+                    displayName: 'API Tests',
+                    stopPipelineOnFailure: false,
+                    workers: 4,
+                },
+            ])
+            const proc1 = createMockProcess()
+            mockTestService.runAllTests.mockResolvedValueOnce({runId: 'run-1', process: proc1})
+            mockRunRepository.getTestRun.mockResolvedValueOnce({passedTests: 1, failedTests: 0})
+
+            await service.startPipeline(2)
+            await flushPromises()
+
+            expect(mockTestService.runAllTests).toHaveBeenNthCalledWith(
+                1,
+                4,
+                false,
+                'API_Tests',
+                undefined
+            )
+        })
+
+        it('falls back to the global maxWorkers when a step has no override', async () => {
+            mockSettingsService.getPipelineSteps.mockResolvedValue([
+                {project: 'WEB_Tests', displayName: 'WEB Tests', stopPipelineOnFailure: false},
+            ])
+            const proc1 = createMockProcess()
+            mockTestService.runAllTests.mockResolvedValueOnce({runId: 'run-1', process: proc1})
+            mockRunRepository.getTestRun.mockResolvedValueOnce({passedTests: 1, failedTests: 0})
+
+            await service.startPipeline(2)
+            await flushPromises()
+
+            expect(mockTestService.runAllTests).toHaveBeenNthCalledWith(
+                1,
+                2,
+                false,
+                'WEB_Tests',
+                undefined
+            )
+        })
+
+        it('applies a different workers override per step in the same pipeline run', async () => {
+            mockSettingsService.getPipelineSteps.mockResolvedValue([
+                {
+                    project: 'API_Tests',
+                    displayName: 'API Tests',
+                    stopPipelineOnFailure: false,
+                    workers: 4,
+                },
+                {
+                    project: 'WEB_Tests',
+                    displayName: 'WEB Tests',
+                    stopPipelineOnFailure: false,
+                    workers: 2,
+                },
+            ])
+            const proc1 = createMockProcess()
+            const proc2 = createMockProcess()
+            mockTestService.runAllTests
+                .mockResolvedValueOnce({runId: 'run-1', process: proc1})
+                .mockResolvedValueOnce({runId: 'run-2', process: proc2})
+            mockRunRepository.getTestRun
+                .mockResolvedValueOnce({passedTests: 1, failedTests: 0})
+                .mockResolvedValueOnce({passedTests: 1, failedTests: 0})
+
+            await service.startPipeline(8)
+            await flushPromises()
+
+            expect(mockTestService.runAllTests).toHaveBeenNthCalledWith(
+                1,
+                4,
+                false,
+                'API_Tests',
+                undefined
+            )
+
+            proc1.emit('close', 0)
+            await flushPromises()
+
+            expect(mockTestService.runAllTests).toHaveBeenNthCalledWith(
+                2,
+                2,
+                false,
+                'WEB_Tests',
+                undefined
+            )
+        })
+    })
+
     describe('getPipeline() / getCurrentPipeline()', () => {
         it('returns null for an unknown pipelineRunId', () => {
             expect(service.getPipeline('unknown')).toBeNull()

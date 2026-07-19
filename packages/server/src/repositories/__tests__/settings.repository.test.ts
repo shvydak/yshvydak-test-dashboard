@@ -212,5 +212,59 @@ describe('SettingsRepository', () => {
 
             expect(project).toBe('Sanity')
         })
+
+        describe('workers field', () => {
+            it('round-trips a per-project workers override', async () => {
+                await repository.setProjectTabConfigs([
+                    {
+                        project: 'API_Tests',
+                        displayName: 'API Tests',
+                        visible: true,
+                        inPipeline: true,
+                        stopPipelineOnFailure: false,
+                        workers: 4,
+                    },
+                ])
+
+                const configs = await repository.getProjectTabConfigs()
+
+                expect(configs[0].workers).toBe(4)
+            })
+
+            it('leaves workers undefined for tabs that never set it', async () => {
+                await repository.setProjectTabConfigs([
+                    {
+                        project: 'WEB_Tests',
+                        displayName: 'WEB Tests',
+                        visible: true,
+                        inPipeline: false,
+                        stopPipelineOnFailure: false,
+                    },
+                ])
+
+                const configs = await repository.getProjectTabConfigs()
+
+                expect(configs[0].workers).toBeUndefined()
+            })
+
+            it('defaults workers to undefined for legacy rows missing the field', async () => {
+                const db = (dbManager as any).db
+                await new Promise<void>((resolve, reject) =>
+                    db.run(
+                        `INSERT INTO app_settings (key, value) VALUES ('project_tab_configs', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value`,
+                        [
+                            JSON.stringify([
+                                {project: 'Legacy', displayName: 'Legacy', visible: true},
+                            ]),
+                        ],
+                        (err: any) => (err ? reject(err) : resolve())
+                    )
+                )
+
+                const configs = await repository.getProjectTabConfigs()
+
+                expect(configs[0].workers).toBeUndefined()
+            })
+        })
     })
 })

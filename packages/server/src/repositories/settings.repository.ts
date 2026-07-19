@@ -26,6 +26,7 @@ export interface ProjectTabConfig {
     visible: boolean
     inPipeline: boolean
     stopPipelineOnFailure: boolean
+    workers?: number
 }
 
 export interface CIAutoRunPause {
@@ -118,6 +119,7 @@ export class SettingsRepository extends BaseRepository implements ISettingsRepos
                 visible: c.visible ?? true,
                 inPipeline: c.inPipeline ?? false,
                 stopPipelineOnFailure: c.stopPipelineOnFailure ?? false,
+                workers: c.workers,
             }))
         } catch {
             return []

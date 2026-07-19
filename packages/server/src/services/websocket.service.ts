@@ -94,6 +94,7 @@ export interface PipelineStepSummary {
     displayName: string
     stopOnFailure: boolean
     status: 'queued' | 'running' | 'success' | 'failed' | 'skipped'
+    workers?: number
     runId?: string
     passed?: number
     failed?: number

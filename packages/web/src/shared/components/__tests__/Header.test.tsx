@@ -346,7 +346,7 @@ describe('Header', () => {
             )
 
             const tab = screen.getAllByText('All Tests')[0].closest('button')
-            expect(tab?.querySelector('.animate-pulse')).toBeTruthy()
+            expect(tab?.querySelector('[data-testid="tab-status-running"]')).toBeTruthy()
         })
 
         it('should show a queued dot only for a project waiting in an actively running pipeline', () => {
@@ -373,7 +373,7 @@ describe('Header', () => {
             )
 
             const tab = screen.getAllByText('All Tests')[0].closest('button')
-            expect(tab?.querySelector('.border-dashed')).toBeTruthy()
+            expect(tab?.querySelector('[data-testid="tab-status-queued"]')).toBeTruthy()
         })
 
         it('should not show a queued dot once the pipeline has finished', () => {
@@ -400,7 +400,7 @@ describe('Header', () => {
             )
 
             const tab = screen.getAllByText('All Tests')[0].closest('button')
-            expect(tab?.querySelector('.border-dashed')).toBeFalsy()
+            expect(tab?.querySelector('[data-testid="tab-status-queued"]')).toBeFalsy()
         })
 
         it('should prefer the running dot over the queued dot when both would apply', () => {
@@ -427,8 +427,42 @@ describe('Header', () => {
             )
 
             const tab = screen.getAllByText('All Tests')[0].closest('button')
-            expect(tab?.querySelector('.animate-pulse')).toBeTruthy()
-            expect(tab?.querySelector('.border-dashed')).toBeFalsy()
+            expect(tab?.querySelector('[data-testid="tab-status-running"]')).toBeTruthy()
+            expect(tab?.querySelector('[data-testid="tab-status-queued"]')).toBeFalsy()
+        })
+
+        it('labels the queued icon with its position in the pipeline', () => {
+            renderWithRouter(
+                <Header
+                    activeProject=""
+                    projectTabs={sampleTabs}
+                    wsConnected={true}
+                    pipeline={{
+                        pipelineRunId: 'p4',
+                        status: 'running',
+                        startedAt: '2026-01-01T00:00:00.000Z',
+                        steps: [
+                            {
+                                project: 'Frontend',
+                                displayName: 'Frontend',
+                                stopOnFailure: false,
+                                status: 'running',
+                            },
+                            {
+                                project: 'All_Tests',
+                                displayName: 'All Tests',
+                                stopOnFailure: false,
+                                status: 'queued',
+                            },
+                        ],
+                    }}
+                    runningProjects={new Set()}
+                />
+            )
+
+            const tab = screen.getAllByText('All Tests')[0].closest('button')
+            const queuedIcon = tab?.querySelector('[data-testid="tab-status-queued"]')
+            expect(queuedIcon).toHaveAttribute('aria-label', 'Queued — step 2 of 2')
         })
     })
 })

@@ -90,6 +90,7 @@ export class PipelineExecutionService {
             displayName: s.displayName,
             stopOnFailure: s.stopPipelineOnFailure,
             status: 'queued',
+            workers: s.workers,
         }))
 
         this.currentPipeline = {
@@ -125,7 +126,12 @@ export class PipelineExecutionService {
 
             let result: any
             try {
-                result = await this.testService.runAllTests(maxWorkers, false, step.project, source)
+                result = await this.testService.runAllTests(
+                    step.workers ?? maxWorkers,
+                    false,
+                    step.project,
+                    source
+                )
             } catch (error) {
                 Logger.error(`Pipeline step failed to start: ${step.project}`, error)
                 step.status = 'failed'

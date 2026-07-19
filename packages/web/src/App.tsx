@@ -6,6 +6,7 @@ import {Dashboard} from '@features/dashboard'
 import {SettingsModal} from '@features/dashboard/components/settings'
 import {DiskSpaceWarningBanner} from '@features/dashboard/components/DiskSpaceWarningBanner'
 import {CIAutoRunPauseBanner} from '@features/dashboard/components/CIAutoRunPauseBanner'
+import {PipelineSkippedBanner} from '@features/dashboard/components/PipelineSkippedBanner'
 import {useDiskSpaceWarning} from '@features/dashboard/hooks'
 import {useCIAutoRun} from '@/hooks/useCIAutoRun'
 import {TestsList} from '@features/tests'
@@ -42,6 +43,15 @@ function App() {
         setSettingsScrollToDataRetention(true)
         setIsSettingsOpen(true)
     }, [])
+
+    const handleViewProjectFromBanner = useCallback(
+        (project: string) => {
+            const params = new URLSearchParams()
+            params.set('project', project)
+            navigate(`/tests?${params.toString()}`)
+        },
+        [navigate]
+    )
 
     // Active project from URL query param
     const activeProject = useMemo(() => {
@@ -310,6 +320,11 @@ function App() {
             {ciPause?.paused && (
                 <CIAutoRunPauseBanner resumeAt={ciPause.resumeAt} onResume={resumeCIAutoRun} />
             )}
+
+            <PipelineSkippedBanner
+                pipeline={pipeline}
+                onViewProject={handleViewProjectFromBanner}
+            />
 
             {severity && !isDismissed && diskStats && thresholds && (
                 <DiskSpaceWarningBanner

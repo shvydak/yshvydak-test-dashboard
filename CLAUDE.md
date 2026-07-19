@@ -91,11 +91,14 @@ Use for post-development checks (`disable-model-invocation: true` — manual onl
 | Execution history pagination                    | `packages/web/src/features/tests/hooks/useTestExecutionHistory.ts`                                                                          |
 | Disk warning banner                             | `packages/web/src/features/dashboard/components/DiskSpaceWarningBanner.tsx`                                                                 |
 | Search input                                    | `packages/web/src/shared/components/molecules/SearchInput.tsx`                                                                              |
+| Generic alert/warning banner                    | `packages/web/src/shared/components/molecules/AlertBanner.tsx` (used by disk-space + CI pipeline-skip banners)                              |
 | Project tabs config                             | `packages/web/src/hooks/useProjectTabs.ts`                                                                                                  |
+| Per-project `workers` override (CI + manual)    | `packages/server/src/repositories/settings.repository.ts` (`ProjectTabConfig.workers`) + `pipelineExecution.service.ts` (`step.workers ?? maxWorkers`) |
 | Active project filter                           | `packages/web/src/features/tests/hooks/useTestFilters.ts`                                                                                   |
 | CI auto-run pause                               | `packages/web/src/hooks/useCIAutoRun.ts` + `packages/web/src/features/dashboard/components/CIAutoRunPauseBanner.tsx`                        |
 | CI pipeline (ordered multi-project runs)        | `packages/server/src/services/pipelineExecution.service.ts` + `packages/web/src/hooks/usePipelineStatus.ts`                                 |
 | Tab status badge/dot (general, any run trigger) | `packages/server/src/repositories/test.repository.ts` (`getProjectStatusSummary`) + `packages/web/src/hooks/useProjectRunStatus.ts`         |
+| Tab status icons (running/queued)               | `packages/web/src/shared/components/Header.tsx` (`renderStatusDot` — GitHub Actions icon vocabulary: spinner = running, clock = queued)     |
 | GitHub Actions CI workflow                      | **Separate repo**, not this one — `probuildGit/test-dashboard` (`.github/workflows/trigger-tests.yml`), used by the self-hosted qa01 runner |
 
 **Full structure:** [docs/ai/FILE_LOCATIONS.md](docs/ai/FILE_LOCATIONS.md)
@@ -114,6 +117,9 @@ Full catalog with examples: [docs/ai/ANTI_PATTERNS.md](docs/ai/ANTI_PATTERNS.md)
 - **N+1 over JOIN** — `getTestResultsByTestId` already JOINs attachments+notes; don't loop & re-query
 - **Change without checking dependents** — grep all usages + tests before changing any value/default
 - **tsx watch stale** — restart server after significant changes; symptom: new routes return 404 while old return 401
+- **Don't `kill` the tsx-watch child PID to force a reload** — `tsx watch` sometimes doesn't pick up a saved file, but manually killing its child process (or the watch process itself) can cascade-kill the whole `npm run dev`/turbo supervisor, taking the Vite dev server down too. If a restart is truly needed, run `npm run dev` inside `packages/server` (and `packages/web` if it also died) directly instead of killing PIDs.
+- **Tailwind conflicting width utilities don't override by JSX order** — `` `${baseClassWithW40} w-16` `` still renders `w-40` if both utilities exist in the compiled stylesheet; the winner is CSS *source* order, not class-attribute order. Never append a size override onto a shared class that already bakes in that size — strip it from the base class instead.
+- **Separate CSS Grid containers never share column widths** — a header `<div className="grid grid-cols-[...]">` and each row as its own separate grid div with the *same* `grid-template-columns` will still drift out of alignment, because `auto`/`fr` tracks size independently per grid instance. For a real table, put header cells and row cells as siblings in **one** shared grid (row-group via `<Fragment key=...>`, not a wrapping `<div>`).
 - **Playwright JSON not project-grouped** — top-level suites are per-FILE; project name at `spec.tests[0].projectName`. Suite nesting depth is arbitrary (file > describe > nested describe > ...) — traverse recursively, not at fixed levels; a 2-level traversal silently drops deeper-nested tests.
 - **Reporter changes without npm link** — changes to `packages/reporter/src/` only apply via `npm link` or publish
 - **Rerun reporter output invisible** — `type: 'rerun'` uses `stdio: pipe` but has no listeners by default; add `process.stdout?.on('data', ...)` to rerun process temporarily to see reporter warnings (e.g. `⚠️ Failed to send test result`)
@@ -149,6 +155,8 @@ npm run test:watch   # Watch mode
 npm run test:coverage
 npx vitest run --project server <path>   # single file — MUST run from repo root, not packages/*
 npx vitest run --project web <path>
+# any root npm script (lint:fix, test, type-check) silently scopes to one workspace if cwd
+# drifted into packages/* from an earlier `cd` — `pwd` before running them if unsure
 npm run build
 npm run format       # Prettier
 ```
@@ -178,4 +186,4 @@ Settings-modal hooks don't share state with their `App.tsx` instance (separate `
 
 ---
 
-**Docs:** [docs/ai/](docs/ai/) | **Last Updated:** June 2026
+**Docs:** [docs/ai/](docs/ai/) | **Last Updated:** July 2026

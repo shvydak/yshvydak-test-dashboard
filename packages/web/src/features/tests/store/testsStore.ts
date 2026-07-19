@@ -3,6 +3,7 @@ import {devtools} from 'zustand/middleware'
 import {TestResult, TestRun, TestProgress} from '@yshvydak/core'
 import {authGet, authPost, authDelete} from '@features/authentication/utils/authFetch'
 import {getMaxWorkersFromStorage} from '@/hooks/usePlaywrightWorkers'
+import {getProjectWorkersOverride} from '@/hooks/useProjectTabs'
 import {getAutoDiscoverFromStorage} from '@/hooks/useAutoDiscoverSetting'
 
 interface TestsState {
@@ -149,7 +150,9 @@ export const useTestsStore = create<TestsState>()(
                     get().setTestRunning(testId, true)
                     set({error: null})
 
-                    const maxWorkers = getMaxWorkersFromStorage()
+                    const testProject = get().tests.find((t) => t.testId === testId)?.project
+                    const maxWorkers =
+                        getProjectWorkersOverride(testProject) ?? getMaxWorkersFromStorage()
                     const response = await authPost(`${API_BASE_URL}/tests/${testId}/rerun`, {
                         maxWorkers,
                     })
@@ -302,7 +305,8 @@ export const useTestsStore = create<TestsState>()(
 
                     set({isRunningAllTests: true, error: null})
 
-                    const maxWorkers = getMaxWorkersFromStorage()
+                    const maxWorkers =
+                        getProjectWorkersOverride(project) ?? getMaxWorkersFromStorage()
                     const response = await authPost(`${API_BASE_URL}/tests/run-all`, {
                         maxWorkers,
                         project: project || undefined,
@@ -345,7 +349,8 @@ export const useTestsStore = create<TestsState>()(
                     get().setGroupRunning(filePath, true)
                     set({error: null})
 
-                    const maxWorkers = getMaxWorkersFromStorage()
+                    const maxWorkers =
+                        getProjectWorkersOverride(project) ?? getMaxWorkersFromStorage()
                     const response = await authPost(`${API_BASE_URL}/tests/run-group`, {
                         filePath,
                         maxWorkers,

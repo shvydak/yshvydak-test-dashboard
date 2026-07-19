@@ -1,6 +1,16 @@
 import {useState, useEffect} from 'react'
 import {useNavigate, useLocation} from 'react-router-dom'
-import {Settings, LogOut, LayoutDashboard, ChevronDown, Menu, X, Moon, Sun} from 'lucide-react'
+import {
+    Settings,
+    LogOut,
+    LayoutDashboard,
+    ChevronDown,
+    Menu,
+    X,
+    Moon,
+    Sun,
+    Clock,
+} from 'lucide-react'
 import {useTheme} from '@/hooks/useTheme'
 import {ProjectTabConfig} from '@/hooks/useProjectTabs'
 import {PipelineState} from '@/hooks/usePipelineStatus'
@@ -107,28 +117,43 @@ export default function Header({
 
     // "Queued" only has meaning while a pipeline is actively working through its
     // ordered steps — manual runs have no queue, so this never applies to them.
-    const isQueuedInPipeline = (project: string) =>
-        pipeline?.status === 'running' &&
-        pipeline.steps.some((s) => s.project === project && s.status === 'queued')
+    const getQueuedStepIndex = (project: string): number | null => {
+        if (pipeline?.status !== 'running') return null
+        const index = pipeline.steps.findIndex((s) => s.project === project)
+        if (index === -1 || pipeline.steps[index].status !== 'queued') return null
+        return index
+    }
 
-    // The running dot is shared across every trigger (manual Run All, group run,
-    // single-test rerun, or a pipeline step) — sourced from the live active-process
-    // set, not from pipeline state.
+    // Icons mirror GitHub Actions' own run-status vocabulary (spinning ring =
+    // in progress, clock = queued) since this app's CI already runs through
+    // GitHub Actions — engineers already recognize these, so there's nothing
+    // new to learn. The running indicator is shared across every trigger
+    // (manual Run All, group run, single-test rerun, or a pipeline step) —
+    // sourced from the live active-process set, not from pipeline state.
     const renderStatusDot = (project: string) => {
         if (runningProjects.has(project)) {
             return (
                 <span
-                    className="inline-block h-1.5 w-1.5 flex-shrink-0 rounded-full bg-primary-500 animate-pulse"
-                    aria-hidden="true"
+                    className="inline-block h-3 w-3 flex-shrink-0 animate-spin motion-reduce:animate-none rounded-full border-2 border-warning-200 border-t-warning-500 dark:border-warning-500/25 dark:border-t-warning-400"
+                    role="img"
+                    aria-label="Running"
+                    title="Running"
+                    data-testid="tab-status-running"
                 />
             )
         }
-        if (isQueuedInPipeline(project)) {
+        const queuedIndex = getQueuedStepIndex(project)
+        if (queuedIndex !== null && pipeline) {
+            const label = `Queued — step ${queuedIndex + 1} of ${pipeline.steps.length}`
             return (
                 <span
-                    className="inline-block h-1.5 w-1.5 flex-shrink-0 rounded-full border border-dashed border-gray-400 dark:border-gray-500"
-                    aria-hidden="true"
-                />
+                    className="inline-flex h-3 w-3 flex-shrink-0 items-center justify-center text-gray-400 dark:text-gray-500"
+                    role="img"
+                    aria-label={label}
+                    title={label}
+                    data-testid="tab-status-queued">
+                    <Clock className="h-3 w-3" />
+                </span>
             )
         }
         return null

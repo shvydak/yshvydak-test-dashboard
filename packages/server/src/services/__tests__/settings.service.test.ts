@@ -211,6 +211,78 @@ describe('SettingsService', () => {
             expect(result[0].inPipeline).toBe(true)
             expect(result[0].stopPipelineOnFailure).toBe(true)
         })
+
+        describe('workers validation', () => {
+            it.each([1, 4, 16])('keeps a valid integer workers value (%i)', async (workers) => {
+                mockRepository.setProjectTabConfigs.mockResolvedValue(undefined)
+
+                const result = await service.setProjectTabConfigs([
+                    {
+                        project: 'API_Tests',
+                        displayName: 'API Tests',
+                        visible: true,
+                        inPipeline: false,
+                        stopPipelineOnFailure: false,
+                        workers,
+                    },
+                ])
+
+                expect(result[0].workers).toBe(workers)
+            })
+
+            it('leaves workers undefined when omitted', async () => {
+                mockRepository.setProjectTabConfigs.mockResolvedValue(undefined)
+
+                const result = await service.setProjectTabConfigs([
+                    {
+                        project: 'API_Tests',
+                        displayName: 'API Tests',
+                        visible: true,
+                        inPipeline: false,
+                        stopPipelineOnFailure: false,
+                    },
+                ])
+
+                expect(result[0].workers).toBeUndefined()
+            })
+
+            it.each([0, 17, -1, 1.5, NaN])(
+                'strips an out-of-range or non-integer workers value (%s) to undefined',
+                async (workers) => {
+                    mockRepository.setProjectTabConfigs.mockResolvedValue(undefined)
+
+                    const result = await service.setProjectTabConfigs([
+                        {
+                            project: 'API_Tests',
+                            displayName: 'API Tests',
+                            visible: true,
+                            inPipeline: false,
+                            stopPipelineOnFailure: false,
+                            workers,
+                        },
+                    ])
+
+                    expect(result[0].workers).toBeUndefined()
+                }
+            )
+
+            it('strips a non-numeric workers value to undefined', async () => {
+                mockRepository.setProjectTabConfigs.mockResolvedValue(undefined)
+
+                const result = await service.setProjectTabConfigs([
+                    {
+                        project: 'API_Tests',
+                        displayName: 'API Tests',
+                        visible: true,
+                        inPipeline: false,
+                        stopPipelineOnFailure: false,
+                        workers: 'four' as any,
+                    },
+                ])
+
+                expect(result[0].workers).toBeUndefined()
+            })
+        })
     })
 
     describe('getPipelineSteps()', () => {

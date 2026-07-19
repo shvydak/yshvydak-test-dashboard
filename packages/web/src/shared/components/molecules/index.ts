@@ -1,4 +1,5 @@
 export * from './SearchInput'
+export * from './AlertBanner'
 export * from './StatusBadge'
 export * from './ActionButton'
 export * from './FilterButtonGroup'

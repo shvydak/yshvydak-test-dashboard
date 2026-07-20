@@ -2,7 +2,8 @@ import {useEffect, useState, useCallback, useRef} from 'react'
 import {AlertTriangle, PartyPopper, BarChart2} from 'lucide-react'
 import {useSearchParams} from 'react-router-dom'
 import {useTestsStore} from '@features/tests/store/testsStore'
-import {useDashboardStats, useFlakyTests, useTestTimeline} from '../hooks'
+import {useTestStatusCounts} from '@features/tests/hooks/useTestStatusCounts'
+import {useFlakyTests, useTestTimeline} from '../hooks'
 import {DashboardStats} from './DashboardStats'
 import {AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer} from 'recharts'
 import {useQueryClient} from '@tanstack/react-query'
@@ -15,7 +16,9 @@ export default function Dashboard() {
     const queryClient = useQueryClient()
     const [searchParams, setSearchParams] = useSearchParams()
 
-    const {isLoading: statsLoading, error: statsError} = useDashboardStats()
+    // Unscoped (no project arg) — total across all projects, matching the /tests
+    // "All" badge. Same unlimited DB-aggregated source, so the two never drift.
+    const {counts: statusCounts, isLoading: statsLoading, error: statsError} = useTestStatusCounts()
     const {
         data: flakyTests,
         isLoading: flakyLoading,
@@ -39,7 +42,7 @@ export default function Dashboard() {
     const handleRunCompleted = useCallback(() => {
         queryClient.invalidateQueries({queryKey: ['flaky-tests']})
         queryClient.invalidateQueries({queryKey: ['test-timeline']})
-        queryClient.invalidateQueries({queryKey: ['dashboard-stats']})
+        queryClient.invalidateQueries({queryKey: ['test-status-counts']})
         fetchTests()
     }, [queryClient, fetchTests])
 
@@ -144,7 +147,7 @@ export default function Dashboard() {
                 )}
             </div>
 
-            <DashboardStats tests={tests} loading={statsLoading} />
+            <DashboardStats counts={statusCounts} loading={statsLoading} />
 
             <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
                 <div className="rounded-2xl border border-gray-200/80 bg-white p-6 shadow-card transition-all duration-200 dark:border-white/[0.07] dark:bg-gray-800/70 dark:backdrop-blur-xl">

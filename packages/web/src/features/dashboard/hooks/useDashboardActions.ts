@@ -63,8 +63,11 @@ export function useDashboardActions(): UseDashboardActionsReturn {
 
             fetchTests()
 
-            // Invalidate storage stats cache to reflect cleared storage
+            // Invalidate storage stats + status-count caches to reflect cleared
+            // storage and filter-bar/tab badges
             queryClient.invalidateQueries({queryKey: ['storage-stats']})
+            queryClient.invalidateQueries({queryKey: ['project-status-summary']})
+            queryClient.invalidateQueries({queryKey: ['test-status-counts']})
         } catch (error) {
             alert(
                 '❌ Failed to clear data: ' +
@@ -106,6 +109,11 @@ export function useDashboardActions(): UseDashboardActionsReturn {
 
             fetchTests()
             queryClient.invalidateQueries({queryKey: ['storage-stats']})
+            // 'full' mode deletes rows outright, which can change which row is
+            // "latest" per test_id — refresh badges just in case ('strip' mode only
+            // removes attachments, so this is a no-op for counts but harmless).
+            queryClient.invalidateQueries({queryKey: ['project-status-summary']})
+            queryClient.invalidateQueries({queryKey: ['test-status-counts']})
         } catch (error) {
             alert(
                 '❌ Failed to cleanup data: ' +

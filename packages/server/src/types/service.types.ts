@@ -16,6 +16,7 @@ export interface ITestService {
     saveTestResult(testData: TestResultData): Promise<string>
     getTestStats(): Promise<DatabaseStats>
     getTraceFileById(attachmentId: string): Promise<{filePath: string; fileName: string} | null>
+    getTestStatusCounts(project?: string): Promise<TestStatusCounts>
 }
 
 export interface CleanupOptions {
@@ -153,6 +154,16 @@ export interface ITestRepository {
     getExecutionIdsByProject(project: string): Promise<string[]>
     getDistinctTestIdsByProject(project: string): Promise<string[]>
     deleteByProject(project: string): Promise<number>
+    getTestStatusCounts(project?: string): Promise<TestStatusCounts>
+}
+
+export interface TestStatusCounts {
+    total: number
+    passed: number
+    failed: number
+    skipped: number
+    pending: number
+    noted: number
 }
 
 export interface IRunRepository {

@@ -249,6 +249,53 @@ describe('TestController', () => {
         })
     })
 
+    describe('getTestStatusCounts', () => {
+        it('should return unscoped counts when no ?project= is given', async () => {
+            const mockCounts = {
+                total: 850,
+                passed: 800,
+                failed: 30,
+                skipped: 15,
+                pending: 5,
+                noted: 12,
+            }
+            mockTestService.getTestStatusCounts = vi.fn().mockResolvedValue(mockCounts)
+            mockReq = createMockRequest({query: {}})
+
+            await controller.getTestStatusCounts(mockReq as ServiceRequest, mockRes as Response)
+
+            expect(mockTestService.getTestStatusCounts).toHaveBeenCalledWith(undefined)
+            expect(ResponseHelper.success).toHaveBeenCalledWith(mockRes, mockCounts)
+        })
+
+        it('should scope counts to ?project= when given', async () => {
+            const mockCounts = {total: 10, passed: 8, failed: 2, skipped: 0, pending: 0, noted: 0}
+            mockTestService.getTestStatusCounts = vi.fn().mockResolvedValue(mockCounts)
+            mockReq = createMockRequest({query: {project: 'API_Tests'}})
+
+            await controller.getTestStatusCounts(mockReq as ServiceRequest, mockRes as Response)
+
+            expect(mockTestService.getTestStatusCounts).toHaveBeenCalledWith('API_Tests')
+            expect(ResponseHelper.success).toHaveBeenCalledWith(mockRes, mockCounts)
+        })
+
+        it('should return 500 on service error', async () => {
+            const error = new Error('Database error')
+            mockTestService.getTestStatusCounts = vi.fn().mockRejectedValue(error)
+            mockReq = createMockRequest()
+
+            await controller.getTestStatusCounts(mockReq as ServiceRequest, mockRes as Response)
+
+            expect(Logger.error).toHaveBeenCalledWith('Error fetching test status counts', error)
+            expect(ResponseHelper.error).toHaveBeenCalledWith(
+                mockRes,
+                'Database error',
+                'Failed to fetch test status counts',
+                500
+            )
+        })
+    })
+
     describe('runAllTests', () => {
         it('should run all tests with maxWorkers', async () => {
             const runResult = {runId: 'run-123', message: 'Tests started'}

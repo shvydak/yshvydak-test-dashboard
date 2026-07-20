@@ -179,8 +179,11 @@ export function TestDetailModal({test, isOpen, onClose}: TestDetailModalProps) {
             setIsDeleting(true)
             await deleteTest(test.testId)
 
-            // Invalidate storage stats cache to reflect updated storage after deletion
+            // Invalidate storage stats + status-count caches to reflect updated
+            // storage and filter-bar badges after deletion
             queryClient.invalidateQueries({queryKey: ['storage-stats']})
+            queryClient.invalidateQueries({queryKey: ['project-status-summary']})
+            queryClient.invalidateQueries({queryKey: ['test-status-counts']})
 
             handleClose()
         } catch (error) {
@@ -222,8 +225,11 @@ export function TestDetailModal({test, isOpen, onClose}: TestDetailModalProps) {
             // Refetch history to update the list
             refetchHistory()
 
-            // Invalidate storage stats cache to reflect updated storage after deletion
+            // Invalidate storage stats + status-count caches — deleting an execution
+            // can change which row is "latest" and shift the filter-bar badges
             queryClient.invalidateQueries({queryKey: ['storage-stats']})
+            queryClient.invalidateQueries({queryKey: ['project-status-summary']})
+            queryClient.invalidateQueries({queryKey: ['test-status-counts']})
         } catch (error) {
             console.error('Failed to delete execution:', error)
         } finally {
@@ -243,8 +249,11 @@ export function TestDetailModal({test, isOpen, onClose}: TestDetailModalProps) {
 
         await noteService.saveNote(test.testId, note)
 
-        // Invalidate tests cache to refetch with updated note
+        // Invalidate tests cache to refetch with updated note, and the "Noted"
+        // filter-bar count — saving a note doesn't touch test_results at all, so
+        // nothing else (websocket, fetchTests) would ever refresh it otherwise
         queryClient.invalidateQueries({queryKey: ['tests']})
+        queryClient.invalidateQueries({queryKey: ['test-status-counts']})
         refetchHistory()
     }
 
@@ -253,8 +262,10 @@ export function TestDetailModal({test, isOpen, onClose}: TestDetailModalProps) {
 
         await noteService.deleteNote(test.testId)
 
-        // Invalidate tests cache to refetch with updated note
+        // Invalidate tests cache to refetch with updated note, and the "Noted"
+        // filter-bar count (see handleSaveNote)
         queryClient.invalidateQueries({queryKey: ['tests']})
+        queryClient.invalidateQueries({queryKey: ['test-status-counts']})
         refetchHistory()
     }
 

@@ -1,12 +1,20 @@
 import {QueryClient} from '@tanstack/react-query'
 import {describe, it, expect, vi, beforeEach} from 'vitest'
 import * as testsStore from '../../../store/testsStore'
+import {noteService} from '../../../../../services/note.service'
 
 // This is a simplified unit test focusing on cache invalidation logic
 // We don't need to render the full component - we test the store methods directly
 
 vi.mock('../../../store/testsStore', () => ({
     useTestsStore: vi.fn(),
+}))
+
+vi.mock('../../../../../services/note.service', () => ({
+    noteService: {
+        saveNote: vi.fn(),
+        deleteNote: vi.fn(),
+    },
 }))
 
 describe('TestDetailModal - Cache Invalidation (Unit Tests)', () => {
@@ -109,6 +117,43 @@ describe('TestDetailModal - Cache Invalidation (Unit Tests)', () => {
 
             expect(mockDeleteTest).toHaveBeenCalled()
             expect(invalidateQueriesSpy).not.toHaveBeenCalled()
+        })
+    })
+
+    describe('handleSaveNote cache invalidation', () => {
+        it('invalidates tests and test-status-counts after saving a note', async () => {
+            vi.mocked(noteService.saveNote).mockResolvedValue(undefined)
+
+            const invalidateQueriesSpy = vi.spyOn(queryClient, 'invalidateQueries')
+
+            // Simulate what TestDetailModal.handleSaveNote does
+            await noteService.saveNote('test-123', 'Investigated — known flake')
+            queryClient.invalidateQueries({queryKey: ['tests']})
+            queryClient.invalidateQueries({queryKey: ['test-status-counts']})
+
+            expect(noteService.saveNote).toHaveBeenCalledWith(
+                'test-123',
+                'Investigated — known flake'
+            )
+            expect(invalidateQueriesSpy).toHaveBeenCalledWith({queryKey: ['tests']})
+            expect(invalidateQueriesSpy).toHaveBeenCalledWith({queryKey: ['test-status-counts']})
+        })
+    })
+
+    describe('handleDeleteNote cache invalidation', () => {
+        it('invalidates tests and test-status-counts after deleting a note', async () => {
+            vi.mocked(noteService.deleteNote).mockResolvedValue(undefined)
+
+            const invalidateQueriesSpy = vi.spyOn(queryClient, 'invalidateQueries')
+
+            // Simulate what TestDetailModal.handleDeleteNote does
+            await noteService.deleteNote('test-123')
+            queryClient.invalidateQueries({queryKey: ['tests']})
+            queryClient.invalidateQueries({queryKey: ['test-status-counts']})
+
+            expect(noteService.deleteNote).toHaveBeenCalledWith('test-123')
+            expect(invalidateQueriesSpy).toHaveBeenCalledWith({queryKey: ['tests']})
+            expect(invalidateQueriesSpy).toHaveBeenCalledWith({queryKey: ['test-status-counts']})
         })
     })
 

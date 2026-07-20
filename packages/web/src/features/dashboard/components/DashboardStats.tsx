@@ -1,40 +1,20 @@
-import {TestResult} from '@yshvydak/core'
 import {useNavigate} from 'react-router-dom'
 import {LayoutGrid, CheckCircle2, XCircle, TrendingUp} from 'lucide-react'
 import StatsCard from './StatsCard'
-import {DashboardStats as DashboardStatsType} from '../hooks/useDashboardStats'
+import {TestStatusCounts} from '@features/tests/hooks/useTestStatusCounts'
 
 export interface DashboardStatsProps {
-    stats?: DashboardStatsType
-    tests: TestResult[]
+    counts: TestStatusCounts
     loading: boolean
 }
 
-export function DashboardStats({stats, tests, loading}: DashboardStatsProps) {
+export function DashboardStats({counts, loading}: DashboardStatsProps) {
     const navigate = useNavigate()
 
-    const fallbackStats = {
-        totalTests: tests.length,
-        passedTests: tests.filter((t) => t.status === 'passed').length,
-        failedTests: tests.filter((t) => t.status === 'failed').length,
-        skippedTests: tests.filter((t) => t.status === 'skipped').length,
-        successRate: (() => {
-            // Success rate should only consider completed tests (passed + failed)
-            // Exclude pending and skipped tests
-            const completedTests = tests.filter(
-                (t) => t.status === 'passed' || t.status === 'failed'
-            )
-            const passedTests = tests.filter((t) => t.status === 'passed')
-
-            return completedTests.length > 0
-                ? (passedTests.length / completedTests.length) * 100
-                : 0
-        })(),
-        totalRuns: 0,
-        recentRuns: [],
-    }
-
-    const displayStats = stats || fallbackStats
+    // Success rate should only consider completed tests (passed + failed) —
+    // pending and skipped are excluded from the denominator.
+    const completedTests = counts.passed + counts.failed
+    const successRate = completedTests > 0 ? (counts.passed / completedTests) * 100 : 0
 
     const handleStatsClick = (filter: string) => {
         navigate(`/tests?filter=${filter}`)
@@ -44,14 +24,14 @@ export function DashboardStats({stats, tests, loading}: DashboardStatsProps) {
         <div className="stagger grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-6">
             <StatsCard
                 title={`Total Tests`}
-                value={displayStats.totalTests - displayStats.skippedTests}
+                value={counts.total - counts.skipped}
                 icon={<LayoutGrid className="h-5 w-5 text-gray-500 dark:text-gray-400" />}
                 loading={loading}
                 onClick={() => handleStatsClick('all')}
             />
             <StatsCard
                 title="Passed"
-                value={displayStats.passedTests}
+                value={counts.passed}
                 icon={<CheckCircle2 className="h-5 w-5 text-success-500 dark:text-success-400" />}
                 className="text-success-600 dark:text-success-400"
                 loading={loading}
@@ -59,7 +39,7 @@ export function DashboardStats({stats, tests, loading}: DashboardStatsProps) {
             />
             <StatsCard
                 title="Failed"
-                value={displayStats.failedTests}
+                value={counts.failed}
                 icon={<XCircle className="h-5 w-5 text-danger-500 dark:text-danger-400" />}
                 className="text-danger-600 dark:text-danger-400"
                 loading={loading}
@@ -67,18 +47,18 @@ export function DashboardStats({stats, tests, loading}: DashboardStatsProps) {
             />
             <StatsCard
                 title="Success Rate"
-                value={`${Math.round(displayStats.successRate)}%`}
+                value={`${Math.round(successRate)}%`}
                 icon={
                     <TrendingUp
                         className={`h-5 w-5 ${
-                            displayStats.successRate >= 80
+                            successRate >= 80
                                 ? 'text-success-500 dark:text-success-400'
                                 : 'text-danger-500 dark:text-danger-400'
                         }`}
                     />
                 }
                 className={
-                    displayStats.successRate >= 80
+                    successRate >= 80
                         ? 'text-success-600 dark:text-success-400'
                         : 'text-danger-600 dark:text-danger-400'
                 }

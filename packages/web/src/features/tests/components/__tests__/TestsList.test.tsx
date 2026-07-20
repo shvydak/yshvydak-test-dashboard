@@ -10,6 +10,15 @@ vi.mock('../../store/testsStore', () => ({
     useTestsStore: vi.fn(),
 }))
 
+// Mock the server-side status-counts hook (react-query) — these tests focus on
+// URL/modal/filter wiring and don't need a QueryClientProvider wrapper.
+vi.mock('../../hooks/useTestStatusCounts', () => ({
+    useTestStatusCounts: () => ({
+        counts: {total: 0, passed: 0, failed: 0, skipped: 0, pending: 0, noted: 0},
+        isLoading: false,
+    }),
+}))
+
 // Mock child components to simplify testing
 vi.mock('../TestsListFilters', () => ({
     TestsListFilters: () => <div data-testid="filters">Filters</div>,

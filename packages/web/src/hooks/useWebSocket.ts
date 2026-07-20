@@ -148,6 +148,7 @@ export function useWebSocket(url: string | null, options?: WebSocketOptions) {
                 queryClient.invalidateQueries({queryKey: ['tests']})
                 queryClient.invalidateQueries({queryKey: ['runs']})
                 queryClient.invalidateQueries({queryKey: ['project-status-summary']})
+                queryClient.invalidateQueries({queryKey: ['test-status-counts']})
                 fetchTests()
                 fetchRuns()
 
@@ -163,6 +164,7 @@ export function useWebSocket(url: string | null, options?: WebSocketOptions) {
                     queryKey: ['dashboard-stats'],
                 })
                 queryClient.invalidateQueries({queryKey: ['project-status-summary']})
+                queryClient.invalidateQueries({queryKey: ['test-status-counts']})
                 fetchTests()
                 break
 
@@ -191,6 +193,7 @@ export function useWebSocket(url: string | null, options?: WebSocketOptions) {
                     queryKey: ['dashboard-stats'],
                 })
                 queryClient.invalidateQueries({queryKey: ['project-status-summary']})
+                queryClient.invalidateQueries({queryKey: ['test-status-counts']})
                 fetchTests()
                 fetchRuns()
                 break
@@ -207,6 +210,7 @@ export function useWebSocket(url: string | null, options?: WebSocketOptions) {
                     queryKey: ['dashboard-stats'],
                 })
                 queryClient.invalidateQueries({queryKey: ['project-status-summary']})
+                queryClient.invalidateQueries({queryKey: ['test-status-counts']})
                 fetchTests()
                 fetchRuns()
 

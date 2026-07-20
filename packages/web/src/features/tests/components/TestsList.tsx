@@ -5,6 +5,7 @@ import {TestResult} from '@yshvydak/core'
 import {LoadingSpinner} from '@shared/components'
 import {useTestsStore} from '../store/testsStore'
 import {useTestFilters} from '../hooks'
+import {useTestStatusCounts} from '../hooks/useTestStatusCounts'
 import {FilterKey, FILTER_OPTIONS} from '../constants'
 // import {TestsListHeader} from './TestsListHeader'
 import {TestsListFilters} from './TestsListFilters'
@@ -48,12 +49,25 @@ export default function TestsList({
 
     const [filter, setFilter] = useState<FilterKey>(getInitialFilter)
 
-    const {filteredTests, counts} = useTestFilters({
+    const {filteredTests} = useTestFilters({
         tests,
         filter,
         searchQuery,
         projectFilter: activeProject || undefined,
     })
+
+    // Badge counts come from a dedicated, unlimited server-side aggregate rather than
+    // the (paginated) `tests` array — otherwise "All" caps at the list's page size
+    // (200 with no project selected, 5000 with one) instead of the true total.
+    const {counts: statusCounts} = useTestStatusCounts(activeProject || undefined)
+    const counts = {
+        all: statusCounts.total,
+        passed: statusCounts.passed,
+        failed: statusCounts.failed,
+        skipped: statusCounts.skipped,
+        pending: statusCounts.pending,
+        noted: statusCounts.noted,
+    }
 
     // Sync filter with URL parameter changes
     useEffect(() => {

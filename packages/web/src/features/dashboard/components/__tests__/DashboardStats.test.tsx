@@ -3,7 +3,7 @@ import {render, screen} from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import {BrowserRouter} from 'react-router-dom'
 import {DashboardStats} from '../DashboardStats'
-import type {TestResult} from '@yshvydak/core'
+import type {TestStatusCounts} from '@features/tests/hooks/useTestStatusCounts'
 
 // Mock react-router-dom navigate
 const mockNavigate = vi.fn()
@@ -15,17 +15,13 @@ vi.mock('react-router-dom', async () => {
     }
 })
 
-const createTestResult = (overrides?: Partial<TestResult>): TestResult => ({
-    id: '1',
-    testId: 'test-1',
-    name: 'Test 1',
-    status: 'passed',
-    duration: 1000,
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
-    filePath: '/tests/test.spec.ts',
-    runId: 'run-1',
-    attachments: [],
+const createCounts = (overrides?: Partial<TestStatusCounts>): TestStatusCounts => ({
+    total: 0,
+    passed: 0,
+    failed: 0,
+    skipped: 0,
+    pending: 0,
+    noted: 0,
     ...overrides,
 })
 
@@ -40,13 +36,9 @@ describe('DashboardStats', () => {
 
     describe('Rendering', () => {
         it('should render all stats cards', () => {
-            const tests: TestResult[] = [
-                createTestResult({status: 'passed'}),
-                createTestResult({id: '2', testId: 'test-2', status: 'failed'}),
-                createTestResult({id: '3', testId: 'test-3', status: 'skipped'}),
-            ]
+            const counts = createCounts({total: 3, passed: 1, failed: 1, skipped: 1})
 
-            renderWithRouter(<DashboardStats tests={tests} loading={false} />)
+            renderWithRouter(<DashboardStats counts={counts} loading={false} />)
 
             expect(screen.getByText('Total Tests')).toBeInTheDocument()
             expect(screen.getByText('Passed')).toBeInTheDocument()
@@ -54,61 +46,34 @@ describe('DashboardStats', () => {
             expect(screen.getByText('Success Rate')).toBeInTheDocument()
         })
 
-        it('should calculate stats correctly from tests', () => {
-            const tests: TestResult[] = [
-                createTestResult({status: 'passed'}),
-                createTestResult({id: '2', testId: 'test-2', status: 'passed'}),
-                createTestResult({id: '3', testId: 'test-3', status: 'failed'}),
-                createTestResult({id: '4', testId: 'test-4', status: 'skipped'}),
-            ]
+        it('should display the unlimited counts as given, unaltered', () => {
+            const counts = createCounts({total: 100, passed: 90, failed: 5, skipped: 5})
 
-            renderWithRouter(<DashboardStats tests={tests} loading={false} />)
-
-            // Total tests (excluding skipped): 4 - 1 = 3
-            expect(screen.getByText('3')).toBeInTheDocument()
-            // Passed: 2
-            expect(screen.getByText('2')).toBeInTheDocument()
-            // Failed: 1
-            expect(screen.getByText('1')).toBeInTheDocument()
-            // Success rate: 2/3 = 66.67% rounded to 67%
-            expect(screen.getByText('67%')).toBeInTheDocument()
-        })
-
-        it('should use provided stats when available', () => {
-            const stats = {
-                totalTests: 100,
-                passedTests: 90,
-                failedTests: 5,
-                skippedTests: 5,
-                successRate: 94.7,
-                totalRuns: 10,
-                recentRuns: [],
-            }
-
-            renderWithRouter(<DashboardStats stats={stats} tests={[]} loading={false} />)
+            renderWithRouter(<DashboardStats counts={counts} loading={false} />)
 
             expect(screen.getByText('95')).toBeInTheDocument() // 100 - 5 (skipped)
             expect(screen.getByText('90')).toBeInTheDocument()
             expect(screen.getByText('5')).toBeInTheDocument()
-            expect(screen.getByText('95%')).toBeInTheDocument() // Rounded from 94.7
+            expect(screen.getByText('95%')).toBeInTheDocument() // 90 / (90 + 5) ≈ 94.7 → 95
         })
 
-        it('should show loading state', () => {
-            renderWithRouter(<DashboardStats tests={[]} loading={true} />)
+        it('should show loading skeletons instead of values while loading', () => {
+            renderWithRouter(<DashboardStats counts={createCounts()} loading={true} />)
 
             expect(screen.getByText('Total Tests')).toBeInTheDocument()
             expect(screen.getByText('Passed')).toBeInTheDocument()
             expect(screen.getByText('Failed')).toBeInTheDocument()
             expect(screen.getByText('Success Rate')).toBeInTheDocument()
+            expect(screen.queryByText('0%')).not.toBeInTheDocument()
         })
     })
 
     describe('Navigation - Total Tests Card', () => {
         it('should navigate to /tests?filter=all when Total Tests card is clicked', async () => {
             const user = userEvent.setup()
-            const tests: TestResult[] = [createTestResult()]
-
-            renderWithRouter(<DashboardStats tests={tests} loading={false} />)
+            renderWithRouter(
+                <DashboardStats counts={createCounts({total: 1, passed: 1})} loading={false} />
+            )
 
             const totalCard = screen.getByText('Total Tests').closest('[role="button"]')
             expect(totalCard).toBeInTheDocument()
@@ -124,9 +89,9 @@ describe('DashboardStats', () => {
     describe('Navigation - Passed Card', () => {
         it('should navigate to /tests?filter=passed when Passed card is clicked', async () => {
             const user = userEvent.setup()
-            const tests: TestResult[] = [createTestResult({status: 'passed'})]
-
-            renderWithRouter(<DashboardStats tests={tests} loading={false} />)
+            renderWithRouter(
+                <DashboardStats counts={createCounts({total: 1, passed: 1})} loading={false} />
+            )
 
             const passedCard = screen.getByText('Passed').closest('[role="button"]')
             expect(passedCard).toBeInTheDocument()
@@ -142,9 +107,9 @@ describe('DashboardStats', () => {
     describe('Navigation - Failed Card', () => {
         it('should navigate to /tests?filter=failed when Failed card is clicked', async () => {
             const user = userEvent.setup()
-            const tests: TestResult[] = [createTestResult({status: 'failed'})]
-
-            renderWithRouter(<DashboardStats tests={tests} loading={false} />)
+            renderWithRouter(
+                <DashboardStats counts={createCounts({total: 1, failed: 1})} loading={false} />
+            )
 
             const failedCard = screen.getByText('Failed').closest('[role="button"]')
             expect(failedCard).toBeInTheDocument()
@@ -158,9 +123,9 @@ describe('DashboardStats', () => {
 
         it('should handle clicking Failed card with 0 failures', async () => {
             const user = userEvent.setup()
-            const tests: TestResult[] = [createTestResult({status: 'passed'})]
-
-            renderWithRouter(<DashboardStats tests={tests} loading={false} />)
+            renderWithRouter(
+                <DashboardStats counts={createCounts({total: 1, passed: 1})} loading={false} />
+            )
 
             const failedCard = screen.getByText('Failed').closest('[role="button"]')
             expect(failedCard).toBeInTheDocument()
@@ -175,107 +140,68 @@ describe('DashboardStats', () => {
 
     describe('Success Rate Card', () => {
         it('should not be clickable', () => {
-            const tests: TestResult[] = [createTestResult()]
-
-            renderWithRouter(<DashboardStats tests={tests} loading={false} />)
+            renderWithRouter(
+                <DashboardStats counts={createCounts({total: 1, passed: 1})} loading={false} />
+            )
 
             const successRateCard = screen.getByText('Success Rate').closest('div')
             expect(successRateCard?.parentElement).not.toHaveAttribute('role', 'button')
         })
 
         it('should calculate success rate correctly', () => {
-            const tests: TestResult[] = [
-                createTestResult({status: 'passed'}),
-                createTestResult({id: '2', testId: 'test-2', status: 'passed'}),
-                createTestResult({id: '3', testId: 'test-3', status: 'passed'}),
-                createTestResult({id: '4', testId: 'test-4', status: 'failed'}),
-            ]
+            const counts = createCounts({total: 4, passed: 3, failed: 1})
 
-            renderWithRouter(<DashboardStats tests={tests} loading={false} />)
+            renderWithRouter(<DashboardStats counts={counts} loading={false} />)
 
             // Success rate: 3/4 = 75%
             expect(screen.getByText('75%')).toBeInTheDocument()
         })
 
         it('should handle 100% success rate', () => {
-            const tests: TestResult[] = [
-                createTestResult({status: 'passed'}),
-                createTestResult({id: '2', testId: 'test-2', status: 'passed'}),
-            ]
+            const counts = createCounts({total: 2, passed: 2})
 
-            renderWithRouter(<DashboardStats tests={tests} loading={false} />)
+            renderWithRouter(<DashboardStats counts={counts} loading={false} />)
 
             expect(screen.getByText('100%')).toBeInTheDocument()
         })
 
         it('should handle 0% success rate', () => {
-            const tests: TestResult[] = [
-                createTestResult({status: 'failed'}),
-                createTestResult({id: '2', testId: 'test-2', status: 'failed'}),
-            ]
+            const counts = createCounts({total: 2, failed: 2})
 
-            renderWithRouter(<DashboardStats tests={tests} loading={false} />)
+            renderWithRouter(<DashboardStats counts={counts} loading={false} />)
 
             expect(screen.getByText('0%')).toBeInTheDocument()
         })
 
         it('should exclude pending tests from success rate calculation', () => {
-            const tests: TestResult[] = [
-                createTestResult({status: 'passed'}),
-                createTestResult({id: '2', testId: 'test-2', status: 'passed'}),
-                createTestResult({id: '3', testId: 'test-3', status: 'passed'}),
-                createTestResult({id: '4', testId: 'test-4', status: 'passed'}),
-                createTestResult({id: '5', testId: 'test-5', status: 'passed'}),
-                createTestResult({id: '6', testId: 'test-6', status: 'passed'}),
-                createTestResult({id: '7', testId: 'test-7', status: 'passed'}),
-                createTestResult({id: '8', testId: 'test-8', status: 'passed'}),
-                createTestResult({id: '9', testId: 'test-9', status: 'passed'}),
-                createTestResult({id: '10', testId: 'test-10', status: 'passed'}),
-                createTestResult({id: '11', testId: 'test-11', status: 'passed'}),
-                createTestResult({id: '12', testId: 'test-12', status: 'passed'}),
-                createTestResult({id: '13', testId: 'test-13', status: 'passed'}),
-                createTestResult({id: '14', testId: 'test-14', status: 'passed'}),
-                createTestResult({id: '15', testId: 'test-15', status: 'passed'}),
-                createTestResult({id: '16', testId: 'test-16', status: 'failed'}),
-                // Add 62 pending tests (should be excluded from success rate)
-                ...Array.from({length: 62}, (_, i) =>
-                    createTestResult({
-                        id: `pending-${i}`,
-                        testId: `pending-${i}`,
-                        status: 'pending',
-                    })
-                ),
-                // Add 1 skipped test (should also be excluded)
-                createTestResult({id: 'skipped-1', testId: 'skipped-1', status: 'skipped'}),
-            ]
+            // 15 passed, 1 failed, 62 pending, 1 skipped — pending/skipped must not
+            // dilute the denominator (would otherwise read 15/78 ≈ 19% instead of 94%)
+            const counts = createCounts({
+                total: 79,
+                passed: 15,
+                failed: 1,
+                pending: 62,
+                skipped: 1,
+            })
 
-            renderWithRouter(<DashboardStats tests={tests} loading={false} />)
+            renderWithRouter(<DashboardStats counts={counts} loading={false} />)
 
-            // Success rate should be: 15 passed / (15 passed + 1 failed) = 15/16 = 93.75% ≈ 94%
-            // NOT 15 / (79 - 1 skipped) = 15/78 = 19%
             expect(screen.getByText('94%')).toBeInTheDocument()
         })
 
         it('should exclude skipped tests from success rate calculation', () => {
-            const tests: TestResult[] = [
-                createTestResult({status: 'passed'}),
-                createTestResult({id: '2', testId: 'test-2', status: 'passed'}),
-                createTestResult({id: '3', testId: 'test-3', status: 'failed'}),
-                createTestResult({id: '4', testId: 'test-4', status: 'skipped'}),
-                createTestResult({id: '5', testId: 'test-5', status: 'skipped'}),
-            ]
+            const counts = createCounts({total: 5, passed: 2, failed: 1, skipped: 2})
 
-            renderWithRouter(<DashboardStats tests={tests} loading={false} />)
+            renderWithRouter(<DashboardStats counts={counts} loading={false} />)
 
-            // Success rate: 2 passed / (2 passed + 1 failed) = 2/3 = 66.67% ≈ 67%
-            // Skipped tests should NOT be included in denominator
+            // Success rate: 2 passed / (2 passed + 1 failed) = 2/3 ≈ 67%
             expect(screen.getByText('67%')).toBeInTheDocument()
         })
     })
 
     describe('Edge Cases', () => {
-        it('should handle empty tests array', () => {
-            renderWithRouter(<DashboardStats tests={[]} loading={false} />)
+        it('should handle all-zero counts', () => {
+            renderWithRouter(<DashboardStats counts={createCounts()} loading={false} />)
 
             // Multiple cards show "0", so use getAllByText
             const zeroElements = screen.getAllByText('0')
@@ -285,12 +211,9 @@ describe('DashboardStats', () => {
         })
 
         it('should handle only skipped tests', () => {
-            const tests: TestResult[] = [
-                createTestResult({status: 'skipped'}),
-                createTestResult({id: '2', testId: 'test-2', status: 'skipped'}),
-            ]
+            const counts = createCounts({total: 2, skipped: 2})
 
-            renderWithRouter(<DashboardStats tests={tests} loading={false} />)
+            renderWithRouter(<DashboardStats counts={counts} loading={false} />)
 
             // Multiple cards show "0", so check that at least one exists
             const zeroElements = screen.getAllByText('0')
@@ -298,14 +221,9 @@ describe('DashboardStats', () => {
         })
 
         it('should handle mixed test statuses', () => {
-            const tests: TestResult[] = [
-                createTestResult({status: 'passed'}),
-                createTestResult({id: '2', testId: 'test-2', status: 'failed'}),
-                createTestResult({id: '3', testId: 'test-3', status: 'skipped'}),
-                createTestResult({id: '4', testId: 'test-4', status: 'pending'}),
-            ]
+            const counts = createCounts({total: 4, passed: 1, failed: 1, skipped: 1, pending: 1})
 
-            renderWithRouter(<DashboardStats tests={tests} loading={false} />)
+            renderWithRouter(<DashboardStats counts={counts} loading={false} />)
 
             // Total: 4 - 1 (skipped) = 3
             expect(screen.getByText('3')).toBeInTheDocument()
@@ -319,9 +237,9 @@ describe('DashboardStats', () => {
     describe('Multiple Clicks', () => {
         it('should handle multiple clicks on the same card', async () => {
             const user = userEvent.setup()
-            const tests: TestResult[] = [createTestResult({status: 'failed'})]
-
-            renderWithRouter(<DashboardStats tests={tests} loading={false} />)
+            renderWithRouter(
+                <DashboardStats counts={createCounts({total: 1, failed: 1})} loading={false} />
+            )
 
             const failedCard = screen.getByText('Failed').closest('[role="button"]')
 
@@ -336,12 +254,9 @@ describe('DashboardStats', () => {
 
         it('should handle clicks on different cards', async () => {
             const user = userEvent.setup()
-            const tests: TestResult[] = [
-                createTestResult({status: 'passed'}),
-                createTestResult({id: '2', testId: 'test-2', status: 'failed'}),
-            ]
+            const counts = createCounts({total: 2, passed: 1, failed: 1})
 
-            renderWithRouter(<DashboardStats tests={tests} loading={false} />)
+            renderWithRouter(<DashboardStats counts={counts} loading={false} />)
 
             const passedCard = screen.getByText('Passed').closest('[role="button"]')
             const failedCard = screen.getByText('Failed').closest('[role="button"]')

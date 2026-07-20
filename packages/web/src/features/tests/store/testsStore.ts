@@ -19,11 +19,14 @@ interface TestsState {
     lastUpdated: Date | null
     selectedExecutionId: string | null
     activeProgress: TestProgress | null
+    /** Project used for list fetches — WebSocket/interval refreshes reuse this. */
+    listProject: string | null
 
     // Computed function
     getIsAnyTestRunning: () => boolean
 
     // Actions
+    setListProject: (project: string | null) => void
     fetchTests: () => Promise<void>
     fetchRuns: () => Promise<void>
     rerunTest: (testId: string) => Promise<void>
@@ -61,6 +64,7 @@ export const useTestsStore = create<TestsState>()(
             lastUpdated: null,
             selectedExecutionId: null,
             activeProgress: null,
+            listProject: null,
 
             // Computed function
             getIsAnyTestRunning: () => {
@@ -72,6 +76,8 @@ export const useTestsStore = create<TestsState>()(
                     state.runningGroups.size > 0
                 )
             },
+
+            setListProject: (project) => set({listProject: project}),
 
             fetchTests: async () => {
                 try {
@@ -89,7 +95,16 @@ export const useTestsStore = create<TestsState>()(
                         set({error: null})
                     }
 
-                    const response = await authGet(`${API_BASE_URL}/tests?limit=200`)
+                    // With a project: ask the server for that project only (limit applies
+                    // after project filter). Without: keep the previous global slice.
+                    const params = new URLSearchParams()
+                    if (currentState.listProject) {
+                        params.set('project', currentState.listProject)
+                        params.set('limit', '5000')
+                    } else {
+                        params.set('limit', '200')
+                    }
+                    const response = await authGet(`${API_BASE_URL}/tests?${params.toString()}`)
                     if (!response.ok) {
                         throw new Error(`HTTP error! status: ${response.status}`)
                     }

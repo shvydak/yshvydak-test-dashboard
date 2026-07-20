@@ -138,12 +138,16 @@ export class TestController {
     // GET /api/tests - Get all test results
     getAllTests = async (req: ServiceRequest, res: Response): Promise<void> => {
         try {
-            const {runId, status, limit = 100} = req.query
+            const {runId, status, limit = 100, project} = req.query
 
             const filters = {
                 runId: runId as string,
                 status: status as string,
                 limit: parseInt(limit as string),
+                project:
+                    typeof project === 'string' && project.trim() !== ''
+                        ? project.trim()
+                        : undefined,
             }
 
             const tests = await this.testService.getAllTests(filters)

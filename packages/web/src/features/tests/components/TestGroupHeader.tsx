@@ -25,7 +25,9 @@ export function TestGroupHeader({group, expanded, onToggle, filter}: TestGroupHe
 
     return (
         <div
-            className="group/header cursor-pointer border-b border-gray-200/70 py-3 transition-colors hover:bg-gray-50 dark:border-white/[0.06] dark:hover:bg-white/[0.03] md:py-4"
+            className={`group/header relative z-10 cursor-pointer border-b border-gray-200/70 py-3 transition-colors hover:z-20 hover:bg-gray-50 dark:border-white/[0.06] dark:hover:bg-white/[0.03] md:py-4 ${
+                expanded ? 'rounded-t-2xl' : 'rounded-2xl'
+            }`}
             onClick={onToggle}>
             <div className="flex min-h-[32px] flex-col gap-2 px-3 sm:flex-row sm:items-center sm:justify-between sm:gap-0 md:px-6">
                 <div className="flex min-w-0 items-center space-x-2 md:space-x-3">

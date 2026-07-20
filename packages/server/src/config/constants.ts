@@ -35,6 +35,8 @@ export const WEBSOCKET_EVENTS = {
 
 export const DEFAULT_LIMITS = {
     TESTS_PER_PAGE: 100,
+    /** Cap for a single-project list fetch — high enough for real suites, still bounded. */
+    TESTS_PER_PROJECT: 5000,
     TEST_HISTORY: 200,
 }
 

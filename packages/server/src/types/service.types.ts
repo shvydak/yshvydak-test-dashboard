@@ -98,6 +98,8 @@ export interface TestFilters {
     runId?: string
     status?: string
     limit?: number
+    /** When set, keep only latest rows whose project matches (after per-test_id latest pick). */
+    project?: string
 }
 
 export interface DatabaseStats {

@@ -428,13 +428,19 @@ describe('TestController', () => {
                 runId: undefined,
                 status: undefined,
                 limit: 100,
+                project: undefined,
             })
             expect(ResponseHelper.success).toHaveBeenCalledWith(mockRes, tests, undefined, 1)
         })
 
         it('should get all tests with filters', async () => {
             const tests = [{id: '1', name: 'Test 1', status: 'passed'}]
-            mockReq.query = {runId: 'run-123', status: 'passed', limit: '50'}
+            mockReq.query = {
+                runId: 'run-123',
+                status: 'passed',
+                limit: '50',
+                project: 'API_Tests',
+            }
             mockTestService.getAllTests.mockResolvedValue(tests)
 
             await controller.getAllTests(mockReq as ServiceRequest, mockRes as Response)
@@ -443,8 +449,23 @@ describe('TestController', () => {
                 runId: 'run-123',
                 status: 'passed',
                 limit: 50,
+                project: 'API_Tests',
             })
             expect(ResponseHelper.success).toHaveBeenCalledWith(mockRes, tests, undefined, 1)
+        })
+
+        it('should ignore empty project query param', async () => {
+            mockReq.query = {project: '  '}
+            mockTestService.getAllTests.mockResolvedValue([])
+
+            await controller.getAllTests(mockReq as ServiceRequest, mockRes as Response)
+
+            expect(mockTestService.getAllTests).toHaveBeenCalledWith({
+                runId: undefined,
+                status: undefined,
+                limit: 100,
+                project: undefined,
+            })
         })
 
         it('should handle errors when fetching tests', async () => {

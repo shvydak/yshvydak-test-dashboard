@@ -123,6 +123,8 @@ export class TestRepository extends BaseRepository implements ITestRepository {
         } else {
             // Pick the latest execution per test_id with a window function (O(N log N))
             // instead of a correlated subquery (O(N^2)) — important once history grows.
+            // Project filter is applied AFTER rn = 1 so semantics match getProjectStatusSummary
+            // (latest row globally, then attribute by that row's project). History is untouched.
             innerSql = `
                 SELECT *
                 FROM (
@@ -134,6 +136,11 @@ export class TestRepository extends BaseRepository implements ITestRepository {
             `
         }
 
+        if (filters.project) {
+            innerSql += ` AND project = ?`
+            params.push(filters.project)
+        }
+
         if (filters.status) {
             innerSql += ` AND status = ?`
             params.push(filters.status)
@@ -141,6 +148,7 @@ export class TestRepository extends BaseRepository implements ITestRepository {
 
         // Apply LIMIT before joining attachments so attachment fan-out cannot
         // shrink the number of test executions returned to the UI.
+        // When project is set, LIMIT applies to that project only (not a global slice).
         innerSql += ` ORDER BY updated_at DESC LIMIT ?`
         params.push(filters.limit || DEFAULT_LIMITS.TESTS_PER_PAGE)
 

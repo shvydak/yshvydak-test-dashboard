@@ -343,6 +343,51 @@ describe('TestRepository - Core Functionality', () => {
             expect(limitedResults).toHaveLength(5)
         })
 
+        it('should filter by project after picking latest per test_id', async () => {
+            await repository.saveTestResult(
+                createTestResult('shared-test', 'passed', {project: 'API_Tests'})
+            )
+            await new Promise((resolve) => setTimeout(resolve, 100))
+            // Newer execution under a different project — this is the global latest
+            await repository.saveTestResult(
+                createTestResult('shared-test', 'failed', {project: 'Staging'})
+            )
+            await repository.saveTestResult(
+                createTestResult('api-only', 'passed', {project: 'API_Tests'})
+            )
+            await repository.saveTestResult(
+                createTestResult('staging-only', 'passed', {project: 'Staging'})
+            )
+
+            const apiTests = await repository.getAllTests({project: 'API_Tests'})
+            const stagingTests = await repository.getAllTests({project: 'Staging'})
+
+            // shared-test's latest belongs to Staging, so API_Tests must not include it
+            expect(apiTests.map((t) => t.testId).sort()).toEqual(['api-only'])
+            expect(stagingTests.map((t) => t.testId).sort()).toEqual([
+                'shared-test',
+                'staging-only',
+            ])
+            expect(stagingTests.find((t) => t.testId === 'shared-test')?.status).toBe('failed')
+        })
+
+        it('should apply limit after project filter (not a global slice)', async () => {
+            for (let i = 0; i < 5; i++) {
+                await repository.saveTestResult(
+                    createTestResult(`api-${i}`, 'passed', {project: 'API_Tests'})
+                )
+            }
+            for (let i = 0; i < 10; i++) {
+                await repository.saveTestResult(
+                    createTestResult(`other-${i}`, 'passed', {project: 'Staging'})
+                )
+            }
+
+            const apiTests = await repository.getAllTests({project: 'API_Tests', limit: 3})
+            expect(apiTests).toHaveLength(3)
+            expect(apiTests.every((t) => t.project === 'API_Tests')).toBe(true)
+        })
+
         it('should order results by updated_at DESC', async () => {
             // Create tests with delays to ensure different timestamps
             await repository.saveTestResult(createTestResult('test-old', 'passed'))

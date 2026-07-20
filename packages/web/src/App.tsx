@@ -71,6 +71,7 @@ function App() {
 
     const {
         fetchTests,
+        setListProject,
         isLoading: testsLoading,
         rerunTest,
         checkAndRestoreActiveStates,
@@ -233,23 +234,25 @@ function App() {
     })
 
     useEffect(() => {
-        // Only initialize if authenticated
-        if (isAuthenticated) {
-            const initializeApp = async () => {
-                await checkAndRestoreActiveStates()
-                fetchTests()
-            }
+        // Scope list fetches to the active tab so filter counts match the Header badge.
+        // setListProject is sync (zustand) — fetchTests below reads the updated value.
+        setListProject(activeProject || null)
 
-            initializeApp()
+        if (!isAuthenticated) return
 
-            // Periodic update every 30 seconds
-            const interval = setInterval(() => {
-                fetchTests()
-            }, 30000)
-
-            return () => clearInterval(interval)
+        const initializeApp = async () => {
+            await checkAndRestoreActiveStates()
+            fetchTests()
         }
-    }, [fetchTests, checkAndRestoreActiveStates, isAuthenticated])
+
+        initializeApp()
+
+        const interval = setInterval(() => {
+            fetchTests()
+        }, 30000)
+
+        return () => clearInterval(interval)
+    }, [fetchTests, checkAndRestoreActiveStates, isAuthenticated, activeProject, setListProject])
 
     const handleTestSelect = (test: TestResult) => {
         setSelectedTest(test)

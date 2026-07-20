@@ -4,6 +4,7 @@ import {
     TestResult,
     TestFilters,
     DatabaseStats,
+    TestStatusCounts,
 } from '../types/service.types'
 import {TestResultData} from '../types/database.types'
 import {TestRepository} from '../repositories/test.repository'
@@ -363,6 +364,10 @@ export class TestService implements ITestService {
         {project: string; total: number; passed: number; failed: number}[]
     > {
         return this.testRepository.getProjectStatusSummary()
+    }
+
+    async getTestStatusCounts(project?: string): Promise<TestStatusCounts> {
+        return this.testRepository.getTestStatusCounts(project)
     }
 
     async runAllTests(

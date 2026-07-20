@@ -79,6 +79,12 @@ describe('useDashboardActions', () => {
                 expect(invalidateQueriesSpy).toHaveBeenCalledWith({
                     queryKey: ['storage-stats'],
                 })
+                expect(invalidateQueriesSpy).toHaveBeenCalledWith({
+                    queryKey: ['project-status-summary'],
+                })
+                expect(invalidateQueriesSpy).toHaveBeenCalledWith({
+                    queryKey: ['test-status-counts'],
+                })
             })
         })
 
@@ -396,6 +402,23 @@ describe('useDashboardActions', () => {
             await waitFor(() => {
                 expect(invalidateQueriesSpy).toHaveBeenCalledWith({queryKey: ['storage-stats']})
                 expect(mockFetchTests).toHaveBeenCalled()
+            })
+        })
+
+        it('should invalidate status-count caches after a successful cleanup', async () => {
+            vi.mocked(authFetch.authFetch).mockResolvedValue(cleanupResponse('full') as any)
+            const invalidateQueriesSpy = vi.spyOn(queryClient, 'invalidateQueries')
+
+            const {result} = renderHook(() => useDashboardActions(), {wrapper})
+            await result.current.cleanupData('count', 20, 'full')
+
+            await waitFor(() => {
+                expect(invalidateQueriesSpy).toHaveBeenCalledWith({
+                    queryKey: ['project-status-summary'],
+                })
+                expect(invalidateQueriesSpy).toHaveBeenCalledWith({
+                    queryKey: ['test-status-counts'],
+                })
             })
         })
     })

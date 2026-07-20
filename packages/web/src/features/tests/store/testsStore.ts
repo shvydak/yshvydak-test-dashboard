@@ -1,6 +1,7 @@
 import {create} from 'zustand'
 import {devtools} from 'zustand/middleware'
 import {TestResult, TestRun, TestProgress} from '@yshvydak/core'
+import {queryClient} from '@config/queryClient'
 import {authGet, authPost, authDelete} from '@features/authentication/utils/authFetch'
 import {getMaxWorkersFromStorage} from '@/hooks/usePlaywrightWorkers'
 import {getProjectWorkersOverride} from '@/hooks/useProjectTabs'
@@ -117,6 +118,14 @@ export const useTestsStore = create<TestsState>()(
                             isLoading: shouldSetLoading ? false : currentState.isLoading,
                             lastUpdated: new Date(),
                         })
+
+                        // Centralized here (rather than at every call site that
+                        // triggers a refetch — rerun, run-all, group run, discovery,
+                        // delete, the 30s poll fallback) so the filter-bar/tab-badge
+                        // counts can never drift out of sync with the list simply
+                        // because a call site forgot to invalidate them.
+                        queryClient.invalidateQueries({queryKey: ['project-status-summary']})
+                        queryClient.invalidateQueries({queryKey: ['test-status-counts']})
                     } else {
                         throw new Error('Invalid response format')
                     }

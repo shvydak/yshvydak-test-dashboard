@@ -1,6 +1,6 @@
 import {BaseRepository} from './base.repository'
 import {TestResultData, TestResultRow, DatabaseStats} from '../types/database.types'
-import {TestResult, TestFilters, ITestRepository} from '../types/service.types'
+import {TestResult, TestFilters, ITestRepository, TestStatusCounts} from '../types/service.types'
 import {DEFAULT_LIMITS} from '../config/constants'
 import {FileUtil} from '../utils/file.util'
 
@@ -334,6 +334,58 @@ export class TestRepository extends BaseRepository implements ITestRepository {
             passed: row.passed,
             failed: row.failed,
         }))
+    }
+
+    /**
+     * Status breakdown (total/passed/failed/skipped/pending/noted) over the latest
+     * row per test_id, unlimited and DB-aggregated — powers the "All/Passed/Failed/..."
+     * filter-bar counts. Must never be derived from a LIMIT-ed getAllTests() page,
+     * or the badges silently cap at the page size (see getProjectStatusSummary, which
+     * this mirrors for the tab-bar badge). Ordered by updated_at to match the "latest"
+     * row getAllTests() itself would return, so counts and the visible list agree.
+     */
+    async getTestStatusCounts(project?: string): Promise<TestStatusCounts> {
+        const params: any[] = []
+        let sql = `
+            WITH latest AS (
+                SELECT test_id, project, status,
+                       ROW_NUMBER() OVER (PARTITION BY test_id ORDER BY updated_at DESC) as rn
+                FROM test_results
+            )
+            SELECT
+                COUNT(*) as total,
+                SUM(CASE WHEN l.status = 'passed' THEN 1 ELSE 0 END) as passed,
+                SUM(CASE WHEN l.status = 'failed' THEN 1 ELSE 0 END) as failed,
+                SUM(CASE WHEN l.status = 'skipped' THEN 1 ELSE 0 END) as skipped,
+                SUM(CASE WHEN l.status = 'pending' THEN 1 ELSE 0 END) as pending,
+                SUM(CASE WHEN tn.content IS NOT NULL AND trim(tn.content) != '' THEN 1 ELSE 0 END) as noted
+            FROM latest l
+            LEFT JOIN test_notes tn ON tn.test_id = l.test_id
+            WHERE l.rn = 1
+        `
+
+        if (project) {
+            sql += ` AND l.project = ?`
+            params.push(project)
+        }
+
+        const row = await this.queryOne<{
+            total: number | null
+            passed: number | null
+            failed: number | null
+            skipped: number | null
+            pending: number | null
+            noted: number | null
+        }>(sql, params)
+
+        return {
+            total: row?.total || 0,
+            passed: row?.passed || 0,
+            failed: row?.failed || 0,
+            skipped: row?.skipped || 0,
+            pending: row?.pending || 0,
+            noted: row?.noted || 0,
+        }
     }
 
     async getIdsOlderThan(date: Date): Promise<string[]> {

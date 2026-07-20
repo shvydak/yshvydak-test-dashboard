@@ -179,6 +179,29 @@ export class TestController {
         }
     }
 
+    // GET /api/tests/status-counts - Total/passed/failed/skipped/pending/noted counts
+    // over the latest row per test_id, unlimited and DB-aggregated (optionally scoped
+    // to ?project=). Powers the filter-bar badges; never derive these from a LIMIT-ed
+    // getAllTests() page.
+    getTestStatusCounts = async (req: ServiceRequest, res: Response): Promise<Response> => {
+        try {
+            const project =
+                typeof req.query.project === 'string' && req.query.project.trim() !== ''
+                    ? req.query.project.trim()
+                    : undefined
+            const counts = await this.testService.getTestStatusCounts(project)
+            return ResponseHelper.success(res, counts)
+        } catch (error) {
+            Logger.error('Error fetching test status counts', error)
+            return ResponseHelper.error(
+                res,
+                error instanceof Error ? error.message : 'Unknown error',
+                'Failed to fetch test status counts',
+                500
+            )
+        }
+    }
+
     // GET /api/tests/stats - Get database statistics
     getTestStats = async (req: ServiceRequest, res: Response): Promise<Response> => {
         try {

@@ -87,6 +87,14 @@ describe('TestService', () => {
             getDistinctTestIdsByProject: vi.fn().mockResolvedValue([]),
             deleteByProject: vi.fn().mockResolvedValue(0),
             getProjectStatusSummary: vi.fn().mockResolvedValue([]),
+            getTestStatusCounts: vi.fn().mockResolvedValue({
+                total: 0,
+                passed: 0,
+                failed: 0,
+                skipped: 0,
+                pending: 0,
+                noted: 0,
+            }),
         }
 
         mockRunRepository = {
@@ -848,6 +856,35 @@ describe('TestService', () => {
 
             expect(result).toEqual(mockSummary)
             expect(mockTestRepository.getProjectStatusSummary).toHaveBeenCalledTimes(1)
+        })
+    })
+
+    describe('getTestStatusCounts', () => {
+        it('should delegate to testRepository, unscoped', async () => {
+            const mockCounts = {
+                total: 850,
+                passed: 800,
+                failed: 30,
+                skipped: 15,
+                pending: 5,
+                noted: 12,
+            }
+            mockTestRepository.getTestStatusCounts.mockResolvedValue(mockCounts)
+
+            const result = await testService.getTestStatusCounts()
+
+            expect(result).toEqual(mockCounts)
+            expect(mockTestRepository.getTestStatusCounts).toHaveBeenCalledWith(undefined)
+        })
+
+        it('should delegate to testRepository, scoped to a project', async () => {
+            const mockCounts = {total: 10, passed: 8, failed: 2, skipped: 0, pending: 0, noted: 0}
+            mockTestRepository.getTestStatusCounts.mockResolvedValue(mockCounts)
+
+            const result = await testService.getTestStatusCounts('API_Tests')
+
+            expect(result).toEqual(mockCounts)
+            expect(mockTestRepository.getTestStatusCounts).toHaveBeenCalledWith('API_Tests')
         })
     })
 

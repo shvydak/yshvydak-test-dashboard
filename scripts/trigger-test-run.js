@@ -81,7 +81,16 @@ function log(message, level = 'info') {
     console.log(`[${timestamp}] ${icons[level] || 'ℹ️'} ${message}`)
 }
 
-function exitWithError(message, code = 1) {
+// Prints the machine-readable line the calling CI workflow greps for, so it
+// can branch its Slack notification on the outcome. Must be the last thing
+// printed before any process.exit() — every exit path needs one of these,
+// not just the successful-completion path, or the workflow falls back to a
+// generic message for paused/config-error/auth-failed runs too.
+function printPipelineResult(status, extra = {}) {
+    console.log('::PIPELINE_RESULT::' + JSON.stringify({status, ...extra}))
+}
+
+function exitWithError(message, code = 1, status = 'error') {
     log(message, 'error')
     if (config.silent) {
         console.log(
@@ -92,12 +101,13 @@ function exitWithError(message, code = 1) {
             })
         )
     }
+    printPipelineResult(status, {message})
     process.exit(code)
 }
 
 function loadEnvConfig() {
     if (!fs.existsSync(ENV_FILE)) {
-        exitWithError(`Configuration file not found: ${ENV_FILE}`, 3)
+        exitWithError(`Configuration file not found: ${ENV_FILE}`, 3, 'config_error')
     }
 
     const envContent = fs.readFileSync(ENV_FILE, 'utf-8')
@@ -189,7 +199,7 @@ async function checkDashboardHealth(baseUrl) {
 
         throw new Error(`Unexpected health check response: ${JSON.stringify(data)}`)
     } catch (error) {
-        exitWithError(`Dashboard health check failed: ${error.message}`, 3)
+        exitWithError(`Dashboard health check failed: ${error.message}`, 3, 'health_check_failed')
     }
 }
 
@@ -209,7 +219,7 @@ async function authenticate(baseUrl, email, password) {
 
         throw new Error('Invalid authentication response')
     } catch (error) {
-        exitWithError(`Authentication failed: ${error.message}`, 4)
+        exitWithError(`Authentication failed: ${error.message}`, 4, 'auth_failed')
     }
 }
 
@@ -256,6 +266,7 @@ async function triggerTestRun(baseUrl, token, maxWorkers) {
                     })
                 )
             }
+            printPipelineResult('paused', {message: 'CI auto-run is paused', resumeAt})
             process.exit(2)
         }
 
@@ -263,11 +274,12 @@ async function triggerTestRun(baseUrl, token, maxWorkers) {
             exitWithError(
                 'No project tabs are configured to run in the CI pipeline. ' +
                     'Enable "In CI pipeline" for at least one tab in Dashboard Settings.',
-                3
+                3,
+                'pipeline_empty'
             )
         }
 
-        exitWithError(`Failed to trigger pipeline run: ${error.message}`, 1)
+        exitWithError(`Failed to trigger pipeline run: ${error.message}`, 1, 'trigger_failed')
     }
 }
 
@@ -440,7 +452,11 @@ Exit Codes:
     let token = null
     if (envConfig.enableAuth) {
         if (!envConfig.adminEmail || !envConfig.adminPassword) {
-            exitWithError('ADMIN_EMAIL and ADMIN_PASSWORD must be set when ENABLE_AUTH=true', 3)
+            exitWithError(
+                'ADMIN_EMAIL and ADMIN_PASSWORD must be set when ENABLE_AUTH=true',
+                3,
+                'config_error'
+            )
         }
         token = await authenticate(envConfig.baseUrl, envConfig.adminEmail, envConfig.adminPassword)
     }
@@ -463,7 +479,8 @@ Exit Codes:
                 if (!free) {
                     exitWithError(
                         `Timed out waiting for running tests to finish (${BUSY_WAIT_TIMEOUT / 60} minutes)`,
-                        1
+                        1,
+                        'busy_timeout'
                     )
                 }
                 log('Dashboard is now free. Retrying test run...', 'info')
@@ -492,6 +509,7 @@ Exit Codes:
             log(`View results: ${envConfig.baseUrl}`)
         }
 
+        printPipelineResult('triggered', {pipelineRunId: result.pipelineRunId})
         process.exit(0)
     }
 
@@ -573,15 +591,10 @@ Exit Codes:
         log(`\nView full results: ${envConfig.baseUrl}`)
     }
 
-    // Machine-readable line for the calling CI workflow (always printed, even in --silent mode)
-    console.log(
-        '::PIPELINE_RESULT::' +
-            JSON.stringify({
-                status: pipelineOutcome,
-                failedStep: failedStepEntry?.project || null,
-                steps,
-            })
-    )
+    printPipelineResult(pipelineOutcome, {
+        failedStep: failedStepEntry?.project || null,
+        steps,
+    })
 
     // Exit with appropriate code
     process.exit(success ? 0 : 1)
@@ -589,5 +602,5 @@ Exit Codes:
 
 // Run the script
 main().catch((error) => {
-    exitWithError(`Unexpected error: ${error.message}`, 1)
+    exitWithError(`Unexpected error: ${error.message}`, 1, 'script_error')
 })

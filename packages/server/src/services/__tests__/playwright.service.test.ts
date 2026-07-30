@@ -777,7 +777,7 @@ describe('PlaywrightService', () => {
             const grepIndex = args.indexOf('--grep')
             const grepPattern = args[grepIndex + 1]
             expect(grepPattern).toBe(
-                '(?<![a-zA-Z])Login Test(?![a-zA-Z])|(?<![a-zA-Z])Logout Test(?![a-zA-Z])'
+                '(?<!\\S)Login Test(?:\\s+@\\S+)*$|(?<!\\S)Logout Test(?:\\s+@\\S+)*$'
             )
         })
 
@@ -847,7 +847,7 @@ describe('PlaywrightService', () => {
             const args = mockSpawn.mock.calls[0][1]
             const grepIndex = args.indexOf('--grep')
             const grepPattern = args[grepIndex + 1]
-            expect(grepPattern).toBe('(?<![a-zA-Z])Single Test(?![a-zA-Z])')
+            expect(grepPattern).toBe('(?<!\\S)Single Test(?:\\s+@\\S+)*$')
         })
     })
 
@@ -871,7 +871,7 @@ describe('PlaywrightService', () => {
                     'test',
                     'auth.spec.ts',
                     '--grep',
-                    '(?<![a-zA-Z])should login successfully(?![a-zA-Z])', // Pattern uses lookahead/lookbehind to match exact test name
+                    '(?<!\\S)should login successfully(?:\\s+@\\S+)*$', // Title anchored at end so prefix-sharing tests are not selected
                     '--reporter=json,playwright-dashboard-reporter',
                 ],
                 expect.anything()
@@ -941,7 +941,7 @@ describe('PlaywrightService', () => {
             expect(grepIndex).toBeGreaterThan(-1)
             // Special characters should be escaped
             expect(args[grepIndex + 1]).toBe(
-                '(?<![a-zA-Z])test with \\(parentheses\\) and \\[brackets\\](?![a-zA-Z])'
+                '(?<!\\S)test with \\(parentheses\\) and \\[brackets\\](?:\\s+@\\S+)*$'
             )
         })
 
@@ -956,9 +956,17 @@ describe('PlaywrightService', () => {
             const args = mockSpawn.mock.calls[0][1]
             const grepIndex = args.indexOf('--grep')
             expect(grepIndex).toBeGreaterThan(-1)
-            // Pattern should use negative lookahead/lookbehind to match exact test name
-            expect(args[grepIndex + 1]).toBe('(?<![a-zA-Z])Successful Login(?![a-zA-Z])')
-            // This prevents matching "Unsuccessful Login with invalid email"
+            // Pattern anchors the title at the end of Playwright's combined title string
+            expect(args[grepIndex + 1]).toBe('(?<!\\S)Successful Login(?:\\s+@\\S+)*$')
+
+            // Guard the actual matching semantics, not just the pattern shape
+            const regex = new RegExp(args[grepIndex + 1])
+            expect(regex.test('chromium login.spec.ts Successful Login')).toBe(true)
+            expect(regex.test('chromium login.spec.ts Successful Login @smoke')).toBe(true)
+            expect(regex.test('chromium login.spec.ts Unsuccessful Login with invalid email')).toBe(
+                false
+            )
+            expect(regex.test('chromium login.spec.ts Successful Login with 2FA')).toBe(false)
         })
 
         it('should return message indicating test rerun', async () => {

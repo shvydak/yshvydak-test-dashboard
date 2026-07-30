@@ -152,12 +152,7 @@ export class PlaywrightService implements IPlaywrightService {
         const runId = uuidv4()
         Logger.testRerun(testName, runId)
 
-        // Escape special regex characters and use negative lookahead/lookbehind for precise matching
-        // This prevents partial matches (e.g., "Successful Login" matching "Unsuccessful Login")
-        // Using (?<![a-zA-Z]) and (?![a-zA-Z]) ensures test name is not part of a longer word
-        // This works with Playwright's full test path format which includes describe blocks
-        const escapedTestName = testName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-        const grepPattern = `(?<![a-zA-Z])${escapedTestName}(?![a-zA-Z])`
+        const grepPattern = this.buildGrepPattern([testName])
 
         const args = ['playwright', 'test', testFile, '--grep', grepPattern]
         if (maxWorkers) {
@@ -433,16 +428,18 @@ export class PlaywrightService implements IPlaywrightService {
     }
 
     /**
-     * Builds a grep pattern for filtering specific tests by name
-     * Uses negative lookahead/lookbehind to prevent partial matches
+     * Builds a grep pattern for filtering specific tests by name.
+     *
+     * Playwright matches --grep against "<project> <file> <describe...> <title> <tags>"
+     * joined by single spaces, so the title must be anchored as the trailing segment —
+     * otherwise "Create invoice" also selects "Create invoice with delay release".
+     * Optional `@tag` suffixes (from the `tag` test option) are allowed after the title.
      * Multiple test names are combined with OR operator (|)
      */
     private buildGrepPattern(testNames: string[]): string {
         const patterns = testNames.map((name) => {
-            // Escape special regex characters
             const escapedName = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-            // Use negative lookahead/lookbehind for precise matching
-            return `(?<![a-zA-Z])${escapedName}(?![a-zA-Z])`
+            return `(?<!\\S)${escapedName}(?:\\s+@\\S+)*$`
         })
         // Combine all patterns with OR operator
         return patterns.join('|')

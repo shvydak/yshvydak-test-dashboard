@@ -86,6 +86,45 @@ export class SettingsService {
         return validated
     }
 
+    async getDefaultProjectTab(): Promise<string> {
+        const project = (await this.settingsRepository.getDefaultProjectTab()).trim()
+
+        if (!project) {
+            return ''
+        }
+
+        const availableProjects = await this.playwrightService.getAvailableProjects()
+        if (availableProjects.includes(project)) {
+            return project
+        }
+
+        Logger.warn(`Saved default project tab "${project}" no longer exists, resetting`)
+        await this.settingsRepository.setDefaultProjectTab('')
+
+        return ''
+    }
+
+    async setDefaultProjectTab(project: string): Promise<{project: string}> {
+        const normalizedProject = project.trim()
+
+        if (!normalizedProject) {
+            await this.settingsRepository.setDefaultProjectTab('')
+            Logger.info('Default project tab cleared')
+
+            return {project: ''}
+        }
+
+        const availableProjects = await this.playwrightService.getAvailableProjects()
+        if (!availableProjects.includes(normalizedProject)) {
+            throw new Error(`Unknown Playwright project: ${normalizedProject}`)
+        }
+
+        await this.settingsRepository.setDefaultProjectTab(normalizedProject)
+        Logger.info(`Default project tab updated to "${normalizedProject}"`)
+
+        return {project: normalizedProject}
+    }
+
     /**
      * Ordered list of tabs configured to run in the CI pipeline, in the same
      * order as they appear in project_tab_configs (pipeline order = tab order).

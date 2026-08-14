@@ -16,6 +16,8 @@ export function createSettingsRoutes(container: ServiceContainer): Router {
     router.put('/disk-thresholds', settingsController.updateDiskThresholds)
     router.get('/project-tabs', settingsController.getProjectTabConfigs)
     router.put('/project-tabs', settingsController.updateProjectTabConfigs)
+    router.get('/default-project-tab', settingsController.getDefaultProjectTab)
+    router.put('/default-project-tab', settingsController.updateDefaultProjectTab)
     router.get('/ci-autorun-pause', settingsController.getCIAutoRunPause)
     router.put('/ci-autorun-pause', settingsController.updateCIAutoRunPause)
 

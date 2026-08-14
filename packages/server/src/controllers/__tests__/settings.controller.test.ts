@@ -37,6 +37,8 @@ describe('SettingsController', () => {
             getDiskThresholds: vi.fn(),
             setDiskThresholds: vi.fn(),
             setGlobalPlaywrightProject: vi.fn(),
+            getDefaultProjectTab: vi.fn(),
+            setDefaultProjectTab: vi.fn(),
         }
         controller = new SettingsController(mockSettingsService)
         vi.clearAllMocks()
@@ -240,6 +242,78 @@ describe('SettingsController', () => {
             )
 
             expect(mockSettingsService.setDiskThresholds).toHaveBeenCalledWith(99, 1)
+        })
+    })
+
+    describe('getDefaultProjectTab()', () => {
+        it('should return project on success', async () => {
+            mockSettingsService.getDefaultProjectTab.mockResolvedValue('API_Tests')
+            vi.mocked(ResponseHelper.success).mockReturnValue({} as any)
+            const res = createMockResponse()
+
+            await controller.getDefaultProjectTab(createMockRequest(), res)
+
+            expect(ResponseHelper.success).toHaveBeenCalledWith(res, {project: 'API_Tests'})
+        })
+
+        it('should return 500 on service error', async () => {
+            const error = new Error('DB error')
+            mockSettingsService.getDefaultProjectTab.mockRejectedValue(error)
+            vi.mocked(ResponseHelper.error).mockReturnValue({} as any)
+            const res = createMockResponse()
+
+            await controller.getDefaultProjectTab(createMockRequest(), res)
+
+            expect(ResponseHelper.error).toHaveBeenCalledWith(
+                res,
+                'DB error',
+                'Failed to get default project tab',
+                500
+            )
+        })
+    })
+
+    describe('updateDefaultProjectTab()', () => {
+        it('should save and return project on valid input', async () => {
+            mockSettingsService.setDefaultProjectTab.mockResolvedValue({project: 'API_Tests'})
+            vi.mocked(ResponseHelper.success).mockReturnValue({} as any)
+            const res = createMockResponse()
+
+            await controller.updateDefaultProjectTab(
+                createMockRequest({body: {project: 'API_Tests'}}),
+                res
+            )
+
+            expect(mockSettingsService.setDefaultProjectTab).toHaveBeenCalledWith('API_Tests')
+            expect(ResponseHelper.success).toHaveBeenCalledWith(res, {project: 'API_Tests'})
+        })
+
+        it('should return 400 when project is not a string', async () => {
+            vi.mocked(ResponseHelper.badRequest).mockReturnValue({} as any)
+            const res = createMockResponse()
+
+            await controller.updateDefaultProjectTab(createMockRequest({body: {project: 1}}), res)
+
+            expect(ResponseHelper.badRequest).toHaveBeenCalledWith(res, 'Project must be a string')
+            expect(mockSettingsService.setDefaultProjectTab).not.toHaveBeenCalled()
+        })
+
+        it('should return 400 for unknown Playwright project', async () => {
+            mockSettingsService.setDefaultProjectTab.mockRejectedValue(
+                new Error('Unknown Playwright project: Nope')
+            )
+            vi.mocked(ResponseHelper.badRequest).mockReturnValue({} as any)
+            const res = createMockResponse()
+
+            await controller.updateDefaultProjectTab(
+                createMockRequest({body: {project: 'Nope'}}),
+                res
+            )
+
+            expect(ResponseHelper.badRequest).toHaveBeenCalledWith(
+                res,
+                'Unknown Playwright project: Nope'
+            )
         })
     })
 })

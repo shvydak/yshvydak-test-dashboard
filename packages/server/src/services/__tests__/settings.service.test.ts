@@ -20,6 +20,8 @@ describe('SettingsService', () => {
         setDiskThresholds: Mock
         getProjectTabConfigs: Mock
         setProjectTabConfigs: Mock
+        getDefaultProjectTab: Mock
+        setDefaultProjectTab: Mock
     }
     let mockPlaywrightService: {
         getAvailableProjects: Mock
@@ -38,6 +40,8 @@ describe('SettingsService', () => {
             setDiskThresholds: vi.fn(),
             getProjectTabConfigs: vi.fn(),
             setProjectTabConfigs: vi.fn(),
+            getDefaultProjectTab: vi.fn(),
+            setDefaultProjectTab: vi.fn(),
         }
         mockPlaywrightService = {
             getAvailableProjects: vi.fn(),
@@ -330,6 +334,69 @@ describe('SettingsService', () => {
             const steps = await service.getPipelineSteps()
 
             expect(steps).toEqual([])
+        })
+    })
+
+    describe('getDefaultProjectTab()', () => {
+        it('returns empty string when nothing is saved', async () => {
+            mockRepository.getDefaultProjectTab.mockResolvedValue('')
+
+            const result = await service.getDefaultProjectTab()
+
+            expect(result).toBe('')
+            expect(mockPlaywrightService.getAvailableProjects).not.toHaveBeenCalled()
+        })
+
+        it('returns the saved project when it still exists', async () => {
+            mockRepository.getDefaultProjectTab.mockResolvedValue('API_Tests')
+            mockPlaywrightService.getAvailableProjects.mockResolvedValue(['API_Tests', 'Staging'])
+
+            const result = await service.getDefaultProjectTab()
+
+            expect(result).toBe('API_Tests')
+        })
+
+        it('resets and returns empty when saved project no longer exists', async () => {
+            mockRepository.getDefaultProjectTab.mockResolvedValue('Gone')
+            mockPlaywrightService.getAvailableProjects.mockResolvedValue(['API_Tests'])
+            mockRepository.setDefaultProjectTab.mockResolvedValue(undefined)
+
+            const result = await service.getDefaultProjectTab()
+
+            expect(result).toBe('')
+            expect(mockRepository.setDefaultProjectTab).toHaveBeenCalledWith('')
+            expect(Logger.warn).toHaveBeenCalled()
+        })
+    })
+
+    describe('setDefaultProjectTab()', () => {
+        it('clears the setting when project is empty', async () => {
+            mockRepository.setDefaultProjectTab.mockResolvedValue(undefined)
+
+            const result = await service.setDefaultProjectTab('  ')
+
+            expect(result).toEqual({project: ''})
+            expect(mockRepository.setDefaultProjectTab).toHaveBeenCalledWith('')
+            expect(mockPlaywrightService.getAvailableProjects).not.toHaveBeenCalled()
+        })
+
+        it('saves a valid project', async () => {
+            mockPlaywrightService.getAvailableProjects.mockResolvedValue(['API_Tests', 'Staging'])
+            mockRepository.setDefaultProjectTab.mockResolvedValue(undefined)
+
+            const result = await service.setDefaultProjectTab('API_Tests')
+
+            expect(result).toEqual({project: 'API_Tests'})
+            expect(mockRepository.setDefaultProjectTab).toHaveBeenCalledWith('API_Tests')
+        })
+
+        it('throws for an unknown project', async () => {
+            mockPlaywrightService.getAvailableProjects.mockResolvedValue(['API_Tests'])
+
+            await expect(service.setDefaultProjectTab('Nope')).rejects.toThrow(
+                'Unknown Playwright project: Nope'
+            )
+            expect(mockRepository.setDefaultProjectTab).not.toHaveBeenCalled()
         })
     })
 })

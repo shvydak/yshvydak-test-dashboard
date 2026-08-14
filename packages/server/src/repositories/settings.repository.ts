@@ -4,6 +4,7 @@ const GLOBAL_PLAYWRIGHT_PROJECT_KEY = 'global_playwright_project'
 const DISK_WARNING_PERCENT_KEY = 'disk_warning_threshold_percent'
 const DISK_CRITICAL_PERCENT_KEY = 'disk_critical_threshold_percent'
 const PROJECT_TAB_CONFIGS_KEY = 'project_tab_configs'
+const DEFAULT_PROJECT_TAB_KEY = 'default_project_tab'
 const CI_AUTORUN_PAUSED_KEY = 'ci_autorun_paused'
 const CI_AUTORUN_RESUME_AT_KEY = 'ci_autorun_resume_at'
 
@@ -41,6 +42,8 @@ export interface ISettingsRepository {
     setDiskThresholds(thresholds: DiskThresholds): Promise<void>
     getProjectTabConfigs(): Promise<ProjectTabConfig[]>
     setProjectTabConfigs(configs: ProjectTabConfig[]): Promise<void>
+    getDefaultProjectTab(): Promise<string>
+    setDefaultProjectTab(project: string): Promise<void>
     getCIAutoRunPause(): Promise<CIAutoRunPause>
     setCIAutoRunPause(pause: CIAutoRunPause): Promise<void>
 }
@@ -136,6 +139,28 @@ export class SettingsRepository extends BaseRepository implements ISettingsRepos
                     updated_at = CURRENT_TIMESTAMP
             `,
             [PROJECT_TAB_CONFIGS_KEY, JSON.stringify(configs)]
+        )
+    }
+
+    async getDefaultProjectTab(): Promise<string> {
+        const row = await this.queryOne<AppSettingRow>(
+            'SELECT key, value FROM app_settings WHERE key = ?',
+            [DEFAULT_PROJECT_TAB_KEY]
+        )
+
+        return row?.value ?? ''
+    }
+
+    async setDefaultProjectTab(project: string): Promise<void> {
+        await this.execute(
+            `
+                INSERT INTO app_settings (key, value)
+                VALUES (?, ?)
+                ON CONFLICT(key) DO UPDATE SET
+                    value = excluded.value,
+                    updated_at = CURRENT_TIMESTAMP
+            `,
+            [DEFAULT_PROJECT_TAB_KEY, project]
         )
     }
 

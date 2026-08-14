@@ -267,4 +267,56 @@ describe('SettingsRepository', () => {
             })
         })
     })
+
+    describe('Default Project Tab', () => {
+        it('getDefaultProjectTab returns empty string when no row exists', async () => {
+            const project = await repository.getDefaultProjectTab()
+
+            expect(project).toBe('')
+        })
+
+        it('getDefaultProjectTab returns saved value after setDefaultProjectTab', async () => {
+            await repository.setDefaultProjectTab('API_Tests')
+
+            const project = await repository.getDefaultProjectTab()
+
+            expect(project).toBe('API_Tests')
+        })
+
+        it('setDefaultProjectTab overwrites previous value (UPSERT)', async () => {
+            await repository.setDefaultProjectTab('API_Tests')
+            await repository.setDefaultProjectTab('All_Tests')
+
+            const project = await repository.getDefaultProjectTab()
+
+            expect(project).toBe('All_Tests')
+        })
+
+        it('setDefaultProjectTab can clear to empty string', async () => {
+            await repository.setDefaultProjectTab('API_Tests')
+            await repository.setDefaultProjectTab('')
+
+            const project = await repository.getDefaultProjectTab()
+
+            expect(project).toBe('')
+        })
+
+        it('setting default project tab does not affect project_tab_configs', async () => {
+            await repository.setProjectTabConfigs([
+                {
+                    project: 'API_Tests',
+                    displayName: 'API',
+                    visible: true,
+                    inPipeline: false,
+                    stopPipelineOnFailure: false,
+                },
+            ])
+            await repository.setDefaultProjectTab('API_Tests')
+
+            const configs = await repository.getProjectTabConfigs()
+
+            expect(configs).toHaveLength(1)
+            expect(configs[0].project).toBe('API_Tests')
+        })
+    })
 })

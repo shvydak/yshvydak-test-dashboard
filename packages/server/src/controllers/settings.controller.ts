@@ -114,6 +114,47 @@ export class SettingsController {
         }
     }
 
+    getDefaultProjectTab = async (_req: ServiceRequest, res: Response): Promise<Response> => {
+        try {
+            const project = await this.settingsService.getDefaultProjectTab()
+            return ResponseHelper.success(res, {project})
+        } catch (error) {
+            Logger.error('Error getting default project tab', error)
+            return ResponseHelper.error(
+                res,
+                error instanceof Error ? error.message : 'Unknown error',
+                'Failed to get default project tab',
+                500
+            )
+        }
+    }
+
+    updateDefaultProjectTab = async (req: ServiceRequest, res: Response): Promise<Response> => {
+        try {
+            const {project} = req.body
+
+            if (typeof project !== 'string') {
+                return ResponseHelper.badRequest(res, 'Project must be a string')
+            }
+
+            const result = await this.settingsService.setDefaultProjectTab(project)
+            return ResponseHelper.success(res, result)
+        } catch (error) {
+            Logger.error('Error updating default project tab', error)
+
+            if (error instanceof Error && error.message.startsWith('Unknown Playwright project:')) {
+                return ResponseHelper.badRequest(res, error.message)
+            }
+
+            return ResponseHelper.error(
+                res,
+                error instanceof Error ? error.message : 'Unknown error',
+                'Failed to update default project tab',
+                500
+            )
+        }
+    }
+
     getCIAutoRunPause = async (_req: ServiceRequest, res: Response): Promise<Response> => {
         try {
             const pause = await this.settingsService.getCIAutoRunPause()

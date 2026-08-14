@@ -4,13 +4,36 @@ import {useProjectTabs, ProjectTabConfig} from '@/hooks/useProjectTabs'
 import {SettingsSection} from './SettingsSection'
 
 export function SettingsProjectTabsSection() {
-    const {tabs, updateTabs, isLoading, isSaving, error, reload} = useProjectTabs()
+    const {
+        tabs,
+        updateTabs,
+        defaultProjectTab,
+        setDefaultProjectTab,
+        isLoading,
+        isSaving,
+        error,
+        reload,
+    } = useProjectTabs()
     const [localTabs, setLocalTabs] = useState<ProjectTabConfig[]>([])
+    const [localDefault, setLocalDefault] = useState('')
 
     // Sync local state when tabs load
     useEffect(() => {
         setLocalTabs(tabs)
     }, [tabs])
+
+    useEffect(() => {
+        setLocalDefault(defaultProjectTab)
+    }, [defaultProjectTab])
+
+    const handleDefaultChange = async (project: string) => {
+        setLocalDefault(project)
+        try {
+            await setDefaultProjectTab(project)
+        } catch {
+            setLocalDefault(defaultProjectTab)
+        }
+    }
 
     const handleDisplayNameChange = (project: string, displayName: string) => {
         setLocalTabs((prev) => prev.map((t) => (t.project === project ? {...t, displayName} : t)))
@@ -153,6 +176,40 @@ export function SettingsProjectTabsSection() {
                 </div>
 
                 {error && <p className="text-sm text-danger-600 dark:text-danger-400">{error}</p>}
+
+                {localTabs.length > 0 && (
+                    <div>
+                        <label
+                            htmlFor="default-project-tab"
+                            className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                            Default tab on open
+                        </label>
+                        <select
+                            id="default-project-tab"
+                            value={localDefault}
+                            onChange={(e) => {
+                                void handleDefaultChange(e.target.value)
+                            }}
+                            disabled={isLoading || isSaving}
+                            className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-gray-900 transition-all
+                                     focus:border-transparent focus:outline-none focus:ring-2 focus:ring-primary-500/60
+                                     dark:border-white/10 dark:bg-white/[0.05] dark:text-gray-100
+                                     disabled:opacity-50">
+                            <option value="">None — start without a project selected</option>
+                            {localTabs.map((tab) => (
+                                <option key={tab.project} value={tab.project}>
+                                    {tab.displayName}
+                                    {!tab.visible ? ' (hidden)' : ''}
+                                </option>
+                            ))}
+                        </select>
+                        <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
+                            When the tests page opens without a project in the URL, select this tab
+                            automatically. If only one tab is visible, it is selected even when this
+                            is set to None.
+                        </p>
+                    </div>
+                )}
 
                 {localTabs.length === 0 && !isLoading && (
                     <p className="text-sm text-gray-500 dark:text-gray-400">
@@ -340,11 +397,12 @@ export function SettingsProjectTabsSection() {
 
                 <p className="text-xs text-gray-400 dark:text-gray-500">
                     Changes apply globally for all users. Tab label can be renamed without affecting
-                    which project it tracks. Workers overrides the "Maximum Workers" setting for
-                    this project only (leave blank to use the default) — applies to Run All, rerun,
-                    and CI pipeline/script triggers alike. The ▲▼ order also sets CI pipeline order
-                    ("Step N") for tabs with "In CI pipeline" enabled; "Stop on failure" skips the
-                    remaining pipeline steps if that step has any failed tests.
+                    which project it tracks. Default tab is also global — it pre-selects a project
+                    so Run All / Run Group work immediately. Workers overrides the "Maximum Workers"
+                    setting for this project only (leave blank to use the default) — applies to Run
+                    All, rerun, and CI pipeline/script triggers alike. The ▲▼ order also sets CI
+                    pipeline order ("Step N") for tabs with "In CI pipeline" enabled; "Stop on
+                    failure" skips the remaining pipeline steps if that step has any failed tests.
                 </p>
             </div>
         </SettingsSection>

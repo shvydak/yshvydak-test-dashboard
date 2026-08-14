@@ -20,10 +20,31 @@ export function getProjectWorkersOverride(project?: string): number | undefined 
     return projectTabsCache.find((t) => t.project === project)?.workers
 }
 
+/**
+ * Pick which project tab to auto-select when the URL has no `?project=`.
+ * Configured default wins when that tab is visible; otherwise a sole visible
+ * tab is selected. Returns null when the user should stay on the unscoped view.
+ */
+export function resolveDefaultProjectTab(
+    visibleTabs: Pick<ProjectTabConfig, 'project'>[],
+    configuredDefault: string
+): string | null {
+    const trimmed = configuredDefault.trim()
+    if (trimmed && visibleTabs.some((t) => t.project === trimmed)) {
+        return trimmed
+    }
+    if (visibleTabs.length === 1) {
+        return visibleTabs[0].project
+    }
+    return null
+}
+
 export interface UseProjectTabsReturn {
     tabs: ProjectTabConfig[]
     visibleTabs: ProjectTabConfig[]
+    defaultProjectTab: string
     updateTabs: (configs: ProjectTabConfig[]) => Promise<void>
+    setDefaultProjectTab: (project: string) => Promise<void>
     isLoading: boolean
     isSaving: boolean
     error: string | null
@@ -32,6 +53,7 @@ export interface UseProjectTabsReturn {
 
 export function useProjectTabs(isAuthenticated = true): UseProjectTabsReturn {
     const [tabs, setTabs] = useState<ProjectTabConfig[]>([])
+    const [defaultProjectTab, setDefaultProjectTabState] = useState('')
     const [isLoading, setIsLoading] = useState(false)
     const [isSaving, setIsSaving] = useState(false)
     const [error, setError] = useState<string | null>(null)
@@ -41,9 +63,10 @@ export function useProjectTabs(isAuthenticated = true): UseProjectTabsReturn {
         setError(null)
 
         try {
-            const [tabsRes, projectsRes] = await Promise.all([
+            const [tabsRes, projectsRes, defaultRes] = await Promise.all([
                 authGet(`${config.api.baseUrl}/settings/project-tabs`),
                 authGet(`${config.api.baseUrl}/tests/projects`),
+                authGet(`${config.api.baseUrl}/settings/default-project-tab`),
             ])
 
             if (!tabsRes.ok || !projectsRes.ok) {
@@ -74,6 +97,14 @@ export function useProjectTabs(isAuthenticated = true): UseProjectTabsReturn {
 
             projectTabsCache = merged
             setTabs(merged)
+
+            // Soft-fail: tabs still work if the default-tab endpoint is unavailable
+            if (defaultRes.ok) {
+                const defaultData = await defaultRes.json()
+                setDefaultProjectTabState(defaultData.data?.project ?? '')
+            } else {
+                setDefaultProjectTabState('')
+            }
         } catch (err) {
             setError(err instanceof Error ? err.message : 'Failed to load project tabs')
         } finally {
@@ -104,6 +135,36 @@ export function useProjectTabs(isAuthenticated = true): UseProjectTabsReturn {
         }
     }, [])
 
+    const setDefaultProjectTab = useCallback(
+        async (project: string) => {
+            const previous = defaultProjectTab
+            setDefaultProjectTabState(project)
+            setIsSaving(true)
+            setError(null)
+
+            try {
+                const res = await authPut(`${config.api.baseUrl}/settings/default-project-tab`, {
+                    project,
+                })
+
+                if (!res.ok) {
+                    const data = await res.json().catch(() => null)
+                    throw new Error(data?.message || 'Failed to save default project tab')
+                }
+
+                const data = await res.json()
+                setDefaultProjectTabState(data.data?.project ?? '')
+            } catch (err) {
+                setDefaultProjectTabState(previous)
+                setError(err instanceof Error ? err.message : 'Failed to save default project tab')
+                throw err
+            } finally {
+                setIsSaving(false)
+            }
+        },
+        [defaultProjectTab]
+    )
+
     useEffect(() => {
         if (!isAuthenticated) return
         reload()
@@ -111,5 +172,15 @@ export function useProjectTabs(isAuthenticated = true): UseProjectTabsReturn {
 
     const visibleTabs = tabs.filter((t) => t.visible)
 
-    return {tabs, visibleTabs, updateTabs, isLoading, isSaving, error, reload}
+    return {
+        tabs,
+        visibleTabs,
+        defaultProjectTab,
+        updateTabs,
+        setDefaultProjectTab,
+        isLoading,
+        isSaving,
+        error,
+        reload,
+    }
 }

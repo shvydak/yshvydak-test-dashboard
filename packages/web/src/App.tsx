@@ -13,7 +13,7 @@ import {TestsList} from '@features/tests'
 import {FloatingProgressPanel} from '@features/tests/components/progress/FloatingProgressPanel'
 import {LoginPage, setGlobalLogout} from '@features/authentication'
 import {useTestsStore} from '@features/tests/store/testsStore'
-import {useProjectTabs} from '@/hooks/useProjectTabs'
+import {useProjectTabs, resolveDefaultProjectTab} from '@/hooks/useProjectTabs'
 import {usePipelineStatus} from '@/hooks/usePipelineStatus'
 import {useProjectStatusSummary} from '@/hooks/useProjectStatusSummary'
 import {useProjectRunStatus} from '@/hooks/useProjectRunStatus'
@@ -61,9 +61,34 @@ function App() {
 
     const {
         visibleTabs,
+        defaultProjectTab,
         isLoading: tabsLoading,
         reload: reloadProjectTabs,
     } = useProjectTabs(isAuthenticated)
+
+    // When /tests opens without ?project=, apply the global default tab (or the
+    // sole visible tab). replace:true so Back doesn't bounce through the empty URL.
+    useEffect(() => {
+        if (!isAuthenticated || tabsLoading) return
+        if (location.pathname !== '/tests') return
+        if (activeProject) return
+
+        const project = resolveDefaultProjectTab(visibleTabs, defaultProjectTab)
+        if (!project) return
+
+        const params = new URLSearchParams(location.search)
+        params.set('project', project)
+        navigate(`/tests?${params.toString()}`, {replace: true})
+    }, [
+        isAuthenticated,
+        tabsLoading,
+        location.pathname,
+        location.search,
+        activeProject,
+        visibleTabs,
+        defaultProjectTab,
+        navigate,
+    ])
 
     const {pipeline, applyPipelineEvent} = usePipelineStatus(isAuthenticated)
     const {summary: projectStatusSummary} = useProjectStatusSummary(isAuthenticated)

@@ -19,6 +19,7 @@
  *
  * Options:
  *   --max-workers <number>  Maximum number of parallel workers (default: from config)
+ *   --pipeline <name>       CI pipeline to run: develop | production (default: develop)
  *   --wait                  Wait for pipeline completion and return results
  *   --timeout <seconds>     Maximum wait time in seconds (default: 600)
  *   --silent                Suppress console output (only JSON result)
@@ -54,12 +55,15 @@ const ENV_FILE = path.join(PROJECT_ROOT, '.env')
 
 // Parse command line arguments
 const args = process.argv.slice(2)
+const pipelineArgIndex = args.indexOf('--pipeline')
+const pipelineArg = pipelineArgIndex === -1 ? undefined : args[pipelineArgIndex + 1]
 const config = {
     maxWorkers: parseInt(args[args.indexOf('--max-workers') + 1]) || undefined,
     wait: args.includes('--wait'),
     timeout: parseInt(args[args.indexOf('--timeout') + 1]) || 1200, // 20 minutes default
     silent: args.includes('--silent'),
     help: args.includes('--help') || args.includes('-h'),
+    pipeline: pipelineArg === undefined || pipelineArg === '' ? 'develop' : pipelineArg,
 }
 
 // ============================================================================
@@ -223,8 +227,8 @@ async function authenticate(baseUrl, email, password) {
     }
 }
 
-async function triggerTestRun(baseUrl, token, maxWorkers) {
-    log(`Triggering CI pipeline${maxWorkers ? ` with ${maxWorkers} workers` : ''}...`)
+async function triggerTestRun(baseUrl, token, maxWorkers, pipeline) {
+    log(`Triggering "${pipeline}" CI pipeline${maxWorkers ? ` with ${maxWorkers} workers` : ''}...`)
 
     const headers = {}
     if (token) {
@@ -235,7 +239,7 @@ async function triggerTestRun(baseUrl, token, maxWorkers) {
         const data = await makeRequest(`${baseUrl}/api/pipeline/run`, {
             method: 'POST',
             headers,
-            body: JSON.stringify({maxWorkers, source: 'script'}),
+            body: JSON.stringify({maxWorkers, source: 'script', pipeline}),
         })
 
         if (data.status === 'success' || data.success) {
@@ -272,8 +276,8 @@ async function triggerTestRun(baseUrl, token, maxWorkers) {
 
         if (error.data?.code === 'PIPELINE_EMPTY') {
             exitWithError(
-                'No project tabs are configured to run in the CI pipeline. ' +
-                    'Enable "In CI pipeline" for at least one tab in Dashboard Settings.',
+                'No project tabs are configured to run in this CI pipeline. ' +
+                    'Assign at least one tab to it in Dashboard Settings (develop / production chips).',
                 3,
                 'pipeline_empty'
             )
@@ -409,6 +413,7 @@ Usage: node scripts/trigger-test-run.js [options]
 
 Options:
   --max-workers <number>  Maximum number of parallel workers
+  --pipeline <name>       Pipeline to run: develop | production (default: develop)
   --wait                  Wait for pipeline completion and return results
   --timeout <seconds>     Maximum wait time (default: 600)
   --silent                Suppress console output (JSON only)
@@ -435,6 +440,14 @@ Exit Codes:
   4 - Authentication error
         `)
         process.exit(0)
+    }
+
+    if (config.pipeline !== 'develop' && config.pipeline !== 'production') {
+        exitWithError(
+            `Unknown --pipeline "${config.pipeline}". Use develop or production.`,
+            3,
+            'config_error'
+        )
     }
 
     log('=== YShvydak Test Dashboard - Test Trigger ===')
@@ -465,7 +478,12 @@ Exit Codes:
     let runData
     while (true) {
         try {
-            runData = await triggerTestRun(envConfig.baseUrl, token, config.maxWorkers)
+            runData = await triggerTestRun(
+                envConfig.baseUrl,
+                token,
+                config.maxWorkers,
+                config.pipeline
+            )
             break
         } catch (error) {
             if (error.code === 'TESTS_ALREADY_RUNNING') {

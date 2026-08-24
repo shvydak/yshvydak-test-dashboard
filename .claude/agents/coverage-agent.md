@@ -1,9 +1,8 @@
 ---
 name: coverage-agent
-description: Analyze test coverage against project targets (Reporter 90%, Server 80%, Web 70%). Identify gaps with specific line numbers and offer to write missing tests. Use after adding new features or service methods.
+description: Analyze test coverage against project targets (Reporter 90%, Server 80%, Web 70%). Identify gaps with specific line numbers and offer to write missing tests. Only when the user explicitly asks about coverage; do not delegate here on your own.
 model: sonnet
-disable-model-invocation: true
-allowed-tools: Bash(npm run test:coverage), Read, Glob, Edit, Write
+tools: Bash, Read, Glob, Edit, Write
 ---
 
 Run `npm run test:coverage` and analyze results against targets:

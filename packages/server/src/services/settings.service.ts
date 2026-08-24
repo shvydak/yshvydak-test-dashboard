@@ -4,6 +4,7 @@ import {
     ProjectTabConfig,
     CIAutoRunPause,
 } from '../repositories/settings.repository'
+import {CIPipelineName, DEFAULT_CI_PIPELINE, normalizeCIPipelines} from '../utils/ciPipeline.util'
 import {PlaywrightService} from './playwright.service'
 import {Logger} from '../utils/logger.util'
 
@@ -66,14 +67,16 @@ export class SettingsService {
         return this.settingsRepository.getProjectTabConfigs()
     }
 
-    async setProjectTabConfigs(configs: ProjectTabConfig[]): Promise<ProjectTabConfig[]> {
+    async setProjectTabConfigs(
+        configs: Array<Partial<ProjectTabConfig> & {project: string; inPipeline?: unknown}>
+    ): Promise<ProjectTabConfig[]> {
         const validated = configs.map((c) => {
             const workers = Number(c.workers)
             return {
                 project: String(c.project || '').trim(),
                 displayName: String(c.displayName || c.project || '').trim(),
                 visible: Boolean(c.visible),
-                inPipeline: Boolean(c.inPipeline),
+                pipelines: normalizeCIPipelines(c.pipelines, c.inPipeline),
                 stopPipelineOnFailure: Boolean(c.stopPipelineOnFailure),
                 workers:
                     Number.isInteger(workers) && workers >= 1 && workers <= 16
@@ -126,12 +129,13 @@ export class SettingsService {
     }
 
     /**
-     * Ordered list of tabs configured to run in the CI pipeline, in the same
-     * order as they appear in project_tab_configs (pipeline order = tab order).
+     * Ordered tabs assigned to a named CI pipeline (tab list order = step order).
      */
-    async getPipelineSteps(): Promise<ProjectTabConfig[]> {
+    async getPipelineSteps(
+        pipelineName: CIPipelineName = DEFAULT_CI_PIPELINE
+    ): Promise<ProjectTabConfig[]> {
         const tabs = await this.getProjectTabConfigs()
-        return tabs.filter((t) => t.inPipeline)
+        return tabs.filter((t) => t.pipelines.includes(pipelineName))
     }
 
     async getCIAutoRunPause(): Promise<CIAutoRunPause> {

@@ -25,14 +25,14 @@ const sampleTabs: ProjectTabConfig[] = [
         project: 'All_Tests',
         displayName: 'All Tests',
         visible: true,
-        inPipeline: false,
+        pipelines: [],
         stopPipelineOnFailure: false,
     },
     {
         project: 'Frontend',
         displayName: 'Frontend',
         visible: true,
-        inPipeline: false,
+        pipelines: [],
         stopPipelineOnFailure: false,
     },
 ]

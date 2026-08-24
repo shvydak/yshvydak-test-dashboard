@@ -60,8 +60,35 @@ describe('PipelineController', () => {
 
             await controller.runPipeline(mockReq as ServiceRequest, mockRes as Response)
 
-            expect(mockPipelineExecutionService.startPipeline).toHaveBeenCalledWith(2, 'script')
+            expect(mockPipelineExecutionService.startPipeline).toHaveBeenCalledWith(
+                2,
+                'script',
+                'develop'
+            )
             expect(ResponseHelper.success).toHaveBeenCalledWith(mockRes, pipelineState)
+        })
+
+        it('passes a named pipeline through to the execution service', async () => {
+            const pipelineState = {pipelineRunId: 'p1', status: 'running', steps: []}
+            mockReq.body = {source: 'script', pipeline: 'production'}
+            mockPipelineExecutionService.startPipeline.mockResolvedValue(pipelineState)
+
+            await controller.runPipeline(mockReq as ServiceRequest, mockRes as Response)
+
+            expect(mockPipelineExecutionService.startPipeline).toHaveBeenCalledWith(
+                undefined,
+                'script',
+                'production'
+            )
+        })
+
+        it('returns 400 for an unknown pipeline name', async () => {
+            mockReq.body = {pipeline: 'staging'}
+
+            await controller.runPipeline(mockReq as ServiceRequest, mockRes as Response)
+
+            expect(ResponseHelper.badRequest).toHaveBeenCalled()
+            expect(mockPipelineExecutionService.startPipeline).not.toHaveBeenCalled()
         })
 
         it('returns 409 when tests are already running', async () => {

@@ -165,8 +165,6 @@ Check if `docs/ai/VIBE_CODING.md`:
 
 #### 5.2 Documentation Update Rules
 
-Check if `docs/ai/DOCUMENTATION_UPDATE_RULES.md`:
-
 - Covers all types of changes in project
 - Priority levels make sense
 - Detection patterns are accurate
@@ -245,7 +243,6 @@ Generate a structured report:
 CLAUDE.md: 150 lines ✅
 docs/ai/FILE_LOCATIONS.md: 580 lines ✅
 docs/ai/ANTI_PATTERNS.md: 666 lines ✅
-docs/ai/CONCEPT_MAP.md: 488 lines ✅
 [... other files]
 
 Total: ~13,346 lines
@@ -276,7 +273,6 @@ Total: ~13,346 lines
 
 ### Long Term (Next Month)
 7. Consider splitting ANTI_PATTERNS.md if it exceeds 800 lines
-8. Add more visual diagrams to CONCEPT_MAP.md
 9. Review archive/ and delete files >1 year old
 
 ---

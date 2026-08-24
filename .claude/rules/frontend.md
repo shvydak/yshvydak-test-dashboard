@@ -92,3 +92,14 @@ Hooks called unconditionally in `App.tsx` fire before `checkAuth()` resolves →
 
 Adding `useSearchParams` breaks existing tests: "may be used only in the context of a Router".  
 Wrap in `<MemoryRouter initialEntries={['/?project=All_Tests']}>` and vary URL per test case.
+
+## Counts and caches
+
+- **Filter-bar counts come from `getTestStatusCounts` (DB-aggregated, unlimited), never from the paginated list.** `testsStore.tests` is capped at 200 without a project tab and 5000 with one. Deriving All/Passed/Failed from it silently caps the badge at page size. Use `useTestStatusCounts`. Symptom: an "All 200" badge that never grows.
+- **Invalidate aggregate caches in one place.** `project-status-summary` and `test-status-counts` must be invalidated inside `testsStore.fetchTests()`, not scattered across every mutation call site (rerun, delete, cleanup, websocket handlers) — it is too easy to miss one. Zustand reaches react-query through the shared singleton in `packages/web/src/config/queryClient.ts`, not a client created locally in `main.tsx`.
+- **`test_notes` mutations are invisible to `test_results` tracking.** Saving or deleting a note broadcasts nothing and never calls `fetchTests()`. Any cache that includes note data (the "Noted" count) must be invalidated explicitly in `TestDetailModal.tsx` → `handleSaveNote` / `handleDeleteNote`.
+
+## Tailwind and layout traps
+
+- **Conflicting width utilities do not resolve by JSX order.** `` `${baseClassWithW40} w-16` `` still renders `w-40` — the winner is CSS _source_ order, not class-attribute order. Strip the size from the shared base class instead of appending an override.
+- **Separate CSS Grid containers never share column widths.** A header `div.grid` plus one grid div per row with the same `grid-template-columns` still drifts, because `auto`/`fr` tracks size per grid instance. For a real table, put header cells and row cells as siblings in ONE grid, using `<Fragment key=...>` as the row group — not a wrapping `<div>`.

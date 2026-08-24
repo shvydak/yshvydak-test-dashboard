@@ -138,7 +138,7 @@ describe('SettingsService', () => {
                     project: 'Frontend',
                     displayName: '',
                     visible: true,
-                    inPipeline: false,
+                    pipelines: [],
                     stopPipelineOnFailure: false,
                 },
             ])
@@ -155,7 +155,7 @@ describe('SettingsService', () => {
                     project: '  Backend  ',
                     displayName: 'Backend Tests',
                     visible: true,
-                    inPipeline: false,
+                    pipelines: [],
                     stopPipelineOnFailure: false,
                 },
             ])
@@ -171,14 +171,14 @@ describe('SettingsService', () => {
                     project: 'A',
                     displayName: 'A',
                     visible: 'true' as any,
-                    inPipeline: false,
+                    pipelines: [],
                     stopPipelineOnFailure: false,
                 },
                 {
                     project: 'B',
                     displayName: 'B',
                     visible: 1 as any,
-                    inPipeline: false,
+                    pipelines: [],
                     stopPipelineOnFailure: false,
                 },
             ]
@@ -199,7 +199,7 @@ describe('SettingsService', () => {
             expect(mockRepository.setProjectTabConfigs).toHaveBeenCalledWith([])
         })
 
-        it('should coerce inPipeline/stopPipelineOnFailure to boolean', async () => {
+        it('migrates legacy inPipeline truthy values to pipelines:["develop"]', async () => {
             mockRepository.setProjectTabConfigs.mockResolvedValue(undefined)
 
             const result = await service.setProjectTabConfigs([
@@ -212,7 +212,7 @@ describe('SettingsService', () => {
                 },
             ])
 
-            expect(result[0].inPipeline).toBe(true)
+            expect(result[0].pipelines).toEqual(['develop'])
             expect(result[0].stopPipelineOnFailure).toBe(true)
         })
 
@@ -225,7 +225,7 @@ describe('SettingsService', () => {
                         project: 'API_Tests',
                         displayName: 'API Tests',
                         visible: true,
-                        inPipeline: false,
+                        pipelines: [],
                         stopPipelineOnFailure: false,
                         workers,
                     },
@@ -242,7 +242,7 @@ describe('SettingsService', () => {
                         project: 'API_Tests',
                         displayName: 'API Tests',
                         visible: true,
-                        inPipeline: false,
+                        pipelines: [],
                         stopPipelineOnFailure: false,
                     },
                 ])
@@ -260,7 +260,7 @@ describe('SettingsService', () => {
                             project: 'API_Tests',
                             displayName: 'API Tests',
                             visible: true,
-                            inPipeline: false,
+                            pipelines: [],
                             stopPipelineOnFailure: false,
                             workers,
                         },
@@ -278,7 +278,7 @@ describe('SettingsService', () => {
                         project: 'API_Tests',
                         displayName: 'API Tests',
                         visible: true,
-                        inPipeline: false,
+                        pipelines: [],
                         stopPipelineOnFailure: false,
                         workers: 'four' as any,
                     },
@@ -290,27 +290,27 @@ describe('SettingsService', () => {
     })
 
     describe('getPipelineSteps()', () => {
-        it('should return only tabs with inPipeline=true, preserving order', async () => {
+        it('should return only tabs assigned to the requested pipeline, preserving order', async () => {
             mockRepository.getProjectTabConfigs.mockResolvedValue([
                 {
                     project: 'API_Tests',
                     displayName: 'API Tests',
                     visible: true,
-                    inPipeline: true,
+                    pipelines: ['develop'],
                     stopPipelineOnFailure: true,
                 },
                 {
                     project: 'Staging',
                     displayName: 'Staging',
                     visible: true,
-                    inPipeline: false,
+                    pipelines: [],
                     stopPipelineOnFailure: false,
                 },
                 {
                     project: 'All_Tests',
                     displayName: 'WEB Tests (CI)',
                     visible: true,
-                    inPipeline: true,
+                    pipelines: ['develop'],
                     stopPipelineOnFailure: false,
                 },
             ])
@@ -326,7 +326,7 @@ describe('SettingsService', () => {
                     project: 'Staging',
                     displayName: 'Staging',
                     visible: true,
-                    inPipeline: false,
+                    pipelines: [],
                     stopPipelineOnFailure: false,
                 },
             ])
@@ -334,6 +334,28 @@ describe('SettingsService', () => {
             const steps = await service.getPipelineSteps()
 
             expect(steps).toEqual([])
+        })
+
+        it('should filter by named pipeline', async () => {
+            mockRepository.getProjectTabConfigs.mockResolvedValue([
+                {
+                    project: 'API_Tests',
+                    displayName: 'API Tests',
+                    visible: true,
+                    pipelines: ['develop'],
+                    stopPipelineOnFailure: true,
+                },
+                {
+                    project: 'Production',
+                    displayName: 'Production (Smoke Tests)',
+                    visible: true,
+                    pipelines: ['production'],
+                    stopPipelineOnFailure: false,
+                },
+            ])
+
+            const productionSteps = await service.getPipelineSteps('production')
+            expect(productionSteps.map((s) => s.project)).toEqual(['Production'])
         })
     })
 

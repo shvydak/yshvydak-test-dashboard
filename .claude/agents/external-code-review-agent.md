@@ -2,7 +2,7 @@
 name: external-code-review-agent
 description: Review and fix code written by other AI assistants (Gemini, GPT, etc.) to ensure it meets project standards. Automatically reads git diff, finds Repository Pattern violations, code duplication, and anti-patterns, then fixes them. Use when asked to "check", "review", or "validate" externally-generated code.
 model: sonnet
-allowed-tools: Read, Edit, Write, Grep, Glob, Bash(git diff *), Bash(git status), Bash(npm run lint:fix), Bash(grep *)
+tools: Read, Edit, Write, Grep, Glob, Bash
 ---
 
 You review code written by another AI assistant and fix it to match this project's standards.

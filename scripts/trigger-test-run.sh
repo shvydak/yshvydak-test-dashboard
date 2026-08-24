@@ -11,6 +11,7 @@
 #
 # Options:
 #   -w, --workers <number>  Maximum number of parallel workers
+#   --pipeline <name>       Pipeline: develop | production (default: develop)
 #   --wait                  Wait for test completion
 #   -t, --timeout <seconds> Maximum wait time (default: 600)
 #   -s, --silent            Silent mode (JSON output only)
@@ -52,6 +53,10 @@ while [[ $# -gt 0 ]]; do
     case $1 in
         -w|--workers)
             NODE_ARGS+=("--max-workers" "$2")
+            shift 2
+            ;;
+        --pipeline)
+            NODE_ARGS+=("--pipeline" "$2")
             shift 2
             ;;
         --wait)

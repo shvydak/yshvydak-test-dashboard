@@ -1,196 +1,96 @@
-# CLAUDE.md - Quick Reference for AI Development
+# CLAUDE.md — YShvydak Test Dashboard
 
-## CRITICAL: Architecture Invariants
+Playwright test dashboard. npm workspaces monorepo: `core`, `reporter`, `server` (Express + `sqlite3` with WAL), `web` (React + Vite).
 
-### Repository Pattern — NEVER Bypass
+Frontend is feature-based — `features/{name}/` — over Atomic Design primitives in `shared/components/atoms/` and `shared/components/molecules/`. A new component belongs in its feature, not in `shared/`, unless it is genuinely shared.
 
-**Controller → Service → Repository → Database**
+## Architecture invariants
 
-- NEVER direct `DatabaseManager` calls from services or controllers
-- ALWAYS use full chain for all operations
-- Location: `packages/server/src/{controllers,services,repositories}/`
-- Engine: **SQLite** (`sqlite3` + WAL). Schema: `packages/server/src/database/schema.sql`
+These four are load-bearing. Breaking any one of them corrupts historical tracking.
 
-### Test ID Generation — IDENTICAL algorithm
+1. **Controller → Service → Repository → Database**, in `packages/server/src/{controllers,services,repositories}/`. Never call `DatabaseManager` from a service or controller. _(Enforced by a PreToolUse hook.)_
+2. **INSERT-only test results.** Every execution is a NEW row: same `testId`, new `id`. Never `UPDATE test_results`. _(Enforced by a PreToolUse hook.)_
+3. **`generateStableTestId()` is duplicated on purpose** in `packages/reporter/src/index.ts` and `packages/server/src/services/playwright.service.ts`. The two must stay byte-identical.
+4. **Attachments are copied to permanent storage** (`packages/server/src/storage/attachmentManager.ts`) so they survive Playwright's cleanup.
 
-Discovery & Reporter use the SAME hash function — ensures historical tracking works.  
-`packages/reporter/src/index.ts` + `packages/server/src/services/playwright.service.ts`
+`app_settings` is a server-side key-value table (`SettingsRepository`, UPSERT `ON CONFLICT(key) DO UPDATE`). Defaults live in the repository getter, not in the schema. Existing keys: `global_playwright_project`, `disk_warning_threshold_percent`, `disk_critical_threshold_percent`, `project_tab_configs`, `default_project_tab`, `ci_autorun_paused`, `ci_autorun_resume_at`.
 
-### INSERT-only Strategy — NEVER UPDATE test results
+Named CI pipelines: `ProjectTabConfig.pipelines` is `('develop' | 'production')[]` (a tab can be in zero or more). Tab list order = step order inside each pipeline. Shared helpers: `packages/server/src/utils/ciPipeline.util.ts` and `packages/web/src/constants/ciPipelines.ts`. Legacy `inPipeline: true` → `['develop']` via `normalizeCIPipelines`. `POST /api/pipeline/run` body `{pipeline, maxWorkers, source}` — missing name → `develop`, unknown → 400. Script: `--pipeline <name>`.
 
-Each execution = NEW database row. `testId` same, `id` changes → history.  
-`database.manager.ts` → `saveTestResult()`
-
-### app_settings Table — Server-Side Key-Value Config
-
-Pattern: `SettingsRepository` + UPSERT `ON CONFLICT(key) DO UPDATE`
-
-Existing keys: `global_playwright_project`, `disk_warning_threshold_percent`, `disk_critical_threshold_percent`, `project_tab_configs`, `default_project_tab`, `ci_autorun_paused`, `ci_autorun_resume_at`
-
-Default values handled in repository getter when row absent.  
-`packages/server/src/repositories/settings.repository.ts`
-
-### Reporter Integration
-
-Production: `playwright-dashboard-reporter` from node_modules  
-Development: `npm link` for live changes — NO config changes to `playwright.config.ts`  
-CLI injection: `--reporter=playwright-dashboard-reporter`
-
-**Spawned Playwright env:** Server always passes `DASHBOARD_API_URL=http://localhost:PORT` to child Playwright process — bypasses Nginx/WAF. NEVER use the external `BASE_URL` here; WAF blocks `POST /api/tests` when the body contains stack traces / file paths (HTTP 403).  
-`packages/server/src/services/playwright.service.ts` → `spawnPlaywrightProcess()`
-
-### Attachment Storage — Permanent
-
-Files copied from Playwright temp → permanent storage. Survives Playwright's cleanup cycles.  
-`packages/server/src/storage/attachmentManager.ts`
-
-### Context7-MCP — MANDATORY before dependency changes
-
-ALWAYS check before adding/updating packages or changing config. Gets latest docs + breaking changes.
-
----
-
-## Concept Flow
+## Flow
 
 ```
-User clicks "Run All"
-  → PlaywrightService → CLI: --reporter=playwright-dashboard-reporter
-  → Reporter: testId (hash) + execution id (UUID)
+"Run All" → PlaywrightService → CLI --reporter=playwright-dashboard-reporter
+  → reporter: testId (hash) + execution id (UUID)
   → POST /api/tests → Controller → Service → Repository → INSERT
-  → AttachmentService → Permanent storage
-  → WebSocket → Frontend → TestDetailModal → ExecutionSidebar (history)
+  → AttachmentService → permanent storage
+  → WebSocket → TestDetailModal → ExecutionSidebar (history)
 ```
 
----
-
-## Specialized Agents
-
-Use for post-development checks (`disable-model-invocation: true` — manual only):
-
-- `validation-agent` — format, type-check, lint, tests, build
-- `coverage-agent` — coverage vs targets (Reporter 90%, Server 80%, Web 70%)
-- `documentation-agent` — detects docs needing updates after API/feature changes
-- `architecture-review-agent` — Repository Pattern, dead code, duplicated logic
-- `external-code-review-agent` — review & fix code from other AI assistants
-
----
-
-## Quick File Finder
-
-| Need to...                                                            | File                                                                                                                                                                                                                                                                                                                                       |
-| --------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------- |
-| Generate testId                                                       | `packages/reporter/src/index.ts`                                                                                                                                                                                                                                                                                                           |
-| WebSocket URL                                                         | `packages/web/src/features/authentication/utils/webSocketUrl.ts`                                                                                                                                                                                                                                                                           |
-| Apply theme                                                           | `packages/web/src/hooks/useTheme.ts`                                                                                                                                                                                                                                                                                                       |
-| Rerun button                                                          | `packages/web/src/features/tests/components/history/ExecutionSidebar.tsx`                                                                                                                                                                                                                                                                  |
-| Copy attachments                                                      | `packages/server/src/storage/attachmentManager.ts`                                                                                                                                                                                                                                                                                         |
-| Flaky detection                                                       | `packages/server/src/repositories/test.repository.ts`                                                                                                                                                                                                                                                                                      |
-| DB schema                                                             | `packages/server/src/database/schema.sql`                                                                                                                                                                                                                                                                                                  |
-| Disk thresholds                                                       | `packages/server/src/repositories/settings.repository.ts`                                                                                                                                                                                                                                                                                  |
-| Strip attachments                                                     | `packages/server/src/services/test.service.ts` (`cleanupData mode: 'strip'                                                                                                                                                                                                                                                                 | 'full'`) |
-| Execution history pagination                                          | `packages/web/src/features/tests/hooks/useTestExecutionHistory.ts`                                                                                                                                                                                                                                                                         |
-| Disk warning banner                                                   | `packages/web/src/features/dashboard/components/DiskSpaceWarningBanner.tsx`                                                                                                                                                                                                                                                                |
-| Search input                                                          | `packages/web/src/shared/components/molecules/SearchInput.tsx`                                                                                                                                                                                                                                                                             |
-| Generic alert/warning banner                                          | `packages/web/src/shared/components/molecules/AlertBanner.tsx` (used by disk-space + CI pipeline-skip banners)                                                                                                                                                                                                                             |
-| Project tabs config / default tab                                     | `packages/web/src/hooks/useProjectTabs.ts`                                                                                                                                                                                                                                                                                                 |
-| Per-project `workers` override (CI + manual)                          | `packages/server/src/repositories/settings.repository.ts` (`ProjectTabConfig.workers`) + `pipelineExecution.service.ts` (`step.workers ?? maxWorkers`)                                                                                                                                                                                     |
-| Active project filter                                                 | `packages/web/src/features/tests/hooks/useTestFilters.ts`                                                                                                                                                                                                                                                                                  |
-| Tests list fetch (scoped by tab)                                      | `packages/web/src/features/tests/store/testsStore.ts` (`listProject` → `GET /tests?project=&limit=`) + `getAllTests` project filter                                                                                                                                                                                                        |
-| CI auto-run pause                                                     | `packages/web/src/hooks/useCIAutoRun.ts` + `packages/web/src/features/dashboard/components/CIAutoRunPauseBanner.tsx`                                                                                                                                                                                                                       |
-| CI pipeline (ordered multi-project runs)                              | `packages/server/src/services/pipelineExecution.service.ts` + `packages/web/src/hooks/usePipelineStatus.ts`                                                                                                                                                                                                                                |
-| Tab status badge/dot (passed/failed per project)                      | `packages/server/src/repositories/test.repository.ts` (`getProjectStatusSummary`) + `packages/web/src/hooks/useProjectStatusSummary.ts`                                                                                                                                                                                                    |
-| Filter-bar unlimited counts (All/Passed/Failed/Skipped/Pending/Noted) | `packages/server/src/repositories/test.repository.ts` (`getTestStatusCounts`) + `packages/web/src/features/tests/hooks/useTestStatusCounts.ts`                                                                                                                                                                                             |
-| Dashboard "Total Tests" tile                                          | `packages/web/src/features/dashboard/components/Dashboard.tsx` + `DashboardStats.tsx` (`useTestStatusCounts`, unscoped — same unlimited source as the `/tests` "All" badge). **Not** `useDashboardStats`/`GET /api/runs/stats` — that hook is now dead in the UI, kept only because `scripts/trigger-test-run.js` still hits the endpoint. |
-| Tab status icons (running/queued)                                     | `packages/web/src/shared/components/Header.tsx` (`renderStatusDot` — GitHub Actions icon vocabulary: spinner = running, clock = queued)                                                                                                                                                                                                    |
-| GitHub Actions CI workflow                                            | **Separate repo**, not this one — `probuildGit/test-dashboard` (`.github/workflows/trigger-tests.yml`), used by the self-hosted qa01 runner                                                                                                                                                                                                |
-
-**Full structure:** [docs/ai/FILE_LOCATIONS.md](docs/ai/FILE_LOCATIONS.md)
-
----
-
-## Top Anti-Patterns
-
-Full catalog with examples: [docs/ai/ANTI_PATTERNS.md](docs/ai/ANTI_PATTERNS.md)
-
-**Critical (memorize these):**
-
-- **Bypass Repository** — never `this.dbManager.run(...)` directly, always go through Repository
-- **UPDATE test results** — WRONG: `UPDATE test_results SET ...` / RIGHT: `INSERT INTO test_results ...`
-- **Duplicate utilities** — always check for existing utils before writing (WebSocket URL, auth, etc.)
-- **N+1 over JOIN** — `getTestResultsByTestId` already JOINs attachments+notes; don't loop & re-query
-- **Change without checking dependents** — grep all usages + tests before changing any value/default
-- **tsx watch stale** — restart server after significant changes; symptom: new routes return 404 while old return 401
-- **Don't `kill` the tsx-watch child PID to force a reload** — `tsx watch` sometimes doesn't pick up a saved file, but manually killing its child process (or the watch process itself) can cascade-kill the whole `npm run dev`/turbo supervisor, taking the Vite dev server down too. If a restart is truly needed, run `npm run dev` inside `packages/server` (and `packages/web` if it also died) directly instead of killing PIDs.
-- **Tailwind conflicting width utilities don't override by JSX order** — `` `${baseClassWithW40} w-16` `` still renders `w-40` if both utilities exist in the compiled stylesheet; the winner is CSS _source_ order, not class-attribute order. Never append a size override onto a shared class that already bakes in that size — strip it from the base class instead.
-- **Separate CSS Grid containers never share column widths** — a header `<div className="grid grid-cols-[...]">` and each row as its own separate grid div with the _same_ `grid-template-columns` will still drift out of alignment, because `auto`/`fr` tracks size independently per grid instance. For a real table, put header cells and row cells as siblings in **one** shared grid (row-group via `<Fragment key=...>`, not a wrapping `<div>`).
-- **Playwright JSON not project-grouped** — top-level suites are per-FILE; project name at `spec.tests[0].projectName`. Suite nesting depth is arbitrary (file > describe > nested describe > ...) — traverse recursively, not at fixed levels; a 2-level traversal silently drops deeper-nested tests.
-- **Reporter changes without npm link** — changes to `packages/reporter/src/` only apply via `npm link` or publish
-- **Rerun reporter output invisible** — `type: 'rerun'` uses `stdio: pipe` but has no listeners by default; add `process.stdout?.on('data', ...)` to rerun process temporarily to see reporter warnings (e.g. `⚠️ Failed to send test result`)
-- **testId has no project dimension** — hash is `filePath:title` only. `test_notes`/`note_images` are keyed by `test_id` alone (no `project` column) — any per-project feature (discovery, clear-data) must scope via `test_results.project`, not testId, and can't cleanly scope notes if two projects share a file+title.
-- **Filter-bar counts must come from `getTestStatusCounts` (unlimited, DB-aggregated), never from the paginated test list** — `getAllTests`/`testsStore.tests` is capped (200 without a project tab, 5000 with one); deriving All/Passed/Failed/etc. from it silently caps the badge at page size instead of the true total. Use `useTestStatusCounts`. Symptom: "All 200" badge that never grows even with more tests in the DB.
-- **Aggregate-count caches (`project-status-summary`, `test-status-counts`) need centralized invalidation** — don't scatter `queryClient.invalidateQueries` at every mutation call site (rerun, delete, cleanup, websocket handlers); easy to miss one. Invalidate inside `testsStore.fetchTests()` instead, since virtually every mutation path already calls it. Zustand stores reach react-query via the shared singleton in `packages/web/src/config/queryClient.ts` (not a locally-created client in `main.tsx`).
-- **`test_notes` mutations are invisible to `test_results` tracking** — saving/deleting a note has no websocket broadcast and doesn't call `fetchTests()`. Any cache that includes note data (e.g. the "Noted" count) must be invalidated explicitly where the note is saved/deleted (`TestDetailModal.tsx` `handleSaveNote`/`handleDeleteNote`).
-- **`getAllTests` project filter is AFTER latest-per-test_id** — same semantics as `getProjectStatusSummary` (pick latest row globally, then keep rows for that project). Filtering by project before the window would diverge from the tab badge.
-- **`activeProcessesTracker` run-all lock is global by design** — one active run blocks ALL projects, not just one. Intentional: concurrent Playwright processes conflict and the reporter drops results. Don't "fix" this to be per-project.
-- **`activeProcessesTracker.addProcess()` fires twice per run** — the dashboard registers the process first (knows `project`, not `totalTests`), then the Playwright reporter's own `/process-start` call registers again for the same `runId` (knows `totalTests`, not `project`). Must merge fields, never overwrite — an overwrite silently drops `project`/other details and resets in-flight `progress` back to zero (symptom: progress bar shows "N of 0 tests").
-
-**Frontend rules (auto-loaded for packages/web/**):** [.claude/rules/frontend.md](.claude/rules/frontend.md)  
-**Testing rules (auto-loaded for test files):\*\* [.claude/rules/testing.md](.claude/rules/testing.md)
-
----
-
-## Architecture Quick Ref
-
-- Backend: Controller → Service → Repository → Database
-- Frontend: Feature-Based (`features/{name}/`) + Atomic Design (`shared/components/atoms/`, `molecules/`)
-- Reporter: npm package, CLI injection, environment config
-- Database: INSERT-only, testId grouping, execution history
-- Attachments: Permanent storage, unique filenames, isolated dirs
-
-Deep dive: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
-
----
-
-## Essential Commands
+## Commands
 
 ```bash
-npm run dev          # All packages (web + server + reporter watch)
-npm run type-check   # TypeScript validation
-npm run lint:fix     # ESLint auto-fix
-npm test             # All tests (73 files, 2111+ tests)
-npm run test:watch   # Watch mode
-npm run test:coverage
-npx vitest run --project server <path>   # single file — MUST run from repo root, not packages/*
-npx vitest run --project web <path>
-# any root npm script (lint:fix, test, type-check) silently scopes to one workspace if cwd
-# drifted into packages/* from an earlier `cd` — `pwd` before running them if unsure
+npm run dev          # all packages (web + server + reporter watch)
+npm run type-check
+npm run lint:fix
+npm test             # 84 files, 2273 tests
 npm run build
-npm run format       # Prettier
+npm run format
+npx vitest run --project server <path>   # single file — from repo ROOT, never packages/*
 ```
 
----
+Root npm scripts silently scope to one workspace if your cwd drifted into `packages/*`. Run `pwd` first if unsure.
 
-## Development Checklist (after any code change)
+## After any code change
 
-1. `npm run format`
-2. `npm run type-check`
-3. `npm run lint:fix`
-4. `npm test`
-5. `npm run build`
+`npm run format` → `npm run type-check` → `npm run lint:fix` → `npm test` → `npm run build`
 
-Run via `@validation-agent` or manually.
+**NEVER commit unless explicitly asked. NEVER skip hooks (`--no-verify`).**
 
-**NEVER commit unless explicitly asked.**  
-**NEVER skip hooks (`--no-verify`).**
+## Before changing dependencies
 
----
+Check Context7-MCP for current docs and breaking changes before adding, updating, or reconfiguring any package.
 
-## CI Auto-run Pause
+## Habits that keep costing us
 
-Blocks `source: 'script'` calls (from `trigger-test-run.js`) — UI-triggered runs still work.  
-HTTP 423 `CI_AUTORUN_PAUSED` → script exits code 2 (no retry). HTTP 409 `TESTS_ALREADY_RUNNING` → polls 10s, max 30 min.  
-Settings-modal hooks don't share state with their `App.tsx` instance (separate `useCIAutoRun()`/`useProjectTabs()` calls) — `App.tsx` must call each hook's `reload()` on Settings close, or changes (pause state, tab order/rename/visibility/default tab) look "stuck" until a full page refresh.
+- **Check dependents before changing any value or default.** Grep all usages _and_ tests first.
+- **Look for an existing utility before writing one.** WebSocket URL, auth fetch and date formatting have all been reimplemented at least once.
+- **CI pause is global for `source: 'script'`.** Do not special-case a pipeline name unless there is a user-facing setting for it.
+- **`pipelines: ['develop']` in tests infers `string[]`.** Type the fixture as `ProjectTabConfig[]` (or `as const`) or `tsc` fails.
 
----
+## Where the rest lives
 
-**Docs:** [docs/ai/](docs/ai/) | **Last Updated:** July 2026
+| Topic                                  | Loads                                                        |
+| -------------------------------------- | ------------------------------------------------------------ |
+| Where a file lives                     | `/file-map` skill                                            |
+| Server, SQLite, process tracking traps | `.claude/rules/server.md` — auto on `packages/server/**`     |
+| React, Tailwind, caches, counts        | `.claude/rules/frontend.md` — auto on `packages/web/**`      |
+| Reporter and `npm link`                | `.claude/rules/reporter.md` — auto on `packages/reporter/**` |
+| Vitest conventions                     | `.claude/rules/testing.md` — auto on test files              |
+| Named pipeline membership              | `ciPipeline.util.ts` / `constants/ciPipelines.ts` + Settings chips |
+| Full anti-pattern catalogue            | [docs/ai/ANTI_PATTERNS.md](docs/ai/ANTI_PATTERNS.md)         |
+| Architecture deep dive                 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)                 |
+| REST + WebSocket API                   | [docs/API_REFERENCE.md](docs/API_REFERENCE.md)               |
+
+## Specialized agents
+
+Invoke explicitly — `@"validation-agent (agent)"`. Their descriptions tell Claude not to auto-delegate.
+
+`validation-agent` (format/type-check/lint/test/build) · `coverage-agent` (Reporter 90%, Server 80%, Web 70%) · `documentation-agent` · `architecture-review-agent` · `external-code-review-agent`
+
+## CI auto-run pause
+
+Blocks every `source: 'script'` call from `trigger-test-run.js`, regardless of pipeline name (`develop`, `production`, …). UI-triggered runs still work. HTTP 423 `CI_AUTORUN_PAUSED` → script exits 2, no retry. HTTP 409 `TESTS_ALREADY_RUNNING` → polls every 10s, max 30 min.
+
+Settings-modal hooks don't share state with the `App.tsx` instance — they are separate `useCIAutoRun()` / `useProjectTabs()` calls. `App.tsx` must call each hook's `reload()` when Settings closes, or pause state and tab changes look stuck until a full page refresh.
+
+# Compact instructions
+
+When compacting, always preserve:
+
+- The full list of files modified so far, with what changed in each
+- Which of the 5 validation steps have run and their exact results — never restate an unrun check as passing
+- Any decision made about the architecture invariants above, and why
+- Open questions the user has not answered yet
+
+Drop: file contents already read, command output that has been acted on, superseded approaches.

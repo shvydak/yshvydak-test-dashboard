@@ -169,7 +169,7 @@ function formatLastRun(test: any): string {
 ## Related Documentation
 
 - [Test Display Consistency](./TEST_DISPLAY.md) - Overall test consistency architecture
-- [CLAUDE.md](../CLAUDE.md) - Main project documentation
+- [CLAUDE.md](../../CLAUDE.md) - Main project documentation
 - Server repository layer: `packages/server/src/repositories/test.repository.ts`
 - Frontend display logic: `packages/web/src/components/TestsList.tsx`
 

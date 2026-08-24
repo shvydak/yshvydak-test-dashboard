@@ -5,6 +5,7 @@ import {RunRepository} from '../repositories/run.repository'
 import {WebSocketService, PipelineStepSummary} from './websocket.service'
 import {activeProcessesTracker} from './activeProcesses.service'
 import {Logger} from '../utils/logger.util'
+import {CIPipelineName, DEFAULT_CI_PIPELINE} from '../utils/ciPipeline.util'
 
 export type PipelineStatus = 'running' | 'completed' | 'stopped_early'
 
@@ -41,9 +42,15 @@ export class PipelineExecutionService {
      * steps themselves run sequentially in the background (same fire-and-forget
      * shape as the existing single-project run-all endpoint).
      */
-    async startPipeline(maxWorkers?: number, source?: string): Promise<PipelineState> {
+    async startPipeline(
+        maxWorkers?: number,
+        source?: string,
+        pipelineName: CIPipelineName = DEFAULT_CI_PIPELINE
+    ): Promise<PipelineState> {
         // Same guard checks TestService.runAllTests performs, done once here so
         // the caller gets a synchronous 409/423 instead of it surfacing mid-chain.
+        // Pause is global: every script-triggered pipeline (any name) is blocked.
+        // UI-triggered runs (no source=script) are unaffected.
         if (source === 'script') {
             const pause = await this.settingsService.getCIAutoRunPause()
             if (pause.paused) {
@@ -74,12 +81,12 @@ export class PipelineExecutionService {
             )
         }
 
-        const configuredSteps = await this.settingsService.getPipelineSteps()
+        const configuredSteps = await this.settingsService.getPipelineSteps(pipelineName)
         if (configuredSteps.length === 0) {
             throw new Error(
                 JSON.stringify({
                     code: 'PIPELINE_EMPTY',
-                    message: 'No project tabs are configured to run in the CI pipeline',
+                    message: `No project tabs are configured to run in the "${pipelineName}" pipeline`,
                 })
             )
         }

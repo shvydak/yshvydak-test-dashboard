@@ -3,6 +3,7 @@ import {PipelineExecutionService} from '../services/pipelineExecution.service'
 import {ResponseHelper} from '../utils/response.helper'
 import {Logger} from '../utils/logger.util'
 import {ServiceRequest} from '../types/api.types'
+import {parseCIPipelineName} from '../utils/ciPipeline.util'
 
 export class PipelineController {
     constructor(private pipelineExecutionService: PipelineExecutionService) {}
@@ -10,8 +11,20 @@ export class PipelineController {
     // POST /api/pipeline/run - Start the configured CI pipeline (ordered multi-project run)
     runPipeline = async (req: ServiceRequest, res: Response): Promise<void> => {
         try {
-            const {maxWorkers, source} = req.body
-            const pipeline = await this.pipelineExecutionService.startPipeline(maxWorkers, source)
+            const {maxWorkers, source, pipeline: pipelineName} = req.body
+            const parsedPipeline = parseCIPipelineName(pipelineName)
+            if (!parsedPipeline) {
+                ResponseHelper.badRequest(
+                    res,
+                    'Unknown pipeline name. Use "develop" or "production".'
+                )
+                return
+            }
+            const pipeline = await this.pipelineExecutionService.startPipeline(
+                maxWorkers,
+                source,
+                parsedPipeline
+            )
             ResponseHelper.success(res, pipeline)
         } catch (error) {
             if (error instanceof Error && error.message.includes('TESTS_ALREADY_RUNNING')) {

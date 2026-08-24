@@ -335,7 +335,7 @@ When adding new code, follow these optimization principles:
 
 ## Related Documentation
 
-- [Authentication Implementation](./AUTHENTICATION_IMPLEMENTATION.md) - Detailed auth system documentation
+- [Authentication Implementation](../features/AUTHENTICATION_IMPLEMENTATION.md) - Detailed auth system documentation
 - [Architecture Overview](../ARCHITECTURE.md) - System architecture details
 - [Development Guidelines](../DEVELOPMENT.md) - Development best practices
 

@@ -97,7 +97,7 @@ VITE_PORT=3000                               # Web dev server port (optional)
 - [Architecture Overview](./ARCHITECTURE.md)
 - [Development Guidelines](./DEVELOPMENT.md)
 - [Deployment Guide](./DEPLOYMENT.md)
-- [Simplified Environment Configuration](./SIMPLIFIED_ENV_CONFIGURATION.md)
+- [Simplified Environment Configuration](./archive/SIMPLIFIED_ENV_CONFIGURATION.md)
 - [Attachment Management System](./features/PER_RUN_ATTACHMENTS.md)
 
 ---

@@ -1,9 +1,8 @@
 ---
 name: architecture-review-agent
-description: Review code changes for Repository Pattern compliance, dead code, duplicated logic, INSERT-only strategy, and Test ID generation consistency. Use after implementing new features or significant refactoring.
+description: Review code changes for Repository Pattern compliance, dead code, duplicated logic, INSERT-only strategy, and Test ID generation consistency. Only when the user explicitly asks for an architecture review; do not delegate here on your own.
 model: sonnet
-disable-model-invocation: true
-allowed-tools: Read, Grep, Glob, Bash(git diff *), Bash(git status), Edit
+tools: Read, Grep, Glob, Bash, Edit
 ---
 
 Review recent changes (`git diff HEAD~1` or changes described by the caller) against these rules:

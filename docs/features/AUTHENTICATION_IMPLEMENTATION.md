@@ -713,7 +713,7 @@ The authentication system has been **production-optimized** with comprehensive c
 - **TypeScript compliance**: All frontend code passes type-check
 - **Production-ready**: Clean, maintainable, and secure implementation
 
-For detailed code optimization information, see [Code Optimization Guide](./CODE_OPTIMIZATION.md).
+For detailed code optimization information, see [Code Optimization Guide](../archive/CODE_OPTIMIZATION.md).
 
 ## Related Documentation
 
@@ -722,7 +722,7 @@ For detailed code optimization information, see [Code Optimization Guide](./CODE
 - [Configuration Details](../CONFIGURATION.md)
 - [Deployment Guide](../DEPLOYMENT.md)
 - [API Reference](../API_REFERENCE.md)
-- [Code Optimization Guide](./CODE_OPTIMIZATION.md)
+- [Code Optimization Guide](../archive/CODE_OPTIMIZATION.md)
 
 ---
 

@@ -29,7 +29,7 @@ Before diving into docs, know these 5 things:
 1. **[Architecture Overview](ARCHITECTURE.md)** - System design and patterns
 2. **[Development Guide](DEVELOPMENT.md)** - Local development workflow
 3. **[API Reference](API_REFERENCE.md)** - Complete API documentation
-4. **[Testing Guide](docs/TESTING.md)** - Vitest commands, structure, coverage
+4. **[Testing Guide](TESTING.md)** - Vitest commands, structure, coverage
 
 ### For DevOps / Deployment
 
@@ -71,10 +71,8 @@ Optimized documentation for Claude Code and AI assistants in vibe coding mode:
 
 | Document                                         | Description                                          | When to Read         |
 | ------------------------------------------------ | ---------------------------------------------------- | -------------------- |
-| **[ai/README.md](ai/README.md)**                 | AI documentation index and usage guide               | Overview of AI docs  |
 | **[ai/ANTI_PATTERNS.md](ai/ANTI_PATTERNS.md)**   | Common mistakes with code examples (wrong vs. right) | When coding          |
 | **[ai/FILE_LOCATIONS.md](ai/FILE_LOCATIONS.md)** | Complete file structure with quick find examples     | When searching       |
-| **[ai/CONCEPT_MAP.md](ai/CONCEPT_MAP.md)**       | Visual flows and dependency relationships            | Understanding system |
 
 **Total:** ~1,200 lines of AI-specific context | **Token efficient:** Modular loading on demand
 

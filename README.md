@@ -223,7 +223,7 @@ curl http://localhost:3001/api/tests/diagnostics
 5. **Test count inconsistency**: If test discovery shows different counts than after test execution:
     - Discovery finds fewer tests: Check if all test files are being scanned properly
     - Fewer tests after execution: Usually resolved by API limit parameters (dashboard uses `limit=200`)
-    - See [Test Display Architecture](docs/TEST_DISPLAY.md) for technical details
+    - See [Test Display Architecture](docs/archive/TEST_DISPLAY.md) for technical details
 
 ## 🏗️ Architecture
 

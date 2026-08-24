@@ -53,11 +53,7 @@
             "Bash(lsof:*)",
             "Bash(tree:*)"
         ],
-        "deny": [
-            "Bash(git push --force:*)",
-            "Bash(git push -f:*)",
-            "Read(./.env)"
-        ],
+        "deny": ["Bash(git push --force:*)", "Bash(git push -f:*)", "Read(./.env)"],
         "ask": []
     }
 }

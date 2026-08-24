@@ -176,7 +176,7 @@ export function SettingsTestExecutionSection() {
                                     ? `Active · resumes at ${formatResumeTime(resumeAt)}`
                                     : isPaused
                                       ? 'Active · no auto-resume'
-                                      : 'Block trigger-test-run.sh from starting the pipeline'}
+                                      : 'Block trigger-test-run.sh from starting any pipeline'}
                             </p>
                         </div>
                         <button

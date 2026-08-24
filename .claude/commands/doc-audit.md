@@ -165,7 +165,6 @@ Check if `docs/ai/VIBE_CODING.md`:
 
 #### 5.2 Documentation Update Rules
 
-
 - Covers all types of changes in project
 - Priority levels make sense
 - Detection patterns are accurate

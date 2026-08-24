@@ -1,12 +1,13 @@
 import {useState, useEffect, useCallback} from 'react'
 import {authGet, authPut} from '@features/authentication/utils/authFetch'
 import {config} from '@config/environment.config'
+import {CIPipelineName, normalizeCIPipelines} from '@/constants/ciPipelines'
 
 export interface ProjectTabConfig {
     project: string
     displayName: string
     visible: boolean
-    inPipeline: boolean
+    pipelines: CIPipelineName[]
     stopPipelineOnFailure: boolean
     workers?: number
 }
@@ -76,10 +77,13 @@ export function useProjectTabs(isAuthenticated = true): UseProjectTabsReturn {
             const tabsData = await tabsRes.json()
             const projectsData = await projectsRes.json()
 
-            const saved: ProjectTabConfig[] = tabsData.data ?? []
+            const savedRaw: Array<ProjectTabConfig & {inPipeline?: unknown}> = tabsData.data ?? []
             const available: string[] = projectsData.data ?? projectsData ?? []
 
-            // Merge: start from saved configs, add any new projects not yet configured
+            const saved: ProjectTabConfig[] = savedRaw.map((c) => ({
+                ...c,
+                pipelines: normalizeCIPipelines(c.pipelines, c.inPipeline),
+            }))
             const savedProjects = new Set(saved.map((c) => c.project))
             const merged: ProjectTabConfig[] = [...saved]
 
@@ -89,7 +93,7 @@ export function useProjectTabs(isAuthenticated = true): UseProjectTabsReturn {
                         project,
                         displayName: project,
                         visible: true,
-                        inPipeline: false,
+                        pipelines: [],
                         stopPipelineOnFailure: false,
                     })
                 }

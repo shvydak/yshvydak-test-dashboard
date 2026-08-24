@@ -87,6 +87,14 @@ describe('PipelineExecutionService', () => {
             )
         })
 
+        it('applies CI auto-run pause to every named pipeline when source=script', async () => {
+            mockSettingsService.getCIAutoRunPause.mockResolvedValue({paused: true, resumeAt: null})
+
+            await expect(service.startPipeline(undefined, 'script', 'production')).rejects.toThrow(
+                'CI_AUTORUN_PAUSED'
+            )
+        })
+
         it('does not check CI auto-run pause when source is not "script"', async () => {
             mockSettingsService.getPipelineSteps.mockResolvedValue([
                 {project: 'A', displayName: 'A', stopPipelineOnFailure: false},

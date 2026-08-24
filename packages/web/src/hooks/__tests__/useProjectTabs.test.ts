@@ -305,7 +305,7 @@ describe('useProjectTabs', () => {
                     project: 'API_Tests',
                     displayName: 'API Tests',
                     visible: true,
-                    inPipeline: false,
+                    pipelines: [],
                     stopPipelineOnFailure: false,
                     workers: 8,
                 },

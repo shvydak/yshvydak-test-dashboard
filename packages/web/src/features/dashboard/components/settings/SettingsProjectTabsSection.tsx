@@ -1,6 +1,7 @@
 import {useState, useEffect} from 'react'
 import {RefreshCw, ChevronUp, ChevronDown, Minus, Plus} from 'lucide-react'
 import {useProjectTabs, ProjectTabConfig} from '@/hooks/useProjectTabs'
+import {CI_PIPELINE_NAMES, CIPipelineName} from '@/constants/ciPipelines'
 import {SettingsSection} from './SettingsSection'
 
 export function SettingsProjectTabsSection() {
@@ -65,18 +66,22 @@ export function SettingsProjectTabsSection() {
         await updateTabs(updated)
     }
 
-    const handlePipelineToggle = async (project: string) => {
-        const updated = localTabs.map((t) =>
-            t.project === project
-                ? {
-                      ...t,
-                      inPipeline: !t.inPipeline,
-                      // Turning a step out of the pipeline also clears its stop-on-failure
-                      // flag, since it has no meaning outside the pipeline.
-                      stopPipelineOnFailure: !t.inPipeline ? t.stopPipelineOnFailure : false,
-                  }
-                : t
-        )
+    const handlePipelineChipToggle = async (project: string, pipeline: CIPipelineName) => {
+        const updated = localTabs.map((t) => {
+            if (t.project !== project) return t
+            const selected = new Set(t.pipelines)
+            if (selected.has(pipeline)) {
+                selected.delete(pipeline)
+            } else {
+                selected.add(pipeline)
+            }
+            const pipelines = CI_PIPELINE_NAMES.filter((name) => selected.has(name))
+            return {
+                ...t,
+                pipelines,
+                stopPipelineOnFailure: pipelines.length === 0 ? false : t.stopPipelineOnFailure,
+            }
+        })
         setLocalTabs(updated)
         await updateTabs(updated)
     }
@@ -130,16 +135,19 @@ export function SettingsProjectTabsSection() {
         await updateTabs(updated)
     }
 
-    // Position of each tab within the CI pipeline specifically (not the same as
-    // its position in the tab list — hidden/non-pipeline tabs don't get a step).
-    const pipelineStepByProject = new Map<string, number>()
-    let stepCounter = 0
-    for (const tab of localTabs) {
-        if (tab.inPipeline) {
-            stepCounter += 1
-            pipelineStepByProject.set(tab.project, stepCounter)
-        }
-    }
+    const pipelineStepByName = Object.fromEntries(
+        CI_PIPELINE_NAMES.map((name) => {
+            const steps = new Map<string, number>()
+            let stepCounter = 0
+            for (const tab of localTabs) {
+                if (tab.pipelines.includes(name)) {
+                    stepCounter += 1
+                    steps.set(tab.project, stepCounter)
+                }
+            }
+            return [name, steps]
+        })
+    ) as Record<CIPipelineName, Map<string, number>>
 
     const toggleClass = (on: boolean, danger = false) =>
         `relative inline-flex h-5 w-9 flex-shrink-0 items-center rounded-full transition-colors duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-gray-800 disabled:opacity-30 disabled:pointer-events-none ${
@@ -221,7 +229,7 @@ export function SettingsProjectTabsSection() {
                 {localTabs.length > 0 && (
                     <div className="space-y-2">
                         {localTabs.map((tab, index) => {
-                            const ciStep = pipelineStepByProject.get(tab.project)
+                            const inAnyPipeline = tab.pipelines.length > 0
                             return (
                                 <div
                                     key={tab.project}
@@ -337,33 +345,51 @@ export function SettingsProjectTabsSection() {
 
                                         <span className="h-1 w-1 flex-shrink-0 rounded-full bg-gray-300 dark:bg-white/15" />
 
-                                        <div className="flex items-center gap-2">
+                                        <div className="flex flex-wrap items-center gap-1.5">
                                             <span className="text-xs text-gray-500 dark:text-gray-400">
-                                                In CI pipeline
+                                                Pipelines
                                             </span>
-                                            {ciStep !== undefined && (
-                                                <span className="rounded-full bg-primary-50 px-1.5 py-0.5 text-[10px] font-semibold text-primary-600 dark:bg-primary-500/10 dark:text-primary-400">
-                                                    Step {ciStep}
-                                                </span>
-                                            )}
-                                            <button
-                                                role="switch"
-                                                aria-checked={tab.inPipeline}
-                                                aria-label={`Include ${tab.project} in CI pipeline`}
-                                                onClick={() => handlePipelineToggle(tab.project)}
-                                                disabled={isSaving}
-                                                className={toggleClass(tab.inPipeline)}>
-                                                <span className={toggleKnobClass(tab.inPipeline)} />
-                                            </button>
+                                            {CI_PIPELINE_NAMES.map((name) => {
+                                                const on = tab.pipelines.includes(name)
+                                                const step = pipelineStepByName[name].get(
+                                                    tab.project
+                                                )
+                                                return (
+                                                    <button
+                                                        key={name}
+                                                        type="button"
+                                                        aria-pressed={on}
+                                                        aria-label={`${on ? 'Remove' : 'Add'} ${tab.project} ${name} pipeline`}
+                                                        disabled={isSaving}
+                                                        onClick={() =>
+                                                            handlePipelineChipToggle(
+                                                                tab.project,
+                                                                name
+                                                            )
+                                                        }
+                                                        className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold transition-colors disabled:pointer-events-none disabled:opacity-30 ${
+                                                            on
+                                                                ? 'bg-primary-50 text-primary-600 dark:bg-primary-500/10 dark:text-primary-400'
+                                                                : 'bg-gray-100 text-gray-500 dark:bg-white/[0.06] dark:text-gray-400'
+                                                        }`}>
+                                                        {name}
+                                                        {step !== undefined && (
+                                                            <span className="font-medium opacity-80">
+                                                                {step}
+                                                            </span>
+                                                        )}
+                                                    </button>
+                                                )
+                                            })}
                                         </div>
 
                                         <span className="h-1 w-1 flex-shrink-0 rounded-full bg-gray-300 dark:bg-white/15" />
 
                                         <div
-                                            className={`flex items-center gap-2 ${!tab.inPipeline ? 'opacity-40' : ''}`}
+                                            className={`flex items-center gap-2 ${!inAnyPipeline ? 'opacity-40' : ''}`}
                                             title={
-                                                !tab.inPipeline
-                                                    ? 'Enable "In CI pipeline" first'
+                                                !inAnyPipeline
+                                                    ? 'Add the tab to a pipeline first'
                                                     : undefined
                                             }>
                                             <span className="text-xs text-gray-500 dark:text-gray-400">
@@ -376,7 +402,7 @@ export function SettingsProjectTabsSection() {
                                                 onClick={() =>
                                                     handleStopOnFailureToggle(tab.project)
                                                 }
-                                                disabled={isSaving || !tab.inPipeline}
+                                                disabled={isSaving || !inAnyPipeline}
                                                 className={toggleClass(
                                                     tab.stopPipelineOnFailure,
                                                     true
@@ -400,9 +426,9 @@ export function SettingsProjectTabsSection() {
                     which project it tracks. Default tab is also global — it pre-selects a project
                     so Run All / Run Group work immediately. Workers overrides the "Maximum Workers"
                     setting for this project only (leave blank to use the default) — applies to Run
-                    All, rerun, and CI pipeline/script triggers alike. The ▲▼ order also sets CI
-                    pipeline order ("Step N") for tabs with "In CI pipeline" enabled; "Stop on
-                    failure" skips the remaining pipeline steps if that step has any failed tests.
+                    All, rerun, and CI pipeline/script triggers alike. The ▲▼ order also sets step
+                    order inside each named pipeline (develop / production chips). "Stop on failure"
+                    skips remaining steps of that pipeline if the step has any failed tests.
                 </p>
             </div>
         </SettingsSection>

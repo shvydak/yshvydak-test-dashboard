@@ -15,6 +15,8 @@ These four are load-bearing. Breaking any one of them corrupts historical tracki
 
 `app_settings` is a server-side key-value table (`SettingsRepository`, UPSERT `ON CONFLICT(key) DO UPDATE`). Defaults live in the repository getter, not in the schema. Existing keys: `global_playwright_project`, `disk_warning_threshold_percent`, `disk_critical_threshold_percent`, `project_tab_configs`, `default_project_tab`, `ci_autorun_paused`, `ci_autorun_resume_at`.
 
+Named CI pipelines: `ProjectTabConfig.pipelines` is `('develop' | 'production')[]` (a tab can be in zero or more). Tab list order = step order inside each pipeline. Shared helpers: `packages/server/src/utils/ciPipeline.util.ts` and `packages/web/src/constants/ciPipelines.ts`. Legacy `inPipeline: true` → `['develop']` via `normalizeCIPipelines`. `POST /api/pipeline/run` body `{pipeline, maxWorkers, source}` — missing name → `develop`, unknown → 400. Script: `--pipeline <name>`.
+
 ## Flow
 
 ```
@@ -53,6 +55,8 @@ Check Context7-MCP for current docs and breaking changes before adding, updating
 
 - **Check dependents before changing any value or default.** Grep all usages _and_ tests first.
 - **Look for an existing utility before writing one.** WebSocket URL, auth fetch and date formatting have all been reimplemented at least once.
+- **CI pause is global for `source: 'script'`.** Do not special-case a pipeline name unless there is a user-facing setting for it.
+- **`pipelines: ['develop']` in tests infers `string[]`.** Type the fixture as `ProjectTabConfig[]` (or `as const`) or `tsc` fails.
 
 ## Where the rest lives
 
@@ -63,6 +67,7 @@ Check Context7-MCP for current docs and breaking changes before adding, updating
 | React, Tailwind, caches, counts        | `.claude/rules/frontend.md` — auto on `packages/web/**`      |
 | Reporter and `npm link`                | `.claude/rules/reporter.md` — auto on `packages/reporter/**` |
 | Vitest conventions                     | `.claude/rules/testing.md` — auto on test files              |
+| Named pipeline membership              | `ciPipeline.util.ts` / `constants/ciPipelines.ts` + Settings chips |
 | Full anti-pattern catalogue            | [docs/ai/ANTI_PATTERNS.md](docs/ai/ANTI_PATTERNS.md)         |
 | Architecture deep dive                 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)                 |
 | REST + WebSocket API                   | [docs/API_REFERENCE.md](docs/API_REFERENCE.md)               |

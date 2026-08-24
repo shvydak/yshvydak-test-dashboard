@@ -1,4 +1,5 @@
 import {BaseRepository} from './base.repository'
+import {CIPipelineName, normalizeCIPipelines} from '../utils/ciPipeline.util'
 
 const GLOBAL_PLAYWRIGHT_PROJECT_KEY = 'global_playwright_project'
 const DISK_WARNING_PERCENT_KEY = 'disk_warning_threshold_percent'
@@ -25,7 +26,7 @@ export interface ProjectTabConfig {
     project: string
     displayName: string
     visible: boolean
-    inPipeline: boolean
+    pipelines: CIPipelineName[]
     stopPipelineOnFailure: boolean
     workers?: number
 }
@@ -113,14 +114,16 @@ export class SettingsRepository extends BaseRepository implements ISettingsRepos
         if (!row?.value) return []
 
         try {
-            const parsed = JSON.parse(row.value) as Partial<ProjectTabConfig>[]
-            // Rows saved before inPipeline/stopPipelineOnFailure existed default to
-            // false, so nothing enters the CI pipeline until explicitly opted in.
+            const parsed = JSON.parse(row.value) as Array<
+                Partial<ProjectTabConfig> & {inPipeline?: boolean}
+            >
+            // Legacy rows used inPipeline:true (one unnamed pipeline). Those become
+            // pipelines:['develop'] so existing CI keeps running after this change.
             return parsed.map((c) => ({
                 project: c.project ?? '',
                 displayName: c.displayName ?? c.project ?? '',
                 visible: c.visible ?? true,
-                inPipeline: c.inPipeline ?? false,
+                pipelines: normalizeCIPipelines(c.pipelines, c.inPipeline),
                 stopPipelineOnFailure: c.stopPipelineOnFailure ?? false,
                 workers: c.workers,
             }))

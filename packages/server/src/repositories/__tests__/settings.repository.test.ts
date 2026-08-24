@@ -1,5 +1,5 @@
 import {describe, it, expect, beforeEach, afterEach} from 'vitest'
-import {SettingsRepository} from '../settings.repository'
+import {SettingsRepository, ProjectTabConfig} from '../settings.repository'
 import {DatabaseManager} from '../../database/database.manager'
 
 describe('SettingsRepository', () => {
@@ -98,19 +98,19 @@ describe('SettingsRepository', () => {
         })
 
         it('getProjectTabConfigs returns saved configs after setProjectTabConfigs', async () => {
-            const input = [
+            const input: ProjectTabConfig[] = [
                 {
                     project: 'Frontend',
                     displayName: 'Frontend Tests',
                     visible: true,
-                    inPipeline: false,
+                    pipelines: [],
                     stopPipelineOnFailure: false,
                 },
                 {
                     project: 'Backend',
                     displayName: 'Backend Tests',
                     visible: false,
-                    inPipeline: true,
+                    pipelines: ['develop'],
                     stopPipelineOnFailure: true,
                 },
             ]
@@ -127,7 +127,7 @@ describe('SettingsRepository', () => {
                     project: 'Frontend',
                     displayName: 'Frontend',
                     visible: true,
-                    inPipeline: false,
+                    pipelines: [],
                     stopPipelineOnFailure: false,
                 },
             ]
@@ -136,14 +136,14 @@ describe('SettingsRepository', () => {
                     project: 'Backend',
                     displayName: 'Backend',
                     visible: false,
-                    inPipeline: false,
+                    pipelines: [],
                     stopPipelineOnFailure: false,
                 },
                 {
                     project: 'Mobile',
                     displayName: 'Mobile',
                     visible: true,
-                    inPipeline: false,
+                    pipelines: [],
                     stopPipelineOnFailure: false,
                 },
             ]
@@ -157,7 +157,7 @@ describe('SettingsRepository', () => {
             expect(configs).toEqual(second)
         })
 
-        it('defaults inPipeline/stopPipelineOnFailure to false for legacy rows missing those fields', async () => {
+        it('defaults pipelines to [] and stopPipelineOnFailure to false for legacy rows', async () => {
             const db = (dbManager as any).db
             await new Promise<void>((resolve, reject) =>
                 db.run(
@@ -174,10 +174,34 @@ describe('SettingsRepository', () => {
                     project: 'Legacy',
                     displayName: 'Legacy',
                     visible: true,
-                    inPipeline: false,
+                    pipelines: [],
                     stopPipelineOnFailure: false,
                 },
             ])
+        })
+
+        it('migrates legacy inPipeline:true rows to pipelines:["develop"]', async () => {
+            const db = (dbManager as any).db
+            await new Promise<void>((resolve, reject) =>
+                db.run(
+                    `INSERT INTO app_settings (key, value) VALUES ('project_tab_configs', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value`,
+                    [
+                        JSON.stringify([
+                            {
+                                project: 'CI',
+                                displayName: 'CI',
+                                visible: true,
+                                inPipeline: true,
+                            },
+                        ]),
+                    ],
+                    (err: any) => (err ? reject(err) : resolve())
+                )
+            )
+
+            const configs = await repository.getProjectTabConfigs()
+
+            expect(configs[0].pipelines).toEqual(['develop'])
         })
 
         it('returns empty array and does not throw on malformed JSON in DB', async () => {
@@ -203,7 +227,7 @@ describe('SettingsRepository', () => {
                     project: 'Frontend',
                     displayName: 'FE',
                     visible: true,
-                    inPipeline: false,
+                    pipelines: [],
                     stopPipelineOnFailure: false,
                 },
             ])
@@ -220,7 +244,7 @@ describe('SettingsRepository', () => {
                         project: 'API_Tests',
                         displayName: 'API Tests',
                         visible: true,
-                        inPipeline: true,
+                        pipelines: ['develop'],
                         stopPipelineOnFailure: false,
                         workers: 4,
                     },
@@ -237,7 +261,7 @@ describe('SettingsRepository', () => {
                         project: 'WEB_Tests',
                         displayName: 'WEB Tests',
                         visible: true,
-                        inPipeline: false,
+                        pipelines: [],
                         stopPipelineOnFailure: false,
                     },
                 ])
@@ -307,7 +331,7 @@ describe('SettingsRepository', () => {
                     project: 'API_Tests',
                     displayName: 'API',
                     visible: true,
-                    inPipeline: false,
+                    pipelines: [],
                     stopPipelineOnFailure: false,
                 },
             ])

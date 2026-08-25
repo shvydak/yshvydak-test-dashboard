@@ -57,20 +57,22 @@ Check Context7-MCP for current docs and breaking changes before adding, updating
 - **Look for an existing utility before writing one.** WebSocket URL, auth fetch and date formatting have all been reimplemented at least once.
 - **CI pause is global for `source: 'script'`.** Do not special-case a pipeline name unless there is a user-facing setting for it.
 - **`pipelines: ['develop']` in tests infers `string[]`.** Type the fixture as `ProjectTabConfig[]` (or `as const`) or `tsc` fails.
+- **Renaming a test orphans its old `testId` row forever.** INSERT-only + hash-based id (invariant 2/3) means the old id never updates again but still counts in aggregates (`status-counts`, etc.) until deleted via `DELETE /api/tests/:testId`. A "failed" count that doesn't match any visible test is often one of these.
+- **`npm run format` (including via pre-commit/pre-push hooks) redrifts `CLAUDE.md` and `docs/README.md` table widths on every run, even with no content changes.** `git checkout -- CLAUDE.md docs/README.md` after formatting/committing to keep it out of your diff.
 
 ## Where the rest lives
 
-| Topic                                  | Loads                                                        |
-| -------------------------------------- | ------------------------------------------------------------ |
-| Where a file lives                     | `/file-map` skill                                            |
-| Server, SQLite, process tracking traps | `.claude/rules/server.md` — auto on `packages/server/**`     |
-| React, Tailwind, caches, counts        | `.claude/rules/frontend.md` — auto on `packages/web/**`      |
-| Reporter and `npm link`                | `.claude/rules/reporter.md` — auto on `packages/reporter/**` |
-| Vitest conventions                     | `.claude/rules/testing.md` — auto on test files              |
+| Topic                                  | Loads                                                              |
+| -------------------------------------- | ------------------------------------------------------------------ |
+| Where a file lives                     | `/file-map` skill                                                  |
+| Server, SQLite, process tracking traps | `.claude/rules/server.md` — auto on `packages/server/**`           |
+| React, Tailwind, caches, counts        | `.claude/rules/frontend.md` — auto on `packages/web/**`            |
+| Reporter and `npm link`                | `.claude/rules/reporter.md` — auto on `packages/reporter/**`       |
+| Vitest conventions                     | `.claude/rules/testing.md` — auto on test files                    |
 | Named pipeline membership              | `ciPipeline.util.ts` / `constants/ciPipelines.ts` + Settings chips |
-| Full anti-pattern catalogue            | [docs/ai/ANTI_PATTERNS.md](docs/ai/ANTI_PATTERNS.md)         |
-| Architecture deep dive                 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)                 |
-| REST + WebSocket API                   | [docs/API_REFERENCE.md](docs/API_REFERENCE.md)               |
+| Full anti-pattern catalogue            | [docs/ai/ANTI_PATTERNS.md](docs/ai/ANTI_PATTERNS.md)               |
+| Architecture deep dive                 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)                       |
+| REST + WebSocket API                   | [docs/API_REFERENCE.md](docs/API_REFERENCE.md)                     |
 
 ## Specialized agents
 

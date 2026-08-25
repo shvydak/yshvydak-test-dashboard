@@ -11,14 +11,6 @@ export interface UseTestFiltersProps {
 
 export interface UseTestFiltersReturn {
     filteredTests: TestResult[]
-    counts: {
-        all: number
-        passed: number
-        failed: number
-        skipped: number
-        pending: number
-        noted: number
-    }
 }
 
 export function useTestFilters({
@@ -63,24 +55,5 @@ export function useTestFilters({
         })
     }, [tests, filter, searchQuery, projectFilter])
 
-    const projectTests = useMemo(
-        () => (projectFilter ? tests.filter((t) => (t.project || '') === projectFilter) : tests),
-        [tests, projectFilter]
-    )
-
-    const counts = useMemo(
-        () => ({
-            all: projectTests.length,
-            passed: projectTests.filter((t) => t.status === 'passed').length,
-            failed: projectTests.filter((t) => t.status === 'failed').length,
-            skipped: projectTests.filter((t) => t.status === 'skipped').length,
-            pending: projectTests.filter((t) => t.status === 'pending').length,
-            noted: projectTests.filter(
-                (t) => t.note && t.note.content && t.note.content.trim() !== ''
-            ).length,
-        }),
-        [projectTests]
-    )
-
-    return {filteredTests, counts}
+    return {filteredTests}
 }

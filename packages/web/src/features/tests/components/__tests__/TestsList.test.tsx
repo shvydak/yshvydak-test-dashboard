@@ -19,13 +19,35 @@ vi.mock('../../hooks/useTestStatusCounts', () => ({
     }),
 }))
 
+// Mock the server-side status-filtered list hook (react-query). Defaults to
+// "nothing loaded yet" — individual tests override this to simulate the server
+// returning rows the store's (capped) `tests` array doesn't have.
+const mockUseFilteredTestsByStatus = vi.fn(
+    (_filter?: string, _project?: string, _isAuthenticated?: boolean) => ({
+        tests: [] as TestResult[],
+        isLoading: false,
+    })
+)
+vi.mock('../../hooks/useFilteredTestsByStatus', () => ({
+    useFilteredTestsByStatus: (filter: string, project?: string, isAuthenticated?: boolean) =>
+        mockUseFilteredTestsByStatus(filter, project, isAuthenticated),
+}))
+
 // Mock child components to simplify testing
 vi.mock('../TestsListFilters', () => ({
     TestsListFilters: () => <div data-testid="filters">Filters</div>,
 }))
 
 vi.mock('../TestsContent', () => ({
-    TestsContent: () => <div data-testid="content">Content</div>,
+    TestsContent: ({tests}: {tests: TestResult[]}) => (
+        <div data-testid="content" data-count={tests.length}>
+            {tests.map((t) => (
+                <div key={t.testId} data-testid="content-test">
+                    {t.name}
+                </div>
+            ))}
+        </div>
+    ),
 }))
 
 vi.mock('../testDetail', () => ({
@@ -69,6 +91,7 @@ describe('TestsList - Shareable URLs', () => {
             tests: mockTests,
             error: null,
         } as any)
+        mockUseFilteredTestsByStatus.mockReturnValue({tests: [], isLoading: false})
     })
 
     describe('Deep Linking - Opening modal from URL', () => {
@@ -502,6 +525,78 @@ describe('TestsList - Shareable URLs', () => {
             )
 
             expect(screen.getByTestId('filters')).toBeInTheDocument()
+        })
+    })
+
+    describe('Status filter resolves from the server, not the capped store list', () => {
+        it('shows a failed test that is absent from the store but present in the server-filtered result', async () => {
+            // Reproduces the production bug: the status-counts badge (unlimited
+            // aggregate) reports failures the store's capped `tests` array doesn't
+            // contain, because that array is paginated/ordered by recency.
+            const ghostFailedTest: TestResult = {
+                id: 'exec-ghost',
+                testId: 'test-ghost',
+                name: 'Ghost failed test outside the store window',
+                filePath: '/ghost.spec.ts',
+                status: 'failed',
+                duration: 500,
+                createdAt: '2025-01-01T00:00:00Z',
+                runId: 'run-ghost',
+            }
+            mockUseFilteredTestsByStatus.mockReturnValue({
+                tests: [ghostFailedTest],
+                isLoading: false,
+            })
+
+            render(
+                <MemoryRouter initialEntries={['/?filter=failed']}>
+                    <TestsList
+                        onTestSelect={mockOnTestSelect}
+                        onTestRerun={mockOnTestRerun}
+                        selectedTest={null}
+                        loading={false}
+                    />
+                </MemoryRouter>
+            )
+
+            await waitFor(() => {
+                expect(
+                    screen.getByText('Ghost failed test outside the store window')
+                ).toBeInTheDocument()
+            })
+        })
+
+        it('shows a loading state while the server-filtered result is in flight', () => {
+            mockUseFilteredTestsByStatus.mockReturnValue({tests: [], isLoading: true})
+
+            render(
+                <MemoryRouter initialEntries={['/?filter=failed']}>
+                    <TestsList
+                        onTestSelect={mockOnTestSelect}
+                        onTestRerun={mockOnTestRerun}
+                        selectedTest={null}
+                        loading={false}
+                    />
+                </MemoryRouter>
+            )
+
+            expect(screen.queryByTestId('content')).not.toBeInTheDocument()
+        })
+
+        it('uses the store list directly for filter "all" (no server round-trip needed)', () => {
+            render(
+                <BrowserRouter>
+                    <TestsList
+                        onTestSelect={mockOnTestSelect}
+                        onTestRerun={mockOnTestRerun}
+                        selectedTest={null}
+                        loading={false}
+                    />
+                </BrowserRouter>
+            )
+
+            const content = screen.getByTestId('content')
+            expect(content).toHaveAttribute('data-count', String(mockTests.length))
         })
     })
 

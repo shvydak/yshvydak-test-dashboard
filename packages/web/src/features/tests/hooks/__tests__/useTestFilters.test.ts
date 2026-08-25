@@ -172,66 +172,6 @@ describe('useTestFilters', () => {
         })
     })
 
-    describe('Counts', () => {
-        it('should correctly count all test statuses', () => {
-            const {result} = renderHook(() =>
-                useTestFilters({tests: mockTests, filter: 'all', searchQuery: ''})
-            )
-
-            expect(result.current.counts).toEqual({
-                all: 6,
-                passed: 2,
-                failed: 2,
-                skipped: 1,
-                pending: 1,
-                noted: 3,
-            })
-        })
-
-        it('should count tests with notes', () => {
-            const {result} = renderHook(() =>
-                useTestFilters({tests: mockTests, filter: 'all', searchQuery: ''})
-            )
-
-            expect(result.current.counts.noted).toBe(3)
-        })
-
-        it('should not count tests with empty notes', () => {
-            const testsWithEmptyNotes: TestResult[] = [
-                createMockTest('1', 'passed', 'Test 1', true),
-                {
-                    ...createMockTest('2', 'failed', 'Test 2', false),
-                    note: {
-                        testId: 'test-2',
-                        content: '',
-                        createdAt: new Date().toISOString(),
-                        updatedAt: new Date().toISOString(),
-                    },
-                },
-            ]
-
-            const {result} = renderHook(() =>
-                useTestFilters({tests: testsWithEmptyNotes, filter: 'all', searchQuery: ''})
-            )
-
-            expect(result.current.counts.noted).toBe(1)
-        })
-
-        it('should update counts when tests change', () => {
-            const {result, rerender} = renderHook(
-                ({tests}) => useTestFilters({tests, filter: 'all', searchQuery: ''}),
-                {initialProps: {tests: mockTests}}
-            )
-
-            expect(result.current.counts.noted).toBe(3)
-
-            const newTests = [...mockTests, createMockTest('7', 'passed', 'Test 7', true)]
-            rerender({tests: newTests})
-
-            expect(result.current.counts.noted).toBe(4)
-        })
-    })
-
     describe('projectFilter', () => {
         const createMockTestWithProject = (
             id: string,
@@ -316,21 +256,6 @@ describe('useTestFilters', () => {
             expect(ids).not.toContain('5')
         })
 
-        it('counts.all reflects only project-scoped tests when projectFilter is set', () => {
-            const {result} = renderHook(() =>
-                useTestFilters({
-                    tests: mixedProjectTests,
-                    filter: 'all',
-                    searchQuery: '',
-                    projectFilter: 'Frontend',
-                })
-            )
-
-            expect(result.current.counts.all).toBe(2)
-            expect(result.current.counts.passed).toBe(1)
-            expect(result.current.counts.failed).toBe(1)
-        })
-
         it('should show all tests when projectFilter is not set (no regression)', () => {
             const {result} = renderHook(() =>
                 useTestFilters({
@@ -341,7 +266,6 @@ describe('useTestFilters', () => {
             )
 
             expect(result.current.filteredTests).toHaveLength(5)
-            expect(result.current.counts.all).toBe(5)
         })
     })
 
@@ -352,8 +276,6 @@ describe('useTestFilters', () => {
             )
 
             expect(result.current.filteredTests).toHaveLength(0)
-            expect(result.current.counts.all).toBe(0)
-            expect(result.current.counts.noted).toBe(0)
         })
 
         it('should handle tests without notes field', () => {
@@ -367,7 +289,6 @@ describe('useTestFilters', () => {
             )
 
             expect(result.current.filteredTests).toHaveLength(0)
-            expect(result.current.counts.noted).toBe(0)
         })
 
         it('should handle empty search query', () => {

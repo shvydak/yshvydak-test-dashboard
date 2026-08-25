@@ -6,6 +6,7 @@ import {LoadingSpinner} from '@shared/components'
 import {useTestsStore} from '../store/testsStore'
 import {useTestFilters} from '../hooks'
 import {useTestStatusCounts} from '../hooks/useTestStatusCounts'
+import {useFilteredTestsByStatus} from '../hooks/useFilteredTestsByStatus'
 import {FilterKey, FILTER_OPTIONS} from '../constants'
 // import {TestsListHeader} from './TestsListHeader'
 import {TestsListFilters} from './TestsListFilters'
@@ -49,8 +50,16 @@ export default function TestsList({
 
     const [filter, setFilter] = useState<FilterKey>(getInitialFilter)
 
+    // For a real status-bar filter (not 'all'), resolve the list from the server
+    // rather than the store's `tests` array: that array is capped at 200 rows
+    // without a project selected (5000 with one), ordered by recency, so a match
+    // outside that window would show 0 results here even though the status-counts
+    // badge below (an unlimited aggregate) reports the true count.
+    const {tests: filteredByStatusTests, isLoading: filteredByStatusLoading} =
+        useFilteredTestsByStatus(filter, activeProject || undefined)
+
     const {filteredTests} = useTestFilters({
-        tests,
+        tests: filter === 'all' ? tests : filteredByStatusTests,
         filter,
         searchQuery,
         projectFilter: activeProject || undefined,
@@ -227,14 +236,22 @@ export default function TestsList({
 
             {/* Scrollable content */}
             <div className="flex-1 overflow-y-auto pb-4 md:pb-8">
-                <TestsContent
-                    tests={filteredTests}
-                    selectedTest={selectedTest}
-                    onTestSelect={openTestDetail}
-                    onTestRerun={onTestRerun}
-                    searchQuery={searchQuery}
-                    filter={filter}
-                />
+                {filter !== 'all' && filteredByStatusLoading ? (
+                    <div className="rounded-2xl border border-gray-200/80 bg-white shadow-card dark:border-white/[0.07] dark:bg-gray-800/70 dark:backdrop-blur-xl">
+                        <div className="flex flex-col items-center justify-center px-6 py-20 text-center">
+                            <LoadingSpinner size="lg" />
+                        </div>
+                    </div>
+                ) : (
+                    <TestsContent
+                        tests={filteredTests}
+                        selectedTest={selectedTest}
+                        onTestSelect={openTestDetail}
+                        onTestRerun={onTestRerun}
+                        searchQuery={searchQuery}
+                        filter={filter}
+                    />
+                )}
             </div>
 
             <TestDetailModal

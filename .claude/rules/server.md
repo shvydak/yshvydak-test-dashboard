@@ -21,6 +21,7 @@ Not enforced — you have to remember these:
 
 - **`getTestResultsByTestId` already JOINs attachments + notes.** Don't loop and re-query it (N+1).
 - **`getAllTests` filters by project AFTER picking the latest row per `test_id`** — same semantics as `getProjectStatusSummary`. Filtering before the window would diverge from the tab badge.
+- **"Latest row" = `created_at`, never `updated_at`.** The `update_test_results_timestamp` trigger sets `updated_at = CURRENT_TIMESTAMP` on ANY UPDATE, so a migration touching old rows makes them "latest" and hides real results (2026-09-14: legacy June rows hid 78 WEB tests after each restart). Migrations must also skip rows they can't change (EXISTS guard).
 - **`testId` has no project dimension.** The hash is `filePath:title` only. `test_notes` / `note_images` are keyed by `test_id` alone, so any per-project feature must scope via `test_results.project`, and can't cleanly scope notes when two projects share a file + title.
 - **`activeProcessesTracker` run-all lock is global on purpose.** One active run blocks every project. Concurrent Playwright processes conflict and the reporter drops results — don't "fix" it to be per-project.
 - **`activeProcessesTracker.addProcess()` fires twice per run.** The dashboard registers first (knows `project`, not `totalTests`); the reporter's `/process-start` registers again for the same `runId` (knows `totalTests`, not `project`). Merge the fields — an overwrite silently drops `project` and resets in-flight `progress` to zero. Symptom: "N of 0 tests".

@@ -216,7 +216,7 @@ describe('formatters', () => {
             expect(result).toContain('22/10/2025')
         })
 
-        it('should prioritize updatedAt over other date fields', () => {
+        it('should prioritize createdAt over other date fields', () => {
             const test = {
                 status: 'passed',
                 updatedAt: '2025-10-22T10:00:00Z',
@@ -226,8 +226,8 @@ describe('formatters', () => {
                 timestamp: '2025-10-22T14:00:00Z',
             }
             const result = formatLastRun(test)
-            // Should use updatedAt (first priority): 10:00 UTC + 3 hours = 13:00
-            expect(result).toContain('13:00:00')
+            // Should use createdAt (first priority): 12:00 UTC + 3 hours = 15:00
+            expect(result).toContain('15:00:00')
         })
 
         it('should return "N/A" when no date field is present', () => {

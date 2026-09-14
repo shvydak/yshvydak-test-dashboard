@@ -40,8 +40,8 @@ export function useTestSort(tests: TestResult[]): UseTestSortReturn {
                     bValue = b.status
                     break
                 case 'date':
-                    aValue = new Date(a.updated_at || a.created_at || a.timestamp || 0).getTime()
-                    bValue = new Date(b.updated_at || b.created_at || b.timestamp || 0).getTime()
+                    aValue = new Date(a.createdAt || a.created_at || a.timestamp || 0).getTime()
+                    bValue = new Date(b.createdAt || b.created_at || b.timestamp || 0).getTime()
                     break
                 case 'duration':
                     aValue = a.duration || 0

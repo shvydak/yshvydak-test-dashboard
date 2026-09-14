@@ -125,11 +125,12 @@ export class TestRepository extends BaseRepository implements ITestRepository {
             // instead of a correlated subquery (O(N^2)) — important once history grows.
             // Project filter is applied AFTER rn = 1 so semantics match getProjectStatusSummary
             // (latest row globally, then attribute by that row's project). History is untouched.
+            // "Latest" is created_at, never updated_at: the AFTER UPDATE trigger bumps updated_at on any row a migration touches.
             innerSql = `
                 SELECT *
                 FROM (
                     SELECT *,
-                           ROW_NUMBER() OVER (PARTITION BY test_id ORDER BY updated_at DESC) AS rn
+                           ROW_NUMBER() OVER (PARTITION BY test_id ORDER BY created_at DESC) AS rn
                     FROM test_results
                 )
                 WHERE rn = 1
@@ -149,14 +150,14 @@ export class TestRepository extends BaseRepository implements ITestRepository {
         // Apply LIMIT before joining attachments so attachment fan-out cannot
         // shrink the number of test executions returned to the UI.
         // When project is set, LIMIT applies to that project only (not a global slice).
-        innerSql += ` ORDER BY updated_at DESC LIMIT ?`
+        innerSql += ` ORDER BY created_at DESC LIMIT ?`
         params.push(filters.limit || DEFAULT_LIMITS.TESTS_PER_PAGE)
 
         const sql = `
             SELECT ${TEST_RESULT_WITH_RELATIONS_COLUMNS}
             FROM (${innerSql}) tr
             ${TEST_RESULT_RELATIONS_JOINS}
-            ORDER BY tr.updated_at DESC
+            ORDER BY tr.created_at DESC
         `
 
         const rows = await this.queryAll<TestResultRow>(sql, params)
@@ -195,7 +196,7 @@ export class TestRepository extends BaseRepository implements ITestRepository {
 
     async getProjectByFilePath(filePath: string): Promise<string> {
         const row = await this.queryOne<{project: string}>(
-            `SELECT project FROM test_results WHERE file_path = ? AND project != '' ORDER BY updated_at DESC LIMIT 1`,
+            `SELECT project FROM test_results WHERE file_path = ? AND project != '' ORDER BY created_at DESC LIMIT 1`,
             [filePath]
         )
         return row?.project ?? ''
@@ -245,7 +246,7 @@ export class TestRepository extends BaseRepository implements ITestRepository {
                         ELSE 'other'
                     END
                 ) as history,
-                MAX(tr.updated_at) as lastRun
+                MAX(tr.created_at) as lastRun
             FROM test_results tr
             WHERE tr.created_at >= datetime('now', '-' || ? || ' days')
                 AND tr.status IN ('passed', 'failed')
@@ -341,15 +342,15 @@ export class TestRepository extends BaseRepository implements ITestRepository {
      * row per test_id, unlimited and DB-aggregated — powers the "All/Passed/Failed/..."
      * filter-bar counts. Must never be derived from a LIMIT-ed getAllTests() page,
      * or the badges silently cap at the page size (see getProjectStatusSummary, which
-     * this mirrors for the tab-bar badge). Ordered by updated_at to match the "latest"
-     * row getAllTests() itself would return, so counts and the visible list agree.
+     * this mirrors for the tab-bar badge). Ordered by created_at like getAllTests() and
+     * getProjectStatusSummary, so the list, the counts and the tab badge agree.
      */
     async getTestStatusCounts(project?: string): Promise<TestStatusCounts> {
         const params: any[] = []
         let sql = `
             WITH latest AS (
                 SELECT test_id, project, status,
-                       ROW_NUMBER() OVER (PARTITION BY test_id ORDER BY updated_at DESC) as rn
+                       ROW_NUMBER() OVER (PARTITION BY test_id ORDER BY created_at DESC) as rn
                 FROM test_results
             )
             SELECT

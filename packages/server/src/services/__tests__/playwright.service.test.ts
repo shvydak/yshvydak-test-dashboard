@@ -317,6 +317,23 @@ describe('PlaywrightService', () => {
             )
         })
 
+        it('should surface JSON reporter errors when stderr is empty', async () => {
+            // Arrange — --reporter=json writes file-load errors to stdout, not stderr
+            const output = {
+                suites: [],
+                errors: [{message: "\u001b[31mError: Cannot find module '../dist'\u001b[39m"}],
+            }
+            mockSpawn.mockReturnValue(createMockProcess(JSON.stringify(output), '', 1))
+
+            // Act
+            const error = await service.discoverTests().catch((e: Error) => e)
+
+            // Assert
+            expect(error).toBeInstanceOf(Error)
+            expect((error as Error).message).toContain("Error: Cannot find module '../dist'")
+            expect((error as Error).message).not.toContain('\u001b')
+        })
+
         it('should throw error when Playwright output is invalid JSON', async () => {
             // Arrange
             mockSpawn.mockReturnValue(createMockProcess('invalid json'))

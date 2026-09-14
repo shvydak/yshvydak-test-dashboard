@@ -392,7 +392,8 @@ export class PlaywrightService implements IPlaywrightService {
 
             process.on('close', (code) => {
                 if (code !== 0) {
-                    reject(new Error(`Playwright command failed with code ${code}: ${stderr}`))
+                    const details = stderr.trim() || this.extractListErrors(stdout)
+                    reject(new Error(`Playwright command failed with code ${code}: ${details}`))
                     return
                 }
 
@@ -408,6 +409,26 @@ export class PlaywrightService implements IPlaywrightService {
                 reject(new Error(`Failed to execute Playwright command: ${error.message}`))
             })
         })
+    }
+
+    /**
+     * With --reporter=json, file-load errors (e.g. a broken import) go to stdout's
+     * `errors` array and stderr stays empty
+     */
+    private extractListErrors(stdout: string): string {
+        try {
+            const errors: {message?: string}[] = JSON.parse(stdout).errors ?? []
+            const messages = errors.map((e) => e.message ?? '').filter(Boolean)
+            if (messages.length > 0) {
+                return messages
+                    .join('\n')
+                    .replace(/\u001b\[[0-9;]*m/g, '')
+                    .slice(0, 2000)
+            }
+        } catch {
+            // Not JSON — fall back to raw stdout
+        }
+        return stdout.trim().slice(-2000)
     }
 
     /**

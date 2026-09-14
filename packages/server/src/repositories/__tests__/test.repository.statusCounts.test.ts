@@ -28,7 +28,7 @@ describe('TestRepository.getTestStatusCounts()', () => {
         }
         await repository.saveTestResult(data)
         // saveTestResult uses CURRENT_TIMESTAMP internally, so backdate explicitly to
-        // control "latest" ordering (mirrors getAllTests' ORDER BY updated_at DESC).
+        // control "latest" ordering (mirrors getAllTests' ORDER BY created_at DESC).
         await (repository as any).execute(
             'UPDATE test_results SET created_at = ?, updated_at = ? WHERE id = ?',
             [updatedAt, updatedAt, id]
@@ -105,6 +105,24 @@ describe('TestRepository.getTestStatusCounts()', () => {
         const counts = await repository.getTestStatusCounts()
 
         expect(counts.noted).toBe(1)
+    })
+
+    it('picks the latest row by created_at, ignoring an older row whose updated_at was bumped', async () => {
+        // Drop the trigger so updated_at holds exactly the values set below
+        await (repository as any).execute('DROP TRIGGER IF EXISTS update_test_results_timestamp')
+        await insertResult('test-1', 'All_Tests', 'passed', '2026-09-10T14:00:40.134Z')
+        const legacyId = await insertResult('test-1', '', 'failed', '2026-06-25T14:59:03.975Z')
+        // A restart-time migration touched the legacy row, so its updated_at is newest
+        await (repository as any).execute('UPDATE test_results SET updated_at = ? WHERE id = ?', [
+            '2026-09-14 13:46:35',
+            legacyId,
+        ])
+
+        const counts = await repository.getTestStatusCounts('All_Tests')
+        const list = await repository.getAllTests({project: 'All_Tests'})
+
+        expect(counts).toMatchObject({total: 1, passed: 1, failed: 0})
+        expect(list.map((t) => t.status)).toEqual(['passed'])
     })
 
     it('is not capped by any page-size limit (unlike getAllTests)', async () => {

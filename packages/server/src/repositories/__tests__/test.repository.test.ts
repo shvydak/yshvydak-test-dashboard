@@ -388,7 +388,7 @@ describe('TestRepository - Core Functionality', () => {
             expect(apiTests.every((t) => t.project === 'API_Tests')).toBe(true)
         })
 
-        it('should order results by updated_at DESC', async () => {
+        it('should order results by created_at DESC', async () => {
             // Create tests with delays to ensure different timestamps
             await repository.saveTestResult(createTestResult('test-old', 'passed'))
             await new Promise((resolve) => setTimeout(resolve, 100))
@@ -398,11 +398,11 @@ describe('TestRepository - Core Functionality', () => {
 
             const results = await repository.getAllTests({})
 
-            // Verify ordering by checking that updated_at decreases
+            // Verify ordering by checking that created_at decreases
             expect(results.length).toBeGreaterThanOrEqual(3)
             for (let i = 0; i < results.length - 1; i++) {
-                const current = new Date(results[i].updatedAt!).getTime()
-                const next = new Date(results[i + 1].updatedAt!).getTime()
+                const current = new Date(results[i].createdAt!).getTime()
+                const next = new Date(results[i + 1].createdAt!).getTime()
                 expect(current).toBeGreaterThanOrEqual(next)
             }
         })

@@ -947,4 +947,75 @@ describe('DatabaseManager', () => {
             }
         })
     })
+
+    describe('Migrations - project backfill on restart', () => {
+        let tempDir: string
+
+        beforeEach(() => {
+            tempDir = path.join(os.tmpdir(), `test-db-${randomUUID()}`)
+            fs.mkdirSync(tempDir, {recursive: true})
+        })
+
+        afterEach(() => {
+            fs.rmSync(tempDir, {recursive: true, force: true})
+        })
+
+        // Re-opening the same DB file re-runs migrations, like a server restart
+        async function saveResultAndRestart(
+            runMetadata: Record<string, unknown> | undefined,
+            timestamp: string
+        ): Promise<any> {
+            const firstDb = new DatabaseManager(tempDir)
+            await firstDb.initialize()
+            const runId = randomUUID()
+            const resultId = randomUUID()
+            await firstDb.createTestRun({
+                id: runId,
+                status: 'running',
+                totalTests: 1,
+                passedTests: 0,
+                failedTests: 0,
+                skippedTests: 0,
+                duration: 0,
+                metadata: runMetadata,
+            })
+            await firstDb.saveTestResult({
+                id: resultId,
+                runId,
+                testId: 'test-legacy',
+                name: 'Legacy test',
+                filePath: '/tests/legacy.spec.ts',
+                status: 'passed',
+                duration: 100,
+                timestamp,
+            })
+            firstDb.close()
+
+            const restartedDb = new DatabaseManager(tempDir)
+            await restartedDb.initialize()
+            try {
+                return await restartedDb.getTestResult(resultId)
+            } finally {
+                restartedDb.close()
+            }
+        }
+
+        it('should not touch rows whose run has no project, so updated_at stays put', async () => {
+            const timestamp = '2026-06-25T14:59:03.975Z'
+
+            const row = await saveResultAndRestart(undefined, timestamp)
+
+            expect(row.updated_at).toBe(timestamp)
+            expect(row.project).toBe('')
+        })
+
+        it('should still backfill project from test_runs.metadata', async () => {
+            const row = await saveResultAndRestart(
+                {project: 'API_Tests'},
+                '2026-06-25T14:59:03.975Z'
+            )
+
+            expect(row.project).toBe('API_Tests')
+        })
+    })
 })

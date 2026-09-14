@@ -37,7 +37,7 @@ export function formatLastRun(test: any): string {
     }
 
     const dateValue =
-        test.updatedAt || test.updated_at || test.createdAt || test.created_at || test.timestamp
+        test.createdAt || test.created_at || test.timestamp || test.updatedAt || test.updated_at
 
     if (!dateValue) {
         return 'N/A'

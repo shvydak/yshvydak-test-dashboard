@@ -184,6 +184,7 @@ export class DatabaseManager {
         }
 
         // Backfill project from test_runs.metadata for existing rows
+        // EXISTS guard: every UPDATE fires the updated_at trigger, so unfillable rows must not match or each restart makes them "latest"
         try {
             await new Promise<void>((resolve, reject) => {
                 this.db.run(
@@ -192,10 +193,13 @@ export class DatabaseManager {
                          SELECT json_extract(r.metadata, '$.project')
                          FROM test_runs r
                          WHERE r.id = test_results.run_id
-                           AND json_extract(r.metadata, '$.project') IS NOT NULL
                      )
                      WHERE (project IS NULL OR project = '')
-                       AND run_id IS NOT NULL`,
+                       AND EXISTS (
+                           SELECT 1 FROM test_runs r
+                           WHERE r.id = test_results.run_id
+                             AND json_extract(r.metadata, '$.project') <> ''
+                       )`,
                     (err) => {
                         if (err) reject(err)
                         else resolve()

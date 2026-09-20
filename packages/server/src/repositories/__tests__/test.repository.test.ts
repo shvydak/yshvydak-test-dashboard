@@ -45,6 +45,8 @@ describe('TestRepository - Core Functionality', () => {
             filePath: 'test/file.spec.ts',
             status,
             duration: 1000,
+            // A real project: unscoped getAllTests() hides tests whose latest row has project '' once a named project exists
+            project: 'API_Tests',
             timestamp: new Date().toISOString(),
             errorMessage: status === 'failed' ? 'Test failed' : undefined,
             errorStack: status === 'failed' ? 'Stack trace here' : undefined,

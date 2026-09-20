@@ -85,6 +85,8 @@ Retrieve all test results with optional filtering.
 }
 ```
 
+**Which rows are returned.** One row per test (its latest execution, by `created_at`). Without `project` and without `runId`, tests whose latest row has no project (`''` or NULL: legacy rows, results without a project) are left out only when at least one named project exists, the same rule as `GET /api/tests/status-counts`. If no row in the database has a project (a Playwright config without named projects), nothing is hidden. With `project`, only that project's tests are returned. With `runId`, that run's results are returned as stored, without this filter. The limit is applied after these filters.
+
 ### POST /api/tests
 
 Save test results from Playwright reporter.
@@ -1383,7 +1385,7 @@ Status breakdown over the **latest row per test** (`created_at`), aggregated in 
 }
 ```
 
-Without `project`, tests whose latest row has `project = ''` (legacy rows and results without a project) are excluded, the same filter as the per-project summary behind the tab badges, so the totals agree. With `project`, only that project's rows are counted. The tests list (`GET /api/tests`) is not filtered this way.
+Without `project`, tests whose latest row has no project (`''` or NULL: legacy rows, results without a project) are left out only when at least one named project exists; if no row has a project (a Playwright config without named projects), all tests are counted. With `project`, only that project's rows are counted. `GET /api/tests` applies the same rule, so the list and these counts agree. The per-project summary behind the tab badges always skips project-less rows.
 
 ## Storage Management
 

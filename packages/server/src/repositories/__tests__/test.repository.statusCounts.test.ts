@@ -109,8 +109,27 @@ describe('TestRepository.getTestStatusCounts()', () => {
         expect(counts).toMatchObject({total: 1, passed: 1, failed: 0})
     })
 
-    it("drops a test when its project row is deleted and only an older project='' row is left", async () => {
-        // "Clear All_Tests data only" removed the newer project row; the legacy row resurfaces
+    it("keeps hiding the '' row while another named-project row exists, after one project row is deleted", async () => {
+        const projectRowId = await insertResult(
+            'test-1',
+            'All_Tests',
+            'passed',
+            '2026-09-10T10:00:00.000Z'
+        )
+        await insertResult('test-1', '', 'failed', '2026-06-25T10:00:00.000Z')
+        await insertResult('other', 'API_Tests', 'passed', '2026-09-10T10:00:00.000Z')
+
+        await (repository as any).execute('DELETE FROM test_results WHERE id = ?', [projectRowId])
+
+        // test-1 now only has its legacy '' row; API_Tests still exists, so it stays hidden
+        expect(await repository.getTestStatusCounts()).toMatchObject({
+            total: 1,
+            passed: 1,
+            failed: 0,
+        })
+    })
+
+    it("shows '' rows again once the LAST named-project row is gone (no named project exists)", async () => {
         const projectRowId = await insertResult(
             'test-1',
             'All_Tests',
@@ -122,7 +141,23 @@ describe('TestRepository.getTestStatusCounts()', () => {
 
         await (repository as any).execute('DELETE FROM test_results WHERE id = ?', [projectRowId])
 
-        expect(await repository.getTestStatusCounts()).toMatchObject({total: 0, failed: 0})
+        expect(await repository.getTestStatusCounts()).toMatchObject({total: 1, failed: 1})
+    })
+
+    it('counts every row when no row has a project (Playwright config without named projects)', async () => {
+        await insertResult('a', '', 'passed', '2026-09-10T10:00:00.000Z')
+        await insertResult('b', '', 'failed', '2026-09-10T10:00:00.000Z')
+        await insertResult('c', '', 'skipped', '2026-09-10T10:00:00.000Z')
+        await insertResult('d', '', 'pending', '2026-09-10T10:00:00.000Z')
+
+        expect(await repository.getTestStatusCounts()).toEqual({
+            total: 4,
+            passed: 1,
+            failed: 1,
+            skipped: 1,
+            pending: 1,
+            noted: 0,
+        })
     })
 
     it('agrees with the per-project summary that feeds the tab badges', async () => {

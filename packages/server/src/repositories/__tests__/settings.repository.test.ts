@@ -343,4 +343,95 @@ describe('SettingsRepository', () => {
             expect(configs[0].project).toBe('API_Tests')
         })
     })
+
+    describe('Jira settings', () => {
+        const stored = (key: string, value: string) =>
+            repository['execute']('INSERT INTO app_settings (key, value) VALUES (?, ?)', [
+                key,
+                value,
+            ])
+
+        it('should return defaults when nothing is saved', async () => {
+            expect(await repository.getJiraSettings()).toEqual({
+                baseUrl: '',
+                chipAlignment: 'left',
+                tagMode: 'tickets',
+            })
+        })
+
+        it('should round-trip saved settings', async () => {
+            await repository.setJiraSettings({
+                baseUrl: 'https://x.atlassian.net/browse/',
+                chipAlignment: 'right',
+                tagMode: 'all',
+            })
+
+            expect(await repository.getJiraSettings()).toEqual({
+                baseUrl: 'https://x.atlassian.net/browse/',
+                chipAlignment: 'right',
+                tagMode: 'all',
+            })
+        })
+
+        it('should upsert: a second save overwrites the first', async () => {
+            await repository.setJiraSettings({
+                baseUrl: 'https://a.example/',
+                chipAlignment: 'right',
+                tagMode: 'all',
+            })
+            await repository.setJiraSettings({
+                baseUrl: '',
+                chipAlignment: 'left',
+                tagMode: 'tickets',
+            })
+
+            expect(await repository.getJiraSettings()).toEqual({
+                baseUrl: '',
+                chipAlignment: 'left',
+                tagMode: 'tickets',
+            })
+        })
+
+        it('should round-trip the below alignment', async () => {
+            await repository.setJiraSettings({
+                baseUrl: '',
+                chipAlignment: 'below',
+                tagMode: 'tickets',
+            })
+
+            expect((await repository.getJiraSettings()).chipAlignment).toBe('below')
+        })
+
+        it('should fall back to left for an unknown stored alignment', async () => {
+            await stored('chip_alignment', 'center')
+
+            expect((await repository.getJiraSettings()).chipAlignment).toBe('left')
+        })
+
+        it('should store the tag mode under chip_tag_mode', async () => {
+            await repository.setJiraSettings({baseUrl: '', chipAlignment: 'left', tagMode: 'all'})
+
+            const row = await repository['queryOne']<{value: string}>(
+                "SELECT value FROM app_settings WHERE key = 'chip_tag_mode'"
+            )
+            expect(row?.value).toBe('all')
+        })
+
+        it('should fall back to tickets for an unknown stored tag mode', async () => {
+            await stored('chip_tag_mode', 'everything')
+
+            expect((await repository.getJiraSettings()).tagMode).toBe('tickets')
+        })
+
+        it('should default tagMode to tickets when only the older keys are stored', async () => {
+            await stored('jira_base_url', 'https://x.example/browse/')
+            await stored('chip_alignment', 'below')
+
+            expect(await repository.getJiraSettings()).toEqual({
+                baseUrl: 'https://x.example/browse/',
+                chipAlignment: 'below',
+                tagMode: 'tickets',
+            })
+        })
+    })
 })

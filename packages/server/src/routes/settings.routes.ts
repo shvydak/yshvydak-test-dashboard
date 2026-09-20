@@ -20,6 +20,8 @@ export function createSettingsRoutes(container: ServiceContainer): Router {
     router.put('/default-project-tab', settingsController.updateDefaultProjectTab)
     router.get('/ci-autorun-pause', settingsController.getCIAutoRunPause)
     router.put('/ci-autorun-pause', settingsController.updateCIAutoRunPause)
+    router.get('/jira', settingsController.getJiraSettings)
+    router.put('/jira', settingsController.updateJiraSettings)
 
     return router
 }

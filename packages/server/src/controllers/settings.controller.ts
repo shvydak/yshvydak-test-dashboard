@@ -3,6 +3,8 @@ import {SettingsService} from '../services/settings.service'
 import {ResponseHelper} from '../utils/response.helper'
 import {Logger} from '../utils/logger.util'
 import {ServiceRequest} from '../types/api.types'
+import {isChipAlignment} from '../utils/chipAlignment.util'
+import {isTagMode} from '../utils/tagMode.util'
 
 export class SettingsController {
     constructor(private settingsService: SettingsService) {}
@@ -186,6 +188,72 @@ export class SettingsController {
                 res,
                 error instanceof Error ? error.message : 'Unknown error',
                 'Failed to update CI auto-run pause',
+                500
+            )
+        }
+    }
+
+    getJiraSettings = async (_req: ServiceRequest, res: Response): Promise<Response> => {
+        try {
+            const settings = await this.settingsService.getJiraSettings()
+            return ResponseHelper.success(res, settings)
+        } catch (error) {
+            Logger.error('Error getting Jira settings', error)
+            return ResponseHelper.error(
+                res,
+                error instanceof Error ? error.message : 'Unknown error',
+                'Failed to get Jira settings',
+                500
+            )
+        }
+    }
+
+    updateJiraSettings = async (req: ServiceRequest, res: Response): Promise<Response> => {
+        try {
+            const {baseUrl, chipAlignment, tagMode} = req.body ?? {}
+
+            if (typeof baseUrl !== 'string') {
+                return ResponseHelper.badRequest(res, 'baseUrl must be a string')
+            }
+            if (!isChipAlignment(chipAlignment)) {
+                return ResponseHelper.badRequest(
+                    res,
+                    "chipAlignment must be 'left', 'right' or 'below'"
+                )
+            }
+
+            if (!isTagMode(tagMode)) {
+                return ResponseHelper.badRequest(res, "tagMode must be 'tickets' or 'all'")
+            }
+
+            const trimmed = baseUrl.trim()
+            if (trimmed) {
+                let protocol: string | null = null
+                try {
+                    protocol = new URL(trimmed).protocol
+                } catch {
+                    // invalid URL — rejected below
+                }
+                if (protocol !== 'http:' && protocol !== 'https:') {
+                    return ResponseHelper.badRequest(
+                        res,
+                        'baseUrl must be empty or a valid http(s) URL'
+                    )
+                }
+            }
+
+            const settings = await this.settingsService.setJiraSettings(
+                trimmed,
+                chipAlignment,
+                tagMode
+            )
+            return ResponseHelper.success(res, settings)
+        } catch (error) {
+            Logger.error('Error updating Jira settings', error)
+            return ResponseHelper.error(
+                res,
+                error instanceof Error ? error.message : 'Unknown error',
+                'Failed to update Jira settings',
                 500
             )
         }

@@ -3,7 +3,10 @@ import {
     DiskThresholds,
     ProjectTabConfig,
     CIAutoRunPause,
+    JiraSettings,
 } from '../repositories/settings.repository'
+import {ChipAlignment} from '../utils/chipAlignment.util'
+import {TagMode} from '../utils/tagMode.util'
 import {CIPipelineName, DEFAULT_CI_PIPELINE, normalizeCIPipelines} from '../utils/ciPipeline.util'
 import {PlaywrightService} from './playwright.service'
 import {Logger} from '../utils/logger.util'
@@ -12,7 +15,7 @@ export interface TestExecutionSettings {
     project: string
 }
 
-export type {DiskThresholds, ProjectTabConfig, CIAutoRunPause}
+export type {DiskThresholds, ProjectTabConfig, CIAutoRunPause, JiraSettings, ChipAlignment}
 
 export class SettingsService {
     constructor(
@@ -159,6 +162,29 @@ export class SettingsService {
                 : 'CI auto-run resumed'
         )
         return pause
+    }
+
+    async getJiraSettings(): Promise<JiraSettings> {
+        return this.settingsRepository.getJiraSettings()
+    }
+
+    /** Trims baseUrl and guarantees a trailing '/' when non-empty (web appends the ticket key). */
+    async setJiraSettings(
+        baseUrl: string,
+        chipAlignment: ChipAlignment,
+        tagMode: TagMode
+    ): Promise<JiraSettings> {
+        const trimmed = baseUrl.trim()
+        const settings: JiraSettings = {
+            baseUrl: trimmed && !trimmed.endsWith('/') ? `${trimmed}/` : trimmed,
+            chipAlignment,
+            tagMode,
+        }
+        await this.settingsRepository.setJiraSettings(settings)
+        Logger.info(
+            `Jira settings updated: baseUrl="${settings.baseUrl}", chipAlignment=${chipAlignment}, tagMode=${tagMode}`
+        )
+        return settings
     }
 
     async setGlobalPlaywrightProject(project: string): Promise<TestExecutionSettings> {

@@ -2,10 +2,13 @@ import {useState} from 'react'
 import {Check, X, Play} from 'lucide-react'
 import {StatusBadge, Button} from '@shared/components'
 import {formatLastRun} from '../../utils/formatters'
+import {TicketChips} from '../TicketChips'
+import type {DisplayTag} from '../../utils/jiraTags'
 
 export interface TestDetailHeaderProps {
     testName: string
     testStatus: string
+    tags?: DisplayTag[]
     executionDate?: string
     isLatest: boolean
     onClose: () => void
@@ -19,6 +22,7 @@ export interface TestDetailHeaderProps {
 export function TestDetailHeader({
     testName,
     testStatus,
+    tags = [],
     executionDate,
     isLatest,
     onClose,
@@ -59,6 +63,8 @@ export function TestDetailHeader({
                         )}
                     </h2>
                 </div>
+
+                <TicketChips tags={tags} className="mb-1.5" />
 
                 {!isLatest && executionDate && (
                     <div className="flex flex-col sm:flex-row sm:items-center sm:space-x-2 mt-2 gap-1">

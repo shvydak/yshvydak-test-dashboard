@@ -1,4 +1,5 @@
 import {TestResult} from '@yshvydak/core'
+import {useJiraSettings} from '@features/dashboard/hooks/useJiraSettings'
 import {TestRow} from './TestRow'
 
 export interface TestsTableProps {
@@ -16,6 +17,10 @@ export function TestsTable({
     onTestRerun,
     showFilePath = false,
 }: TestsTableProps) {
+    // One read per table (not per row); cache is filled at App level
+    const {settings} = useJiraSettings(false)
+    const hasTicketColumn = settings.chipAlignment !== 'below'
+
     return (
         <div className="overflow-x-clip sm:overflow-x-auto">
             <table className="w-full">
@@ -27,6 +32,11 @@ export function TestsTable({
                         <th className="px-3 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500 md:px-6">
                             Test Name
                         </th>
+                        {hasTicketColumn && (
+                            <th className="hidden w-60 px-6 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500 lg:table-cell">
+                                {settings.tagMode === 'all' ? 'Tags' : 'Tickets'}
+                            </th>
+                        )}
                         {showFilePath && (
                             <th className="hidden px-6 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500 lg:table-cell">
                                 File Path
@@ -51,6 +61,8 @@ export function TestsTable({
                             selected={selectedTest?.id === test.id}
                             onSelect={onTestSelect}
                             onRerun={onTestRerun}
+                            chipAlignment={settings.chipAlignment}
+                            tagMode={settings.tagMode}
                         />
                     ))}
                 </tbody>

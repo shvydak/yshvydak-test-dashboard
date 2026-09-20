@@ -1,5 +1,6 @@
 export {default as TestsList} from './TestsList'
 export {TestRow} from './TestRow'
+export {TicketChips} from './TicketChips'
 export {TestsTable} from './TestsTable'
 export {TestsGroupedView} from './TestsGroupedView'
 export {TestGroup} from './TestGroup'

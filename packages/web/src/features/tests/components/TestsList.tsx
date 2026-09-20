@@ -11,6 +11,8 @@ import {FilterKey, FILTER_OPTIONS} from '../constants'
 // import {TestsListHeader} from './TestsListHeader'
 import {TestsListFilters} from './TestsListFilters'
 import {TestsContent} from './TestsContent'
+import {TicketSearchContext} from './TicketSearchContext'
+import {useJiraSettings} from '@features/dashboard/hooks/useJiraSettings'
 import {TestDetailModal} from './testDetail'
 
 export interface TestsListProps {
@@ -58,11 +60,14 @@ export default function TestsList({
     const {tests: filteredByStatusTests, isLoading: filteredByStatusLoading} =
         useFilteredTestsByStatus(filter, activeProject || undefined)
 
+    const {settings: jiraSettings} = useJiraSettings(false)
+
     const {filteredTests} = useTestFilters({
         tests: filter === 'all' ? tests : filteredByStatusTests,
         filter,
         searchQuery,
         projectFilter: activeProject || undefined,
+        tagMode: jiraSettings.tagMode,
     })
 
     // Badge counts come from a dedicated, unlimited server-side aggregate rather than
@@ -243,14 +248,16 @@ export default function TestsList({
                         </div>
                     </div>
                 ) : (
-                    <TestsContent
-                        tests={filteredTests}
-                        selectedTest={selectedTest}
-                        onTestSelect={openTestDetail}
-                        onTestRerun={onTestRerun}
-                        searchQuery={searchQuery}
-                        filter={filter}
-                    />
+                    <TicketSearchContext.Provider value={searchQuery}>
+                        <TestsContent
+                            tests={filteredTests}
+                            selectedTest={selectedTest}
+                            onTestSelect={openTestDetail}
+                            onTestRerun={onTestRerun}
+                            searchQuery={searchQuery}
+                            filter={filter}
+                        />
+                    </TicketSearchContext.Provider>
                 )}
             </div>
 

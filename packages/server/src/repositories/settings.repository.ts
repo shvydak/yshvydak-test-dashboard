@@ -1,5 +1,7 @@
 import {BaseRepository} from './base.repository'
 import {CIPipelineName, normalizeCIPipelines} from '../utils/ciPipeline.util'
+import {ChipAlignment, normalizeChipAlignment} from '../utils/chipAlignment.util'
+import {TagMode, normalizeTagMode} from '../utils/tagMode.util'
 
 const GLOBAL_PLAYWRIGHT_PROJECT_KEY = 'global_playwright_project'
 const DISK_WARNING_PERCENT_KEY = 'disk_warning_threshold_percent'
@@ -8,6 +10,9 @@ const PROJECT_TAB_CONFIGS_KEY = 'project_tab_configs'
 const DEFAULT_PROJECT_TAB_KEY = 'default_project_tab'
 const CI_AUTORUN_PAUSED_KEY = 'ci_autorun_paused'
 const CI_AUTORUN_RESUME_AT_KEY = 'ci_autorun_resume_at'
+const JIRA_BASE_URL_KEY = 'jira_base_url'
+const CHIP_ALIGNMENT_KEY = 'chip_alignment'
+const CHIP_TAG_MODE_KEY = 'chip_tag_mode'
 
 const DISK_WARNING_DEFAULT = 20
 const DISK_CRITICAL_DEFAULT = 5
@@ -36,6 +41,12 @@ export interface CIAutoRunPause {
     resumeAt: string | null
 }
 
+export interface JiraSettings {
+    baseUrl: string
+    chipAlignment: ChipAlignment
+    tagMode: TagMode
+}
+
 export interface ISettingsRepository {
     getGlobalPlaywrightProject(): Promise<string>
     setGlobalPlaywrightProject(project: string): Promise<void>
@@ -47,6 +58,8 @@ export interface ISettingsRepository {
     setDefaultProjectTab(project: string): Promise<void>
     getCIAutoRunPause(): Promise<CIAutoRunPause>
     setCIAutoRunPause(pause: CIAutoRunPause): Promise<void>
+    getJiraSettings(): Promise<JiraSettings>
+    setJiraSettings(settings: JiraSettings): Promise<void>
 }
 
 export class SettingsRepository extends BaseRepository implements ISettingsRepository {
@@ -193,5 +206,40 @@ export class SettingsRepository extends BaseRepository implements ISettingsRepos
         `
         await this.execute(upsertSql, [CI_AUTORUN_PAUSED_KEY, pause.paused ? 'true' : 'false'])
         await this.execute(upsertSql, [CI_AUTORUN_RESUME_AT_KEY, pause.resumeAt ?? ''])
+    }
+
+    async getJiraSettings(): Promise<JiraSettings> {
+        const readValue = async (key: string): Promise<string | null | undefined> =>
+            (
+                await this.queryOne<AppSettingRow>(
+                    'SELECT key, value FROM app_settings WHERE key = ?',
+                    [key]
+                )
+            )?.value
+
+        const [baseUrl, chipAlignment, tagMode] = await Promise.all([
+            readValue(JIRA_BASE_URL_KEY),
+            readValue(CHIP_ALIGNMENT_KEY),
+            readValue(CHIP_TAG_MODE_KEY),
+        ])
+
+        return {
+            baseUrl: baseUrl ?? '',
+            chipAlignment: normalizeChipAlignment(chipAlignment),
+            tagMode: normalizeTagMode(tagMode),
+        }
+    }
+
+    async setJiraSettings(settings: JiraSettings): Promise<void> {
+        const upsertSql = `
+            INSERT INTO app_settings (key, value)
+            VALUES (?, ?)
+            ON CONFLICT(key) DO UPDATE SET
+                value = excluded.value,
+                updated_at = CURRENT_TIMESTAMP
+        `
+        await this.execute(upsertSql, [JIRA_BASE_URL_KEY, settings.baseUrl])
+        await this.execute(upsertSql, [CHIP_ALIGNMENT_KEY, settings.chipAlignment])
+        await this.execute(upsertSql, [CHIP_TAG_MODE_KEY, settings.tagMode])
     }
 }

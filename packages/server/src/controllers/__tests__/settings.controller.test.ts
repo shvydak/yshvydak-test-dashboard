@@ -39,6 +39,8 @@ describe('SettingsController', () => {
             setGlobalPlaywrightProject: vi.fn(),
             getDefaultProjectTab: vi.fn(),
             setDefaultProjectTab: vi.fn(),
+            getJiraSettings: vi.fn(),
+            setJiraSettings: vi.fn(),
         }
         controller = new SettingsController(mockSettingsService)
         vi.clearAllMocks()
@@ -313,6 +315,185 @@ describe('SettingsController', () => {
             expect(ResponseHelper.badRequest).toHaveBeenCalledWith(
                 res,
                 'Unknown Playwright project: Nope'
+            )
+        })
+    })
+
+    describe('getJiraSettings()', () => {
+        it('should return Jira settings on success', async () => {
+            const settings = {
+                baseUrl: 'https://x.atlassian.net/browse/',
+                chipAlignment: 'right',
+                tagMode: 'all',
+            }
+            mockSettingsService.getJiraSettings.mockResolvedValue(settings)
+            vi.mocked(ResponseHelper.success).mockReturnValue({} as any)
+            const res = createMockResponse()
+
+            await controller.getJiraSettings(createMockRequest(), res)
+
+            expect(ResponseHelper.success).toHaveBeenCalledWith(res, settings)
+        })
+
+        it('should return 500 when the service throws', async () => {
+            mockSettingsService.getJiraSettings.mockRejectedValue(new Error('db down'))
+            vi.mocked(ResponseHelper.error).mockReturnValue({} as any)
+            const res = createMockResponse()
+
+            await controller.getJiraSettings(createMockRequest(), res)
+
+            expect(ResponseHelper.error).toHaveBeenCalledWith(
+                res,
+                'db down',
+                'Failed to get Jira settings',
+                500
+            )
+        })
+    })
+
+    describe('updateJiraSettings()', () => {
+        const saved = {
+            baseUrl: 'https://x.atlassian.net/browse/',
+            chipAlignment: 'left',
+            tagMode: 'tickets',
+        }
+        const body = (overrides: Record<string, unknown> = {}) => ({
+            baseUrl: '',
+            chipAlignment: 'left',
+            tagMode: 'tickets',
+            ...overrides,
+        })
+        const put = async (requestBody: unknown) => {
+            vi.mocked(ResponseHelper.badRequest).mockReturnValue({} as any)
+            vi.mocked(ResponseHelper.success).mockReturnValue({} as any)
+            const res = createMockResponse()
+            await controller.updateJiraSettings(createMockRequest({body: requestBody as any}), res)
+            return res
+        }
+
+        it('should trim baseUrl, save and return settings on valid input', async () => {
+            mockSettingsService.setJiraSettings.mockResolvedValue(saved)
+
+            const res = await put(body({baseUrl: '  https://x.atlassian.net/browse  '}))
+
+            expect(mockSettingsService.setJiraSettings).toHaveBeenCalledWith(
+                'https://x.atlassian.net/browse',
+                'left',
+                'tickets'
+            )
+            expect(ResponseHelper.success).toHaveBeenCalledWith(res, saved)
+        })
+
+        it('should accept an empty baseUrl (disables links)', async () => {
+            mockSettingsService.setJiraSettings.mockResolvedValue({...saved, baseUrl: ''})
+
+            await put(body({baseUrl: '   ', chipAlignment: 'right'}))
+
+            expect(mockSettingsService.setJiraSettings).toHaveBeenCalledWith('', 'right', 'tickets')
+            expect(ResponseHelper.badRequest).not.toHaveBeenCalled()
+        })
+
+        it.each(['left', 'right', 'below'])(
+            'should accept chipAlignment %s',
+            async (chipAlignment) => {
+                mockSettingsService.setJiraSettings.mockResolvedValue({...saved, chipAlignment})
+
+                await put(body({chipAlignment}))
+
+                expect(mockSettingsService.setJiraSettings).toHaveBeenCalledWith(
+                    '',
+                    chipAlignment,
+                    'tickets'
+                )
+                expect(ResponseHelper.badRequest).not.toHaveBeenCalled()
+            }
+        )
+
+        it.each(['tickets', 'all'])('should accept tagMode %s', async (tagMode) => {
+            mockSettingsService.setJiraSettings.mockResolvedValue({...saved, tagMode})
+
+            await put(body({tagMode}))
+
+            expect(mockSettingsService.setJiraSettings).toHaveBeenCalledWith('', 'left', tagMode)
+            expect(ResponseHelper.badRequest).not.toHaveBeenCalled()
+        })
+
+        it.each(['everything', 'ALL', 'Tickets', '', null, undefined, 1, true, ['all']])(
+            'should return 400 for tagMode %j',
+            async (tagMode) => {
+                const res = await put(body({tagMode}))
+
+                expect(ResponseHelper.badRequest).toHaveBeenCalledWith(
+                    res,
+                    "tagMode must be 'tickets' or 'all'"
+                )
+                expect(mockSettingsService.setJiraSettings).not.toHaveBeenCalled()
+            }
+        )
+
+        it('should return 400 when tagMode is missing from the body', async () => {
+            const res = await put({baseUrl: '', chipAlignment: 'left'})
+
+            expect(ResponseHelper.badRequest).toHaveBeenCalledWith(
+                res,
+                "tagMode must be 'tickets' or 'all'"
+            )
+            expect(mockSettingsService.setJiraSettings).not.toHaveBeenCalled()
+        })
+
+        it('should return 400 when baseUrl is not a string', async () => {
+            const res = await put(body({baseUrl: 42}))
+
+            expect(ResponseHelper.badRequest).toHaveBeenCalledWith(res, 'baseUrl must be a string')
+            expect(mockSettingsService.setJiraSettings).not.toHaveBeenCalled()
+        })
+
+        it('should return 400 when the body is missing', async () => {
+            const res = await put(undefined)
+
+            expect(ResponseHelper.badRequest).toHaveBeenCalledWith(res, 'baseUrl must be a string')
+        })
+
+        it.each(['center', 'Below', '', undefined, 1])(
+            'should return 400 for chipAlignment %j',
+            async (chipAlignment) => {
+                const res = await put(body({chipAlignment}))
+
+                expect(ResponseHelper.badRequest).toHaveBeenCalledWith(
+                    res,
+                    "chipAlignment must be 'left', 'right' or 'below'"
+                )
+                expect(mockSettingsService.setJiraSettings).not.toHaveBeenCalled()
+            }
+        )
+
+        it.each([
+            'not a url',
+            'ftp://x.com/browse/',
+            'javascript:alert(1)',
+            'atlassian.net/browse/',
+        ])('should return 400 for invalid baseUrl %j', async (baseUrl) => {
+            const res = await put(body({baseUrl}))
+
+            expect(ResponseHelper.badRequest).toHaveBeenCalledWith(
+                res,
+                'baseUrl must be empty or a valid http(s) URL'
+            )
+            expect(mockSettingsService.setJiraSettings).not.toHaveBeenCalled()
+        })
+
+        it('should return 500 when the service throws', async () => {
+            mockSettingsService.setJiraSettings.mockRejectedValue(new Error('write failed'))
+            vi.mocked(ResponseHelper.error).mockReturnValue({} as any)
+            const res = createMockResponse()
+
+            await controller.updateJiraSettings(createMockRequest({body: body()}), res)
+
+            expect(ResponseHelper.error).toHaveBeenCalledWith(
+                res,
+                'write failed',
+                'Failed to update Jira settings',
+                500
             )
         })
     })

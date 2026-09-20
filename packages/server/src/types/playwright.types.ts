@@ -5,6 +5,9 @@
 export interface PlaywrightTestEntry {
     projectId?: string
     projectName?: string
+    timeout?: number
+    expectedStatus?: string
+    annotations?: Array<{type?: string; description?: string}>
 }
 
 export interface PlaywrightSpec {
@@ -12,10 +15,14 @@ export interface PlaywrightSpec {
     title: string
     file: string
     line?: number
+    column?: number
+    // Playwright's JSON reporter strips the leading '@' (bare 'ABC-123'); Discover re-adds it
+    tags?: string[]
     tests?: PlaywrightTestEntry[]
 }
 
 export interface PlaywrightSuite {
+    // Top-level entries are FILE suites (title = file path); nested suites are describes
     title?: string
     specs?: PlaywrightSpec[]
     suites?: PlaywrightSuite[]

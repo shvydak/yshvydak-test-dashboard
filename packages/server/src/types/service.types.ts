@@ -1,5 +1,5 @@
 import {ChildProcess} from 'child_process'
-import {TestResultData, TestRunData, AttachmentData} from './database.types'
+import {TestResultData, TestRunData, AttachmentData, DiscoveredTestMetadata} from './database.types'
 
 // Service interfaces
 export interface ITestService {
@@ -121,7 +121,7 @@ export interface DiscoveredTest {
     status: 'pending'
     duration: number
     project?: string
-    metadata: string
+    metadata: DiscoveredTestMetadata
     timestamp: string
 }
 

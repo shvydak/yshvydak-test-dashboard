@@ -23,6 +23,146 @@ function normalizeTestPath(filePath: string): string {
     return filePath
 }
 
+// ---------------------------------------------------------------------------
+// Per-test metadata. Everything here is additive and best-effort: the peer range starts
+// at Playwright 1.40, so any API may be missing or a getter may throw. A failure omits
+// that field and never breaks onTestEnd, the run or the POST.
+// Discover (server playwright.service.ts) builds `describe`/`annotations`/`line`/`tags`
+// in the same shape: keep the caps and normalisation in sync (parity test in the server).
+// ---------------------------------------------------------------------------
+const MAX_ANNOTATIONS = 10
+const MAX_ANNOTATION_TYPE_CHARS = 100
+const MAX_ANNOTATION_DESCRIPTION_CHARS = 300
+const MAX_ERRORS = 5
+const MAX_ERROR_MESSAGE_CHARS = 2000
+const MAX_ERROR_STACK_CHARS = 4000
+const OUTCOMES = ['skipped', 'expected', 'unexpected', 'flaky'] as const
+
+function safely<T>(read: () => T): T | undefined {
+    try {
+        return read()
+    } catch {
+        return undefined
+    }
+}
+
+function cut(text: string, max: number): {value: string; truncated: boolean} {
+    return text.length > max
+        ? {value: text.slice(0, max), truncated: true}
+        : {value: text, truncated: false}
+}
+
+function finiteNumber(value: unknown): number | undefined {
+    return typeof value === 'number' && Number.isFinite(value) ? value : undefined
+}
+
+/**
+ * Describe titles only, outermost first. Suite layout is root > project > file > describe...
+ * `Suite.type` exists from Playwright 1.44; older versions fall back to dropping the three
+ * outermost ancestors. Anonymous describes (empty title) are skipped, like titlePath() does.
+ */
+function getDescribeChain(test: TestCase): string[] {
+    const ancestors: Array<{title?: unknown; type?: unknown}> = []
+    for (let suite: any = test.parent; suite; suite = suite.parent) {
+        ancestors.push(suite)
+    }
+    const describes = ancestors.every((suite) => typeof suite.type === 'string')
+        ? ancestors.filter((suite) => suite.type === 'describe')
+        : ancestors.slice(0, -3)
+    return describes
+        .map((suite) => suite.title)
+        .filter((title): title is string => typeof title === 'string' && title !== '')
+        .reverse()
+}
+
+/** Normalised, de-duplicated, capped annotations from any number of raw lists. */
+function normalizeAnnotations(...lists: unknown[]): TestAnnotation[] {
+    const result: TestAnnotation[] = []
+    const seen = new Set<string>()
+    for (const list of lists) {
+        if (!Array.isArray(list)) continue
+        for (const item of list) {
+            if (!item || typeof item.type !== 'string') continue
+            const type = cut(item.type, MAX_ANNOTATION_TYPE_CHARS).value
+            const description =
+                typeof item.description === 'string'
+                    ? cut(item.description, MAX_ANNOTATION_DESCRIPTION_CHARS).value
+                    : undefined
+            const key = `${type}\u0000${description ?? ''}`
+            if (seen.has(key)) continue
+            seen.add(key)
+            result.push(description === undefined ? {type} : {type, description})
+            if (result.length >= MAX_ANNOTATIONS) return result
+        }
+    }
+    return result
+}
+
+function collectErrors(rawErrors: unknown): {errors: TestErrorInfo[]; truncated: boolean} {
+    const errors: TestErrorInfo[] = []
+    if (!Array.isArray(rawErrors)) return {errors, truncated: false}
+    for (const raw of rawErrors.slice(0, MAX_ERRORS)) {
+        const entry: TestErrorInfo = {}
+        let truncated = false
+        if (typeof raw?.message === 'string') {
+            const message = cut(raw.message, MAX_ERROR_MESSAGE_CHARS)
+            entry.message = message.value
+            truncated = truncated || message.truncated
+        }
+        if (typeof raw?.stack === 'string') {
+            const stack = cut(raw.stack, MAX_ERROR_STACK_CHARS)
+            entry.stack = stack.value
+            truncated = truncated || stack.truncated
+        }
+        if (entry.message === undefined && entry.stack === undefined) continue
+        if (truncated) entry.truncated = true
+        errors.push(entry)
+    }
+    return {errors, truncated: rawErrors.length > MAX_ERRORS}
+}
+
+function collectTestMetadata(
+    test: TestCase,
+    result: TestResult
+): Partial<NonNullable<YShvydakTestResult['metadata']>> {
+    const meta: Partial<NonNullable<YShvydakTestResult['metadata']>> = {}
+
+    const describe = safely(() => getDescribeChain(test))
+    if (describe && describe.length > 0) meta.describe = describe
+
+    const annotations = safely(() => normalizeAnnotations(test.annotations, result.annotations))
+    if (annotations && annotations.length > 0) meta.annotations = annotations
+
+    meta.line = safely(() => finiteNumber(test.location?.line))
+    meta.column = safely(() => finiteNumber(test.location?.column))
+
+    const collected = safely(() => collectErrors(result.errors))
+    if (collected && collected.errors.length > 0) {
+        meta.errors = collected.errors
+        if (collected.truncated) meta.errorsTruncated = true
+    }
+
+    const outcome = safely(() => (typeof test.outcome === 'function' ? test.outcome() : undefined))
+    if (outcome && (OUTCOMES as readonly string[]).includes(outcome)) meta.outcome = outcome
+
+    const expectedStatus = safely(() => test.expectedStatus)
+    if (typeof expectedStatus === 'string') meta.expectedStatus = expectedStatus
+
+    meta.retry = safely(() => finiteNumber(result.retry))
+    meta.retries = safely(() => finiteNumber(test.retries))
+    meta.timeout = safely(() => finiteNumber(test.timeout))
+
+    meta.startTime = safely(() => {
+        const start: unknown = result.startTime
+        if (start instanceof Date) return start.toISOString()
+        return typeof start === 'string' ? start : undefined
+    })
+    meta.workerIndex = safely(() => finiteNumber(result.workerIndex))
+    meta.parallelIndex = safely(() => finiteNumber(result.parallelIndex))
+
+    return meta
+}
+
 interface TestStep {
     title: string
     category: string
@@ -61,7 +201,42 @@ interface YShvydakTestResult {
             entries: ConsoleEntry[]
             truncated?: boolean
         }
+        // Playwright tags incl. leading '@' (e.g. '@ABC-123')
+        tags?: string[]
+        // Describe titles only (no root/project/file/test title), outermost first
+        describe?: string[]
+        // De-duplicated test + result annotations (skip/fixme/fail reasons, custom); capped
+        annotations?: TestAnnotation[]
+        // Test declaration position in the file
+        line?: number
+        column?: number
+        // All errors of the result (soft assertions too), capped; the singular errorMessage/
+        // errorStack above are unchanged. errorsTruncated = more errors existed than kept.
+        errors?: TestErrorInfo[]
+        errorsTruncated?: boolean
+        // test.outcome(); expectedStatus/retry/retries/timeout as Playwright reports them
+        outcome?: 'skipped' | 'expected' | 'unexpected' | 'flaky'
+        expectedStatus?: string
+        retry?: number
+        retries?: number
+        timeout?: number
+        // ISO start time of this result and the worker that ran it
+        startTime?: string
+        workerIndex?: number
+        parallelIndex?: number
     }
+}
+
+interface TestAnnotation {
+    type: string
+    description?: string
+}
+
+interface TestErrorInfo {
+    message?: string
+    stack?: string
+    // message and/or stack were cut to their cap
+    truncated?: boolean
 }
 
 interface YShvydakTestRun {
@@ -213,6 +388,9 @@ class YShvydakReporter implements Reporter {
                     consoleEntries.length > 0
                         ? {entries: consoleEntries, truncated: consoleTruncated || undefined}
                         : undefined,
+                // TestCase.tags needs Playwright >= 1.42; peer range starts at 1.40
+                tags: safely(() => test.tags) ?? [],
+                ...(safely(() => collectTestMetadata(test, result)) ?? {}),
             },
         }
 

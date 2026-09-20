@@ -173,7 +173,12 @@ describe('TestService', () => {
                     filePath: '/path/to/test1.spec.ts',
                     status: 'pending',
                     duration: 0,
-                    metadata: '{}',
+                    metadata: {
+                        line: 1,
+                        playwrightId: null,
+                        tags: [],
+                        discoveredAt: '2025-10-21T10:00:00.000Z',
+                    },
                     timestamp: '2025-10-21T10:00:00.000Z',
                 },
                 {
@@ -184,7 +189,12 @@ describe('TestService', () => {
                     filePath: '/path/to/test2.spec.ts',
                     status: 'pending',
                     duration: 0,
-                    metadata: '{}',
+                    metadata: {
+                        line: 1,
+                        playwrightId: null,
+                        tags: [],
+                        discoveredAt: '2025-10-21T10:00:00.000Z',
+                    },
                     timestamp: '2025-10-21T10:00:00.000Z',
                 },
             ]

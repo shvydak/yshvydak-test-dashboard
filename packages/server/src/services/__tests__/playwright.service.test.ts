@@ -288,10 +288,283 @@ describe('PlaywrightService', () => {
             const tests = await service.discoverTests()
 
             // Assert
-            const metadata = JSON.parse(tests[0].metadata)
+            const metadata = tests[0].metadata
             expect(metadata.line).toBe(42)
             expect(metadata.playwrightId).toBe('spec-123')
             expect(metadata.discoveredAt).toBeDefined()
+        })
+
+        it('should store bare JSON-reporter tags with a leading @ (matches the reporter format)', async () => {
+            const mockPlaywrightOutput = {
+                suites: [
+                    {
+                        specs: [
+                            {
+                                id: 'spec-1',
+                                title: 'tagged test',
+                                file: 'test.spec.ts',
+                                tags: ['ABC-123', 'sanity'],
+                            },
+                        ],
+                    },
+                ],
+            }
+
+            mockSpawn.mockReturnValue(createMockProcess(JSON.stringify(mockPlaywrightOutput)))
+
+            const tests = await service.discoverTests()
+
+            expect(tests[0].metadata.tags).toEqual(['@ABC-123', '@sanity'])
+        })
+
+        it('should not double-prefix tags that already start with @', async () => {
+            const mockPlaywrightOutput = {
+                suites: [
+                    {
+                        specs: [
+                            {
+                                id: 'spec-2',
+                                title: 'prefixed',
+                                file: 'test.spec.ts',
+                                tags: ['@ABC-123', 'sanity'],
+                            },
+                        ],
+                    },
+                ],
+            }
+
+            mockSpawn.mockReturnValue(createMockProcess(JSON.stringify(mockPlaywrightOutput)))
+
+            const tests = await service.discoverTests()
+
+            expect(tests[0].metadata.tags).toEqual(['@ABC-123', '@sanity'])
+        })
+
+        describe('describe / annotations / static config metadata', () => {
+            // Real JSON-reporter shape: top-level suites are FILE suites (title = file path),
+            // nested suites are describes.
+            const jsonTest = (extra: Record<string, unknown> = {}) => ({
+                timeout: 30000,
+                annotations: [],
+                expectedStatus: 'passed',
+                projectId: 'chromium',
+                projectName: 'chromium',
+                results: [],
+                status: 'skipped',
+                ...extra,
+            })
+            const spec = (
+                title: string,
+                extra: Record<string, unknown> = {},
+                test = jsonTest()
+            ) => ({
+                title,
+                ok: true,
+                tags: [],
+                tests: [test],
+                id: `id-${title}`,
+                file: 'login.spec.ts',
+                line: 10,
+                column: 3,
+                ...extra,
+            })
+            const discoverOne = async (fileSuite: unknown) => {
+                mockSpawn.mockReturnValue(createMockProcess(JSON.stringify({suites: [fileSuite]})))
+                return service.discoverTests()
+            }
+
+            it('has no describe for a top-level test and takes describes only from nested suites', async () => {
+                const tests = await discoverOne({
+                    title: 'login.spec.ts',
+                    file: 'login.spec.ts',
+                    line: 0,
+                    column: 0,
+                    specs: [spec('plain test')],
+                    suites: [
+                        {
+                            title: 'Auth',
+                            file: 'login.spec.ts',
+                            line: 4,
+                            column: 6,
+                            specs: [spec('in auth')],
+                            suites: [
+                                {
+                                    title: 'Login',
+                                    file: 'login.spec.ts',
+                                    line: 6,
+                                    column: 8,
+                                    specs: [spec('in login')],
+                                },
+                            ],
+                        },
+                    ],
+                })
+
+                const byName = Object.fromEntries(tests.map((t) => [t.name, t.metadata]))
+                expect(byName['plain test'].describe).toBeUndefined()
+                expect(byName['in auth'].describe).toEqual(['Auth'])
+                expect(byName['in login'].describe).toEqual(['Auth', 'Login'])
+            })
+
+            it('never includes the file suite title or the test title in describe', async () => {
+                const [test] = await discoverOne({
+                    title: 'e2e/login.spec.ts',
+                    specs: [],
+                    suites: [{title: 'Outer', specs: [spec('the test')]}],
+                })
+
+                expect(test.metadata.describe).toEqual(['Outer'])
+            })
+
+            it('skips anonymous (empty-title) describes but keeps their nested titles', async () => {
+                const [test] = await discoverOne({
+                    title: 'login.spec.ts',
+                    specs: [],
+                    suites: [
+                        {
+                            title: 'Outer',
+                            suites: [{title: '', suites: [{title: 'Inner', specs: [spec('t')]}]}],
+                        },
+                    ],
+                })
+
+                expect(test.metadata.describe).toEqual(['Outer', 'Inner'])
+            })
+
+            it('sends line, column, timeout, expectedStatus and playwrightId', async () => {
+                const [test] = await discoverOne({
+                    title: 'login.spec.ts',
+                    specs: [
+                        spec(
+                            't',
+                            {line: 42, column: 9},
+                            jsonTest({timeout: 60000, expectedStatus: 'failed'})
+                        ),
+                    ],
+                })
+
+                expect(test.metadata).toMatchObject({
+                    line: 42,
+                    column: 9,
+                    timeout: 60000,
+                    expectedStatus: 'failed',
+                    playwrightId: 'id-t',
+                })
+            })
+
+            it('omits optional fields the spec does not carry', async () => {
+                const [test] = await discoverOne({
+                    title: 'login.spec.ts',
+                    specs: [{title: 't', file: 'login.spec.ts', tests: [{}]}],
+                })
+
+                expect(test.metadata.line).toBe(0)
+                for (const key of [
+                    'column',
+                    'describe',
+                    'annotations',
+                    'timeout',
+                    'expectedStatus',
+                ]) {
+                    expect(test.metadata).not.toHaveProperty(key)
+                }
+                expect(test.metadata.tags).toEqual([])
+            })
+
+            it('copies static annotations, de-duplicated and capped', async () => {
+                const [withReasons] = await discoverOne({
+                    title: 'login.spec.ts',
+                    specs: [
+                        spec(
+                            't',
+                            {},
+                            jsonTest({
+                                annotations: [
+                                    {type: 'skip', description: 'flaky on CI'},
+                                    {type: 'skip', description: 'flaky on CI'},
+                                    {type: 'slow'},
+                                ],
+                            })
+                        ),
+                    ],
+                })
+                expect(withReasons.metadata.annotations).toEqual([
+                    {type: 'skip', description: 'flaky on CI'},
+                    {type: 'slow'},
+                ])
+
+                const many = Array.from({length: 25}, (_, i) => ({type: `t${i}`}))
+                const [capped] = await discoverOne({
+                    title: 'login.spec.ts',
+                    specs: [spec('t', {}, jsonTest({annotations: many}))],
+                })
+                expect(capped.metadata.annotations).toHaveLength(10)
+            })
+
+            it('cuts long annotation descriptions and types like the reporter does', async () => {
+                const [test] = await discoverOne({
+                    title: 'login.spec.ts',
+                    specs: [
+                        spec(
+                            't',
+                            {},
+                            jsonTest({
+                                annotations: [
+                                    {type: 'x'.repeat(300), description: 'd'.repeat(999)},
+                                ],
+                            })
+                        ),
+                    ],
+                })
+
+                const [annotation] = test.metadata.annotations!
+                expect(annotation.type).toHaveLength(100)
+                expect(annotation.description).toHaveLength(300)
+            })
+
+            it('ignores malformed annotations and non-finite numbers', async () => {
+                const [test] = await discoverOne({
+                    title: 'login.spec.ts',
+                    specs: [
+                        spec(
+                            't',
+                            {column: 'x'},
+                            jsonTest({
+                                annotations: [null, {}, {type: 1}, {type: 'ok'}],
+                                timeout: 'soon',
+                            })
+                        ),
+                    ],
+                })
+
+                expect(test.metadata.annotations).toEqual([{type: 'ok'}])
+                expect(test.metadata).not.toHaveProperty('timeout')
+                expect(test.metadata).not.toHaveProperty('column')
+            })
+
+            it('keeps testId, name and filePath semantics unchanged', async () => {
+                const [test] = await discoverOne({
+                    title: 'login.spec.ts',
+                    specs: [],
+                    suites: [{title: 'Outer', specs: [spec('the test')]}],
+                })
+
+                expect(test.name).toBe('the test')
+                expect(test.filePath).toBe('login.spec.ts')
+                expect(test.testId).toMatch(/^test-/)
+            })
+        })
+
+        it('should store empty tags when the spec has none', async () => {
+            const mockPlaywrightOutput = {
+                suites: [{specs: [{id: 's', title: 'untagged', file: 'test.spec.ts'}]}],
+            }
+
+            mockSpawn.mockReturnValue(createMockProcess(JSON.stringify(mockPlaywrightOutput)))
+
+            const tests = await service.discoverTests()
+
+            expect(tests[0].metadata.tags).toEqual([])
         })
 
         it('should handle empty test suites', async () => {

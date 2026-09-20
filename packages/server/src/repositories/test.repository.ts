@@ -29,6 +29,20 @@ const TEST_RESULT_RELATIONS_JOINS = `
     LEFT JOIN attachment_cleanups ac ON tr.id = ac.test_result_id
 `
 
+// Unscoped lists/counts (no project, no runId) leave out tests whose latest row has no project
+// ('' or NULL: legacy rows, results without a project) -- but only while the database has at
+// least one named project. With none (Playwright config without named projects, every row has
+// project ''), nothing is hidden. Applied AFTER picking each test's latest row, and shared by
+// getAllTests and getTestStatusCounts so the list and the cards cannot diverge. The uncorrelated
+// EXISTS runs once per statement and stops at the first named row (no index on project: a full
+// scan only in setups that have no named project).
+// getProjectStatusSummary (tab badges) keeps `project != ''`: rows without a project cannot be
+// attributed to a tab, and setups without named projects have no tabs.
+const unscopedProjectFilter = (projectColumn: string): string =>
+    `(${projectColumn} != '' OR NOT EXISTS (
+        SELECT 1 FROM test_results named WHERE named.project IS NOT NULL AND named.project != ''
+    ))`
+
 export class TestRepository extends BaseRepository implements ITestRepository {
     async saveTestResult(testData: TestResultData): Promise<string> {
         return this.dbManager.saveTestResult(testData)
@@ -123,8 +137,9 @@ export class TestRepository extends BaseRepository implements ITestRepository {
         } else {
             // Pick the latest execution per test_id with a window function (O(N log N))
             // instead of a correlated subquery (O(N^2)) — important once history grows.
-            // Project filter is applied AFTER rn = 1 so semantics match getProjectStatusSummary
-            // (latest row globally, then attribute by that row's project). History is untouched.
+            // Project filters (explicit project, or "has a project" when unscoped) are applied
+            // AFTER rn = 1 so semantics match getProjectStatusSummary (latest row globally, then
+            // attribute by that row's project). History is untouched.
             // "Latest" is created_at, never updated_at: the AFTER UPDATE trigger bumps updated_at on any row a migration touches.
             innerSql = `
                 SELECT *
@@ -140,6 +155,10 @@ export class TestRepository extends BaseRepository implements ITestRepository {
         if (filters.project) {
             innerSql += ` AND project = ?`
             params.push(filters.project)
+        } else if (!filters.runId) {
+            // Unscoped list: same rule as getTestStatusCounts (see unscopedProjectFilter), so the
+            // list and the cards agree. A specific run's results stay unfiltered.
+            innerSql += ` AND ${unscopedProjectFilter('project')}`
         }
 
         if (filters.status) {
@@ -305,6 +324,7 @@ export class TestRepository extends BaseRepository implements ITestRepository {
      * Latest status per test_id, aggregated by project. Powers the tab-bar status badge —
      * reflects the current state of every project regardless of what triggered each test's
      * last run (manual rerun, group run, Run All, or a CI-pipeline step).
+     * Always skips project='' rows: they cannot be attributed to a tab (see unscopedProjectFilter).
      */
     async getProjectStatusSummary(): Promise<
         {project: string; total: number; passed: number; failed: number}[]
@@ -344,7 +364,8 @@ export class TestRepository extends BaseRepository implements ITestRepository {
      * or the badges silently cap at the page size (see getProjectStatusSummary, which
      * this mirrors for the tab-bar badge). Ordered by created_at like getAllTests() and
      * getProjectStatusSummary, so the list, the counts and the tab badge agree.
-     * Without a project, tests whose latest row has project='' are excluded (as in the badge).
+     * Without a project, tests whose latest row has no project are excluded while at least one
+     * named project exists (see unscopedProjectFilter).
      */
     async getTestStatusCounts(project?: string): Promise<TestStatusCounts> {
         const params: any[] = []
@@ -370,10 +391,9 @@ export class TestRepository extends BaseRepository implements ITestRepository {
             sql += ` AND l.project = ?`
             params.push(project)
         } else {
-            // Same filter as getProjectStatusSummary (applied AFTER picking each test's latest
-            // row): legacy project='' rows must not count, or the Dashboard cards disagree
-            // with the tab badges once such a row resurfaces as "latest".
-            sql += ` AND l.project != ''`
+            // Legacy project='' rows must not count once named projects exist, or the cards
+            // disagree with the tab badges when such a row resurfaces as "latest".
+            sql += ` AND ${unscopedProjectFilter('l.project')}`
         }
 
         const row = await this.queryOne<{

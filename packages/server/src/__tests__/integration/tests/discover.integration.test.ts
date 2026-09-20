@@ -240,7 +240,9 @@ describe('POST /api/tests/discovery - Test Discovery (Integration)', () => {
                                 title: 'Tagged Test',
                                 ok: true,
                                 tags: ['sanity', 'ABC-123'],
-                                tests: [{projectId: '', projectName: '', results: []}],
+                                tests: [
+                                    {projectId: 'chromium', projectName: 'chromium', results: []},
+                                ],
                                 id: 'tagged-1',
                                 file: 'tests/tagged.spec.ts',
                                 line: 7,
@@ -272,6 +274,63 @@ describe('POST /api/tests/discovery - Test Discovery (Integration)', () => {
                 tags: ['@sanity', '@ABC-123'],
             })
             expect(row.metadata.discoveredAt).toBeDefined()
+        })
+    })
+
+    describe('Rows without a project (Playwright config without named projects)', () => {
+        const discoverUnnamed = async () => {
+            // projectName '' (no named projects) -> rows are stored with project ''
+            vi.spyOn(
+                server.serviceContainer.playwrightService as any,
+                'executePlaywrightListCommand'
+            ).mockResolvedValue(fixtures.playwrightListOutput)
+            await request(server.app).post('/api/tests/discovery').expect(200)
+        }
+        const getListAndCounts = async () => {
+            const list = await request(server.app)
+                .get('/api/tests')
+                .set('Authorization', `Bearer ${server.authToken}`)
+                .expect(200)
+            const counts = await request(server.app)
+                .get('/api/tests/status-counts')
+                .set('Authorization', `Bearer ${server.authToken}`)
+                .expect(200)
+            return {list: list.body.data, counts: counts.body.data}
+        }
+
+        it('are listed and counted while no named project exists', async () => {
+            await discoverUnnamed()
+
+            const stored = await getAllTestResults(server.testRepository.dbManager)
+            expect(stored.length).toBe(3)
+            expect(stored.every((row) => row.project === '')).toBe(true)
+
+            const {list, counts} = await getListAndCounts()
+            expect(list).toHaveLength(3)
+            expect(counts).toMatchObject({total: 3, pending: 3})
+        })
+
+        it('are hidden from the list and the counts once a named-project row exists', async () => {
+            await discoverUnnamed()
+            await server.testRepository.dbManager.execute(
+                `INSERT INTO test_results (id, test_id, run_id, name, file_path, status, duration, project)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+                [
+                    'named-1',
+                    'test-named-1',
+                    null,
+                    'Named',
+                    'named.spec.ts',
+                    'passed',
+                    10,
+                    'UI_Tests',
+                ]
+            )
+
+            const {list, counts} = await getListAndCounts()
+
+            expect(list.map((t: {name: string}) => t.name)).toEqual(['Named'])
+            expect(counts).toMatchObject({total: 1, passed: 1, pending: 0})
         })
     })
 

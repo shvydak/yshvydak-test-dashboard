@@ -1,242 +1,101 @@
-# Release Process - Quick Guide
-
-## 🚀 Release from Feature Branch (Recommended)
+# Releasing
 
-**All-in-one workflow: code + changeset + version + tag in feature branch**
-
-```bash
-# 1. Create feature branch
-git checkout develop  # or main
-git pull origin develop
-git checkout -b feature/your-feature-name
+This repo has no CI workflows (no `.github/` directory): nothing is published, tagged or deployed automatically. Every step below is run by hand.
 
-# 2. Make code changes...
-
-# 3. Create changeset (ONLY if code changes require version update)
-npm run changeset
-# Select packages:
-#   [x] @yshvydak/server     ← ALWAYS together for Dashboard
-#   [x] @yshvydak/web        ← ALWAYS together for Dashboard
-#   [x] @yshvydak/core       ← ALWAYS together for Dashboard
-#   [ ] playwright-dashboard-reporter  ← Only if reporter changed
-# Select type: major/minor/patch (same type for all Dashboard packages)
-# Write summary: First line short, then detailed changes
+## Tag scheme
 
-# 4. Commit changeset
-git add .
-git commit -m "feat(scope): description"
+One scheme for both parts, annotated tags:
 
-# 5. Apply changesets (updates versions, CHANGELOG, deletes changeset files)
-npm run version
+- `reporter-vX.Y.Z` for `playwright-dashboard-reporter`
+- `dashboard-vX.Y.Z` for the dashboard (`@yshvydak/server`, `@yshvydak/web`, `@yshvydak/core`)
 
-# 6. Review version changes
-git status
-git diff
+## Reporter (`playwright-dashboard-reporter`, npm)
 
-# 7. Check versions (should be identical for server/web/core)
-cat packages/server/package.json | grep version
-cat packages/web/package.json | grep version
-cat packages/core/package.json | grep version
+The package lives in `packages/reporter`. It is versioned independently of the dashboard: it depends only on `dotenv` and `uuid` (not on `@yshvydak/core`), has peer dependency `@playwright/test ^1.40.0`, and `publishConfig.access` is `public`.
 
-# 8. Commit version changes
-git add .
-git commit -m "chore: release v1.4.0
+Placeholders below: `X.Y.Z` is the new version, `<bump>` is `patch`, `minor` or `major`.
 
-- @yshvydak/server@1.4.0
-- @yshvydak/web@1.4.0
-- @yshvydak/core@1.4.0"
+1. **Preconditions.** On `develop`, clean tree (`git status`). Check the account and the current registry version:
 
-# 9. Create tags
-git tag dashboard-v1.4.0 -m "Dashboard release 1.4.0"
-# If reporter changed:
-git tag reporter-v1.0.5 -m "Reporter release 1.0.5"
+    ```bash
+    npm whoami
+    npm view playwright-dashboard-reporter version
+    ```
 
-# 10. Push feature branch with tags
-git push origin feature/your-feature-name --follow-tags
+    The version in `packages/reporter/package.json` must be higher than the registry version; npm refuses to publish a version that already exists. If it is already higher, skip step 2.
 
-# 11. Merge to main or develop
-# Option A: Via PR (recommended)
-# Create PR: feature/your-feature-name → main (or develop)
-# Merge PR → n8n automatically deploys (if merged to main)
+2. **Bump** (from the repo root; use npm rather than editing the file, so the lockfile stays in sync):
 
-# Option B: Direct merge
-git checkout main
-git merge feature/your-feature-name
-git push origin main
-# → n8n deploys
+    ```bash
+    npm version <bump> -w playwright-dashboard-reporter --no-git-tag-version
+    git diff --stat
+    ```
 
-# 12. Sync develop (if merged to main)
-git checkout develop
-git merge main
-git push origin develop
+    Expected diff: exactly two changed lines, the `version` in `packages/reporter/package.json` and in the `packages/reporter` entry of `package-lock.json`. If `package-lock.json` is not updated, run `npm install --package-lock-only`. On some npm versions the bump re-indents the whole `package-lock.json` from 4 to 2 spaces (a diff of about 26k lines; `.prettierignore` excludes the file, so prettier will not fix it). If that happens, restore 4-space indentation and check `git diff --stat` again:
 
-# 13. Delete feature branch (tags remain - tied to commits!)
-git branch -d feature/your-feature-name
-git push origin --delete feature/your-feature-name
+    ````bash
+    node -e "const f='package-lock.json',fs=require('fs');fs.writeFileSync(f,JSON.stringify(JSON.parse(fs.readFileSync(f)),null,4)+'\n')"
+    ``` In a workspace npm does not commit or tag on its own; `--no-git-tag-version` keeps that explicit.
 
-# 14. Publish reporter to NPM (if version changed)
-npm whoami  # Check login
-npm run release:reporter
-```
+    Optional: add an entry to `packages/reporter/CHANGELOG.md` (its last entry is 1.0.4; later versions were bumped by hand).
 
----
+    ````
 
-## 🔄 Alternative: Release from Develop
+3. **Commit.** `git commit -am "chore(reporter): release X.Y.Z"` (review `git status` first so nothing unrelated is included).
 
-**Traditional workflow: merge feature first, then release from develop**
+4. **Check** (from the repo root):
 
-```bash
-# 1. Develop feature in branch
-git checkout -b feature/my-feature
-# ... code changes ...
-git commit -m "feat: description"
-git push origin feature/my-feature
+    ```bash
+    npm run type-check
+    npx vitest run --project reporter
+    npm run build -w playwright-dashboard-reporter
+    npm pack --dry-run -w playwright-dashboard-reporter
+    ```
 
-# 2. Create PR and merge to develop (without changeset yet)
+    `npm pack --dry-run` must show `version: X.Y.Z` and list `README.md`, `package.json`, `dist/*` and `LICENSE` (npm adds `LICENSE` only if the file exists in `packages/reporter/`). It uploads nothing.
 
-# 3. Release from develop
-git checkout develop
-git pull origin develop
+5. **Publish.**
 
-# 4. Create changeset
-npm run changeset
+    ```bash
+    cd packages/reporter
+    npm publish
+    ```
 
-# 5. Apply changesets
-npm run version
+    `prepublishOnly` runs `npm run build && npm run type-check` first, so a broken build fails the publish. `--access public` is not needed (`publishConfig`). With 2FA on the account add `--otp=<code>`. `npm run release:reporter` at the repo root does the same as the two commands above.
 
-# 6. Commit + tag
-git add .
-git commit -m "chore: release v1.4.0"
-git tag dashboard-v1.4.0 -m "Dashboard release 1.4.0"
+6. **Verify.** `npm view playwright-dashboard-reporter version` prints `X.Y.Z`.
 
-# 7. Push with tags
-git push origin develop --follow-tags
+7. **Tag and push.**
 
-# 8. Create PR: develop → main
-# Merge PR → n8n deploys
-```
+    ```bash
+    git tag reporter-vX.Y.Z -m "Reporter release X.Y.Z"
+    git push origin develop --follow-tags
+    ```
 
----
+8. **Update consumers.** In each test project that uses the reporter:
 
-## ⚠️ Important Rules
+    ```bash
+    npm install playwright-dashboard-reporter@latest
+    ```
 
-### ✅ DO:
+    Projects that declare a caret range (`^1.0.7`) and keep a lockfile stay on the locked version until they run `npm install` with an explicit version or `npm update playwright-dashboard-reporter`. The dashboard resolves the reporter from the test project's `node_modules` (`--reporter=playwright-dashboard-reporter`, working directory `PLAYWRIGHT_PROJECT_DIR`), so a new dashboard build alone does not change which reporter runs.
 
-- **ALWAYS update server AND web together** (same version, same type)
-- Create changeset for functional changes
-- Use `npm run version` to update versions (never manually)
-- Check versions before creating tags
-- Sync develop after merging to main
+Local development: `npm link` (see [archive/NPM_LINK_SETUP.md](archive/NPM_LINK_SETUP.md)). A linked checkout does not receive published versions, and edits in `packages/reporter/src` do not reach a non-linked install.
 
-### ❌ DON'T:
+## Dashboard (server, web, core)
 
-- Don't manually edit `package.json` versions (use `npm run version`)
-- Don't manually edit `CHANGELOG.md` (changesets do it)
-- Don't create different versions for server/web/core
-- Don't delete changeset files manually (npm run version does it)
-- Don't forget to publish reporter to NPM if changed
+The three packages are versioned with Changesets (`.changeset/config.json`, one `CHANGELOG.md` per package; they are currently at the same version). Convention: bump `@yshvydak/server`, `@yshvydak/web` and `@yshvydak/core` together with the same bump type. The root `package.json` (`private`) has its own version line.
 
----
+1. `npm run changeset`: select server, web and core, the same bump type, write a short summary. Do not select `playwright-dashboard-reporter` (`.changeset/config.json` has `ignore: []`, so it is offered): its version is bumped by hand. Commit the changeset file.
+2. `npm run version`: applies the pending changesets (bumps versions, updates the `CHANGELOG.md` files, removes the changeset files). Check the result:
 
-## 📝 Changeset Guidelines
+    ```bash
+    node -e "for (const p of ['server','web','core']) console.log(p, require('./packages/'+p+'/package.json').version)"
+    ```
 
-### When to create:
+3. Commit: `chore: release vX.Y.Z`.
+4. Tag: `git tag dashboard-vX.Y.Z -m "Dashboard release X.Y.Z"` (use the version from `packages/server/package.json`), then `git push origin <branch> --follow-tags`.
 
-- ✅ New feature
-- ✅ Bug fix
-- ✅ Breaking change
+Skip the changeset for documentation-only, test-only and internal refactoring changes.
 
-### When to skip:
-
-- ❌ Documentation only
-- ❌ Tests only (no functional changes)
-- ❌ Routine tasks (chore)
-
-### Summary format:
-
-```
-Add test notes feature for annotating tests
-
-- Server: Add test_notes table, NoteController, NoteService, NoteRepository
-- Web: Add TestNoteEditor component with edit/save/delete functionality
-- Web: Display notes in TestOverviewTab and add 💬 indicator
-```
-
----
-
-## � Useful Commands
-
-```bash
-# Check what will be released
-npm run changeset:status
-
-# Apply changesets (updates versions, CHANGELOG, deletes changesets)
-npm run version
-
-# Check versions
-cat packages/server/package.json | grep version
-cat packages/web/package.json | grep version
-
-# Publish reporter
-npm run release:reporter
-
-# Check NPM login
-npm whoami
-npm login
-```
-
----
-
-## 🎯 Version Synchronization
-
-**Dashboard packages MUST have identical versions:**
-
-```
-server:   1.4.0 ✅
-web:      1.4.0 ✅
-core:     1.4.0 ✅
-reporter: 1.0.5 (independent)
-```
-
-If versions diverged, select ALL packages in next changeset to sync them.
-
----
-
-## ❓ Quick FAQ
-
-**Q: Can I release from a feature branch?**  
-A: Yes, technically from any branch. Tags are tied to commits, not branches.
-
-**Q: What happens to tags when I delete a branch?**  
-A: Tags remain - they're tied to commits.
-
-**Q: Which version for dashboard tag?**  
-A: Use version from `packages/server/package.json` after `npm run version`.
-
-**Q: What does `npm run version` do?**  
-A: Updates `package.json` versions, updates `CHANGELOG.md`, deletes changeset files.
-
-**Q: Warning about @yshvydak/core "file:../core"?**  
-A: Normal for monorepo. Ignore it.
-
----
-
-## � Pre-Release Checklist
-
-```markdown
-- [ ] All PRs merged to develop
-- [ ] Changeset created for functional changes
-- [ ] npm run version executed
-- [ ] Versions synced (server = web = core)
-- [ ] CHANGELOG.md updated
-- [ ] Git tag created
-- [ ] Pushed to develop with tags
-- [ ] PR created: develop → main
-- [ ] PR merged (n8n deploys automatically)
-- [ ] Reporter published to NPM (if changed)
-```
-
----
-
-**Last Updated:** December 3, 2024  
-**Document Version:** 3.0.0
+Deploying a build is not automated by this repo. On a host it is done with the pm2 scripts in the root `package.json` (`ecosystem.config.js`): `npm run deploy:prod` runs `git pull && npm install && npm run auto:prod` (build, pm2 restart, `pm2 save`).

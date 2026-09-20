@@ -1,308 +1,112 @@
-# Reporter Documentation
+# Reporter
 
-## Overview
+[`playwright-dashboard-reporter`](https://www.npmjs.com/package/playwright-dashboard-reporter) sends Playwright results to the dashboard. Source: [`packages/reporter/src/index.ts`](../packages/reporter/src/index.ts). Consumer-facing readme: [`packages/reporter/README.md`](../packages/reporter/README.md).
 
-The YShvydak Test Dashboard uses **[`playwright-dashboard-reporter`](https://www.npmjs.com/package/playwright-dashboard-reporter)** - a professional npm package that sends Playwright test results to the Dashboard in real-time.
-
-📦 **npm Package**: [`playwright-dashboard-reporter@1.0.1`](https://www.npmjs.com/package/playwright-dashboard-reporter)
-🏗️ **Source Code**: [`packages/reporter/src/index.ts`](../packages/reporter/src/index.ts)
-
----
-
-## For Users: Installation & Usage
-
-### Installation
+## Install and use
 
 ```bash
-# In your Playwright test project
+# in your Playwright project
 npm install --save-dev playwright-dashboard-reporter
 ```
 
-### Configuration
-
-**No changes to `playwright.config.ts` needed!** The Dashboard automatically adds the reporter when running tests.
-
-Your `playwright.config.ts` can stay unchanged:
-
-```typescript
-// playwright.config.ts - NO CHANGES NEEDED
-import {defineConfig} from '@playwright/test'
-
-export default defineConfig({
-    reporter: [
-        ['html'], // Your existing reporters work as usual
-        ['list'],
-    ],
-})
-```
-
-### Usage
-
-The Dashboard handles everything automatically:
-
-1. **Test Discovery**: Dashboard scans your project with `npx playwright test --list`
-2. **Test Execution**: Dashboard runs tests with `npx playwright test --reporter=playwright-dashboard-reporter`
-3. **Results**: Appear in Dashboard automatically via WebSocket
-
-**Note:** The dashboard works with any Playwright project structure. File paths are handled by Playwright based on your `testDir` configuration - whether you use `tests/`, `e2e/tests/`, or any custom directory structure.
-
-**From command line (manual runs):**
-
-```bash
-# Regular test execution (uses your config reporters)
-npx playwright test
-
-# With dashboard reporter (if you want manual integration)
-npx playwright test --reporter=playwright-dashboard-reporter
-```
-
----
-
-## How It Works
-
-### Dynamic Reporter Injection
-
-The Dashboard uses **CLI-based reporter injection** - your test project configuration remains clean:
+`playwright.config.ts` needs no change. When you run tests from the dashboard it spawns, in `PLAYWRIGHT_PROJECT_DIR`:
 
 ```
-Dashboard Action: "Run All Tests"
-  ↓
-Dashboard spawns: npx playwright test --reporter=playwright-dashboard-reporter
-  ↓
-Dashboard passes environment: DASHBOARD_API_URL=http://localhost:3001
-  ↓
-Reporter reads config from environment and sends results to Dashboard
-  ↓
-Dashboard stores results and broadcasts WebSocket updates
-  ↓
-UI updates in real-time
+npx playwright test [--project=<name>] [--workers=<n>] --reporter=playwright-dashboard-reporter
 ```
 
-### Reporter Resolution
+with `DASHBOARD_API_URL` (always `http://localhost:<PORT>`) and `RUN_ID` in the environment. Discovery uses `npx playwright test --list --reporter=json`. The reporter is resolved from the test project's `node_modules`; if it is missing, `GET /api/tests/diagnostics` lists `Reporter npm package not found: ...` under `playwright.validation.issues`.
 
-The Dashboard looks for the reporter in this order:
+Manual use is possible too: `npx playwright test --reporter=playwright-dashboard-reporter` with `DASHBOARD_API_URL` set.
 
-1. **Test project's `node_modules/playwright-dashboard-reporter`** (standard installation)
-2. If not found, shows validation error with installation instructions
+## Environment variables
 
-### Key Features
+The reporter takes no constructor options (`constructor()` reads only the environment). It also loads a `.env` from the current working directory (dotenv).
 
-- ✅ **Stable Test ID Generation** - Hash-based IDs using file path + test title
-- ✅ **RunId Synchronization** - Dashboard passes RUN_ID to reporter via environment variables
-- ✅ **Real-time Updates** - WebSocket integration for live monitoring
-- ✅ **Attachment Management** - Automatic video/screenshot/trace copying
-- ✅ **Per-test Console Output (Node stdout/stderr)** - Captures `console.log/error/warn` from tests and stores it in test result metadata for display in the Dashboard
-- ✅ **Error Context** - Enhanced error reporting with code snippets
-- ✅ **Health Checks** - Built-in diagnostics and connectivity validation
-- ✅ **Silent Mode** - Programmatic usage without console output
+| Variable            | Default                 | Meaning                                                                                                |
+| ------------------- | ----------------------- | ------------------------------------------------------------------------------------------------------ |
+| `DASHBOARD_API_URL` | `http://localhost:3001` | Dashboard base URL; a trailing `/api` is stripped.                                                     |
+| `RUN_ID`            | random UUID             | Run id. Falls back to `RERUN_ID`, then a new UUID. The dashboard sets it so results attach to its run. |
+| `RERUN_MODE`        | unset                   | `true` announces the process as `rerun` instead of `run-all` in `process-start`.                       |
 
----
+## What it sends
 
-## Configuration Options
+| Hook                    | Request                                                                            |
+| ----------------------- | ---------------------------------------------------------------------------------- |
+| `onBegin`               | `POST /api/tests/process-start` (`runId`, `type`, `totalTests`)                    |
+| `onTestBegin`           | `POST /api/tests/test-start` (`runId`, `testId`, `name`, `filePath`)               |
+| `onTestEnd`             | `POST /api/tests` (one result, fields below)                                       |
+| `onEnd`                 | `PUT /api/runs/:id` (status, totals, duration), then `POST /api/tests/process-end` |
+| `onStdOut` / `onStdErr` | collected per test into `metadata.console`                                         |
 
-### Environment Variables (Set by Dashboard)
+Requests are fire-and-forget: a failed request logs a warning and never fails the Playwright run.
 
-When Dashboard runs tests, it automatically sets:
+Result fields: `id` (UUID per execution), `testId`, `runId`, `name`, `filePath`, `status` (`passed | failed | skipped | timedOut`; other Playwright statuses map to `failed`), `duration`, `timestamp`, `errorMessage` (for failures: the stack with a few source lines around the failing line, read from the test file), `errorStack`, `attachments` (`name`, `path`, `contentType`; the server copies files to permanent storage) and `metadata`.
 
-| Variable            | Description            | Default                 | Set By    |
-| ------------------- | ---------------------- | ----------------------- | --------- |
-| `DASHBOARD_API_URL` | Dashboard API endpoint | `http://localhost:3001` | Dashboard |
-| `RUN_ID`            | Unique run identifier  | Auto-generated UUID     | Dashboard |
-| `NODE_ENV`          | Environment mode       | From Dashboard config   | Dashboard |
+### Test ID
 
-### Reporter Options (Advanced)
+`testId` = `test-` + base-36 hash of `<normalized file path>:<test title>`, where the path is relative to the working directory with a leading `e2e/tests/`, `tests/` or `e2e/` removed. `generateStableTestId()` exists in both `packages/reporter/src/index.ts` and `packages/server/src/services/playwright.service.ts` on purpose and must stay byte-identical: Discover and reporter rows share ids, and history depends on it. The `project` is not part of the id.
 
-If you need to manually configure the reporter in `playwright.config.ts`:
+## Metadata fields
 
-```typescript
-interface ReporterOptions {
-    apiBaseUrl?: string // Dashboard API URL (default: http://localhost:3001)
-    silent?: boolean // Suppress console output (default: false)
-    timeout?: number // API request timeout in ms (default: 30000)
-}
-```
+All keys are optional and additive; rows written before a field existed simply lack it. Empty lists are omitted, except `tags`, which is always sent (`[]` when there are none).
 
-**Note:** This is rarely needed since Dashboard handles configuration automatically.
+| Key                            | Type                                               | Source                                    | Notes                                                                                                                                                                                       |
+| ------------------------------ | -------------------------------------------------- | ----------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `steps`                        | `{title, category, duration, startTime, error?}[]` | `result.steps`                            | Omitted when there are no steps.                                                                                                                                                            |
+| `console`                      | `{entries: {type, text, timestamp}[], truncated?}` | `onStdOut`/`onStdErr` with a `TestResult` | Last 500 entries and at most 200,000 characters; `truncated: true` when cut. Global output is ignored.                                                                                      |
+| `tags`                         | `string[]`                                         | `test.tags`                               | Keeps the leading `@`. Includes `@` tokens from test and suite titles. Playwright's `tag` option and `TestCase.tags` are from 1.42; on older versions the field is `[]`.                    |
+| `describe`                     | `string[]`                                         | ancestors of `test.parent`                | Describe titles only, outermost first (see below).                                                                                                                                          |
+| `annotations`                  | `{type, description?}[]`                           | `test.annotations` + `result.annotations` | De-duplicated by type + description. Max 10 entries, `type` max 100 chars, `description` max 300. Includes skip/fixme/fail reasons.                                                         |
+| `line`, `column`               | `number`                                           | `test.location`                           | Where the test is declared.                                                                                                                                                                 |
+| `errors`                       | `{message?, stack?, truncated?}[]`                 | `result.errors`                           | Every error (soft assertions too). Max 5 entries, `message` max 2000 chars, `stack` max 4000; `truncated: true` on an entry whose field was cut. `errorMessage`/`errorStack` are unchanged. |
+| `errorsTruncated`              | `true`                                             | `result.errors`                           | Present when more than 5 errors existed.                                                                                                                                                    |
+| `outcome`                      | `skipped \| expected \| unexpected \| flaky`       | `test.outcome()`                          | Outcome after this result.                                                                                                                                                                  |
+| `expectedStatus`               | `string`                                           | `test.expectedStatus`                     | E.g. `failed` for `test.fail()`.                                                                                                                                                            |
+| `retry`, `retries`             | `number`                                           | `result.retry`, `test.retries`            | Retry index of this result; configured retries.                                                                                                                                             |
+| `timeout`                      | `number`                                           | `test.timeout`                            | Milliseconds.                                                                                                                                                                               |
+| `startTime`                    | ISO string                                         | `result.startTime`                        | Start of this result.                                                                                                                                                                       |
+| `workerIndex`, `parallelIndex` | `number`                                           | `result`                                  |                                                                                                                                                                                             |
 
----
+Types: `TestMetadata` in `packages/core/src/types/index.ts`.
+
+**`describe`.** Playwright's `titlePath()` is `['', <project>, <file>, ...describes, <test title>]`. The reporter walks the parent suites of the test and keeps those with `type === 'describe'` and a non-empty title (anonymous describes are skipped, as `titlePath()` does). When the suites carry no string `type` (a Playwright version without `Suite.type`), the three outermost ancestors (root, project, file) are dropped instead.
+
+**Robustness.** The peer range starts at Playwright 1.40, so each field is read on its own inside `try`/`catch` with type checks. A missing API (for example `test.outcome`) or a getter that throws only omits that field; it never throws out of `onTestEnd`, never breaks the run and never blocks the POST. Non-finite numbers and non-string values are dropped.
+
+**Discover parity.** Discover (`POST /api/tests/discovery`) writes `tags`, `describe`, `annotations`, `line`, `column`, `timeout` and `expectedStatus` in exactly this shape, plus `playwrightId` and `discoveredAt`, from the `--list` JSON. That JSON has the file as the top-level suite (nested suites are describes) and gives tags without `@`; Discover re-adds it. The dashboard shows the latest row per test, so the reporter and Discover must agree on these keys; a parity test in `packages/server/src/services/__tests__/metadataParity.test.ts` checks it. Runtime-only annotations (added during the test) exist only in reporter rows.
+
+**Size.** A typical passing test adds about 220 bytes, a failing test with one error and one annotation about 1.3 KB, and the capped worst case is roughly 31–34 KB. The server accepts JSON bodies up to 50 MB (`config.api.requestLimit`).
+
+### How the dashboard uses tags
+
+Tag tests with Playwright's `tag` option, for example `test('...', {tag: ['@ABC-123', '@smoke']}, ...)`. The test list shows chips for them: tags matching `^@[A-Z][A-Z0-9]+-\d+$` are ticket keys and link to `<Jira base URL><KEY>`; other tags are shown only when Settings > Tags & tickets > Tags to show is `All tags`. Search matches the displayed tags. The other fields are stored for future use and are not displayed yet, apart from `steps` and `console`.
 
 ## Troubleshooting
 
-### Reporter Not Sending Data
+**No data in the dashboard.**
 
-**Symptom**: Tests run but no data appears in Dashboard
+1. `npm list playwright-dashboard-reporter` in the test project.
+2. `curl http://localhost:3001/api/health`.
+3. Check `PLAYWRIGHT_PROJECT_DIR` and `PORT` in the dashboard `.env`.
+4. `curl http://localhost:3001/api/tests/diagnostics`.
 
-**Solutions**:
+**`Reporter npm package not found`.** Install the package in the test project (`npm install --save-dev playwright-dashboard-reporter`).
 
-1. Verify reporter is installed in test project:
+**Reporter changes have no effect.** Production loads the package from `node_modules`; edits in `packages/reporter/src` reach a project only through `npm link` or a published version.
 
-    ```bash
-    cd /path/to/your/test/project
-    npm list playwright-dashboard-reporter
-    ```
-
-2. Verify Dashboard server is running:
-
-    ```bash
-    curl http://localhost:3001/api/health
-    ```
-
-3. Check Dashboard configuration in `.env`:
-
-    ```bash
-    PLAYWRIGHT_PROJECT_DIR=/path/to/your/test/project
-    PORT=3001
-    ```
-
-4. Run diagnostics from Dashboard:
-    ```bash
-    curl http://localhost:3001/api/tests/diagnostics
-    ```
-
-### Package Not Found
-
-**Symptom**: Dashboard shows "Reporter npm package not found" error
-
-**Solution**: Install reporter in your test project:
+## Development and publishing
 
 ```bash
-cd /path/to/your/test/project
-npm install --save-dev playwright-dashboard-reporter
+cd packages/reporter
+npm run dev          # tsup watch
+npm run build        # tsup: dist/index.js, index.mjs, index.d.ts
+npm run type-check
 ```
 
-### Connection Timeout
+Tests run from the repo root: `npx vitest run --project reporter` (target: 90% coverage). Publishing steps, tag scheme and the checks before `npm publish` are in [RELEASING.md](RELEASING.md).
 
-**Symptom**: Reporter shows timeout errors
+## Related
 
-**Solution**: Increase timeout if your Dashboard is on slower network:
-
-```typescript
-// playwright.config.ts (only if manually configuring)
-reporter: [
-    [
-        'playwright-dashboard-reporter',
-        {
-            timeout: 60000, // 60 seconds
-        },
-    ],
-]
-```
-
----
-
-## For Dashboard Developers
-
-### Development Workflow
-
-If you're developing the Dashboard and modifying the reporter package:
-
-```bash
-# 1. Start Dashboard
-cd ~/Projects/yshvydak-test-dashboard
-npm run dev
-
-# 2. Work on reporter (in separate terminal)
-cd ~/Projects/yshvydak-test-dashboard/packages/reporter
-npm run dev  # Watch mode - auto-rebuild on changes
-
-# 3. Publish changes
-npm run build
-npm version patch  # 1.0.1 → 1.0.2
-npm publish --access public
-
-# 4. Update in test project
-cd /path/to/test/project
-npm update playwright-dashboard-reporter
-```
-
-### Publishing New Version
-
-```bash
-cd ~/Projects/yshvydak-test-dashboard/packages/reporter
-
-# Update version (patch/minor/major)
-npm version patch  # 1.0.1 → 1.0.2
-# npm version minor  # 1.0.1 → 1.1.0
-# npm version major  # 1.0.1 → 2.0.0
-
-# Publish to npm
-npm publish --access public
-
-# Verify publication
-npm view playwright-dashboard-reporter
-```
-
----
-
-## Architecture Details
-
-### Reporter Flow
-
-```
-Playwright Test Execution
-  ↓
-Reporter captures test results + attachments
-  ↓
-POST /api/tests → Dashboard API
-  ↓
-Dashboard stores results in SQLite
-  ↓
-WebSocket broadcasts updates to UI
-  ↓
-Dashboard displays test results in real-time
-```
-
-### Test ID Generation
-
-Reporter uses stable hash-based IDs to ensure same test always gets same ID:
-
-```typescript
-function generateStableTestId(filePath: string, title: string): string {
-    const content = `${filePath}:${title}`
-    let hash = 0
-    for (let i = 0; i < content.length; i++) {
-        const char = content.charCodeAt(i)
-        hash = (hash << 5) - hash + char
-        hash = hash | 0
-    }
-    return `test-${Math.abs(hash).toString(36)}`
-}
-```
-
-This ensures:
-
-- Same test has same ID across discovery and execution
-- Historical tracking works correctly
-- Reruns update correct test records
-
-### Environment Synchronization
-
-Dashboard passes critical information to reporter via environment variables:
-
-```typescript
-// Dashboard spawns Playwright with:
-const env = {
-    ...process.env,
-    DASHBOARD_API_URL: config.api.baseUrl,
-    RUN_ID: uuidv4(),
-    NODE_ENV: config.server.environment,
-}
-
-spawn('npx', ['playwright', 'test', '--reporter=playwright-dashboard-reporter'], {
-    cwd: config.playwright.projectDir,
-    env,
-})
-```
-
----
-
-## Related Documentation
-
-- [Architecture](./ARCHITECTURE.md) - System architecture details
-- [API Reference](./API_REFERENCE.md) - Complete API endpoints
-- [Development Guidelines](./DEVELOPMENT.md) - Development workflow
-- [Configuration](./CONFIGURATION.md) - Environment setup
-
----
-
-**Last Updated:** October 2025
+- [API reference](API_REFERENCE.md)
+- [Configuration](CONFIGURATION.md)

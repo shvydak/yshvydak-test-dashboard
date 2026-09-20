@@ -1,196 +1,87 @@
 # playwright-dashboard-reporter
 
-Official Playwright reporter for [YShvydak Test Dashboard](https://github.com/shvydak/yshvydak-test-dashboard) - a full-stack testing dashboard with real-time monitoring, one-click reruns, and comprehensive test reporting.
+Playwright reporter for [YShvydak Test Dashboard](https://github.com/shvydak/yshvydak-test-dashboard). It sends each test result, its attachments, console output and run progress to the dashboard server.
 
-## Features
+## Requirements
 
-- 🔄 Real-time test execution monitoring via WebSocket
-- ⚡ **NEW in v1.0.1:** Live progress tracking with currently running tests
-- 📊 Comprehensive test result tracking with execution history
-- 📎 Automatic attachment management (videos, screenshots, traces)
-- 🔍 Enhanced error reporting with code context and line highlighting
-- 🎯 Stable test ID generation for reliable test tracking
-- ⏱️ **NEW in v1.0.1:** Time estimates (elapsed and remaining)
-- 🏗️ Built-in diagnostics and health checks
-- 🚀 Zero configuration - works out of the box
+- `@playwright/test` >= 1.40 (peer dependency)
+- Node.js >= 18
+- A running dashboard server
 
-## Installation
+Some fields need a newer Playwright and are simply omitted on older versions (for example `tags` need 1.42). See [Metadata](#metadata).
+
+## Install
 
 ```bash
 npm install --save-dev playwright-dashboard-reporter
 ```
 
-## Quick Start
+## Use
 
-### 1. Set Environment Variable
+### With the dashboard (normal case)
 
-```bash
-# .env
-DASHBOARD_API_URL=http://localhost:3001
-```
+Nothing to configure. The dashboard runs Playwright in your project with `--reporter=playwright-dashboard-reporter` and passes `DASHBOARD_API_URL` and `RUN_ID` in the environment. Your `playwright.config.ts` and its other reporters stay as they are. Setup of the dashboard itself: see the [repository README](https://github.com/shvydak/yshvydak-test-dashboard#readme).
 
-### 2. Start Dashboard Server
+### Manual run
 
 ```bash
-# Clone dashboard repository
-git clone https://github.com/shvydak/yshvydak-test-dashboard.git
-cd yshvydak-test-dashboard
-
-# Install and start
-npm install
-npm run dev
+DASHBOARD_API_URL=http://localhost:3001 npx playwright test --reporter=playwright-dashboard-reporter
 ```
 
-The dashboard will be available at:
+## Configuration
 
-- 🌐 Web UI: http://localhost:3000
-- 🔌 API: http://localhost:3001
+The reporter has no options. It reads these environment variables (and a `.env` file in the working directory):
 
-Results will appear in your Dashboard automatically! 🎉
+| Variable            | Default                 | Meaning                                             |
+| ------------------- | ----------------------- | --------------------------------------------------- |
+| `DASHBOARD_API_URL` | `http://localhost:3001` | Dashboard base URL (a trailing `/api` is stripped). |
+| `RUN_ID`            | random UUID             | Run id; falls back to `RERUN_ID`, then a new UUID.  |
+| `RERUN_MODE`        | unset                   | `true` marks the process as a single-test rerun.    |
 
-## Configuration Options
+## What is sent
 
-```typescript
-interface ReporterOptions {
-    apiBaseUrl?: string // Dashboard API URL (default: http://localhost:3001)
-    silent?: boolean // Suppress console output (default: false)
-    timeout?: number // API request timeout in ms (default: 30000)
-}
-```
+- Run start, test start and process end notifications, run totals at the end (`/api/tests/process-start`, `/api/tests/test-start`, `/api/tests/process-end`, `PUT /api/runs/:id`).
+- One result per finished test attempt (`POST /api/tests`): `testId`, `name`, `filePath`, `status`, `duration`, error message (with source lines around the failing line) and stack, attachments (name, path, content type) and `metadata`.
+- `testId` is a stable hash of the file path and the test title, so the same test keeps the same id across runs.
 
-## Environment Variables
+Requests never fail the Playwright run: on an error the reporter logs a warning and continues.
 
-The reporter supports the following environment variables:
+## Metadata
 
-````bash
-# Required: Dashboard API endpoint
-DASHBOARD_API_URL=http://localhost:3001
+Each result carries extra keys in `metadata`. All are optional and missing values are omitted.
 
-## Dashboard Features
+| Key                            | Content                                                                                                                                                                |
+| ------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `tags`                         | Playwright tags with the leading `@` (`[]` on Playwright < 1.42).                                                                                                      |
+| `describe`                     | Describe titles only, outermost first.                                                                                                                                 |
+| `annotations`                  | `{type, description?}`, de-duplicated; max 10, type <= 100 chars, description <= 300 chars.                                                                            |
+| `line`, `column`               | Where the test is declared.                                                                                                                                            |
+| `errors`, `errorsTruncated`    | All result errors (soft assertions too): max 5, message <= 2000 chars, stack <= 4000 chars; `truncated: true` marks cut entries, `errorsTruncated` marks dropped ones. |
+| `outcome`                      | `skipped`, `expected`, `unexpected` or `flaky`.                                                                                                                        |
+| `expectedStatus`               | Expected status of the test.                                                                                                                                           |
+| `retry`, `retries`             | Retry index of this attempt; configured retries.                                                                                                                       |
+| `timeout`                      | Test timeout in ms.                                                                                                                                                    |
+| `startTime`                    | ISO start time of this attempt.                                                                                                                                        |
+| `workerIndex`, `parallelIndex` | Worker that ran the attempt.                                                                                                                                           |
+| `steps`                        | Playwright steps (title, category, duration, start time, error).                                                                                                       |
+| `console`                      | Per-test stdout/stderr (last 500 entries, at most 200,000 characters).                                                                                                 |
 
-When using this reporter, you get access to:
-
-- ✅ **Real-time Test Monitoring** - Watch tests execute live
-- ⚡ **Live Progress Tracking** (v1.0.1+) - See which tests are running right now with time estimates
-- 🔄 **One-Click Reruns** - Rerun failed tests instantly
-- 📈 **Flaky Test Detection** - Identify unstable tests automatically
-- 📊 **Timeline Visualization** - View execution trends over time
-- 🎥 **Attachment Viewer** - Watch videos, view screenshots, analyze traces
-- 📜 **Execution History** - Track all test runs with complete data
-- 🔍 **Test Discovery** - Automatically detect all available tests
-- 🎯 **Detailed Reporting** - Enhanced error messages with code context
-
-### 🆕 Progress Tracking (v1.0.1+)
-
-The reporter now sends real-time progress updates to the dashboard:
-
-```
-🧪 Running Tests              − ✕
-━━━━━━━━━━━━━━━━━━━━━━━━━━━ 43%
-6 of 14 tests                 43%
-
-✅ Passed: 5        ❌ Failed: 0
-⏭️ Skipped: 1       ⏸️ Pending: 8
-
-Currently Running:
-🔄 API - Link Budget Item
-   e2e/tests/api/api.test.ts
-🔄 API - Create Contract
-   e2e/tests/api/api.test.ts
-
-⏱️ Elapsed: 3s   Est. remaining: ~4s
-```
-
-**Features:**
-- See exactly which tests are running
-- Track passed/failed/skipped/pending counts in real-time
-- Get time estimates for test completion
-- Floating panel that can be minimized
-- Auto-hides after test completion
-
-**How it works:**
-The reporter uses Playwright's `onTestBegin()` and `onTestEnd()` lifecycle hooks to send progress updates to the dashboard via WebSocket. No configuration needed - it works automatically!
+Each field is read defensively: a Playwright API that does not exist in your version, or a getter that throws, only omits that field. Details: [docs/REPORTER.md](https://github.com/shvydak/yshvydak-test-dashboard/blob/main/docs/REPORTER.md).
 
 ## Troubleshooting
 
-### Reporter Not Sending Data
+No data in the dashboard:
 
-**Symptom:** Tests run but no data appears in Dashboard
+1. The dashboard server is running: `curl http://localhost:3001/api/health`.
+2. `DASHBOARD_API_URL` points at it.
+3. Integration status: `curl http://localhost:3001/api/tests/diagnostics`.
 
-**Solution:**
+## Links
 
-1. Verify Dashboard server is running:
-    ```bash
-    curl http://localhost:3001/api/health
-    ```
-2. Check `DASHBOARD_API_URL` environment variable:
-    ```bash
-    echo $DASHBOARD_API_URL
-    ```
-3. Run diagnostics:
-    ```bash
-    curl http://localhost:3001/api/tests/diagnostics
-    ```
-
-## API Compatibility
-
-This reporter is compatible with:
-
-- Dashboard API version: **1.x and above**
-- Playwright version: **1.40.0 and above**
-- Node.js version: **18.0.0 and above**
-
-## Changelog
-
-### v1.0.1 (October 2025)
-
-**New Features:**
-- ⚡ Real-time progress tracking with currently running tests
-- ⏱️ Time estimates (elapsed and remaining)
-- 📊 Live statistics (passed/failed/skipped/pending)
-- 🎨 FloatingProgressPanel UI component
-
-**Technical Changes:**
-- Added `onTestBegin()` lifecycle hook
-- New API endpoint: `POST /api/tests/test-start`
-- Enhanced WebSocket event: `test:progress`
-- Improved error handling for network failures
-
-**Documentation:**
-- Added [Progress Tracking Guide](https://github.com/shvydak/yshvydak-test-dashboard/blob/main/docs/features/PROGRESS_TRACKING.md)
-- Updated API documentation
-
-### v1.0.0 (September 2025)
-
-Initial release with core features:
-- Real-time test execution monitoring
-- Comprehensive test result tracking
-- Automatic attachment management
-- Enhanced error reporting
-- Stable test ID generation
-
-## Development
-
-For Dashboard developers working on the reporter package:
-
-```bash
-cd packages/reporter
-npm run build      # Build distribution
-npm run dev        # Watch mode (auto-rebuild)
-npm run type-check # TypeScript validation
-```
-
-## Support
-
-- 📚 [Documentation](https://github.com/shvydak/yshvydak-test-dashboard/tree/main/docs)
-- 🐛 [Report Issues](https://github.com/shvydak/yshvydak-test-dashboard/issues)
-- 💬 [Discussions](https://github.com/shvydak/yshvydak-test-dashboard/discussions)
+- [Repository](https://github.com/shvydak/yshvydak-test-dashboard)
+- [Issues](https://github.com/shvydak/yshvydak-test-dashboard/issues)
+- [Reporter documentation](https://github.com/shvydak/yshvydak-test-dashboard/blob/main/docs/REPORTER.md)
 
 ## License
 
-MIT © YShvydak
-
----
-
-**Made with ❤️ for the Playwright community**
-````
+MIT

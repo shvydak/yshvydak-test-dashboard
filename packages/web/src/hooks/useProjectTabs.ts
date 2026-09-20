@@ -1,4 +1,4 @@
-import {useState, useEffect, useCallback} from 'react'
+import {useState, useEffect, useCallback, useMemo} from 'react'
 import {authGet, authPut} from '@features/authentication/utils/authFetch'
 import {config} from '@config/environment.config'
 import {CIPipelineName, normalizeCIPipelines} from '@/constants/ciPipelines'
@@ -43,6 +43,12 @@ export function resolveDefaultProjectTab(
 export interface UseProjectTabsReturn {
     tabs: ProjectTabConfig[]
     visibleTabs: ProjectTabConfig[]
+    /**
+     * Saved tabs whose project is no longer in the live Playwright project list
+     * (GET /tests/projects = playwright config). Empty while that list is empty:
+     * the server swallows list errors as [], so "nothing live" can't be told from "failed".
+     */
+    staleProjects: string[]
     defaultProjectTab: string
     updateTabs: (configs: ProjectTabConfig[]) => Promise<void>
     setDefaultProjectTab: (project: string) => Promise<void>
@@ -54,6 +60,7 @@ export interface UseProjectTabsReturn {
 
 export function useProjectTabs(isAuthenticated = true): UseProjectTabsReturn {
     const [tabs, setTabs] = useState<ProjectTabConfig[]>([])
+    const [availableProjects, setAvailableProjects] = useState<string[]>([])
     const [defaultProjectTab, setDefaultProjectTabState] = useState('')
     const [isLoading, setIsLoading] = useState(false)
     const [isSaving, setIsSaving] = useState(false)
@@ -101,6 +108,7 @@ export function useProjectTabs(isAuthenticated = true): UseProjectTabsReturn {
 
             projectTabsCache = merged
             setTabs(merged)
+            setAvailableProjects(available)
 
             // Soft-fail: tabs still work if the default-tab endpoint is unavailable
             if (defaultRes.ok) {
@@ -176,9 +184,16 @@ export function useProjectTabs(isAuthenticated = true): UseProjectTabsReturn {
 
     const visibleTabs = tabs.filter((t) => t.visible)
 
+    const staleProjects = useMemo(() => {
+        if (availableProjects.length === 0) return []
+        const live = new Set(availableProjects)
+        return tabs.filter((t) => !live.has(t.project)).map((t) => t.project)
+    }, [tabs, availableProjects])
+
     return {
         tabs,
         visibleTabs,
+        staleProjects,
         defaultProjectTab,
         updateTabs,
         setDefaultProjectTab,

@@ -1,8 +1,11 @@
-import React, {useState, useEffect} from 'react'
+import React, {useState, useEffect, useContext} from 'react'
 import {Play, MessageSquare} from 'lucide-react'
 import {TestResult} from '@yshvydak/core'
 import {StatusBadge, ActionButton, LoadingSpinner, Badge} from '@shared/components'
-import {formatDuration, formatLastRun} from '../utils'
+import {formatDuration, formatLastRun, getTestDisplayTags} from '../utils'
+import {TicketChips} from './TicketChips'
+import type {ChipAlignment, TagMode} from '@features/dashboard/hooks/useJiraSettings'
+import {TicketSearchContext} from './TicketSearchContext'
 import {useTestsStore} from '../store/testsStore'
 import {LinkifiedText} from '@/components/atoms/LinkifiedText'
 import {useNoteImages} from '../hooks/useNoteImages'
@@ -16,9 +19,20 @@ export interface TestRowProps {
     selected: boolean
     onSelect: (test: TestResult) => void
     onRerun: (testId: string) => void
+    /** Global chip position: 'below' = no Tickets column, chips under the name at all widths */
+    chipAlignment?: ChipAlignment
+    /** Global tag mode: 'tickets' = ticket keys only, 'all' = every tag as a chip */
+    tagMode?: TagMode
 }
 
-export function TestRow({test, selected, onSelect, onRerun}: TestRowProps) {
+export function TestRow({
+    test,
+    selected,
+    onSelect,
+    onRerun,
+    chipAlignment = 'left',
+    tagMode = 'tickets',
+}: TestRowProps) {
     const {runningTests, getIsAnyTestRunning, activeProgress} = useTestsStore()
     const isAnyTestRunning = getIsAnyTestRunning()
 
@@ -38,6 +52,10 @@ export function TestRow({test, selected, onSelect, onRerun}: TestRowProps) {
 
     // Parse note content to extract images
     const noteParts = test.note?.content ? parseNoteContent(test.note.content, noteImages) : []
+
+    const displayTags = getTestDisplayTags(test, tagMode)
+    const searchQuery = useContext(TicketSearchContext)
+    const hasTicketColumn = chipAlignment !== 'below'
 
     return (
         <tr
@@ -64,6 +82,12 @@ export function TestRow({test, selected, onSelect, onRerun}: TestRowProps) {
                 <div className="font-medium tracking-tight text-gray-900 dark:text-white text-sm md:text-base">
                     {test.name}
                 </div>
+                {/* Under the name: below lg (column hidden), or at every width in 'below' mode */}
+                <TicketChips
+                    tags={displayTags}
+                    searchQuery={searchQuery}
+                    className={hasTicketColumn ? 'mt-1.5 lg:hidden' : 'mt-1.5'}
+                />
                 {/* On mobile, show duration inline under name */}
                 <div className="sm:hidden text-xs text-gray-400 dark:text-gray-500 mt-0.5 font-mono tabular-nums">
                     {formatDuration(test.duration)}
@@ -100,6 +124,15 @@ export function TestRow({test, selected, onSelect, onRerun}: TestRowProps) {
                     </div>
                 )}
             </td>
+            {hasTicketColumn && (
+                <td className="py-3.5 px-6 w-60 align-top hidden lg:table-cell">
+                    <TicketChips
+                        tags={displayTags}
+                        searchQuery={searchQuery}
+                        align={chipAlignment === 'right' ? 'right' : 'left'}
+                    />
+                </td>
+            )}
             <td className="py-3.5 px-6 text-sm font-mono tabular-nums text-gray-500 dark:text-gray-400 w-24 hidden sm:table-cell">
                 {formatDuration(test.duration)}
             </td>

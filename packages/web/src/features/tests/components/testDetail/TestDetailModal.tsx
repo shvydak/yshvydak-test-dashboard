@@ -6,6 +6,8 @@ import {TabKey} from '../../types/attachment.types'
 import {useTestAttachments} from '../../hooks/useTestAttachments'
 import {useTestExecutionHistory} from '../../hooks/useTestExecutionHistory'
 import {useTestsStore} from '../../store/testsStore'
+import {getTestDisplayTags} from '../../utils/jiraTags'
+import {useJiraSettings} from '@features/dashboard/hooks/useJiraSettings'
 import {useWebSocket} from '../../../../hooks/useWebSocket'
 import {getWebSocketUrl} from '@features/authentication/utils'
 import {noteService} from '../../../../services/note.service'
@@ -23,6 +25,7 @@ export interface TestDetailModalProps {
 }
 
 export function TestDetailModal({test, isOpen, onClose}: TestDetailModalProps) {
+    const {settings: jiraSettings} = useJiraSettings(false)
     const [activeTab, setActiveTab] = useState<TabKey>('overview')
     const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false)
     const [showDeleteExecutionConfirmation, setShowDeleteExecutionConfirmation] = useState(false)
@@ -311,6 +314,7 @@ export function TestDetailModal({test, isOpen, onClose}: TestDetailModalProps) {
                         <TestDetailHeader
                             testName={test.name}
                             testStatus={currentExecution?.status || test.status}
+                            tags={getTestDisplayTags(test, jiraSettings.tagMode)}
                             executionDate={currentExecution?.createdAt}
                             isLatest={!selectedExecutionId}
                             onClose={handleClose}

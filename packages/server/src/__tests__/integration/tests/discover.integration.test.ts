@@ -225,6 +225,56 @@ describe('POST /api/tests/discovery - Test Discovery (Integration)', () => {
         })
     })
 
+    describe('Discover metadata round trip', () => {
+        it('should return discovered metadata as an object with @-prefixed tags via GET /api/tests', async () => {
+            // Real Playwright JSON output: tags come without the leading '@'
+            const output = {
+                suites: [
+                    {
+                        title: '',
+                        file: 'tests/tagged.spec.ts',
+                        line: 1,
+                        column: 1,
+                        specs: [
+                            {
+                                title: 'Tagged Test',
+                                ok: true,
+                                tags: ['sanity', 'ABC-123'],
+                                tests: [{projectId: '', projectName: '', results: []}],
+                                id: 'tagged-1',
+                                file: 'tests/tagged.spec.ts',
+                                line: 7,
+                                column: 3,
+                            },
+                        ],
+                        suites: [],
+                    },
+                ],
+            }
+            vi.spyOn(
+                server.serviceContainer.playwrightService as any,
+                'executePlaywrightListCommand'
+            ).mockResolvedValue(output)
+
+            await request(server.app).post('/api/tests/discovery').expect(200)
+
+            const response = await request(server.app)
+                .get('/api/tests')
+                .set('Authorization', `Bearer ${server.authToken}`)
+                .expect(200)
+
+            const [row] = response.body.data
+            // A double-stringified value would come back here as a string
+            expect(typeof row.metadata).toBe('object')
+            expect(row.metadata).toMatchObject({
+                line: 7,
+                playwrightId: 'tagged-1',
+                tags: ['@sanity', '@ABC-123'],
+            })
+            expect(row.metadata.discoveredAt).toBeDefined()
+        })
+    })
+
     describe('Test ID generation consistency', () => {
         it('should generate consistent testId for same test', async () => {
             // Mock discovery with specific test

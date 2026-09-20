@@ -1,429 +1,208 @@
 # YShvydak Test Dashboard
 
-> 🎭 **Modern, full-stack dashboard for Playwright tests with one-click rerun capabilities**
+Web dashboard for Playwright tests: live results, execution history with per-run attachments, one-click reruns, CI pipeline triggering, and per-test notes.
 
-A comprehensive testing dashboard that transforms your Playwright test experience with real-time monitoring, instant reruns, and beautiful reporting. Built for teams who value efficiency and visibility in their testing workflows.
+The Playwright side is the npm package [`playwright-dashboard-reporter`](https://www.npmjs.com/package/playwright-dashboard-reporter) (source: [`packages/reporter`](packages/reporter)). The dashboard adds it to the Playwright CLI (`--reporter=playwright-dashboard-reporter`), so your `playwright.config.ts` stays unchanged.
 
-> **📦 npm Package Available**: [`playwright-dashboard-reporter`](https://www.npmjs.com/package/playwright-dashboard-reporter) - Professional npm package for seamless integration.
+## Features
 
-![Dashboard Screenshot](https://via.placeholder.com/800x400/2563eb/ffffff?text=YShvydak+Test+Dashboard)
+- **Test list**: status filter, search by name, file path, error text and displayed tags (URL-persistent `?q=`), counts aggregated in the database (not capped by the page size).
+- **Runs**: Run All (per project tab), run a file group, rerun one test, live progress over WebSocket, test discovery (`playwright test --list`).
+- **History**: every execution is a new record (same `testId`, new row). Each keeps its own screenshots, videos and traces, stored permanently and independent of Playwright's cleanup. Console output (stdout/stderr) and steps are captured per test.
+- **Dashboard page**: status counts, flaky tests (last 30 days, at least two runs, failing share >= 10% and < 100%), 30-day timeline.
+- **Project tabs**: one tab per Playwright project with display name, visibility, order, workers override and a default tab. Tabs whose project is gone from the Playwright config are marked and can be removed.
+- **CI pipelines**: `develop` and `production` pipelines are ordered lists of project tabs, triggered by `POST /api/pipeline/run` or `scripts/trigger-test-run.js`. See [CI pipelines](#ci-pipelines).
+- **Notes**: per-test notes with links and pasted or dropped images ([docs/features/TEST_NOTES.md](docs/features/TEST_NOTES.md)).
+- **Tags and tickets**: Playwright tags such as `@ABC-123` become chips; ticket keys link to your tracker. See [Tags and tickets](#tags-and-tickets).
+- **Storage**: disk usage with warning and critical thresholds; cleanup by date or by run count, either stripping attachments (history kept) or deleting executions permanently.
+- **Theme**: Auto, Light or Dark.
 
-## ✨ Why This Dashboard?
+## Requirements
 
-### The Problem
+- Node.js >= 18 and npm >= 10 (`engines` in the root `package.json`)
+- A Playwright project (the reporter needs `@playwright/test` >= 1.40)
 
-- **No Quick Reruns**: Failed tests require manual command-line reruns
-- **Team Visibility**: Hard to share test status with stakeholders
-- **Historical Context**: No easy way to track test trends over time
-
-### The Solution
-
-- **🚀 One-Click Reruns**: Instantly rerun any failed test directly from the web UI
-- **📊 Real-Time Monitoring**: Watch tests execute live with WebSocket updates
-- **📈 Historical Tracking**: See test trends, failure patterns, and performance over time
-- **👥 Team Friendly**: Beautiful web interface anyone can understand
-- **🎯 Zero Configuration**: Works with existing Playwright projects out-of-the-box
-
-## 🎪 Key Features
-
-### 🔄 **Smart Test Reruns**
-
-- Rerun individual tests or entire test files
-- Maintain test context and configuration
-- Real-time feedback on rerun progress
-
-### 📊 **Comprehensive Dashboard**
-
-- Live test execution monitoring
-- Interactive test results with filtering
-- Complete execution history with independent attachments per run
-- Attachment viewing (screenshots, videos, traces) with persistent storage
-- **Settings modal** with centralized configuration (theme, admin actions)
-- **Theme system** with Auto/Light/Dark modes and localStorage persistence
-
-### ⚡ **Simple Reporter Integration**
-
-- **Works with npm package**: Install `playwright-dashboard-reporter` in your test project
-- **Zero configuration**: No changes to `playwright.config.ts` needed
-- **Automatic injection**: Dashboard adds reporter via CLI flag when running tests
-- **Clean separation**: Your existing reporters continue to work unchanged
-
-### 🔍 **Advanced Diagnostics**
-
-- Built-in health checks and configuration validation
-- Integration troubleshooting with detailed error reporting
-- API endpoint for programmatic monitoring
-
-### 🔐 **Secure Authentication**
-
-- JWT-based user authentication with secure login
-- Simplified local network integration for reporters
-- Protected access to test results and attachments
-- Production-ready security implementation
-
-### 🔒 **Reliable State Management**
-
-- **Process tracking**: Real-time monitoring of active test processes
-- **Page-reload safe**: UI state correctly restores after browser refresh
-- **Auto-recovery**: Automatic cleanup of stuck/orphaned processes
-- **Persistent attachments**: Test artifacts stored permanently, surviving Playwright's cleanup cycles
-
-### 📜 **Complete Execution History**
-
-- **Never lose test data**: Every test execution creates a new record (no overwrites)
-- **Independent artifacts**: Each run maintains its own videos, screenshots, and traces
-- **Compare runs**: View and analyze multiple executions side-by-side
-- **History tab**: Dedicated UI for browsing past test executions
-- **Smart filtering**: Pending results automatically excluded from history
-- **Trend analysis**: Track test stability and performance over time
-
-## 🚀 Quick Start
-
-### Prerequisites
-
-- Node.js 18+ and npm 10+
-- Existing Playwright project
-
-### 1. Install and Setup
+## Quick start
 
 ```bash
-# Clone the dashboard
-git clone https://github.com/yshvydak/yshvydak-test-dashboard.git
+git clone https://github.com/shvydak/yshvydak-test-dashboard.git
 cd yshvydak-test-dashboard
-
-# Install dependencies
 npm install
-
-# Build all packages
 npm run build
 ```
 
-### 2. Install Reporter in Your Test Project
+Install the reporter in **your Playwright project** (not in this repo):
 
 ```bash
-# Navigate to your Playwright project
 cd /path/to/your/playwright/project
-
-# Install the reporter
 npm install --save-dev playwright-dashboard-reporter
 ```
 
-**Important:** No changes to `playwright.config.ts` are needed. The Dashboard automatically adds the reporter when running tests via CLI flag `--reporter=playwright-dashboard-reporter`.
-
-Your `playwright.config.ts` remains unchanged and can keep existing reporters:
-
-```typescript
-// playwright.config.ts - NO CHANGES NEEDED
-import {defineConfig} from '@playwright/test'
-
-export default defineConfig({
-    reporter: [
-        ['html'], // Your existing reporters continue to work
-        ['list'],
-    ],
-})
-```
-
-### 3. Configure Dashboard for Your Project
-
-Create a `.env` file in the project root to configure the dashboard:
+Create `.env` in the dashboard repo root. There is no `.env.example`; every variable is listed under [Configuration](#configuration). Minimal local setup:
 
 ```bash
-# Create .env file in project root
-cp .env.template .env
-
-# Edit .env and update the path to your test project:
 PLAYWRIGHT_PROJECT_DIR=/path/to/your/playwright/project
 PORT=3001
-NODE_ENV=development
 BASE_URL=http://localhost:3001
 VITE_BASE_URL=http://localhost:3001
 
-# Authentication Configuration
+# Optional. With ENABLE_AUTH=true the next three are required.
+# Replace the change-me values with your own before the first run.
 ENABLE_AUTH=true
-ADMIN_EMAIL=admin@admin.com
-ADMIN_PASSWORD=qwe123
-JWT_SECRET=dev-jwt-secret-change-in-production-12345
+ADMIN_EMAIL=you@example.com
+ADMIN_PASSWORD=change-me-before-first-run
+JWT_SECRET=change-me-to-a-long-random-string
 ```
 
-**Note:** All other variables are automatically derived from these core settings. For production deployment, use strong passwords and secure JWT secrets. See [Authentication Documentation](docs/features/AUTHENTICATION_IMPLEMENTATION.md) for detailed security setup.
-
-### 4. Start the Dashboard
+Start everything (web, server, reporter watch build):
 
 ```bash
-# Start the dashboard (reads configuration from .env automatically)
 npm run dev
 ```
 
-The dashboard will be available at:
+- Web UI: http://localhost:3000 (see [Ports](#ports))
+- API: http://localhost:3001
 
-- **Web UI**: http://localhost:3000 (or your VITE_PORT value)
-- **API**: http://localhost:3001 (or your PORT value)
+Open the web UI, log in if auth is enabled, press **Discover Tests**, then run tests from the UI.
 
-### 5. Login and Discover Tests
+## Configuration
 
-1. **Open the dashboard** in your browser
-2. **Login** with your admin credentials (admin@admin.com / qwe123 for development)
-3. **Click "Discover Tests"** to scan your project
-4. **Run tests** directly from the UI or rerun failed ones
-5. **Monitor results** in real-time!
+Variables are read from the root `.env` (the server loads `../../.env` relative to `packages/server`; Vite uses `envDir: '../..'`). Sources: `packages/server/src/config/environment.config.ts`, `packages/web/vite.config.ts`, `packages/web/src/config/environment.config.ts`.
 
-## 📖 Usage Guide
+| Variable                                      | Default                                       | Notes                                                                                                           |
+| --------------------------------------------- | --------------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| `PLAYWRIGHT_PROJECT_DIR`                      | server working directory                      | Path to your Playwright project. Set it: the server starts in `packages/server`.                                |
+| `PORT`                                        | `3001`                                        | API server port.                                                                                                |
+| `NODE_ENV`                                    | `development`                                 |                                                                                                                 |
+| `BASE_URL`                                    | `http://localhost:<PORT>`                     | Used to derive the API URL.                                                                                     |
+| `DASHBOARD_API_URL`                           | `BASE_URL`                                    | Overrides the API base URL. Playwright processes spawned by the dashboard always get `http://localhost:<PORT>`. |
+| `OUTPUT_DIR`                                  | `<server working dir>/test-results`           | Permanent attachment storage.                                                                                   |
+| `ENABLE_AUTH`                                 | off                                           | Auth is on only when the value is exactly `true`.                                                               |
+| `ADMIN_EMAIL`, `ADMIN_PASSWORD`, `JWT_SECRET` | none                                          | Required when `ENABLE_AUTH=true` (the server throws otherwise). There are no default credentials.               |
+| `JWT_EXPIRES_IN`                              | `30d`                                         |                                                                                                                 |
+| `VITE_PORT`                                   | see [Ports](#ports)                           | Web dev and preview port.                                                                                       |
+| `VITE_BASE_URL`, `VITE_SERVER_URL`            | `http://localhost:3001`                       | Server URL for the web client (`VITE_SERVER_URL` wins).                                                         |
+| `VITE_API_BASE_URL`, `VITE_WEBSOCKET_URL`     | `<server URL>/api`, `ws(s)://<server URL>/ws` | Optional overrides.                                                                                             |
 
-### Running Tests
+### Ports
 
-#### From Dashboard (Recommended)
+- API: `PORT`, default 3001.
+- Web dev server: `VITE_PORT`, else `PORT - 1` when `PORT` is set, else 3000 (`packages/web/vite.config.ts`). With `PORT=3001` that is 3000. `vite preview` uses `VITE_PORT` or 3000.
 
-- **Discover Tests**: Scans your Playwright project for all available tests
-- **Run All**: Execute all tests with live monitoring
-- **Run by File**: Run specific test files
-- **Rerun Failed**: One-click rerun of any failed test
+### Authentication
 
-#### From Command Line
+With `ENABLE_AUTH=true` the web UI requires login (`POST /api/auth/login`, JWT). Middleware coverage as implemented (`packages/server/src/app.ts`, `routes/index.routes.ts`):
 
-Your existing test commands work unchanged:
+- JWT required: `/api/settings/*` and the static routes `/reports`, `/attachments`, `/note-images`, `/test-results`. `/api/settings/*` also demands a JWT specifically, so it answers 403 when `ENABLE_AUTH` is not `true`.
+- No auth middleware: `/api/health`, `/api/auth/*`, `/api/tests/*` (including the reporter's `POST /api/tests` and `/api/tests/diagnostics`), `/api/runs/*`, `/api/storage/*`, `/api/pipeline/*`.
+
+## Usage
+
+### Running tests
+
+From the UI: **Discover Tests**, **Run All** for the selected project tab, run a file group, or rerun one test. The server spawns `npx playwright test --reporter=playwright-dashboard-reporter` in `PLAYWRIGHT_PROJECT_DIR` with `DASHBOARD_API_URL` and `RUN_ID` set. One run is active at a time; starting another is rejected (`TESTS_ALREADY_RUNNING`). Your own `npx playwright test` runs are unaffected.
+
+### Settings
+
+Sections in the Settings modal: Theme, Project Tabs (including the default tab on open), Test Execution (max workers, manual run defaults: project and auto-discover before run, CI auto-run pause), Tags & tickets, Actions (Discover Tests, Clear All Data, clear one project's data), Storage (disk space, thresholds, cleanup). Settings are stored on the server and apply to all users.
+
+### CI pipelines
+
+Settings > Project Tabs assigns each tab to the `develop` and/or `production` pipeline. Tab order is step order, and "Stop on failure" skips the remaining steps of that pipeline after a failed step.
 
 ```bash
-npx playwright test  # Uses standard reporters
+node scripts/trigger-test-run.js --pipeline develop --wait
 ```
 
-When the dashboard runs tests, it automatically adds the custom reporter:
+Options: `--pipeline develop|production` (default `develop`), `--max-workers <n>`, `--wait`, `--timeout <seconds>`, `--silent`. Exit codes: 0 success, 1 stopped on a blocking failure / API error / timeout, 2 CI auto-run paused, 3 configuration error, 4 authentication error. A final `::PIPELINE_RESULT::{...}` JSON line is always printed. The script reads `BASE_URL`, `ADMIN_EMAIL` and `ADMIN_PASSWORD` from the repo-root `.env`, so it has to run where that file exists. `scripts/trigger-test-run.sh` is a wrapper.
 
-```bash
-npx playwright test --reporter=playwright-dashboard-reporter
+Endpoints: `POST /api/pipeline/run` (`{pipeline, maxWorkers, source}`; an unknown pipeline name is a 400), `GET /api/pipeline/status/current`, `GET /api/pipeline/status/:pipelineRunId`.
+
+**Auto-run pause** (Settings > Test Execution, `GET/PUT /api/settings/ci-autorun-pause`) blocks every request with `source: 'script'`, whatever the pipeline name, with HTTP 423 `CI_AUTORUN_PAUSED`; the script exits 2 without retrying. UI-started runs still work. When a run is already active the API answers 409 `TESTS_ALREADY_RUNNING`; the script polls every 10 s for up to 30 min.
+
+### Tags and tickets
+
+Tag tests with Playwright's `tag` option:
+
+```ts
+test('logs in', {tag: ['@ABC-123', '@smoke']}, async ({page}) => {
+    /* ... */
+})
 ```
 
-### Monitoring and Results
+The reporter sends `metadata.tags` (`TestCase.tags` needs Playwright >= 1.42; older versions send `[]`) and Discover sends the same. A tag is a ticket key when it matches `^@[A-Z][A-Z0-9]+-\d+$` (after trimming). Settings > **Tags & tickets** (`GET/PUT /api/settings/jira`, see [docs/API_REFERENCE.md](docs/API_REFERENCE.md)):
 
-- **Live Updates**: Real-time test status via WebSocket
-- **Rich Results**: Enhanced error messages with code context
-- **Attachments**: View screenshots, videos, and traces inline
-- **Execution History**: View all past test runs with independent artifacts for each execution
-- **Filtering**: Find tests by status, file, or timeframe
+- **Jira base URL**: empty or an http(s) URL. Ticket chips link to `<base URL><KEY>`; with an empty URL they are plain labels.
+- **Tags to show**: `Ticket keys only` (default) or `All tags` (other tags are grey and not clickable).
+- **Chip position**: a Tickets/Tags column on wide screens, left or right aligned (chips move under the test name on narrow screens), or `Under test name` at every width.
+
+Search matches the tags that are currently displayed. Existing rows have no tags until the test runs again or Discover Tests is pressed.
+
+### Reporter metadata
+
+Besides the result fields, the reporter stores extra keys in each result's `metadata`: `tags`, `describe`, `annotations`, `line`, `column`, `errors` (+ `errorsTruncated`), `outcome`, `expectedStatus`, `retry`, `retries`, `timeout`, `startTime`, `workerIndex`, `parallelIndex`, plus `steps` and `console`. Discover writes `tags`, `describe`, `annotations`, `line`, `column`, `timeout` and `expectedStatus` in the same shape. Caps and Playwright-version behaviour: [docs/REPORTER.md](docs/REPORTER.md).
 
 ### Troubleshooting
 
-#### Health Check
+- Health: `curl http://localhost:3001/api/health`. Integration status: `curl http://localhost:3001/api/tests/diagnostics`.
+- Tests not listed: check `PLAYWRIGHT_PROJECT_DIR` and press Discover Tests (the server runs `playwright test --list --reporter=json` there).
+- No results arrive: check that `playwright-dashboard-reporter` is installed in the test project (`npm list playwright-dashboard-reporter`).
+- A "failed" count that matches no visible test is usually a renamed test: the old `testId` row is never updated again. Delete it with `DELETE /api/tests/:testId`.
+- Web cannot reach the API: `PORT`, `BASE_URL` and `VITE_BASE_URL` must point at the same server.
 
-Visit `/api/tests/diagnostics` for integration status:
-
-```bash
-curl http://localhost:3001/api/tests/diagnostics
-```
-
-#### Common Issues
-
-1. **Tests not appearing**: Check `PLAYWRIGHT_PROJECT_DIR` environment variable
-2. **Reporter not working**:
-    - Verify `playwright-dashboard-reporter` is installed: `npm list playwright-dashboard-reporter`
-    - Check Dashboard is running and `PLAYWRIGHT_PROJECT_DIR` points to correct test project
-    - Dashboard passes `DASHBOARD_API_URL` to reporter automatically via environment
-3. **Connection issues**: Ensure dashboard is running on correct port
-4. **Package not found errors**: Run `npm install --save-dev playwright-dashboard-reporter` in your test project
-5. **Test count inconsistency**: If test discovery shows different counts than after test execution:
-    - Discovery finds fewer tests: Check if all test files are being scanned properly
-    - Fewer tests after execution: Usually resolved by API limit parameters (dashboard uses `limit=200`)
-    - See [Test Display Architecture](docs/archive/TEST_DISPLAY.md) for technical details
-
-## 🏗️ Architecture
-
-### Monorepo Structure
+## Architecture
 
 ```
 packages/
-├── core/      # Shared TypeScript types
-├── reporter/  # Playwright reporter source code
-├── server/    # Express API + SQLite + WebSocket
-└── web/       # React + Vite dashboard UI
+  core/      shared TypeScript types
+  reporter/  playwright-dashboard-reporter (published to npm)
+  server/    Express + SQLite (WAL) + WebSocket
+  web/       React + Vite UI
 ```
 
-### Dynamic Reporter Integration
+```
+Run All -> server spawns Playwright with --reporter=playwright-dashboard-reporter
+  -> reporter POSTs each result to /api/tests -> Controller -> Service -> Repository -> INSERT
+  -> attachments copied to permanent storage -> WebSocket -> UI
+```
 
-The dashboard uses **dynamic reporter injection** - no changes needed to your `playwright.config.ts`:
+Invariants (details in [CLAUDE.md](CLAUDE.md)): layered server (controller > service > repository > database), INSERT-only test results, and `generateStableTestId()` duplicated on purpose in the reporter and the server and kept byte-identical.
 
-1. **npm Package**: Dashboard uses `playwright-dashboard-reporter` from your test project's `node_modules`
-2. **Test Discovery**: Dashboard scans your project with `playwright test --list`
-3. **Dynamic Injection**: When running tests, adds `--reporter=playwright-dashboard-reporter` CLI flag
-4. **Clean Separation**: Your `playwright.config.ts` stays unchanged
-5. **Automatic Mode**: Reporter reads configuration from Dashboard environment variables
+Stack: React 18, Vite 6, Tailwind 3, Zustand, TanStack Query, Express 4, sqlite3, ws, Turborepo, TypeScript 5, Vitest.
 
-### Architecture Improvements
-
-The dashboard follows clean **Layered Architecture** principles with recent refinements:
-
-- **Pure Service Injection**: Streamlined dependency injection without legacy components
-- **Optimized Routes**: Removed unused endpoints, focused on active functionality
-- **100% Compatibility**: All existing integrations continue to work seamlessly
-
-## 🛠️ Development
-
-### Local Development
+## Development
 
 ```bash
-# Install dependencies
-npm install
-
-# Start all packages in development mode
-npm run dev
-
-# Individual package development
-cd packages/server && npm run dev  # API server
-cd packages/web && npm run dev     # React app
-cd packages/reporter && npm run dev # Reporter package
+npm run dev            # all packages
+npm run type-check
+npm run lint:fix
+npm test               # Vitest, all packages
+npm run build
 ```
 
-### Available Scripts
+Other root scripts: `test:watch`, `test:ui`, `test:coverage`, `lint`, `format`, `format:check`, `clean`, `trigger-tests`, `trigger-tests:wait`, `trigger-tests:silent`, `changeset`, `changeset:status`, `version`, `release:reporter` (see [docs/RELEASING.md](docs/RELEASING.md)).
 
-- `npm run build` - Build all packages
-- `npm run dev` - Development mode for all packages
-- `npm run type-check` - TypeScript validation
-- `npm run lint` - Code linting
-- `npm run clean` - Clean build artifacts
-- `npm run clear-data` - Interactive data cleanup
+Production with pm2 (`ecosystem.config.js`): `start:prod`, `auto:prod`, `deploy:prod` (`git pull && npm install && npm run auto:prod`), `stop:prod`, `restart:prod`, `reload:prod`, `delete:prod`, `logs:prod`, `status:prod`, `dev:prod`.
 
-## 🧪 Testing (Vitest)
+Run one test file with `npx vitest run --project server <path>` from the repo root. Coverage targets: reporter 90%, server 80%, web 70%.
 
-- Run all packages: `npm test`
-- Watch mode: `npm run test:watch`
-- Interactive UI: `npm run test:ui`
-- Coverage: `npm run test:coverage` (open `coverage/index.html`)
+## Documentation
 
-Per-package:
+- [docs/README.md](docs/README.md): index
+- [docs/API_REFERENCE.md](docs/API_REFERENCE.md): REST and WebSocket API
+- [docs/REPORTER.md](docs/REPORTER.md): reporter usage, metadata, publishing
+- [docs/RELEASING.md](docs/RELEASING.md): releases
+- [CLAUDE.md](CLAUDE.md): architecture invariants and conventions
 
-- Server: `npm test --workspace=@yshvydak/test-dashboard-server`
-- Web: `npm test --workspace=@yshvydak/web`
-- Reporter: `npm test --workspace=playwright-dashboard-reporter`
+Other files in `docs/` (QUICKSTART, CONFIGURATION, DEPLOYMENT, ARCHITECTURE, DEVELOPMENT, TESTING, `features/`) predate several changes. Where they disagree with this README, the README and the code win.
 
-More details: [TESTING.md](docs/TESTING.md)
+## Contributing
 
-### Environment Variables
+1. Fork the repository and create a branch.
+2. Make the change and add tests.
+3. Run type-check, lint, tests and build (commands above).
+4. Open a pull request.
 
-The dashboard uses a **simplified .env configuration** with automatic derivation of most values:
+## License
 
-```bash
-# Core Configuration (5 variables + auth)
-PORT=3001                                    # API server port
-NODE_ENV=development                         # Environment mode
-PLAYWRIGHT_PROJECT_DIR=/path/to/your/tests   # Test project location
-BASE_URL=http://localhost:3001               # Base URL for all services
-VITE_BASE_URL=http://localhost:3001          # Base URL accessible to web client
-VITE_PORT=3000                               # Web dev server port (optional)
-
-# Authentication Configuration
-ENABLE_AUTH=true                             # Enable authentication
-ADMIN_EMAIL=admin@admin.com                  # Admin user email
-ADMIN_PASSWORD=qwe123                        # Admin user password
-JWT_SECRET=dev-jwt-secret-change-in-production-12345    # JWT signing key
-
-# All other variables are derived automatically:
-# - DASHBOARD_API_URL = BASE_URL (for API integration)
-# - VITE_API_BASE_URL = BASE_URL/api (for web API calls)
-# - VITE_WEBSOCKET_URL = ws://BASE_URL/ws (for WebSocket)
-# - OUTPUT_DIR = test-results (default storage)
-
-# Advanced users can still override any derived variable
-```
-
-**Port Management:**
-
-- **API Server**: Uses `PORT` (default: 3001)
-- **Web Dev Server**: Uses `VITE_PORT` if set, otherwise `PORT + 1000`, fallback: 4001
-- **Production**: Both services can run on same port with different paths
-
-## 📊 Technology Stack
-
-### Frontend
-
-- **React 18** + TypeScript
-- **Vite** for fast development
-- **Tailwind CSS** for styling
-- **Zustand** for state management
-- **React Query** for data fetching
-
-### Backend
-
-- **Express.js** + TypeScript
-- **SQLite** for data persistence
-- **WebSocket** for real-time updates
-- **Layered Architecture** with dependency injection
-
-### DevOps
-
-- **Turborepo** for monorepo management
-- **TypeScript 5** with strict mode
-- **ESLint** for code quality
-
-## 🛣️ Roadmap
-
-### Phase 1: npm Package Integration ✅
-
-- Published `playwright-dashboard-reporter` to npm registry
-- One-command installation: `npm install --save-dev playwright-dashboard-reporter`
-- Automatic mode switching based on `NODE_ENV`
-- npm link support for local development
-- Full dashboard functionality
-
-### Phase 2: Enterprise Features (Future) 🔮
-
-- Multiple project management
-- Role-based access control
-- Advanced analytics and reporting
-- CI/CD integration templates
-- Team collaboration features
-
-## 🤝 Contributing
-
-We welcome contributions! Here's how to get started:
-
-1. **Fork the repository**
-2. **Create a feature branch**: `git checkout -b feature/amazing-feature`
-3. **Make your changes** and add tests
-4. **Run tests**: `npm run type-check && npm run lint`
-5. **Commit your changes**: `git commit -m 'Add amazing feature'`
-6. **Push to branch**: `git push origin feature/amazing-feature`
-7. **Open a Pull Request**
-
-### Development Guidelines
-
-- Follow existing code patterns and TypeScript strict mode
-- Add tests for new features
-- Update documentation for public API changes
-- Ensure all checks pass before submitting PR
-
-## 📚 Documentation
-
-Comprehensive documentation for users, developers, and contributors:
-
-### Quick Start
-
-- **[Quick Start Guide](docs/QUICKSTART.md)** - Get running in 5 minutes
-- **[CLAUDE.md](CLAUDE.md)** - AI development quick reference with critical context
-
-### For Developers
-
-- **[Architecture](docs/ARCHITECTURE.md)** - Complete system design and patterns
-- **[Development Guide](docs/DEVELOPMENT.md)** - Best practices and workflow
-- **[API Reference](docs/API_REFERENCE.md)** - REST + WebSocket endpoints
-
-### Documentation Hub
-
-- **[docs/README.md](docs/README.md)** - Complete documentation navigation with role-based guidance
-
-**Documentation Quality**: 9.5/10 - Optimized for AI-assisted development (vibe coding)
-
-## 📄 License
-
-MIT License - see [LICENSE](LICENSE) file for details.
-
-## 🙏 Acknowledgments
-
-- Built with [Playwright](https://playwright.dev/) - the amazing testing framework
-- Inspired by the need for better test visibility and team collaboration
-- Thanks to all contributors who help improve the testing experience
-
----
-
-<div align="center">
-  <strong>Happy Testing! 🎭</strong><br>
-  Made with ❤️ by <a href="mailto:y.shvydak@gmail.com">Yurii Shvydak</a>
-</div>
+MIT, see [LICENSE](LICENSE).

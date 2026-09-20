@@ -299,4 +299,97 @@ describe('useTestFilters', () => {
             expect(result.current.filteredTests).toHaveLength(6)
         })
     })
+
+    describe('Search by displayed tags', () => {
+        const withTags = (test: TestResult, tags: string[]): TestResult => ({
+            ...test,
+            metadata: {tags},
+        })
+        const tagged = [
+            withTags(createMockTest('1', 'passed', 'Alpha'), ['@ABC-816', '@sanity']),
+            withTags(createMockTest('2', 'failed', 'Beta'), ['@ABC-4812']),
+            createMockTest('3', 'passed', 'Gamma'),
+            // Older Discover rows keep metadata as a JSON string
+            {
+                ...createMockTest('4', 'pending', 'Delta'),
+                metadata: JSON.stringify({tags: ['@ABC-816', '@api']}) as any,
+            },
+        ]
+
+        const names = (
+            query: string,
+            tagMode?: 'tickets' | 'all',
+            filter: 'all' | 'noted' | 'passed' = 'all'
+        ) =>
+            renderHook(() =>
+                useTestFilters({tests: tagged, filter, searchQuery: query, tagMode})
+            ).result.current.filteredTests.map((t) => t.name)
+
+        it.each([undefined, 'tickets', 'all'] as const)(
+            'finds tests by full ticket key (tagMode %s)',
+            (mode) => {
+                expect(names('ABC-816', mode)).toEqual(['Alpha', 'Delta'])
+            }
+        )
+
+        it('is case-insensitive and matches partial keys', () => {
+            expect(names('abc-8')).toEqual(['Alpha', 'Delta'])
+            expect(names('abc-4812', 'all')).toEqual(['Beta'])
+        })
+
+        it("does not match non-ticket tags in 'tickets' mode (default, as before)", () => {
+            expect(names('sanity')).toEqual([])
+            expect(names('sanity', 'tickets')).toEqual([])
+            expect(names('api', 'tickets')).toEqual([])
+        })
+
+        it("matches non-ticket tags only in 'all' mode", () => {
+            expect(names('sanity', 'all')).toEqual(['Alpha'])
+            expect(names('API', 'all')).toEqual(['Delta'])
+        })
+
+        it("ignores a leading @ in the query for displayed tags ('all' mode)", () => {
+            expect(names('@sanity', 'all')).toEqual(['Alpha'])
+            expect(names('@ABC-4812', 'all')).toEqual(['Beta'])
+        })
+
+        it('still matches by name, and combines with the status filter', () => {
+            expect(names('gamma')).toEqual(['Gamma'])
+            expect(names('ABC-816', 'all', 'passed')).toEqual(['Alpha'])
+            expect(names('sanity', 'all', 'passed')).toEqual(['Alpha'])
+        })
+
+        it('applies to the noted filter too', () => {
+            const noted = [
+                withTags(createMockTest('1', 'passed', 'Alpha', true), ['@ABC-816', '@sanity']),
+                createMockTest('2', 'passed', 'Beta', true),
+            ]
+            const run = (query: string, tagMode: 'tickets' | 'all') =>
+                renderHook(() =>
+                    useTestFilters({tests: noted, filter: 'noted', searchQuery: query, tagMode})
+                ).result.current.filteredTests.map((t) => t.name)
+
+            expect(run('ABC-816', 'tickets')).toEqual(['Alpha'])
+            expect(run('sanity', 'tickets')).toEqual([])
+            expect(run('sanity', 'all')).toEqual(['Alpha'])
+        })
+
+        it('re-filters when tagMode changes', () => {
+            const {result, rerender} = renderHook(
+                ({tagMode}: {tagMode: 'tickets' | 'all'}) =>
+                    useTestFilters({
+                        tests: tagged,
+                        filter: 'all',
+                        searchQuery: 'sanity',
+                        tagMode,
+                    }),
+                {initialProps: {tagMode: 'tickets'}}
+            )
+            expect(result.current.filteredTests).toHaveLength(0)
+
+            rerender({tagMode: 'all'})
+
+            expect(result.current.filteredTests.map((t) => t.name)).toEqual(['Alpha'])
+        })
+    })
 })

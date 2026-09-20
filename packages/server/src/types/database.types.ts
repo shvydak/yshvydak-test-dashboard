@@ -74,6 +74,28 @@ export interface TestResultRow {
     project?: string
 }
 
+export interface TestAnnotationMeta {
+    type: string
+    description?: string
+}
+
+// Stored as an object: saveTestResult stringifies it once (a pre-stringified value
+// would be double-encoded and come back from the API as a string).
+// describe/annotations/line/column/tags mirror what the reporter sends for the same test.
+export interface DiscoveredTestMetadata {
+    line: number
+    column?: number
+    playwrightId: string | null
+    tags: string[]
+    // Describe titles only (no file/project/test title), outermost first; omitted when none
+    describe?: string[]
+    // Static annotations from the test, de-duplicated and capped; omitted when none
+    annotations?: TestAnnotationMeta[]
+    timeout?: number
+    expectedStatus?: string
+    discoveredAt: string
+}
+
 // Discovered test from Playwright
 export interface DiscoveredTest {
     id: string
@@ -87,7 +109,7 @@ export interface DiscoveredTest {
     errorStack?: undefined
     retryCount: number
     project?: string
-    metadata: string
+    metadata: DiscoveredTestMetadata
     timestamp: string
 }
 

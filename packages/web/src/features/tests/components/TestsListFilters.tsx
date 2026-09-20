@@ -111,7 +111,7 @@ export function TestsListFilters({
                     value={searchQuery}
                     onChange={(e) => onSearchChange(e.target.value)}
                     onClear={() => onSearchChange('')}
-                    placeholder="Search tests..."
+                    placeholder="Search tests or ticket keys..."
                     className="flex-1 md:w-96 md:flex-none"
                     showShortcutHint
                     resultCount={searchQuery ? filteredCount : undefined}

@@ -7,6 +7,7 @@ import {SettingsSection} from './SettingsSection'
 export function SettingsProjectTabsSection() {
     const {
         tabs,
+        staleProjects,
         updateTabs,
         defaultProjectTab,
         setDefaultProjectTab,
@@ -17,6 +18,8 @@ export function SettingsProjectTabsSection() {
     } = useProjectTabs()
     const [localTabs, setLocalTabs] = useState<ProjectTabConfig[]>([])
     const [localDefault, setLocalDefault] = useState('')
+    // Project awaiting the second "Confirm remove" click (inline, no browser dialog)
+    const [pendingRemove, setPendingRemove] = useState<string | null>(null)
 
     // Sync local state when tabs load
     useEffect(() => {
@@ -33,6 +36,29 @@ export function SettingsProjectTabsSection() {
             await setDefaultProjectTab(project)
         } catch {
             setLocalDefault(defaultProjectTab)
+        }
+    }
+
+    // Stale tab (project gone from the Playwright config): drop its config. Saved right away,
+    // like every other edit here. Pipeline membership lives in the config, so it goes too.
+    const handleRemoveStale = async (project: string) => {
+        setPendingRemove(null)
+        const updated = localTabs.filter((t) => t.project !== project)
+        setLocalTabs(updated)
+        try {
+            await updateTabs(updated)
+        } catch {
+            setLocalTabs(tabs)
+            return
+        }
+        // A default pointing at the removed tab would dangle: clear it (also reset server-side)
+        if (localDefault === project) {
+            setLocalDefault('')
+            try {
+                await setDefaultProjectTab('')
+            } catch {
+                setLocalDefault(defaultProjectTab)
+            }
         }
     }
 
@@ -230,6 +256,8 @@ export function SettingsProjectTabsSection() {
                     <div className="space-y-2">
                         {localTabs.map((tab, index) => {
                             const inAnyPipeline = tab.pipelines.length > 0
+                            const isStale = staleProjects.includes(tab.project)
+                            const confirming = pendingRemove === tab.project
                             return (
                                 <div
                                     key={tab.project}
@@ -276,6 +304,13 @@ export function SettingsProjectTabsSection() {
                                             disabled={isSaving}
                                             className="min-w-0 flex-1 rounded-lg border border-transparent bg-transparent px-2 py-1 text-sm font-semibold text-gray-900 transition-colors hover:border-gray-200 focus:border-transparent focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary-500/60 dark:text-gray-100 dark:hover:border-white/10 dark:focus:bg-white/[0.05]"
                                         />
+                                        {isStale && (
+                                            <span
+                                                title="This project is no longer in the Playwright config"
+                                                className="flex-shrink-0 text-[11px] font-medium text-gray-400 dark:text-gray-500">
+                                                Not in config
+                                            </span>
+                                        )}
                                         <div className="flex flex-shrink-0 items-center gap-1.5">
                                             <span className="text-[11px] font-medium text-gray-400 dark:text-gray-500">
                                                 Visible
@@ -414,6 +449,43 @@ export function SettingsProjectTabsSection() {
                                                 />
                                             </button>
                                         </div>
+
+                                        {isStale && (
+                                            <div className="ml-auto flex items-center gap-1.5">
+                                                {confirming ? (
+                                                    <>
+                                                        <button
+                                                            type="button"
+                                                            aria-label={`Confirm remove ${tab.project}`}
+                                                            disabled={isSaving}
+                                                            onClick={() =>
+                                                                void handleRemoveStale(tab.project)
+                                                            }
+                                                            className="rounded-lg bg-danger-500 px-2.5 py-1 text-xs font-medium text-white transition-colors hover:bg-danger-600 disabled:pointer-events-none disabled:opacity-40">
+                                                            Confirm remove
+                                                        </button>
+                                                        <button
+                                                            type="button"
+                                                            aria-label={`Cancel remove ${tab.project}`}
+                                                            onClick={() => setPendingRemove(null)}
+                                                            className="rounded-lg border border-gray-200 bg-white px-2.5 py-1 text-xs font-medium text-gray-600 transition-colors hover:bg-gray-50 dark:border-white/10 dark:bg-white/[0.05] dark:text-gray-300 dark:hover:bg-white/[0.09]">
+                                                            Cancel
+                                                        </button>
+                                                    </>
+                                                ) : (
+                                                    <button
+                                                        type="button"
+                                                        aria-label={`Remove stale tab ${tab.project}`}
+                                                        disabled={isSaving}
+                                                        onClick={() =>
+                                                            setPendingRemove(tab.project)
+                                                        }
+                                                        className="rounded-lg border border-danger-200 bg-white px-2.5 py-1 text-xs font-medium text-danger-600 transition-colors hover:bg-danger-50 disabled:pointer-events-none disabled:opacity-40 dark:border-danger-500/30 dark:bg-white/[0.05] dark:text-danger-400 dark:hover:bg-danger-500/10">
+                                                        Remove
+                                                    </button>
+                                                )}
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
                             )

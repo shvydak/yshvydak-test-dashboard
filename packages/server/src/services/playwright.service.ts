@@ -13,6 +13,8 @@ import {
 import {config} from '../config/environment.config'
 import {PLAYWRIGHT_CONSTANTS} from '../config/constants'
 import {Logger} from '../utils/logger.util'
+import {normalizeAnnotations, finiteNumber} from '../utils/playwrightMetadata.util'
+import {DiscoveredTestMetadata} from '../types/database.types'
 
 export class PlaywrightService implements IPlaywrightService {
     // ============================================================================
@@ -43,12 +45,23 @@ export class PlaywrightService implements IPlaywrightService {
         return discoveredTests
     }
 
-    private collectSpecs(suites: PlaywrightSuite[] | undefined, out: DiscoveredTest[]): void {
+    /**
+     * Top-level suites are FILE suites (title = file path); their nested suites are describes.
+     * `describe` is the parent describe chain (file suite excluded), outermost first.
+     */
+    private collectSpecs(
+        suites: PlaywrightSuite[] | undefined,
+        out: DiscoveredTest[],
+        describe: string[] = [],
+        isFileLevel = true
+    ): void {
         for (const suite of suites || []) {
+            // Anonymous describes (empty title) are skipped, like Playwright's titlePath()
+            const chain = isFileLevel ? [] : suite.title ? [...describe, suite.title] : describe
             for (const spec of suite.specs || []) {
-                out.push(this.createDiscoveredTest(spec))
+                out.push(this.createDiscoveredTest(spec, chain))
             }
-            this.collectSpecs(suite.suites, out)
+            this.collectSpecs(suite.suites, out, chain, false)
         }
     }
 
@@ -308,7 +321,7 @@ export class PlaywrightService implements IPlaywrightService {
     /**
      * Creates a DiscoveredTest object from a Playwright spec
      */
-    private createDiscoveredTest(spec: PlaywrightSpec): DiscoveredTest {
+    private createDiscoveredTest(spec: PlaywrightSpec, describe: string[] = []): DiscoveredTest {
         // Use file path directly from Playwright - it handles path resolution based on testDir
         const filePath = spec.file
         const stableTestId = this.generateStableTestId(filePath, spec.title)
@@ -324,12 +337,37 @@ export class PlaywrightService implements IPlaywrightService {
             status: 'pending',
             duration: 0,
             project,
-            metadata: JSON.stringify({
-                line: spec.line || 0,
-                playwrightId: spec.id || null,
-                discoveredAt: new Date().toISOString(),
-            }),
+            metadata: this.buildDiscoveredMetadata(spec, describe),
             timestamp: new Date().toISOString(),
+        }
+    }
+
+    /**
+     * Static per-test metadata from the `--list` JSON spec, shaped like the reporter's
+     * (see utils/playwrightMetadata.util.ts). Optional fields are omitted when absent.
+     */
+    private buildDiscoveredMetadata(
+        spec: PlaywrightSpec,
+        describe: string[]
+    ): DiscoveredTestMetadata {
+        const entry = spec.tests?.[0]
+        const annotations = normalizeAnnotations(entry?.annotations)
+        const column = finiteNumber(spec.column)
+        const timeout = finiteNumber(entry?.timeout)
+
+        return {
+            line: spec.line || 0,
+            ...(column !== undefined && {column}),
+            playwrightId: spec.id || null,
+            // JSON reporter strips the leading '@'; re-add it to match the reporter's format
+            tags: (spec.tags ?? []).map((t) => (t.startsWith('@') ? t : `@${t}`)),
+            ...(describe.length > 0 && {describe}),
+            ...(annotations.length > 0 && {annotations}),
+            ...(timeout !== undefined && {timeout}),
+            ...(typeof entry?.expectedStatus === 'string' && {
+                expectedStatus: entry.expectedStatus,
+            }),
+            discoveredAt: new Date().toISOString(),
         }
     }
 

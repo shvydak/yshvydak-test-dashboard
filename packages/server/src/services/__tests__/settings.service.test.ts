@@ -22,6 +22,8 @@ describe('SettingsService', () => {
         setProjectTabConfigs: Mock
         getDefaultProjectTab: Mock
         setDefaultProjectTab: Mock
+        getJiraSettings: Mock
+        setJiraSettings: Mock
     }
     let mockPlaywrightService: {
         getAvailableProjects: Mock
@@ -42,6 +44,8 @@ describe('SettingsService', () => {
             setProjectTabConfigs: vi.fn(),
             getDefaultProjectTab: vi.fn(),
             setDefaultProjectTab: vi.fn(),
+            getJiraSettings: vi.fn(),
+            setJiraSettings: vi.fn(),
         }
         mockPlaywrightService = {
             getAvailableProjects: vi.fn(),
@@ -419,6 +423,84 @@ describe('SettingsService', () => {
                 'Unknown Playwright project: Nope'
             )
             expect(mockRepository.setDefaultProjectTab).not.toHaveBeenCalled()
+        })
+    })
+
+    describe('Jira settings', () => {
+        it('getJiraSettings() should return repository settings', async () => {
+            const settings = {
+                baseUrl: 'https://x.atlassian.net/browse/',
+                chipAlignment: 'right',
+                tagMode: 'all',
+            }
+            mockRepository.getJiraSettings.mockResolvedValue(settings)
+
+            expect(await service.getJiraSettings()).toEqual(settings)
+        })
+
+        it('setJiraSettings() should append a trailing slash to a non-empty baseUrl', async () => {
+            const result = await service.setJiraSettings(
+                'https://x.atlassian.net/browse',
+                'left',
+                'tickets'
+            )
+
+            expect(result).toEqual({
+                baseUrl: 'https://x.atlassian.net/browse/',
+                chipAlignment: 'left',
+                tagMode: 'tickets',
+            })
+            expect(mockRepository.setJiraSettings).toHaveBeenCalledWith(result)
+        })
+
+        it('setJiraSettings() should keep an existing trailing slash and trim whitespace', async () => {
+            const result = await service.setJiraSettings(
+                '  https://x.atlassian.net/browse/  ',
+                'right',
+                'tickets'
+            )
+
+            expect(result).toEqual({
+                baseUrl: 'https://x.atlassian.net/browse/',
+                chipAlignment: 'right',
+                tagMode: 'tickets',
+            })
+        })
+
+        it('setJiraSettings() should pass the below alignment through', async () => {
+            const result = await service.setJiraSettings('', 'below', 'tickets')
+
+            expect(result.chipAlignment).toBe('below')
+            expect(mockRepository.setJiraSettings).toHaveBeenCalledWith({
+                baseUrl: '',
+                chipAlignment: 'below',
+                tagMode: 'tickets',
+            })
+        })
+
+        it.each(['tickets', 'all'] as const)(
+            'setJiraSettings() should pass tagMode %s through',
+            async (tagMode) => {
+                const result = await service.setJiraSettings('', 'left', tagMode)
+
+                expect(result.tagMode).toBe(tagMode)
+                expect(mockRepository.setJiraSettings).toHaveBeenCalledWith({
+                    baseUrl: '',
+                    chipAlignment: 'left',
+                    tagMode,
+                })
+            }
+        )
+
+        it('setJiraSettings() should store an empty baseUrl as empty (no slash)', async () => {
+            const result = await service.setJiraSettings('   ', 'left', 'tickets')
+
+            expect(result.baseUrl).toBe('')
+            expect(mockRepository.setJiraSettings).toHaveBeenCalledWith({
+                baseUrl: '',
+                chipAlignment: 'left',
+                tagMode: 'tickets',
+            })
         })
     })
 })

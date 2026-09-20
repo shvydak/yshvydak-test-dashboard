@@ -1365,6 +1365,26 @@ Get test statistics and summary data.
 }
 ```
 
+### GET /api/tests/status-counts
+
+Status breakdown over the **latest row per test** (`created_at`), aggregated in the database and not limited by any page size. Powers the Dashboard cards and the filter-bar counts.
+
+**Query Parameters:**
+
+- `project` (optional) - count only tests whose latest row belongs to this project
+
+**Response:**
+
+```json
+{
+    "success": true,
+    "data": {"total": 277, "passed": 270, "failed": 2, "skipped": 3, "pending": 2, "noted": 4},
+    "timestamp": "2026-09-20T10:00:00.000Z"
+}
+```
+
+Without `project`, tests whose latest row has `project = ''` (legacy rows and results without a project) are excluded, the same filter as the per-project summary behind the tab badges, so the totals agree. With `project`, only that project's rows are counted. The tests list (`GET /api/tests`) is not filtered this way.
+
 ## Storage Management
 
 ### GET /api/storage/stats
@@ -1483,6 +1503,60 @@ Authorization: Bearer {jwt-token}
 
 - `DELETE /api/tests/all` - Clear all test data to free storage
 - `DELETE /api/tests/:testId` - Delete specific test to free storage
+
+## Settings
+
+All `/api/settings/*` endpoints require a JWT (`Authorization: Bearer <token>`). Without a token they answer 401; when `ENABLE_AUTH` is not `true` they answer 403 (`JWT authentication required for this endpoint`). Settings are global (shared by all users) and stored in the `app_settings` table.
+
+### GET /api/settings/jira
+
+Ticket and tag chip settings.
+
+**Response:**
+
+```json
+{
+    "success": true,
+    "data": {
+        "baseUrl": "https://your-company.atlassian.net/browse/",
+        "chipAlignment": "left",
+        "tagMode": "tickets"
+    },
+    "timestamp": "2026-09-20T10:00:00.000Z"
+}
+```
+
+| Field           | Values                   | Default   | Stored as        |
+| --------------- | ------------------------ | --------- | ---------------- |
+| `baseUrl`       | `""` or an http(s) URL   | `""`      | `jira_base_url`  |
+| `chipAlignment` | `left`, `right`, `below` | `left`    | `chip_alignment` |
+| `tagMode`       | `tickets`, `all`         | `tickets` | `chip_tag_mode`  |
+
+- `baseUrl`: ticket chips link to `<baseUrl><KEY>`; empty means chips are plain labels.
+- `chipAlignment`: `left` / `right` place chips in a fixed column on wide screens (aligned left or right; under the test name on narrow screens); `below` shows them under the test name at every width, with no column.
+- `tagMode`: `tickets` shows only ticket-key tags (`@ABC-123`, pattern `^@[A-Z][A-Z0-9]+-\d+$`); `all` shows every tag, non-ticket tags as grey, non-clickable chips.
+- An unknown stored `chipAlignment` or `tagMode` value reads back as the default.
+
+### PUT /api/settings/jira
+
+Replaces all three settings at once. All fields are required.
+
+**Request Body:**
+
+```json
+{"baseUrl": "https://your-company.atlassian.net/browse", "chipAlignment": "right", "tagMode": "all"}
+```
+
+`baseUrl` is trimmed and, when not empty, a trailing `/` is added (`.../browse` is saved as `.../browse/`). The response has the same shape as `GET` and returns the saved (normalised) values.
+
+**Validation** (checked in this order; the first failure returns HTTP 400 with `{"success": false, "error": "Bad request", "message": "..."}`):
+
+| Condition                                  | `message`                                          |
+| ------------------------------------------ | -------------------------------------------------- |
+| `baseUrl` is not a string                  | `baseUrl must be a string`                         |
+| `chipAlignment` not `left`/`right`/`below` | `chipAlignment must be 'left', 'right' or 'below'` |
+| `tagMode` not `tickets`/`all`              | `tagMode must be 'tickets' or 'all'`               |
+| non-empty `baseUrl` is not an http(s) URL  | `baseUrl must be empty or a valid http(s) URL`     |
 
 ## Process Tracking
 

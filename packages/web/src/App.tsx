@@ -7,7 +7,7 @@ import {SettingsModal} from '@features/dashboard/components/settings'
 import {DiskSpaceWarningBanner} from '@features/dashboard/components/DiskSpaceWarningBanner'
 import {CIAutoRunPauseBanner} from '@features/dashboard/components/CIAutoRunPauseBanner'
 import {PipelineSkippedBanner} from '@features/dashboard/components/PipelineSkippedBanner'
-import {useDiskSpaceWarning} from '@features/dashboard/hooks'
+import {useDiskSpaceWarning, useJiraSettings} from '@features/dashboard/hooks'
 import {useCIAutoRun} from '@/hooks/useCIAutoRun'
 import {TestsList} from '@features/tests'
 import {FloatingProgressPanel} from '@features/tests/components/progress/FloatingProgressPanel'
@@ -33,6 +33,8 @@ function App() {
 
     const {severity, diskStats, thresholds, isDismissed, dismiss, triggerCheck} =
         useDiskSpaceWarning(isAuthenticated)
+    // Warm the shared react-query cache once; test rows read it without fetching
+    useJiraSettings(isAuthenticated)
     const {
         pause: ciPause,
         resume: resumeCIAutoRun,

@@ -319,4 +319,68 @@ describe('useProjectTabs', () => {
             expect(getProjectWorkersOverride('API_Tests')).toBe(8)
         })
     })
+
+    describe('staleProjects', () => {
+        const saved = [
+            {project: 'UI_Tests', displayName: 'UI', visible: true, pipelines: ['develop']},
+            {project: 'All_Tests', displayName: 'Old', visible: true, pipelines: ['develop']},
+        ]
+
+        it('lists saved tabs whose project is not in the live project list', async () => {
+            mockTabsLoad(saved, ['UI_Tests'])
+
+            const {result} = renderHook(() => useProjectTabs())
+            await waitFor(() => expect(result.current.isLoading).toBe(false))
+
+            expect(result.current.staleProjects).toEqual(['All_Tests'])
+        })
+
+        it('is empty when every saved tab is live', async () => {
+            mockTabsLoad(saved, ['UI_Tests', 'All_Tests'])
+
+            const {result} = renderHook(() => useProjectTabs())
+            await waitFor(() => expect(result.current.isLoading).toBe(false))
+
+            expect(result.current.staleProjects).toEqual([])
+        })
+
+        it('is empty when the live list is empty (server returns [] on list errors)', async () => {
+            mockTabsLoad(saved, [])
+
+            const {result} = renderHook(() => useProjectTabs())
+            await waitFor(() => expect(result.current.isLoading).toBe(false))
+
+            expect(result.current.tabs).toHaveLength(2)
+            expect(result.current.staleProjects).toEqual([])
+        })
+
+        it('drops a removed stale tab after updateTabs, and re-adds it as a fresh tab if the project reappears', async () => {
+            mockTabsLoad(saved, ['UI_Tests'])
+            const {result} = renderHook(() => useProjectTabs())
+            await waitFor(() => expect(result.current.isLoading).toBe(false))
+
+            const remaining = result.current.tabs.filter((t) => t.project !== 'All_Tests')
+            mockAuthPut.mockResolvedValueOnce(makeResponse({data: remaining}))
+            await act(async () => {
+                await result.current.updateTabs(remaining)
+            })
+
+            expect(result.current.tabs.map((t) => t.project)).toEqual(['UI_Tests'])
+            expect(result.current.staleProjects).toEqual([])
+
+            // Project comes back in the Playwright config: existing merge logic adds a new tab
+            mockTabsLoad(remaining, ['UI_Tests', 'All_Tests'])
+            await act(async () => {
+                await result.current.reload()
+            })
+
+            const back = result.current.tabs.find((t) => t.project === 'All_Tests')
+            expect(back).toMatchObject({
+                displayName: 'All_Tests',
+                visible: true,
+                pipelines: [],
+                stopPipelineOnFailure: false,
+            })
+        })
+    })
 })

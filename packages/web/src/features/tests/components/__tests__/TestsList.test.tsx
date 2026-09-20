@@ -1,5 +1,5 @@
-import {describe, it, expect, beforeEach, vi} from 'vitest'
-import {render, screen, waitFor} from '@testing-library/react'
+import {describe, it, expect, beforeEach, afterEach, vi} from 'vitest'
+import {render, screen, waitFor, cleanup} from '@testing-library/react'
 import {BrowserRouter, MemoryRouter, useSearchParams} from 'react-router-dom'
 import TestsList from '../TestsList'
 import {useTestsStore} from '../../store/testsStore'
@@ -31,6 +31,14 @@ const mockUseFilteredTestsByStatus = vi.fn(
 vi.mock('../../hooks/useFilteredTestsByStatus', () => ({
     useFilteredTestsByStatus: (filter: string, project?: string, isAuthenticated?: boolean) =>
         mockUseFilteredTestsByStatus(filter, project, isAuthenticated),
+}))
+
+// Tag mode comes from the shared jira-settings cache (react-query); mocked like the hooks above.
+let mockTagMode: 'tickets' | 'all' = 'tickets'
+vi.mock('@features/dashboard/hooks/useJiraSettings', () => ({
+    useJiraSettings: () => ({
+        settings: {baseUrl: '', chipAlignment: 'left', tagMode: mockTagMode},
+    }),
 }))
 
 // Mock child components to simplify testing
@@ -646,5 +654,73 @@ describe('TestsList - Shareable URLs', () => {
 
             expect(screen.getByTestId('filters')).toBeInTheDocument()
         })
+    })
+})
+
+describe('TestsList - search by displayed tags', () => {
+    const tagged: TestResult[] = [
+        {
+            id: 'e1',
+            testId: 't1',
+            name: 'Login works',
+            filePath: '/a.spec.ts',
+            status: 'passed',
+            duration: 1,
+            runId: 'r',
+            metadata: {tags: ['@ABC-123', '@sanity']},
+        },
+        {
+            id: 'e2',
+            testId: 't2',
+            name: 'Logout works',
+            filePath: '/b.spec.ts',
+            status: 'passed',
+            duration: 1,
+            runId: 'r',
+            metadata: {tags: ['@api']},
+        },
+    ]
+
+    const renderList = (query: string) =>
+        render(
+            <MemoryRouter initialEntries={[`/?q=${query}`]}>
+                <TestsList
+                    onTestSelect={vi.fn()}
+                    onTestRerun={vi.fn()}
+                    selectedTest={null}
+                    loading={false}
+                />
+            </MemoryRouter>
+        )
+
+    beforeEach(() => {
+        vi.clearAllMocks()
+        vi.mocked(useTestsStore).mockReturnValue({tests: tagged, error: null} as any)
+        mockUseFilteredTestsByStatus.mockReturnValue({tests: [], isLoading: false})
+    })
+
+    afterEach(() => {
+        mockTagMode = 'tickets'
+    })
+
+    it("'tickets' mode: a ticket key finds the test, a non-ticket tag does not", () => {
+        renderList('abc-123')
+        expect(screen.getAllByTestId('content-test').map((el) => el.textContent)).toEqual([
+            'Login works',
+        ])
+        cleanup()
+
+        renderList('sanity')
+        expect(screen.queryAllByTestId('content-test')).toHaveLength(0)
+    })
+
+    it("'all' mode: non-ticket tags are searchable too (leading @ ignored)", () => {
+        mockTagMode = 'all'
+
+        renderList('%40sanity')
+
+        expect(screen.getAllByTestId('content-test').map((el) => el.textContent)).toEqual([
+            'Login works',
+        ])
     })
 })

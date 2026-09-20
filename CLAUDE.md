@@ -13,7 +13,7 @@ These four are load-bearing. Breaking any one of them corrupts historical tracki
 3. **`generateStableTestId()` is duplicated on purpose** in `packages/reporter/src/index.ts` and `packages/server/src/services/playwright.service.ts`. The two must stay byte-identical.
 4. **Attachments are copied to permanent storage** (`packages/server/src/storage/attachmentManager.ts`) so they survive Playwright's cleanup.
 
-`app_settings` is a server-side key-value table (`SettingsRepository`, UPSERT `ON CONFLICT(key) DO UPDATE`). Defaults live in the repository getter, not in the schema. Existing keys: `global_playwright_project`, `disk_warning_threshold_percent`, `disk_critical_threshold_percent`, `project_tab_configs`, `default_project_tab`, `ci_autorun_paused`, `ci_autorun_resume_at`.
+`app_settings` is a server-side key-value table (`SettingsRepository`, UPSERT `ON CONFLICT(key) DO UPDATE`). Defaults live in the repository getter, not in the schema. Existing keys: `global_playwright_project`, `disk_warning_threshold_percent`, `disk_critical_threshold_percent`, `project_tab_configs`, `default_project_tab`, `ci_autorun_paused`, `ci_autorun_resume_at`, `jira_base_url` (default `''`, saved with trailing `/`), `chip_alignment` (`left`|`right` = tags column, `below` = chips under the test name; default `left`), `chip_tag_mode` (`tickets` = ticket-key tags only, `all` = every tag as a chip; default `tickets`) — all served by `GET/PUT /api/settings/jira`.
 
 Named CI pipelines: `ProjectTabConfig.pipelines` is `('develop' | 'production')[]` (a tab can be in zero or more). Tab list order = step order inside each pipeline. Shared helpers: `packages/server/src/utils/ciPipeline.util.ts` and `packages/web/src/constants/ciPipelines.ts`. Legacy `inPipeline: true` → `['develop']` via `normalizeCIPipelines`. `POST /api/pipeline/run` body `{pipeline, maxWorkers, source}` — missing name → `develop`, unknown → 400. Script: `--pipeline <name>`.
 
@@ -33,7 +33,7 @@ Named CI pipelines: `ProjectTabConfig.pipelines` is `('develop' | 'production')[
 npm run dev          # all packages (web + server + reporter watch)
 npm run type-check
 npm run lint:fix
-npm test             # 84 files, 2273 tests
+npm test             # 95 files, 2517 tests (6 skipped)
 npm run build
 npm run format
 npx vitest run --project server <path>   # single file — from repo ROOT, never packages/*

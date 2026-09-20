@@ -283,6 +283,29 @@ describe('YShvydakReporter - Integration Tests', () => {
             )
         })
 
+        it('should send Playwright tags in metadata.tags', () => {
+            const testCase = {
+                ...createMockTestCase('tagged', 'passed'),
+                tags: ['@ABC-123', '@sanity'],
+            } as TestCase
+            const result = createMockTestResult('passed', {duration: 100})
+
+            reporter.onTestEnd(testCase, result)
+
+            const callBody = JSON.parse(mockFetch.mock.calls[0][1].body)
+            expect(callBody.metadata.tags).toEqual(['@ABC-123', '@sanity'])
+        })
+
+        it('should send empty tags when TestCase.tags is unavailable (Playwright < 1.42)', () => {
+            const testCase = createMockTestCase('no tags support', 'passed')
+            const result = createMockTestResult('passed', {duration: 100})
+
+            reporter.onTestEnd(testCase, result)
+
+            const callBody = JSON.parse(mockFetch.mock.calls[0][1].body)
+            expect(callBody.metadata.tags).toEqual([])
+        })
+
         it('should send test result to API on test completion', () => {
             const testCase = createMockTestCase('should pass', 'passed')
             const result = createMockTestResult('passed', {duration: 1500})

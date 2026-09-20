@@ -6,6 +6,7 @@ import {SettingsTestExecutionSection} from './SettingsTestExecutionSection'
 import {SettingsProjectTabsSection} from './SettingsProjectTabsSection'
 import {SettingsActionsSection} from './SettingsActionsSection'
 import {SettingsStorageSection} from './SettingsStorageSection'
+import {SettingsJiraSection} from './SettingsJiraSection'
 
 export interface SettingsModalProps {
     isOpen: boolean
@@ -59,6 +60,7 @@ export function SettingsModal({
                         <SettingsThemeSection />
                         <SettingsProjectTabsSection />
                         <SettingsTestExecutionSection />
+                        <SettingsJiraSection />
                         <SettingsActionsSection activeProject={activeProject} />
                         <div ref={dataRetentionRef}>
                             <SettingsStorageSection />

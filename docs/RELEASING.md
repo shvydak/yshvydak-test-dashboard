@@ -33,13 +33,13 @@ Placeholders below: `X.Y.Z` is the new version, `<bump>` is `patch`, `minor` or 
 
     Expected diff: exactly two changed lines, the `version` in `packages/reporter/package.json` and in the `packages/reporter` entry of `package-lock.json`. If `package-lock.json` is not updated, run `npm install --package-lock-only`. On some npm versions the bump re-indents the whole `package-lock.json` from 4 to 2 spaces (a diff of about 26k lines; `.prettierignore` excludes the file, so prettier will not fix it). If that happens, restore 4-space indentation and check `git diff --stat` again:
 
-    ````bash
+    ```bash
     node -e "const f='package-lock.json',fs=require('fs');fs.writeFileSync(f,JSON.stringify(JSON.parse(fs.readFileSync(f)),null,4)+'\n')"
-    ``` In a workspace npm does not commit or tag on its own; `--no-git-tag-version` keeps that explicit.
+    ```
+
+    In a workspace npm does not commit or tag on its own; `--no-git-tag-version` keeps that explicit.
 
     Optional: add an entry to `packages/reporter/CHANGELOG.md` (its last entry is 1.0.4; later versions were bumped by hand).
-
-    ````
 
 3. **Commit.** `git commit -am "chore(reporter): release X.Y.Z"` (review `git status` first so nothing unrelated is included).
 

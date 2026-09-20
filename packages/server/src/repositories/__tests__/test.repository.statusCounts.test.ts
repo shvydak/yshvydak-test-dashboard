@@ -89,6 +89,72 @@ describe('TestRepository.getTestStatusCounts()', () => {
         expect(counts).toEqual({total: 2, passed: 1, failed: 1, skipped: 0, pending: 0, noted: 0})
     })
 
+    it("excludes tests whose latest row has project='' when no project is given (matches tab badges)", async () => {
+        await insertResult('test-1', 'All_Tests', 'passed', '2026-09-10T10:00:00.000Z')
+        // Legacy row: its own test_id, project='', and it IS the latest (only) row of that test
+        await insertResult('legacy-1', '', 'failed', '2026-06-25T10:00:00.000Z')
+        await insertResult('legacy-2', '', 'passed', '2026-06-25T10:00:00.000Z')
+
+        const counts = await repository.getTestStatusCounts()
+
+        expect(counts).toEqual({total: 1, passed: 1, failed: 0, skipped: 0, pending: 0, noted: 0})
+    })
+
+    it("still counts a test whose older row has project='' but whose latest row has a project", async () => {
+        await insertResult('test-1', '', 'failed', '2026-06-25T10:00:00.000Z')
+        await insertResult('test-1', 'All_Tests', 'passed', '2026-09-10T10:00:00.000Z')
+
+        const counts = await repository.getTestStatusCounts()
+
+        expect(counts).toMatchObject({total: 1, passed: 1, failed: 0})
+    })
+
+    it("drops a test when its project row is deleted and only an older project='' row is left", async () => {
+        // "Clear All_Tests data only" removed the newer project row; the legacy row resurfaces
+        const projectRowId = await insertResult(
+            'test-1',
+            'All_Tests',
+            'passed',
+            '2026-09-10T10:00:00.000Z'
+        )
+        await insertResult('test-1', '', 'failed', '2026-06-25T10:00:00.000Z')
+        expect(await repository.getTestStatusCounts()).toMatchObject({total: 1, failed: 0})
+
+        await (repository as any).execute('DELETE FROM test_results WHERE id = ?', [projectRowId])
+
+        expect(await repository.getTestStatusCounts()).toMatchObject({total: 0, failed: 0})
+    })
+
+    it('agrees with the per-project summary that feeds the tab badges', async () => {
+        await insertResult('test-1', 'All_Tests', 'passed', '2026-09-10T10:00:00.000Z')
+        await insertResult('test-2', 'All_Tests', 'failed', '2026-09-10T10:00:00.000Z')
+        await insertResult('test-3', 'API_Tests', 'passed', '2026-09-10T10:00:00.000Z')
+        await insertResult('legacy-1', '', 'failed', '2026-06-25T10:00:00.000Z')
+
+        const counts = await repository.getTestStatusCounts()
+        const summary = await repository.getProjectStatusSummary()
+
+        expect(counts.total).toBe(summary.reduce((sum, p) => sum + p.total, 0))
+        expect(counts.passed).toBe(summary.reduce((sum, p) => sum + p.passed, 0))
+        expect(counts.failed).toBe(summary.reduce((sum, p) => sum + p.failed, 0))
+    })
+
+    it("an explicit project keeps counting only that project's rows (unchanged)", async () => {
+        await insertResult('test-1', 'All_Tests', 'passed', '2026-09-10T10:00:00.000Z')
+        await insertResult('test-2', 'API_Tests', 'failed', '2026-09-10T10:00:00.000Z')
+        await insertResult('legacy-1', '', 'failed', '2026-06-25T10:00:00.000Z')
+
+        expect(await repository.getTestStatusCounts('All_Tests')).toMatchObject({
+            total: 1,
+            passed: 1,
+            failed: 0,
+        })
+        expect(await repository.getTestStatusCounts('API_Tests')).toMatchObject({
+            total: 1,
+            failed: 1,
+        })
+    })
+
     it('counts a non-empty note on the latest row as noted', async () => {
         await insertResult('test-1', 'API_Tests', 'passed', '2026-01-01T10:00:00.000Z')
         await insertResult('test-2', 'API_Tests', 'passed', '2026-01-01T10:00:00.000Z')

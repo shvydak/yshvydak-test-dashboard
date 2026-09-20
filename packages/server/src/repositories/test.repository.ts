@@ -344,6 +344,7 @@ export class TestRepository extends BaseRepository implements ITestRepository {
      * or the badges silently cap at the page size (see getProjectStatusSummary, which
      * this mirrors for the tab-bar badge). Ordered by created_at like getAllTests() and
      * getProjectStatusSummary, so the list, the counts and the tab badge agree.
+     * Without a project, tests whose latest row has project='' are excluded (as in the badge).
      */
     async getTestStatusCounts(project?: string): Promise<TestStatusCounts> {
         const params: any[] = []
@@ -368,6 +369,11 @@ export class TestRepository extends BaseRepository implements ITestRepository {
         if (project) {
             sql += ` AND l.project = ?`
             params.push(project)
+        } else {
+            // Same filter as getProjectStatusSummary (applied AFTER picking each test's latest
+            // row): legacy project='' rows must not count, or the Dashboard cards disagree
+            // with the tab badges once such a row resurfaces as "latest".
+            sql += ` AND l.project != ''`
         }
 
         const row = await this.queryOne<{

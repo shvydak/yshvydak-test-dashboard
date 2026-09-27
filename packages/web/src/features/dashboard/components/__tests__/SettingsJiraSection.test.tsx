@@ -6,9 +6,10 @@ import {SettingsJiraSection} from '../settings/SettingsJiraSection'
 vi.mock('@features/authentication/utils/authFetch', () => ({
     authGet: vi.fn(),
     authPut: vi.fn(),
+    authPost: vi.fn(),
 }))
 
-import {authGet, authPut} from '@features/authentication/utils/authFetch'
+import {authGet, authPut, authPost} from '@features/authentication/utils/authFetch'
 
 const jsonResponse = (ok: boolean, body: unknown) =>
     ({ok, json: async () => body}) as unknown as Response
@@ -17,6 +18,21 @@ const saved = {
     baseUrl: 'https://x.atlassian.net/browse/',
     chipAlignment: 'left',
     tagMode: 'tickets',
+}
+
+const disconnectedStatus = {enabled: false, lastSyncAt: null, lastSyncOk: null, lastSyncError: null}
+
+// authGet backs two different endpoints from this one component (jira-settings + jira-status) —
+// route by URL so each test can set only the response it cares about.
+function mockAuthGet(overrides: {settings?: unknown; status?: unknown} = {}) {
+    vi.mocked(authGet).mockImplementation((url: string) => {
+        if (url.includes('/jira/status')) {
+            return Promise.resolve(
+                jsonResponse(true, {data: overrides.status ?? disconnectedStatus})
+            )
+        }
+        return Promise.resolve(jsonResponse(true, {data: overrides.settings ?? saved}))
+    })
 }
 
 const renderSection = () => {
@@ -38,7 +54,7 @@ const loaded = async () => {
 describe('SettingsJiraSection', () => {
     beforeEach(() => {
         vi.clearAllMocks()
-        vi.mocked(authGet).mockResolvedValue(jsonResponse(true, {data: saved}))
+        mockAuthGet()
     })
 
     it('is titled "Tags & tickets" and uses generic example texts', async () => {
@@ -232,5 +248,97 @@ describe('SettingsJiraSection', () => {
         expect(
             await screen.findByText('baseUrl must be empty or a valid http(s) URL')
         ).toBeInTheDocument()
+    })
+
+    describe('Jira connection status (server-side enrichment, separate from the base URL above)', () => {
+        it('shows "not configured" and no refresh button when the server integration is disabled', async () => {
+            await loaded()
+
+            expect(screen.getByText('Jira: not configured')).toBeInTheDocument()
+            expect(screen.queryByRole('button', {name: /refresh now/i})).not.toBeInTheDocument()
+        })
+
+        it('shows "connected", the last sync time, and a refresh button when enabled', async () => {
+            mockAuthGet({
+                status: {
+                    enabled: true,
+                    lastSyncAt: '2026-09-24T10:00:00.000Z',
+                    lastSyncOk: true,
+                    lastSyncError: null,
+                },
+            })
+
+            await loaded()
+
+            expect(await screen.findByText('Jira: connected')).toBeInTheDocument()
+            expect(screen.getByText(/last synced/i)).toBeInTheDocument()
+            expect(screen.getByRole('button', {name: /refresh now/i})).toBeInTheDocument()
+        })
+
+        it('shows "not synced yet" when connected but nothing has been cached', async () => {
+            mockAuthGet({
+                status: {enabled: true, lastSyncAt: null, lastSyncOk: null, lastSyncError: null},
+            })
+
+            await loaded()
+
+            expect(await screen.findByText(/not synced yet/i)).toBeInTheDocument()
+        })
+
+        it('shows the last sync failure reason next to "connected" — connected is not the same as working', async () => {
+            mockAuthGet({
+                status: {
+                    enabled: true,
+                    lastSyncAt: '2026-09-20T10:00:00.000Z',
+                    lastSyncOk: false,
+                    lastSyncError: 'authentication (401)',
+                },
+            })
+
+            await loaded()
+
+            expect(await screen.findByText('Jira: connected')).toBeInTheDocument()
+            expect(screen.getByText(/last sync failed: authentication \(401\)/)).toBeInTheDocument()
+        })
+
+        it('posts to /jira/refresh and shows the checked/updated/failed summary', async () => {
+            mockAuthGet({
+                status: {enabled: true, lastSyncAt: null, lastSyncOk: null, lastSyncError: null},
+            })
+            vi.mocked(authPost).mockResolvedValue(
+                jsonResponse(true, {
+                    data: {
+                        checked: 5,
+                        updated: 4,
+                        failed: 1,
+                        lastSyncAt: '2026-09-24T11:00:00.000Z',
+                    },
+                })
+            )
+
+            await loaded()
+            fireEvent.click(await screen.findByRole('button', {name: /refresh now/i}))
+
+            // findBy* waits for the mutation's async chain to run before asserting — a bare
+            // `expect(authPost).toHaveBeenCalled()` right after fireEvent.click would race it.
+            expect(await screen.findByText(/Checked 5, updated 4, 1 failed\./)).toBeInTheDocument()
+            expect(authPost).toHaveBeenCalledWith(expect.stringContaining('/jira/refresh'))
+        })
+
+        it('shows a refresh error message', async () => {
+            mockAuthGet({
+                status: {enabled: true, lastSyncAt: null, lastSyncOk: null, lastSyncError: null},
+            })
+            vi.mocked(authPost).mockResolvedValue(
+                jsonResponse(false, {message: 'Jira API responded 401 Unauthorized'})
+            )
+
+            await loaded()
+            fireEvent.click(await screen.findByRole('button', {name: /refresh now/i}))
+
+            expect(
+                await screen.findByText('Jira API responded 401 Unauthorized')
+            ).toBeInTheDocument()
+        })
     })
 })

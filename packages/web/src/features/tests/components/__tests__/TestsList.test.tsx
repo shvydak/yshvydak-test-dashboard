@@ -41,6 +41,12 @@ vi.mock('@features/dashboard/hooks/useJiraSettings', () => ({
     }),
 }))
 
+// Jira ticket type/status lookup (react-query) — same reasoning as the mocks above. Empty map =
+// no enrichment for any key, same as the disabled/never-synced state.
+vi.mock('../../hooks/useJiraTicketInfo', () => ({
+    useJiraTicketInfo: () => ({ticketInfo: new Map(), isLoading: false}),
+}))
+
 // Mock child components to simplify testing
 vi.mock('../TestsListFilters', () => ({
     TestsListFilters: () => <div data-testid="filters">Filters</div>,

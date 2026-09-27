@@ -27,6 +27,16 @@ export interface EnvironmentConfig {
         adminEmail: string
         adminPassword: string
     }
+    jira: {
+        // Jira Cloud REST API credentials (read-only, server-side only — never sent to the
+        // browser, never logged). Unrelated to the `jira_base_url` app_setting: that one is a
+        // user-editable link target for ticket chips and works with zero env config. This one
+        // enables the background enrichment (ticket type/status/summary/assignee).
+        baseUrl: string
+        email: string
+        apiToken: string
+        enabled: boolean
+    }
 }
 
 export const config: EnvironmentConfig = {
@@ -116,6 +126,24 @@ export const config: EnvironmentConfig = {
                 )
             }
             return password || ''
+        },
+    },
+    jira: {
+        // Site root only (e.g. https://your-company.atlassian.net), trailing slash trimmed —
+        // NOT the /browse/ link used by the `jira_base_url` app_setting.
+        get baseUrl() {
+            return (process.env.JIRA_BASE_URL || '').trim().replace(/\/+$/, '')
+        },
+        get email() {
+            return (process.env.JIRA_EMAIL || '').trim()
+        },
+        get apiToken() {
+            return process.env.JIRA_API_TOKEN || ''
+        },
+        // All three required — partial config is treated as "not configured" rather than
+        // guessed at, so a typo'd/missing var degrades to today's behavior instead of failing.
+        get enabled() {
+            return !!(config.jira.baseUrl && config.jira.email && config.jira.apiToken)
         },
     },
 }

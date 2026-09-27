@@ -1560,6 +1560,86 @@ Replaces all three settings at once. All fields are required.
 | `tagMode` not `tickets`/`all`              | `tagMode must be 'tickets' or 'all'`               |
 | non-empty `baseUrl` is not an http(s) URL  | `baseUrl must be empty or a valid http(s) URL`     |
 
+## Jira Integration
+
+All `/api/jira/*` endpoints require a JWT, same rules as `/api/settings/*` above. Read-only enrichment of ticket-key tags (type, status, summary, assignee), independent of the `baseUrl` used by `/api/settings/jira` chip links. Configured entirely via server env (`JIRA_BASE_URL`, `JIRA_EMAIL`, `JIRA_API_TOKEN` — see [CONFIGURATION.md](CONFIGURATION.md#jira-integration-optional)); there is no endpoint to set these from the UI.
+
+### GET /api/jira/status
+
+Connection status, for the Settings badge and manual refresh button.
+
+**Response:**
+
+```json
+{
+    "success": true,
+    "data": {
+        "enabled": true,
+        "lastSyncAt": "2026-09-24T10:00:00.000Z",
+        "lastSyncOk": false,
+        "lastSyncError": "authentication (401)"
+    },
+    "timestamp": "2026-09-24T10:05:00.000Z"
+}
+```
+
+| Field           | Meaning                                                                                                                                                                                                                                                         |
+| --------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `enabled`       | `true` only when `JIRA_BASE_URL`/`JIRA_EMAIL`/`JIRA_API_TOKEN` are all set on the server.                                                                                                                                                                       |
+| `lastSyncAt`    | ISO timestamp of the most recent successful ticket cache write, or `null` if nothing has synced yet (never synced, or synced but zero ticket-key tags exist anywhere).                                                                                          |
+| `lastSyncOk`    | Outcome of the most recent sync attempt (background interval or manual refresh) — can be `false` even when `lastSyncAt` is set, from an earlier successful sync followed by a failing one. `null` = no attempt has run yet.                                     |
+| `lastSyncError` | Short, human reason for the last attempt's failure (e.g. `"authentication (401)"`, `"rate limited (429)"`, `"Jira unavailable (503)"`, `"network error"`), or `null` when the last attempt succeeded or none has run. Never the raw response body or the token. |
+
+### GET /api/jira/tickets?keys=ABC-1,ABC-2
+
+Cached info for the given ticket keys (comma-separated, de-duplicated). Never calls Jira directly — always serves from the SQLite cache written by the background sync / manual refresh.
+
+**Response:**
+
+```json
+{
+    "success": true,
+    "data": [
+        {
+            "key": "ABC-1",
+            "issueType": "Bug",
+            "statusName": "To Do",
+            "statusCategory": "new",
+            "summary": "Was able to add the same item twice",
+            "assignee": "Jane Doe",
+            "fetchedAt": "2026-09-24T10:00:00.000Z"
+        }
+    ],
+    "timestamp": "2026-09-24T10:05:00.000Z"
+}
+```
+
+- `statusCategory` is one of `new` (not started), `indeterminate` (in progress), `done` — Jira's own status-category key, stable across workflow customization.
+- A requested key with no cache entry (integration disabled, never synced, or the last sync couldn't resolve it — 401/403/429/network error/deleted ticket) is **omitted** from the array, not returned as an error or a null entry. The frontend renders the plain ticket-key chip for any key missing from the response.
+- Missing/empty `keys` returns `{"success": true, "data": []}`, not a 400 — this endpoint is always safe to call, integration enabled or not.
+- More than 200 keys in one request returns `400 Bad request` (`{"message": "Too many keys: <n> (max 200)"}`) rather than silently truncating.
+
+### POST /api/jira/refresh
+
+Triggers an immediate sync (same logic as the 30-minute background job): discovers every ticket-key tag currently on any test, re-fetches type/status/summary/assignee from Jira in batches of 50, upserts the cache.
+
+**Response:**
+
+```json
+{
+    "success": true,
+    "data": {
+        "checked": 42,
+        "updated": 40,
+        "failed": 2,
+        "lastSyncAt": "2026-09-24T10:05:00.000Z"
+    },
+    "timestamp": "2026-09-24T10:05:00.000Z"
+}
+```
+
+`failed` counts keys whose batch request errored (Jira auth/rate-limit/network failure) — logged server-side, never thrown to the client. `400 Bad request` when the integration isn't configured (`{"message": "Jira integration is not configured (JIRA_BASE_URL / JIRA_EMAIL / JIRA_API_TOKEN)"}`).
+
 ## Process Tracking
 
 ### POST /api/tests/process-start

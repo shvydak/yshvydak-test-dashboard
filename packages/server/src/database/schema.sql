@@ -84,6 +84,36 @@ CREATE TABLE IF NOT EXISTS app_settings (
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
+-- Cached Jira ticket info (type/status/summary/assignee) for ticket-key tags found on tests.
+-- Populated read-only by the background sync (JiraService); the dashboard never writes to Jira.
+-- Only populated when JIRA_BASE_URL/JIRA_EMAIL/JIRA_API_TOKEN are all set — otherwise this table
+-- stays empty and ticket chips render exactly as before (plain link, no type/status).
+CREATE TABLE IF NOT EXISTS jira_ticket_cache (
+    ticket_key TEXT PRIMARY KEY,
+    issue_type TEXT NOT NULL,
+    status_name TEXT NOT NULL,
+    status_category TEXT CHECK(status_category IN ('new', 'indeterminate', 'done')) NOT NULL,
+    summary TEXT NOT NULL DEFAULT '',
+    assignee TEXT,
+    -- Always written explicitly from JS (`new Date().toISOString()`), never left to SQLite's
+    -- CURRENT_TIMESTAMP: that produces "YYYY-MM-DD HH:MM:SS" with NO timezone suffix, which
+    -- `new Date(...)` on the frontend parses as LOCAL time — silently wrong by the viewer's UTC
+    -- offset. An explicit ISO-with-Z string sorts identically to a naive one for MAX(fetched_at),
+    -- so getLastSyncAt() needed no other change.
+    fetched_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Outcome of the most recent Jira sync ATTEMPT (background interval or manual "Refresh now"),
+-- independent of jira_ticket_cache: an attempt that fails outright (bad token, Jira unreachable)
+-- still needs to be visible in Settings even though it wrote nothing to the cache above. Single
+-- row (id = 1), UPSERT-only.
+CREATE TABLE IF NOT EXISTS jira_sync_status (
+    id INTEGER PRIMARY KEY CHECK (id = 1),
+    ok INTEGER NOT NULL,
+    error_reason TEXT,
+    attempted_at DATETIME NOT NULL
+);
+
 -- Indexes for better performance
 CREATE INDEX IF NOT EXISTS idx_test_runs_status ON test_runs(status);
 CREATE INDEX IF NOT EXISTS idx_test_runs_created_at ON test_runs(created_at);
@@ -107,6 +137,8 @@ CREATE INDEX IF NOT EXISTS idx_test_notes_test_id ON test_notes(test_id);
 CREATE INDEX IF NOT EXISTS idx_note_images_test_id ON note_images(test_id);
 
 CREATE INDEX IF NOT EXISTS idx_app_settings_updated_at ON app_settings(updated_at);
+
+CREATE INDEX IF NOT EXISTS idx_jira_ticket_cache_fetched_at ON jira_ticket_cache(fetched_at);
 
 -- Triggers to update timestamps
 CREATE TRIGGER IF NOT EXISTS update_test_runs_timestamp 

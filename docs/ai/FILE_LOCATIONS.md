@@ -21,7 +21,8 @@ packages/server/src/
 ├── types/                       # TypeScript interfaces
 │   ├── test.types.ts           # Test-related types
 │   ├── attachment.types.ts     # Attachment types
-│   └── api.types.ts            # API request/response types
+│   ├── api.types.ts            # API request/response types
+│   └── jira.types.ts           # Jira integration types (✨ v1.8.0)
 │
 ├── utils/                       # Helper utilities
 │   ├── ResponseHelper.ts       # Standardized API responses
@@ -58,7 +59,11 @@ packages/server/src/
 │   ├── run.controller.ts       # Test run lifecycle
 │   ├── storage.controller.ts   # Storage statistics (✨ v1.0.4)
 │   │   └── GET /api/storage/stats             # Get storage statistics
-│   └── auth.controller.ts      # Authentication endpoints
+│   ├── auth.controller.ts      # Authentication endpoints
+│   └── jira.controller.ts      # Jira ticket type/status (✨ v1.8.0, read-only, env-gated)
+│       ├── GET /api/jira/status               # {enabled, lastSyncAt, lastSyncOk, lastSyncError}
+│       ├── GET /api/jira/tickets?keys=...     # Cached info, max 200 keys
+│       └── POST /api/jira/refresh             # Trigger an immediate sync
 │
 ├── services/                    # Business logic and orchestration
 │   ├── test.service.ts         # Test management
@@ -94,9 +99,13 @@ packages/server/src/
 │   │   └── getAttachmentsByTestResult() # Load attachments with URLs
 │   ├── storage.service.ts      # Storage statistics (✨ v1.0.4)
 │   │   └── getStorageStats()           # Get storage stats with error handling
-│   └── websocket.service.ts    # Real-time event broadcasting
-│       ├── broadcast()                 # Send to all clients
-│       └── broadcastToClient()         # Send to specific client
+│   ├── websocket.service.ts    # Real-time event broadcasting
+│   │   ├── broadcast()                 # Send to all clients
+│   │   └── broadcastToClient()         # Send to specific client
+│   └── jira.service.ts         # Jira sync (✨ v1.8.0)
+│       ├── refreshAllKnownKeys()       # Discover tags → POST bulkfetch → cache (single in-flight)
+│       ├── getTicketInfo()             # [] when disabled, even with a stale cache
+│       └── getStatus()                 # enabled + lastSyncAt + last attempt ok/reason
 │
 ├── repositories/                # Data access layer (database operations only)
 │   ├── test.repository.ts      # Test CRUD operations
@@ -124,23 +133,31 @@ packages/server/src/
 │   │   ├── getAttachmentsByTestResult() # Query by test result ID
 │   │   └── getAttachmentsWithUrls()    # Include formatted URLs
 │   │
-│   └── storage.repository.ts   # Storage statistics (✨ v1.0.4)
-│       ├── getStorageStats()           # Get database + attachment storage stats
-│       └── getDatabaseStats()          # Calculate SQLite file size (includes WAL/SHM)
+│   ├── storage.repository.ts   # Storage statistics (✨ v1.0.4)
+│   │   ├── getStorageStats()           # Get database + attachment storage stats
+│   │   └── getDatabaseStats()          # Calculate SQLite file size (includes WAL/SHM)
+│   │
+│   └── jiraTicket.repository.ts # Jira ticket cache + sync status (✨ v1.8.0)
+│       ├── upsertMany()                # Bound fetchedAt param, never SQL CURRENT_TIMESTAMP
+│       ├── getLastSyncAt()             # MAX(fetched_at) across jira_ticket_cache
+│       └── getLastSyncStatus()/setLastSyncStatus() # jira_sync_status, single row (id=1)
 │
 ├── routes/                      # Route definitions
 │   ├── test.routes.ts          # Test API routes with dependency injection
 │   ├── note.routes.ts          # Test notes API routes (✨ v1.2.0)
 │   ├── run.routes.ts           # Run API routes
 │   ├── storage.routes.ts       # Storage statistics routes (✨ v1.0.4)
-│   └── auth.routes.ts          # Authentication routes
+│   ├── auth.routes.ts          # Authentication routes
+│   └── jira.routes.ts          # Jira routes (✨ v1.8.0), JWT-required like settings.routes.ts
 │
 ├── database/                    # Database management
 │   ├── database.manager.ts     # SQLite operations wrapper
 │   │   └── saveTestResult()    # ⚠️ CRITICAL: ALWAYS INSERT, never UPDATE
 │   └── schema.sql              # Database schema definition
 │       ├── test_results table  # Multiple rows per testId = history
-│       └── attachments table   # ON DELETE CASCADE cleanup
+│       ├── attachments table   # ON DELETE CASCADE cleanup
+│       ├── jira_ticket_cache table  # ✨ v1.8.0 — fetched_at always bound from JS (ISO+Z)
+│       └── jira_sync_status table   # ✨ v1.8.0 — single row (id=1), last attempt ok/reason
 │
 ├── websocket/                   # WebSocket server
 │   ├── websocket.manager.ts    # Connection management
@@ -229,6 +246,11 @@ packages/web/src/
 │   │   │           ├── Click to switch execution (disabled for current)
 │   │   │           └── onDelete callback for execution deletion
 │   │   │
+│   │   ├── TicketChips.tsx               # Ticket chips; JiraEnrichedChip when info resolves (✨ v1.8.0)
+│   │   │   ├── Reads JiraTicketInfoContext — no entry for a key → pre-existing plain chip
+│   │   │   └── Type icon + statusCategory color (jiraBlue/jiraGreen tokens) + custom tooltip
+│   │   ├── JiraTicketInfoContext.ts (✨ v1.8.0) # Map<key, JiraTicketInfo> for the visible list
+│   │   │
 │   │   ├── hooks/                        # Custom hooks for tests feature
 │   │   │   ├── useTestAttachments.ts     # Fetch attachments for test
 │   │   │   ├── useTestExecutionHistory.ts # Fetch execution history
@@ -236,8 +258,10 @@ packages/web/src/
 │   │   │   ├── useTestFilters.ts         # Filter state management
 │   │   │   ├── useTestGroups.ts          # Group tests by file
 │   │   │   ├── useTestSort.ts            # Sort tests
-│   │   │   └── useNoteImages.ts          # Fetch note images (✨ v1.3.0)
-│   │   │       └── React Query integration with caching
+│   │   │   ├── useNoteImages.ts          # Fetch note images (✨ v1.3.0)
+│   │   │   │   └── React Query integration with caching
+│   │   │   └── useJiraTicketInfo.ts (✨ v1.8.0) # Batched GET /api/jira/tickets?keys=...
+│   │   │       └── Sorted/de-duped key list in the query key for cache stability
 │   │   │
 │   │   ├── store/                        # Zustand state management
 │   │   │   └── testsStore.ts            # Tests state + actions
@@ -298,7 +322,8 @@ packages/web/src/
 │   │   │       │   ├── Attachments breakdown by type
 │   │   │       │   ├── Total storage + average per test
 │   │   │       │   └── Refresh button for manual update
-│   │   │       └── SettingsActionsSection.tsx  # Admin actions (discover, clear, health)
+│   │   │       ├── SettingsActionsSection.tsx  # Admin actions (discover, clear, health)
+│   │       └── SettingsJiraSection.tsx     # Tags & tickets: base URL/alignment/tagMode + (✨ v1.8.0) connection badge, last-sync-failure reason, Refresh now
 │   │   │
 │   │   └── hooks/                       # Dashboard-specific hooks
 │   │       ├── useDashboardStats.ts     # Fetch dashboard statistics
@@ -308,10 +333,12 @@ packages/web/src/
 │   │       │   ├── updateDays(), updateThreshold()
 │   │       │   └── React Query integration
 │   │       ├── useTestTimeline.ts       # Daily test execution stats
-│   │       └── useStorageStats.ts       # Storage statistics (✨ v1.0.4)
-│   │           ├── React Query with 30s stale time
-│   │           ├── GET /api/storage/stats
-│   │           └── Manual refetch support
+│   │       ├── useStorageStats.ts       # Storage statistics (✨ v1.0.4)
+│   │       │   ├── React Query with 30s stale time
+│   │       │   ├── GET /api/storage/stats
+│   │       │   └── Manual refetch support
+│   │       └── useJiraStatus.ts (✨ v1.8.0) # GET /api/jira/status + POST /api/jira/refresh
+│   │           └── onSuccess: invalidate ['jira-status'] + ['jira-ticket-info'] (refetch, not hand-built)
 │   │
 │   └── authentication/                  # Authentication feature
 │       ├── components/
@@ -738,6 +765,34 @@ packages/web/src/App.tsx
 packages/web/src/features/authentication/utils/authFetch.ts
   → Intercepts 401 responses
   → Triggers global logout on auth failure
+```
+
+---
+
+### "Where is Jira ticket type/status enrichment?"
+
+Full write-up: [docs/features/JIRA_TICKET_STATUS.md](../features/JIRA_TICKET_STATUS.md)
+
+**Backend:**
+
+```
+packages/server/src/services/jira.service.ts
+  → refreshAllKnownKeys() — discover tags, POST /rest/api/3/issue/bulkfetch, cache
+packages/server/src/repositories/jiraTicket.repository.ts
+  → jira_ticket_cache (per-ticket), jira_sync_status (last attempt outcome)
+packages/server/src/routes/jira.routes.ts
+  → GET /api/jira/status, GET /api/jira/tickets, POST /api/jira/refresh
+```
+
+**Frontend:**
+
+```
+packages/web/src/features/tests/components/TicketChips.tsx
+  → JiraEnrichedChip when JiraTicketInfoContext has the key, else the pre-existing plain chip
+packages/web/src/features/tests/hooks/useJiraTicketInfo.ts
+  → One batched GET per visible test list
+packages/web/src/features/dashboard/hooks/useJiraStatus.ts
+  → Settings connection badge + "Refresh now"
 ```
 
 ---

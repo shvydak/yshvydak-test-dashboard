@@ -17,7 +17,7 @@ These four are load-bearing. Breaking any one of them corrupts historical tracki
 
 Named CI pipelines: `ProjectTabConfig.pipelines` is `('develop' | 'production')[]` (a tab can be in zero or more). Tab list order = step order inside each pipeline. Shared helpers: `packages/server/src/utils/ciPipeline.util.ts` and `packages/web/src/constants/ciPipelines.ts`. Legacy `inPipeline: true` → `['develop']` via `normalizeCIPipelines`. `POST /api/pipeline/run` body `{pipeline, maxWorkers, source}` — missing name → `develop`, unknown → 400. Script: `--pipeline <name>`.
 
-Jira integration (optional, env-gated: `JIRA_BASE_URL`/`JIRA_EMAIL`/`JIRA_API_TOKEN`, all three or none — `config.jira.enabled`): read-only ticket type/status/summary/assignee for ticket-key tags, cached in `jira_ticket_cache` (SQLite, no app_settings key — `MAX(fetched_at)` doubles as "last sync"). `JiraService.refreshAllKnownKeys()` runs every 30 min from `server.ts` + on-demand via `POST /api/jira/refresh`; ticket-key discovery duplicates the `@[A-Z][A-Z0-9]+-\d+` tag regex server-side (`utils/jiraTicketKey.util.ts`) on purpose, same reasoning as invariant 3. Separate from the pre-existing `jira_base_url` app_setting (chip link target, no env needed). A key absent from `GET /api/jira/tickets` (disabled/never synced/Jira error) is not an error — `TicketChips.tsx` falls back to the plain pre-existing chip render for that key.
+Jira integration (optional, env-gated: `JIRA_BASE_URL`/`JIRA_EMAIL`/`JIRA_API_TOKEN`, all three or none — `config.jira.enabled`): read-only ticket type/status/summary/assignee for ticket-key tags, cached in `jira_ticket_cache`; last sync attempt (ok / error_reason / attempted_at) in single-row `jira_sync_status`. Fetch via `POST /rest/api/3/issue/bulkfetch` — legacy `GET /rest/api/3/search` was removed from Jira Cloud (2025-08); HTTP mocks won't catch an endpoint removal, check Atlassian docs. `JiraService.refreshAllKnownKeys()` runs every 30 min from `server.ts` + on-demand via `POST /api/jira/refresh`; ticket-key discovery duplicates the `@[A-Z][A-Z0-9]+-\d+` tag regex server-side (`utils/jiraTicketKey.util.ts`) on purpose, same reasoning as invariant 3. Separate from the pre-existing `jira_base_url` app_setting (chip link target, no env needed). A key absent from `GET /api/jira/tickets` (disabled/never synced/Jira error) is not an error — `TicketChips.tsx` falls back to the plain pre-existing chip render for that key.
 
 ## Flow
 
@@ -35,7 +35,7 @@ Jira integration (optional, env-gated: `JIRA_BASE_URL`/`JIRA_EMAIL`/`JIRA_API_TO
 npm run dev          # all packages (web + server + reporter watch)
 npm run type-check
 npm run lint:fix
-npm test             # 106 files, 2689 tests (6 skipped)
+npm test
 npm run build
 npm run format
 npx vitest run --project server <path>   # single file — from repo ROOT, never packages/*
@@ -60,6 +60,8 @@ Check Context7-MCP for current docs and breaking changes before adding, updating
 - **CI pause is global for `source: 'script'`.** Do not special-case a pipeline name unless there is a user-facing setting for it.
 - **`pipelines: ['develop']` in tests infers `string[]`.** Type the fixture as `ProjectTabConfig[]` (or `as const`) or `tsc` fails.
 - **Renaming a test orphans its old `testId` row forever.** INSERT-only + hash-based id (invariant 2/3) means the old id never updates again but still counts in aggregates (`status-counts`, etc.) until deleted via `DELETE /api/tests/:testId`. A "failed" count that doesn't match any visible test is often one of these.
+- **Branch flow: `feature/*` → PR to `develop` → PR `develop` → `main`, merge commits.** No CI checks run on PRs — local gates are the only gate.
+- **Popovers/tooltips in the test list must portal to `document.body`.** Sticky group headers and the `overflow-y-auto` list clip or cover absolutely positioned children (see `TicketChips.tsx`).
 - **`npm run format` (including via pre-commit/pre-push hooks) redrifts `CLAUDE.md` and `docs/README.md` table widths on every run, even with no content changes.** `git checkout -- CLAUDE.md docs/README.md` after formatting/committing to keep it out of your diff.
 
 ## Where the rest lives

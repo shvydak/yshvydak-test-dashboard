@@ -4,6 +4,10 @@ import {config} from './config/environment.config'
 import {Logger} from './utils/logger.util'
 import {DatabaseManager} from './database/database.manager'
 
+// Background Jira sync cadence. Manual "Refresh now" (POST /api/jira/refresh, from Settings)
+// runs on top of this, independent of the interval.
+const JIRA_SYNC_INTERVAL_MS = 30 * 60 * 1000
+
 async function startServer() {
     try {
         const {app, serviceContainer} = await createApp()
@@ -28,9 +32,26 @@ async function startServer() {
         const wsServer = createWebSocketServer(server)
         setWebSocketManager(wsServer)
 
+        // Background Jira sync — no-op unless JIRA_BASE_URL/JIRA_EMAIL/JIRA_API_TOKEN are all
+        // set. Runs once shortly after startup, then on a fixed interval; never throws past this
+        // boundary (JiraService already swallows and logs per-batch failures).
+        let jiraSyncInterval: ReturnType<typeof setInterval> | undefined
+        if (serviceContainer.jiraService.isEnabled()) {
+            Logger.info('🔗 Jira integration enabled — starting background ticket sync')
+            const runJiraSync = () => {
+                serviceContainer.jiraService.refreshAllKnownKeys().catch((error) => {
+                    Logger.error('Jira sync: unexpected failure (will retry next interval)', error)
+                })
+            }
+            runJiraSync()
+            jiraSyncInterval = setInterval(runJiraSync, JIRA_SYNC_INTERVAL_MS)
+        }
+
         // Graceful shutdown handler
         const gracefulShutdown = (signal: string) => {
             Logger.info(`🛑 Received ${signal}, shutting down gracefully...`)
+
+            if (jiraSyncInterval) clearInterval(jiraSyncInterval)
 
             // Stop accepting new connections
             server.close(() => {

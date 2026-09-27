@@ -8,6 +8,7 @@ import {StorageRepository} from '../repositories/storage.repository'
 import {NoteRepository} from '../repositories/note.repository'
 import {NoteImageRepository} from '../repositories/noteImage.repository'
 import {SettingsRepository} from '../repositories/settings.repository'
+import {JiraTicketRepository} from '../repositories/jiraTicket.repository'
 import {TestService} from '../services/test.service'
 import {PlaywrightService} from '../services/playwright.service'
 import {WebSocketService} from '../services/websocket.service'
@@ -17,6 +18,7 @@ import {AuthService} from '../services/auth.service'
 import {NoteService} from '../services/note.service'
 import {NoteImageService} from '../services/noteImage.service'
 import {SettingsService} from '../services/settings.service'
+import {JiraService} from '../services/jira.service'
 import {PipelineExecutionService} from '../services/pipelineExecution.service'
 import {AttachmentManager} from '../storage/attachmentManager'
 import {config} from '../config/environment.config'
@@ -32,6 +34,7 @@ export interface ServiceContainer {
     noteRepository: NoteRepository
     noteImageRepository: NoteImageRepository
     settingsRepository: SettingsRepository
+    jiraTicketRepository: JiraTicketRepository
     testService: TestService
     playwrightService: PlaywrightService
     websocketService: WebSocketService
@@ -42,6 +45,7 @@ export interface ServiceContainer {
     noteImageService: NoteImageService
     settingsService: SettingsService
     pipelineExecutionService: PipelineExecutionService
+    jiraService: JiraService
 }
 
 // Create service container
@@ -62,6 +66,7 @@ export async function createServiceContainer(): Promise<ServiceContainer> {
     const noteRepository = new NoteRepository(dbManager)
     const noteImageRepository = new NoteImageRepository(dbManager)
     const settingsRepository = new SettingsRepository(dbManager)
+    const jiraTicketRepository = new JiraTicketRepository(dbManager)
 
     // Initialize services
     const websocketService = new WebSocketService()
@@ -88,6 +93,7 @@ export async function createServiceContainer(): Promise<ServiceContainer> {
         runRepository,
         websocketService
     )
+    const jiraService = new JiraService(jiraTicketRepository, testRepository)
 
     return {
         testRepository,
@@ -98,6 +104,7 @@ export async function createServiceContainer(): Promise<ServiceContainer> {
         noteRepository,
         noteImageRepository,
         settingsRepository,
+        jiraTicketRepository,
         testService,
         playwrightService,
         websocketService,
@@ -108,6 +115,7 @@ export async function createServiceContainer(): Promise<ServiceContainer> {
         noteImageService,
         settingsService,
         pipelineExecutionService,
+        jiraService,
     }
 }
 

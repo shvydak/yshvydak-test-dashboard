@@ -1,10 +1,22 @@
 import {useState, ReactNode} from 'react'
-import {AlignLeft, AlignRight, CornerDownRight} from 'lucide-react'
+import {
+    AlignLeft,
+    AlignRight,
+    CornerDownRight,
+    CheckCircle2,
+    XCircle,
+    RefreshCw,
+} from 'lucide-react'
 import {Button} from '@shared/components'
 import {SettingsSection} from './SettingsSection'
 import {useJiraSettings, ChipAlignment, TagMode} from '../../hooks/useJiraSettings'
+import {useJiraStatus} from '../../hooks/useJiraStatus'
 
 const EXAMPLE_KEY = 'ABC-123'
+
+function formatLastSync(iso: string): string {
+    return new Date(iso).toLocaleString([], {dateStyle: 'medium', timeStyle: 'short'})
+}
 
 const POSITION_OPTIONS: Array<{value: ChipAlignment; label: string; icon: ReactNode}> = [
     {value: 'left', label: 'Column, left', icon: <AlignLeft className="h-4 w-4" />},
@@ -28,6 +40,14 @@ const segmentClass = (active: boolean) =>
 export function SettingsJiraSection() {
     const {settings, isLoading, saveSettings, isSaving, saveError, resetSaveError} =
         useJiraSettings()
+    const {
+        status: jiraStatus,
+        isLoading: isJiraStatusLoading,
+        refresh: refreshJira,
+        isRefreshing: isRefreshingJira,
+        refreshResult,
+        refreshError: jiraRefreshError,
+    } = useJiraStatus()
 
     // Local drafts, null = untouched (show the saved value)
     const [baseUrlDraft, setBaseUrlDraft] = useState<string | null>(null)
@@ -65,6 +85,72 @@ export function SettingsJiraSection() {
             title="Tags & tickets"
             description="Playwright tags show as chips in the test list. Tags like @ABC-123 are ticket keys and link to your tracker. Applies to all users.">
             <div className="space-y-4">
+                <div
+                    className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-gray-200
+                        bg-gray-50 px-3.5 py-2.5 dark:border-white/10 dark:bg-white/[0.03]">
+                    <div className="flex items-center gap-2 text-sm">
+                        {isJiraStatusLoading ? (
+                            <span className="text-gray-500 dark:text-gray-400">Checking…</span>
+                        ) : jiraStatus.enabled ? (
+                            <>
+                                {jiraStatus.lastSyncError ? (
+                                    <XCircle className="h-4 w-4 flex-shrink-0 text-danger-600 dark:text-danger-400" />
+                                ) : (
+                                    <CheckCircle2 className="h-4 w-4 flex-shrink-0 text-success-600 dark:text-success-400" />
+                                )}
+                                <span className="font-medium text-gray-900 dark:text-white">
+                                    Jira: connected
+                                </span>
+                                <span className="text-gray-500 dark:text-gray-400">
+                                    · type/status enrichment on ticket chips ·{' '}
+                                    {jiraStatus.lastSyncAt
+                                        ? `last synced ${formatLastSync(jiraStatus.lastSyncAt)}`
+                                        : 'not synced yet'}
+                                </span>
+                                {jiraStatus.lastSyncError && (
+                                    <span className="font-medium text-danger-600 dark:text-danger-400">
+                                        · last sync failed: {jiraStatus.lastSyncError}
+                                    </span>
+                                )}
+                            </>
+                        ) : (
+                            <>
+                                <XCircle className="h-4 w-4 flex-shrink-0 text-gray-400 dark:text-gray-500" />
+                                <span className="font-medium text-gray-900 dark:text-white">
+                                    Jira: not configured
+                                </span>
+                                <span className="text-gray-500 dark:text-gray-400">
+                                    — set JIRA_BASE_URL / JIRA_EMAIL / JIRA_API_TOKEN on the server
+                                    to enable ticket type/status on chips. Links above work either
+                                    way.
+                                </span>
+                            </>
+                        )}
+                    </div>
+                    {jiraStatus.enabled && (
+                        <Button
+                            variant="secondary"
+                            size="sm"
+                            loading={isRefreshingJira}
+                            disabled={isRefreshingJira}
+                            onClick={() => refreshJira()}>
+                            <RefreshCw className="h-3.5 w-3.5" />
+                            Refresh now
+                        </Button>
+                    )}
+                </div>
+                {jiraRefreshError instanceof Error && (
+                    <p className="text-xs text-danger-600 dark:text-danger-400">
+                        {jiraRefreshError.message}
+                    </p>
+                )}
+                {refreshResult && !jiraRefreshError && (
+                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                        Checked {refreshResult.checked}, updated {refreshResult.updated}
+                        {refreshResult.failed > 0 ? `, ${refreshResult.failed} failed` : ''}.
+                    </p>
+                )}
+
                 <div>
                     <label
                         htmlFor="jira-base-url"

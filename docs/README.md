@@ -64,6 +64,7 @@ Feature-specific documentation for deep dives into individual capabilities:
 | **Settings Modal**      | [DASHBOARD_SETTINGS.md](features/DASHBOARD_SETTINGS.md)                       | Theme management (Auto/Light/Dark), centralized configuration         |
 | **Rerun from Modal**    | [RERUN_FROM_MODAL.md](features/RERUN_FROM_MODAL.md)                           | One-click rerun with WebSocket updates, automatic execution switching |
 | **Authentication**      | [AUTHENTICATION_IMPLEMENTATION.md](features/AUTHENTICATION_IMPLEMENTATION.md) | JWT-based security, automatic token expiry handling                   |
+| **Jira Ticket Status**  | [JIRA_TICKET_STATUS.md](features/JIRA_TICKET_STATUS.md)                       | Read-only ticket type/status on chips, opt-in via server env          |
 
 ### AI-Assisted Development Documentation
 

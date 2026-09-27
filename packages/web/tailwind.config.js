@@ -61,6 +61,54 @@ const amber = {
     950: '#451a03',
 }
 
+// Jira ticket-status lozenge colors (grey/blue/green mapped from Jira's statusCategory:
+// new/indeterminate/done). Deliberately NOT `blue`/`green` — those keys are remapped to
+// indigo/emerald below, which are already spoken for by the primary brand color and the
+// Passed test-result pill. A Jira "Done" chip must never read as "test passed".
+const jiraBlue = {
+    50: '#eaf2ff',
+    100: '#dbe9ff',
+    200: '#b8d4fb',
+    300: '#8ebdf5',
+    500: '#4c8dde',
+    600: '#2f6fc4',
+    700: '#1f57a3',
+}
+
+const jiraGreen = {
+    50: '#eaf5ef',
+    100: '#dcefe4',
+    200: '#bfe0cd',
+    300: '#a0d1b3',
+    500: '#5fa980',
+    600: '#3f8964',
+    700: '#2f6f4f',
+}
+
+// Jira issue-TYPE colors (tooltip header only — never the chip itself): Bug/Task/Story/Epic,
+// each its own hue so the type reads at a glance, same reasoning as jiraBlue/jiraGreen above.
+// Deliberately not `rose`/`indigo`/`emerald` (danger/primary/success) — a Bug icon must not
+// visually double as "failed test", nor an Epic icon as the primary brand color.
+const jiraRed = {
+    50: '#fdecea',
+    100: '#fad4d0',
+    200: '#f3aca3',
+    300: '#ea8377',
+    500: '#c9463a',
+    600: '#a8382e',
+    700: '#832c24',
+}
+
+const jiraPurple = {
+    50: '#f2eefc',
+    100: '#e3daf7',
+    200: '#c7b5ef',
+    300: '#aa8fe6',
+    500: '#7c5cd1',
+    600: '#6247ac',
+    700: '#4b3785',
+}
+
 // Soft slate-indigo neutral ramp. Light end is warm off-white (never stark),
 // dark end is a deep navy-charcoal (never pure black) for the "friendly" feel.
 const neutral = {
@@ -101,6 +149,10 @@ export default {
                 yellow: amber,
                 gray: neutral,
                 slate: neutral,
+                jiraBlue,
+                jiraGreen,
+                jiraRed,
+                jiraPurple,
             },
             fontFamily: {
                 sans: [

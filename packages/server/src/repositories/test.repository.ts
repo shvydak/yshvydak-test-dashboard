@@ -183,6 +183,17 @@ export class TestRepository extends BaseRepository implements ITestRepository {
         return this.mapRowsToTestResults(rows)
     }
 
+    async getAllLatestMetadata(): Promise<Array<{metadata: string | null}>> {
+        return this.queryAll<{metadata: string | null}>(
+            `SELECT metadata FROM (
+                SELECT metadata,
+                       ROW_NUMBER() OVER (PARTITION BY test_id ORDER BY created_at DESC) AS rn
+                FROM test_results
+             )
+             WHERE rn = 1`
+        )
+    }
+
     async deleteByTestId(testId: string): Promise<number> {
         const result = await this.dbManager.execute(`DELETE FROM test_results WHERE test_id = ?`, [
             testId,

@@ -155,6 +155,10 @@ export interface ITestRepository {
     getDistinctTestIdsByProject(project: string): Promise<string[]>
     deleteByProject(project: string): Promise<number>
     getTestStatusCounts(project?: string): Promise<TestStatusCounts>
+    // Latest-row metadata (JSON string, possibly double-encoded — same as everywhere else in the
+    // codebase) for every test, unscoped by project. Used only to discover which Jira ticket-key
+    // tags currently exist across all tests (JiraService background sync); not for display.
+    getAllLatestMetadata(): Promise<Array<{metadata: string | null}>>
 }
 
 export interface TestStatusCounts {

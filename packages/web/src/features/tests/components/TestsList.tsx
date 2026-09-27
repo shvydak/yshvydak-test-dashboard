@@ -1,4 +1,4 @@
-import {useState, useEffect, useRef} from 'react'
+import {useState, useEffect, useRef, useMemo} from 'react'
 import {useSearchParams} from 'react-router-dom'
 import {AlertTriangle} from 'lucide-react'
 import {TestResult} from '@yshvydak/core'
@@ -12,7 +12,10 @@ import {FilterKey, FILTER_OPTIONS} from '../constants'
 import {TestsListFilters} from './TestsListFilters'
 import {TestsContent} from './TestsContent'
 import {TicketSearchContext} from './TicketSearchContext'
+import {JiraTicketInfoContext} from './JiraTicketInfoContext'
 import {useJiraSettings} from '@features/dashboard/hooks/useJiraSettings'
+import {useJiraTicketInfo} from '../hooks/useJiraTicketInfo'
+import {getTestJiraKeys} from '../utils/jiraTags'
 import {TestDetailModal} from './testDetail'
 
 export interface TestsListProps {
@@ -74,6 +77,18 @@ export default function TestsList({
     // the (paginated) `tests` array — otherwise "All" caps at the list's page size
     // (200 with no project selected, 5000 with one) instead of the true total.
     const {counts: statusCounts} = useTestStatusCounts(activeProject || undefined)
+
+    // Union of ticket-key tags across the currently visible tests. Feeds one batched lookup
+    // instead of one request per chip; a key with no Jira data yet (disabled/never synced/failed)
+    // is simply absent from the map, and chips fall back to the plain link.
+    const ticketKeys = useMemo(() => {
+        const keys = new Set<string>()
+        for (const test of filteredTests) {
+            for (const key of getTestJiraKeys(test)) keys.add(key)
+        }
+        return Array.from(keys)
+    }, [filteredTests])
+    const {ticketInfo} = useJiraTicketInfo(ticketKeys)
     const counts = {
         all: statusCounts.total,
         passed: statusCounts.passed,
@@ -249,14 +264,16 @@ export default function TestsList({
                     </div>
                 ) : (
                     <TicketSearchContext.Provider value={searchQuery}>
-                        <TestsContent
-                            tests={filteredTests}
-                            selectedTest={selectedTest}
-                            onTestSelect={openTestDetail}
-                            onTestRerun={onTestRerun}
-                            searchQuery={searchQuery}
-                            filter={filter}
-                        />
+                        <JiraTicketInfoContext.Provider value={ticketInfo}>
+                            <TestsContent
+                                tests={filteredTests}
+                                selectedTest={selectedTest}
+                                onTestSelect={openTestDetail}
+                                onTestRerun={onTestRerun}
+                                searchQuery={searchQuery}
+                                filter={filter}
+                            />
+                        </JiraTicketInfoContext.Provider>
                     </TicketSearchContext.Provider>
                 )}
             </div>

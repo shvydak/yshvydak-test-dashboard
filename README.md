@@ -13,7 +13,7 @@ The Playwright side is the npm package [`playwright-dashboard-reporter`](https:/
 - **Project tabs**: one tab per Playwright project with display name, visibility, order, workers override and a default tab. Tabs whose project is gone from the Playwright config are marked and can be removed.
 - **CI pipelines**: `develop` and `production` pipelines are ordered lists of project tabs, triggered by `POST /api/pipeline/run` or `scripts/trigger-test-run.js`. See [CI pipelines](#ci-pipelines).
 - **Notes**: per-test notes with links and pasted or dropped images ([docs/features/TEST_NOTES.md](docs/features/TEST_NOTES.md)).
-- **Tags and tickets**: Playwright tags such as `@ABC-123` become chips; ticket keys link to your tracker. See [Tags and tickets](#tags-and-tickets).
+- **Tags and tickets**: Playwright tags such as `@ABC-123` become chips; ticket keys link to your tracker. See [Tags and tickets](#tags-and-tickets). With `JIRA_BASE_URL`/`JIRA_EMAIL`/`JIRA_API_TOKEN` set, chips also show the ticket's type and status (read-only), see [Jira ticket type/status](#jira-ticket-typestatus).
 - **Storage**: disk usage with warning and critical thresholds; cleanup by date or by run count, either stripping attachments (history kept) or deleting executions permanently.
 - **Theme**: Auto, Light or Dark.
 
@@ -38,7 +38,7 @@ cd /path/to/your/playwright/project
 npm install --save-dev playwright-dashboard-reporter
 ```
 
-Create `.env` in the dashboard repo root. There is no `.env.example`; every variable is listed under [Configuration](#configuration). Minimal local setup:
+Create `.env` in the dashboard repo root (`.env.example` has every variable with a short comment; the full reference is under [Configuration](#configuration)). Minimal local setup:
 
 ```bash
 PLAYWRIGHT_PROJECT_DIR=/path/to/your/playwright/project
@@ -69,20 +69,23 @@ Open the web UI, log in if auth is enabled, press **Discover Tests**, then run t
 
 Variables are read from the root `.env` (the server loads `../../.env` relative to `packages/server`; Vite uses `envDir: '../..'`). Sources: `packages/server/src/config/environment.config.ts`, `packages/web/vite.config.ts`, `packages/web/src/config/environment.config.ts`.
 
-| Variable                                      | Default                                       | Notes                                                                                                           |
-| --------------------------------------------- | --------------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
-| `PLAYWRIGHT_PROJECT_DIR`                      | server working directory                      | Path to your Playwright project. Set it: the server starts in `packages/server`.                                |
-| `PORT`                                        | `3001`                                        | API server port.                                                                                                |
-| `NODE_ENV`                                    | `development`                                 |                                                                                                                 |
-| `BASE_URL`                                    | `http://localhost:<PORT>`                     | Used to derive the API URL.                                                                                     |
-| `DASHBOARD_API_URL`                           | `BASE_URL`                                    | Overrides the API base URL. Playwright processes spawned by the dashboard always get `http://localhost:<PORT>`. |
-| `OUTPUT_DIR`                                  | `<server working dir>/test-results`           | Permanent attachment storage.                                                                                   |
-| `ENABLE_AUTH`                                 | off                                           | Auth is on only when the value is exactly `true`.                                                               |
-| `ADMIN_EMAIL`, `ADMIN_PASSWORD`, `JWT_SECRET` | none                                          | Required when `ENABLE_AUTH=true` (the server throws otherwise). There are no default credentials.               |
-| `JWT_EXPIRES_IN`                              | `30d`                                         |                                                                                                                 |
-| `VITE_PORT`                                   | see [Ports](#ports)                           | Web dev and preview port.                                                                                       |
-| `VITE_BASE_URL`, `VITE_SERVER_URL`            | `http://localhost:3001`                       | Server URL for the web client (`VITE_SERVER_URL` wins).                                                         |
-| `VITE_API_BASE_URL`, `VITE_WEBSOCKET_URL`     | `<server URL>/api`, `ws(s)://<server URL>/ws` | Optional overrides.                                                                                             |
+| Variable                                      | Default                                       | Notes                                                                                                                                                    |
+| --------------------------------------------- | --------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `PLAYWRIGHT_PROJECT_DIR`                      | server working directory                      | Path to your Playwright project. Set it: the server starts in `packages/server`.                                                                         |
+| `PORT`                                        | `3001`                                        | API server port.                                                                                                                                         |
+| `NODE_ENV`                                    | `development`                                 |                                                                                                                                                          |
+| `BASE_URL`                                    | `http://localhost:<PORT>`                     | Used to derive the API URL.                                                                                                                              |
+| `DASHBOARD_API_URL`                           | `BASE_URL`                                    | Overrides the API base URL. Playwright processes spawned by the dashboard always get `http://localhost:<PORT>`.                                          |
+| `OUTPUT_DIR`                                  | `<server working dir>/test-results`           | Permanent attachment storage.                                                                                                                            |
+| `ENABLE_AUTH`                                 | off                                           | Auth is on only when the value is exactly `true`.                                                                                                        |
+| `ADMIN_EMAIL`, `ADMIN_PASSWORD`, `JWT_SECRET` | none                                          | Required when `ENABLE_AUTH=true` (the server throws otherwise). There are no default credentials.                                                        |
+| `JWT_EXPIRES_IN`                              | `30d`                                         |                                                                                                                                                          |
+| `VITE_PORT`                                   | see [Ports](#ports)                           | Web dev and preview port.                                                                                                                                |
+| `VITE_BASE_URL`, `VITE_SERVER_URL`            | `http://localhost:3001`                       | Server URL for the web client (`VITE_SERVER_URL` wins).                                                                                                  |
+| `VITE_API_BASE_URL`, `VITE_WEBSOCKET_URL`     | `<server URL>/api`, `ws(s)://<server URL>/ws` | Optional overrides.                                                                                                                                      |
+| `JIRA_BASE_URL`                               | none                                          | Jira Cloud site root (`https://your-company.atlassian.net`, not `/browse/`). Server-side only. See [Jira ticket type/status](#jira-ticket-typestatus).   |
+| `JIRA_EMAIL`                                  | none                                          | Atlassian account email for the API token below.                                                                                                         |
+| `JIRA_API_TOKEN`                              | none                                          | [id.atlassian.com/manage-profile/security/api-tokens](https://id.atlassian.com/manage-profile/security/api-tokens). Never sent to the browser or logged. |
 
 ### Ports
 
@@ -93,7 +96,7 @@ Variables are read from the root `.env` (the server loads `../../.env` relative 
 
 With `ENABLE_AUTH=true` the web UI requires login (`POST /api/auth/login`, JWT). Middleware coverage as implemented (`packages/server/src/app.ts`, `routes/index.routes.ts`):
 
-- JWT required: `/api/settings/*` and the static routes `/reports`, `/attachments`, `/note-images`, `/test-results`. `/api/settings/*` also demands a JWT specifically, so it answers 403 when `ENABLE_AUTH` is not `true`.
+- JWT required: `/api/settings/*`, `/api/jira/*`, and the static routes `/reports`, `/attachments`, `/note-images`, `/test-results`. Both `/api/settings/*` and `/api/jira/*` also demand a JWT specifically, so they answer 403 when `ENABLE_AUTH` is not `true`.
 - No auth middleware: `/api/health`, `/api/auth/*`, `/api/tests/*` (including the reporter's `POST /api/tests` and `/api/tests/diagnostics`), `/api/runs/*`, `/api/storage/*`, `/api/pipeline/*`.
 
 ## Usage
@@ -137,6 +140,12 @@ The reporter sends `metadata.tags` (`TestCase.tags` needs Playwright >= 1.42; ol
 - **Chip position**: a Tickets/Tags column on wide screens, left or right aligned (chips move under the test name on narrow screens), or `Under test name` at every width.
 
 Search matches the tags that are currently displayed. Existing rows have no tags until the test runs again or Discover Tests is pressed.
+
+### Jira ticket type/status
+
+Optional, read-only, opt-in via env (`JIRA_BASE_URL`, `JIRA_EMAIL`, `JIRA_API_TOKEN` — see [Configuration](#configuration)). All three unset (default): the dashboard behaves exactly as in [Tags and tickets](#tags-and-tickets) above, no Jira API calls are ever made. All three set: ticket-key chips also show the ticket's **type** (icon) and **status** (background color, from Jira's `statusCategory`: grey = not started, blue = in progress, green = done — never the pass/fail red/green, which are already used for test results) with a tooltip (type, key, summary, status, assignee). Clicking a chip still opens the ticket at the Settings > Tags & tickets base URL, unchanged.
+
+The server discovers every `@KEY`-style tag currently on any test, fetches type/status/summary/assignee from Jira in batches (`POST /rest/api/3/issue/bulkfetch`), and caches it in SQLite. A background sync runs every 30 minutes; Settings > Tags & tickets also shows the connection status, last sync time, and a manual **Refresh now** button. "Connected" means the credentials are configured, not that syncing is actually working — if the most recent sync attempt failed, Settings shows the reason too (e.g. "Jira: connected · last sync failed: authentication (401)"). A ticket that hasn't synced yet, or that Jira couldn't resolve (auth failure, rate limit, deleted ticket, Jira unreachable), simply renders as the plain chip described above — never an error, never a blocked list. Endpoints and exact behavior: [docs/API_REFERENCE.md](docs/API_REFERENCE.md#jira-integration).
 
 ### Reporter metadata
 

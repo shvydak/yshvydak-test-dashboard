@@ -17,6 +17,8 @@ These four are load-bearing. Breaking any one of them corrupts historical tracki
 
 Named CI pipelines: `ProjectTabConfig.pipelines` is `('develop' | 'production')[]` (a tab can be in zero or more). Tab list order = step order inside each pipeline. Shared helpers: `packages/server/src/utils/ciPipeline.util.ts` and `packages/web/src/constants/ciPipelines.ts`. Legacy `inPipeline: true` → `['develop']` via `normalizeCIPipelines`. `POST /api/pipeline/run` body `{pipeline, maxWorkers, source}` — missing name → `develop`, unknown → 400. Script: `--pipeline <name>`.
 
+Jira integration (optional, env-gated: `JIRA_BASE_URL`/`JIRA_EMAIL`/`JIRA_API_TOKEN`, all three or none — `config.jira.enabled`): read-only ticket type/status/summary/assignee for ticket-key tags, cached in `jira_ticket_cache` (SQLite, no app_settings key — `MAX(fetched_at)` doubles as "last sync"). `JiraService.refreshAllKnownKeys()` runs every 30 min from `server.ts` + on-demand via `POST /api/jira/refresh`; ticket-key discovery duplicates the `@[A-Z][A-Z0-9]+-\d+` tag regex server-side (`utils/jiraTicketKey.util.ts`) on purpose, same reasoning as invariant 3. Separate from the pre-existing `jira_base_url` app_setting (chip link target, no env needed). A key absent from `GET /api/jira/tickets` (disabled/never synced/Jira error) is not an error — `TicketChips.tsx` falls back to the plain pre-existing chip render for that key.
+
 ## Flow
 
 ```
@@ -33,7 +35,7 @@ Named CI pipelines: `ProjectTabConfig.pipelines` is `('develop' | 'production')[
 npm run dev          # all packages (web + server + reporter watch)
 npm run type-check
 npm run lint:fix
-npm test             # 95 files, 2517 tests (6 skipped)
+npm test             # 106 files, 2689 tests (6 skipped)
 npm run build
 npm run format
 npx vitest run --project server <path>   # single file — from repo ROOT, never packages/*

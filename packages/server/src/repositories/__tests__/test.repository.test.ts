@@ -1098,6 +1098,37 @@ describe('TestRepository - Core Functionality', () => {
         })
     })
 
+    describe('getAllLatestMetadata()', () => {
+        it('returns only the latest row per test_id, unscoped by project', async () => {
+            await repository.saveTestResult(
+                createTestResult('test-a', 'failed', {metadata: {tags: ['@PB-1']}})
+            )
+            await new Promise((resolve) => setTimeout(resolve, 100))
+            await repository.saveTestResult(
+                createTestResult('test-a', 'passed', {metadata: {tags: ['@PB-2']}}) // latest for test-a
+            )
+            await repository.saveTestResult(
+                createTestResult('test-b', 'passed', {
+                    project: 'Other_Project',
+                    metadata: {tags: ['@PB-3']},
+                })
+            )
+
+            const rows = await repository.getAllLatestMetadata()
+            const parsed = rows.map((r) => JSON.parse(r.metadata as string))
+
+            expect(rows).toHaveLength(2)
+            expect(parsed.map((m) => m.tags)).toEqual(
+                expect.arrayContaining([['@PB-2'], ['@PB-3']])
+            )
+        })
+
+        it('returns an empty array when there are no tests', async () => {
+            const rows = await repository.getAllLatestMetadata()
+            expect(rows).toEqual([])
+        })
+    })
+
     describe('deleteByTestId()', () => {
         it('should delete all executions for a specific testId', async () => {
             const testId = 'test-to-delete'

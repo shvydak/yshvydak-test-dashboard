@@ -21,6 +21,15 @@ The project uses a **minimal .env configuration** where users only need to set 5
 - `VITE_WEBSOCKET_URL` - Derived as 'ws://' + BASE_URL + '/ws' (for WebSocket)
 - `VITE_SERVER_URL` - Same as BASE_URL (for web server)
 
+## Jira Integration (optional)
+
+`JIRA_BASE_URL`, `JIRA_EMAIL`, `JIRA_API_TOKEN` — all three required together, otherwise the integration is off and the dashboard behaves exactly as without it. Enables read-only ticket type/status/summary/assignee on ticket-key chips (`@ABC-123` tags). Server-side only — never sent to the browser, never logged.
+
+- `JIRA_BASE_URL`: Jira Cloud site root, e.g. `https://your-company.atlassian.net` — **not** the `/browse/` URL used by the separate `jira_base_url` app_setting (Settings > Tags & tickets), which only builds the chip's link and needs no env config at all.
+- `JIRA_EMAIL` / `JIRA_API_TOKEN`: Atlassian Basic auth. Create a token at [id.atlassian.com/manage-profile/security/api-tokens](https://id.atlassian.com/manage-profile/security/api-tokens).
+
+See [README.md — Jira ticket type/status](../README.md#jira-ticket-typestatus) and [API_REFERENCE.md — Jira Integration](API_REFERENCE.md#jira-integration) for behavior and endpoints.
+
 ## Override Support
 
 Advanced users can still override any derived variable by setting it explicitly in .env. The system maintains backward compatibility with all existing environment variables.

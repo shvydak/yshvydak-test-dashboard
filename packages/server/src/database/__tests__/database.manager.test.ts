@@ -938,8 +938,9 @@ describe('DatabaseManager', () => {
                 expect(totalSizeAfter).toBeLessThan(totalSizeBefore * 0.2)
 
                 // Database should be minimal size (just schema + indexes)
-                // Typical empty schema size is 32-160 KB depending on indexes
-                expect(totalSizeAfter).toBeLessThan(160 * 1024) // Less than 160 KB
+                // Typical empty schema size is 32-200 KB depending on table/index count
+                // (bumped from 160 KB when jira_ticket_cache + its index were added)
+                expect(totalSizeAfter).toBeLessThan(200 * 1024) // Less than 200 KB
             } finally {
                 // Cleanup
                 fileDb.close()

@@ -30,6 +30,14 @@ The project uses a **minimal .env configuration** where users only need to set 5
 
 See [README.md — Jira ticket type/status](../README.md#jira-ticket-typestatus) and [API_REFERENCE.md — Jira Integration](API_REFERENCE.md#jira-integration) for behavior and endpoints.
 
+## CI Result Notifications (optional)
+
+For CI pipeline runs started with `notify: true` (`scripts/trigger-test-run.js` without `--wait`), the dashboard posts the result to a Slack incoming webhook. See [API_REFERENCE.md — CI Pipelines](API_REFERENCE.md#ci-pipelines) for the messages.
+
+- `CI_SLACK_WEBHOOK_URL`: Slack incoming webhook. Unset → no messages (logged once). Server-side only, never logged.
+- `PUBLIC_DASHBOARD_URL`: link base for the message links, e.g. `https://dashboard.example.com` (links are `<base>/tests` and `<base>/tests?project=<slug>`). Unset → messages carry no link (logged once).
+- `CI_PIPELINE_TIMEOUT_MINUTES`: a notify pipeline running longer posts `⏱️ Timed out` once and no result message follows; nothing is killed. Default `30`.
+
 ## Override Support
 
 Advanced users can still override any derived variable by setting it explicitly in .env. The system maintains backward compatibility with all existing environment variables.

@@ -72,6 +72,7 @@ describe('TestController', () => {
 
         // Setup mock services
         mockTestService = {
+            requestQueueDrain: vi.fn(),
             discoverTests: vi.fn(),
             runAllTests: vi.fn(),
             runTestGroup: vi.fn(),
@@ -415,6 +416,76 @@ describe('TestController', () => {
                 'Failed to start tests',
                 'Failed to run all tests',
                 500
+            )
+        })
+    })
+
+    describe('manual starts while a CI run is queued', () => {
+        const queuedError = () =>
+            new Error(JSON.stringify({code: 'CI_RUN_QUEUED', message: 'A CI run is queued'}))
+
+        const expectQueuedResponse = () => {
+            expect(mockRes.status).toHaveBeenCalledWith(409)
+            expect(mockRes.json).toHaveBeenCalledWith(
+                expect.objectContaining({success: false, code: 'CI_RUN_QUEUED'})
+            )
+            expect(Logger.error).not.toHaveBeenCalled()
+        }
+
+        it('answers 409 CI_RUN_QUEUED for run-all', async () => {
+            mockTestService.runAllTests.mockRejectedValue(queuedError())
+
+            await controller.runAllTests(mockReq as ServiceRequest, mockRes as Response)
+
+            expectQueuedResponse()
+        })
+
+        it('answers 409 CI_RUN_QUEUED for run-group', async () => {
+            mockReq.body = {filePath: 'tests/example.spec.ts'}
+            mockTestService.runTestGroup.mockRejectedValue(queuedError())
+
+            await controller.runTestGroup(mockReq as ServiceRequest, mockRes as Response)
+
+            expectQueuedResponse()
+        })
+
+        it('answers 409 CI_RUN_QUEUED for rerun', async () => {
+            mockReq.params = {id: 'test-1'}
+            mockTestService.rerunTest.mockRejectedValue(queuedError())
+
+            await controller.rerunTest(mockReq as ServiceRequest, mockRes as Response)
+
+            expectQueuedResponse()
+        })
+    })
+
+    describe('group and rerun while a CI pipeline is running', () => {
+        const runningError = () =>
+            new Error(
+                JSON.stringify({code: 'TESTS_ALREADY_RUNNING', message: 'A CI pipeline is running'})
+            )
+
+        it('answers 409 TESTS_ALREADY_RUNNING for run-group', async () => {
+            mockReq.body = {filePath: 'tests/example.spec.ts'}
+            mockTestService.runTestGroup.mockRejectedValue(runningError())
+
+            await controller.runTestGroup(mockReq as ServiceRequest, mockRes as Response)
+
+            expect(mockRes.status).toHaveBeenCalledWith(409)
+            expect(mockRes.json).toHaveBeenCalledWith(
+                expect.objectContaining({code: 'TESTS_ALREADY_RUNNING'})
+            )
+        })
+
+        it('answers 409 TESTS_ALREADY_RUNNING for rerun', async () => {
+            mockReq.params = {id: 'test-1'}
+            mockTestService.rerunTest.mockRejectedValue(runningError())
+
+            await controller.rerunTest(mockReq as ServiceRequest, mockRes as Response)
+
+            expect(mockRes.status).toHaveBeenCalledWith(409)
+            expect(mockRes.json).toHaveBeenCalledWith(
+                expect.objectContaining({code: 'TESTS_ALREADY_RUNNING'})
             )
         })
     })
@@ -1384,6 +1455,16 @@ describe('TestController', () => {
                 {before: stateBefore, after: stateAfter},
                 'Force reset completed successfully'
             )
+        })
+
+        it('should ask the CI queue to drain after the tracker was cleared', async () => {
+            const state = {activeRuns: [], activeGroups: [], isAnyProcessRunning: false}
+            vi.mocked(activeProcessesTracker.getConnectionStatus).mockReturnValue(state)
+            vi.mocked(getWebSocketManager).mockReturnValue(null)
+
+            await controller.forceReset(mockReq as ServiceRequest, mockRes as Response)
+
+            expect(mockTestService.requestQueueDrain).toHaveBeenCalledTimes(1)
         })
 
         it('should handle force reset without WebSocket manager', async () => {

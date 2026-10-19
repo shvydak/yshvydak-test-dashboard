@@ -13,6 +13,7 @@ import {describe, it, expect, beforeAll, afterAll, beforeEach, afterEach, vi} fr
 import request from 'supertest'
 import type {TestServerInstance} from '../helpers/testServer'
 import {setupTestServer, teardownTestServer, cleanDatabase} from '../helpers/testServer'
+import {activeProcessesTracker} from '../../../services/activeProcesses.service'
 
 describe('POST /api/tests/run-group - Filtered Group Run (Integration)', () => {
     let server: TestServerInstance
@@ -28,10 +29,34 @@ describe('POST /api/tests/run-group - Filtered Group Run (Integration)', () => {
     beforeEach(async () => {
         await cleanDatabase(server.testRepository)
         vi.restoreAllMocks()
+        activeProcessesTracker.forceReset()
     })
 
     afterEach(() => {
         vi.restoreAllMocks()
+        activeProcessesTracker.forceReset()
+    })
+
+    it('refuses a second group run while the first is still tracked (409)', async () => {
+        vi.spyOn(
+            server.serviceContainer.playwrightService as any,
+            'runTestGroup'
+        ).mockResolvedValue({
+            runId: 'first-run',
+            message: 'Tests started',
+            timestamp: new Date().toISOString(),
+            process: null,
+        })
+        const post = () =>
+            request(server.app)
+                .post('/api/tests/run-group')
+                .set('Authorization', `Bearer ${server.authToken}`)
+                .send({filePath: 'e2e/tests/auth.spec.ts'})
+
+        await post().expect(200)
+        const second = await post().expect(409)
+
+        expect(second.body).toMatchObject({success: false, code: 'TESTS_ALREADY_RUNNING'})
     })
 
     describe('Success scenarios', () => {

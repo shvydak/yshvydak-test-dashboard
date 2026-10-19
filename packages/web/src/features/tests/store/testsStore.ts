@@ -20,11 +20,17 @@ interface TestsState {
     lastUpdated: Date | null
     selectedExecutionId: string | null
     activeProgress: TestProgress | null
+    /** A CI request is queued server-side; manual runs are refused until it has started. */
+    ciRunQueued: boolean
+    /** A CI pipeline is running; the server refuses manual Run All meanwhile. */
+    ciPipelineRunning: boolean
     /** Project used for list fetches — WebSocket/interval refreshes reuse this. */
     listProject: string | null
 
     // Computed function
     getIsAnyTestRunning: () => boolean
+    /** Tooltip text for run buttons disabled by a CI pipeline / queued CI run, else null. */
+    getCIBusyReason: () => string | null
 
     // Actions
     setListProject: (project: string | null) => void
@@ -40,6 +46,8 @@ interface TestsState {
     setTestRunning: (testId: string, isRunning: boolean) => void
     setGroupRunning: (filePath: string, isRunning: boolean) => void
     setRunningAllTests: (isRunning: boolean) => void
+    setCIRunQueued: (queued: boolean) => void
+    setCIPipelineRunning: (running: boolean) => void
     checkAndRestoreActiveStates: () => Promise<void>
     selectExecution: (executionId: string | null) => void
     updateProgress: (progress: TestProgress) => void
@@ -49,6 +57,19 @@ interface TestsState {
 import {config} from '@config/environment.config'
 
 const API_BASE_URL = config.api.baseUrl
+
+// A 409 carries the server's reason (a CI run is queued/running); show it instead of the bare status.
+async function httpError(response: Response): Promise<Error> {
+    if (response.status === 409) {
+        try {
+            const body = await response.json()
+            if (typeof body?.message === 'string' && body.message) return new Error(body.message)
+        } catch {
+            // fall through to the generic message
+        }
+    }
+    return new Error(`HTTP error! status: ${response.status}`)
+}
 
 export const useTestsStore = create<TestsState>()(
     devtools(
@@ -66,16 +87,27 @@ export const useTestsStore = create<TestsState>()(
             selectedExecutionId: null,
             activeProgress: null,
             listProject: null,
+            ciRunQueued: false,
+            ciPipelineRunning: false,
 
             // Computed function
             getIsAnyTestRunning: () => {
                 const state = get()
                 return (
+                    state.ciPipelineRunning ||
+                    state.ciRunQueued ||
                     state.isDiscovering ||
                     state.isRunningAllTests ||
                     state.runningTests.size > 0 ||
                     state.runningGroups.size > 0
                 )
+            },
+
+            getCIBusyReason: () => {
+                const state = get()
+                if (state.ciPipelineRunning) return 'A CI pipeline is running'
+                if (state.ciRunQueued) return 'A CI run is queued'
+                return null
             },
 
             setListProject: (project) => set({listProject: project}),
@@ -182,7 +214,7 @@ export const useTestsStore = create<TestsState>()(
                     })
 
                     if (!response.ok) {
-                        throw new Error(`HTTP error! status: ${response.status}`)
+                        throw await httpError(response)
                     }
 
                     const data = await response.json()
@@ -338,7 +370,7 @@ export const useTestsStore = create<TestsState>()(
                     })
 
                     if (!response.ok) {
-                        throw new Error(`HTTP error! status: ${response.status}`)
+                        throw await httpError(response)
                     }
 
                     const data = await response.json()
@@ -383,7 +415,7 @@ export const useTestsStore = create<TestsState>()(
                     })
 
                     if (!response.ok) {
-                        throw new Error(`HTTP error! status: ${response.status}`)
+                        throw await httpError(response)
                     }
 
                     const data = await response.json()
@@ -432,6 +464,10 @@ export const useTestsStore = create<TestsState>()(
                     return {runningGroups: newRunningGroups}
                 })
             },
+
+            setCIRunQueued: (queued: boolean) => set({ciRunQueued: queued}),
+
+            setCIPipelineRunning: (running: boolean) => set({ciPipelineRunning: running}),
 
             setRunningAllTests: (isRunning: boolean) => {
                 set({isRunningAllTests: isRunning})

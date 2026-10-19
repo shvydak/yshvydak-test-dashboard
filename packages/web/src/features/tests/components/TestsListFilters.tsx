@@ -35,8 +35,15 @@ export function TestsListFilters({
     searchInputRef,
     activeProject,
 }: TestsListFiltersProps) {
-    const {runAllTests, discoverTests, isRunningAllTests, isDiscovering, getIsAnyTestRunning} =
-        useTestsStore()
+    const {
+        runAllTests,
+        discoverTests,
+        isRunningAllTests,
+        isDiscovering,
+        getIsAnyTestRunning,
+        getCIBusyReason,
+    } = useTestsStore()
+    const ciBusyReason = getCIBusyReason()
     const isAnyTestRunning = getIsAnyTestRunning()
     const [showDiscoverMenu, setShowDiscoverMenu] = useState(false)
     const splitButtonRef = useRef<HTMLDivElement>(null)
@@ -53,7 +60,10 @@ export function TestsListFilters({
         <div className="space-y-2 md:space-y-0 md:flex md:items-center md:gap-3">
             {/* Row 1 on mobile / left part on desktop: Run All + Search */}
             <div className="flex items-center gap-2 shrink-0">
-                <div className="relative inline-flex shrink-0 group/noproject" ref={splitButtonRef}>
+                <div
+                    className="relative inline-flex shrink-0 group/noproject"
+                    ref={splitButtonRef}
+                    title={ciBusyReason ?? undefined}>
                     <div className="inline-flex rounded-xl shadow-soft">
                         <Button
                             variant="primary"

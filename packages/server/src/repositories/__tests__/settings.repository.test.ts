@@ -434,4 +434,61 @@ describe('SettingsRepository', () => {
             })
         })
     })
+
+    describe('In-flight pipeline marker', () => {
+        const marker = {
+            pipeline: 'production' as const,
+            source: 'script',
+            notify: true,
+            startedAt: '2026-01-01T00:00:00.000Z',
+            runIds: ['run-1', 'run-2'],
+            projects: ['API', 'WEB'],
+        }
+
+        it('is null when none was written', async () => {
+            expect(await repository.getInFlightPipeline()).toBeNull()
+        })
+
+        it('round-trips what was written', async () => {
+            await repository.setInFlightPipeline(marker)
+
+            expect(await repository.getInFlightPipeline()).toEqual(marker)
+        })
+
+        it('overwrites the previous marker', async () => {
+            await repository.setInFlightPipeline(marker)
+            await repository.setInFlightPipeline({...marker, runIds: ['run-1', 'run-2', 'run-3']})
+
+            expect((await repository.getInFlightPipeline())?.runIds).toHaveLength(3)
+        })
+
+        it('is gone after clearing, and clearing without a marker is harmless', async () => {
+            await repository.clearInFlightPipeline()
+            await repository.setInFlightPipeline(marker)
+            await repository.clearInFlightPipeline()
+
+            expect(await repository.getInFlightPipeline()).toBeNull()
+        })
+
+        it('fills defaults for a partial marker and ignores unparsable values', async () => {
+            await dbManager.execute('INSERT INTO app_settings (key, value) VALUES (?, ?)', [
+                'ci_inflight_pipeline',
+                JSON.stringify({pipeline: 'develop'}),
+            ])
+            expect(await repository.getInFlightPipeline()).toEqual({
+                pipeline: 'develop',
+                source: null,
+                notify: false,
+                startedAt: '',
+                runIds: [],
+                projects: [],
+            })
+
+            await dbManager.execute('UPDATE app_settings SET value = ? WHERE key = ?', [
+                '{not json',
+                'ci_inflight_pipeline',
+            ])
+            expect(await repository.getInFlightPipeline()).toBeNull()
+        })
+    })
 })

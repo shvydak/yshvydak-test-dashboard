@@ -5,6 +5,7 @@ import {
     TestFilters,
     DatabaseStats,
     TestStatusCounts,
+    TestRunProcess,
 } from '../types/service.types'
 import {TestResultData} from '../types/database.types'
 import {TestRepository} from '../repositories/test.repository'
@@ -18,6 +19,7 @@ import {SettingsService} from './settings.service'
 import {Logger} from '../utils/logger.util'
 import {FileUtil} from '../utils/file.util'
 import {activeProcessesTracker} from './activeProcesses.service'
+import {CIRunQueueService} from './ciRunQueue.service'
 
 export class TestService implements ITestService {
     constructor(
@@ -28,7 +30,8 @@ export class TestService implements ITestService {
         private attachmentService: AttachmentService,
         private noteService: NoteService,
         private settingsService: SettingsService,
-        private attachmentCleanupRepository: AttachmentCleanupRepository
+        private attachmentCleanupRepository: AttachmentCleanupRepository,
+        private ciRunQueue: CIRunQueueService
     ) {}
 
     private async getExecutionProject(): Promise<string | undefined> {
@@ -374,7 +377,8 @@ export class TestService implements ITestService {
         maxWorkers?: number,
         skipAutoDiscovery?: boolean,
         requestedProject?: string,
-        source?: string
+        source?: string,
+        options: {pipelineStep?: boolean} = {}
     ): Promise<any> {
         // Block CI script triggers when paused
         if (source === 'script') {
@@ -419,26 +423,42 @@ export class TestService implements ITestService {
             }
         }
 
-        const project =
-            requestedProject !== undefined && requestedProject !== ''
-                ? requestedProject
-                : await this.getExecutionProject()
-
-        // Auto-discover tests before running unless explicitly skipped.
-        // Scoped to the resolved project so this never resets other projects' pending status.
-        if (!skipAutoDiscovery) {
-            await this.discoverTests(project)
+        // A pipeline's own steps run while its slot-mates wait; only standalone manual starts are refused.
+        if (source !== 'script' && !options.pipelineStep) {
+            this.ciRunQueue.assertManualStartAllowed()
         }
 
-        const result = await this.playwrightService.runAllTests(maxWorkers, project)
+        // A step ignores its own pipeline's running flag; everything else sees the full busy state.
+        this.assertNotBusy({ignorePipeline: options.pipelineStep === true})
 
-        // Add process to tracker
-        activeProcessesTracker.addProcess({
-            runId: result.runId,
-            type: 'run-all',
-            totalTests: undefined, // Will be determined during execution
-            project,
-        })
+        // Busy from before discovery until the tracker owns the process.
+        const releaseStarting = this.ciRunQueue.beginStarting()
+        let result: TestRunProcess
+        let project: string | undefined
+        try {
+            project =
+                requestedProject !== undefined && requestedProject !== ''
+                    ? requestedProject
+                    : await this.getExecutionProject()
+
+            // Auto-discover tests before running unless explicitly skipped.
+            // Scoped to the resolved project so this never resets other projects' pending status.
+            if (!skipAutoDiscovery) {
+                await this.discoverTests(project)
+            }
+
+            result = await this.playwrightService.runAllTests(maxWorkers, project)
+
+            // Add process to tracker
+            activeProcessesTracker.addProcess({
+                runId: result.runId,
+                type: 'run-all',
+                totalTests: undefined, // Will be determined during execution
+                project,
+            })
+        } finally {
+            releaseStarting()
+        }
 
         // Create test run record
         await this.runRepository.createTestRun({
@@ -471,6 +491,9 @@ export class TestService implements ITestService {
                 }
 
                 this.websocketService.broadcastRunCompleted(result.runId, code || 1, 'run-all')
+
+                // A pipeline step is not the end of the pipeline; the pipeline drains on its own finish.
+                if (!options.pipelineStep) this.ciRunQueue.requestDrain()
             })
         }
 
@@ -478,22 +501,32 @@ export class TestService implements ITestService {
     }
 
     async runTestGroup(filePath: string, maxWorkers?: number, testNames?: string[]): Promise<any> {
-        const projectFromFile = await this.testRepository.getProjectByFilePath(filePath)
-        const project = projectFromFile || (await this.getExecutionProject())
-        const result = await this.playwrightService.runTestGroup(
-            filePath,
-            maxWorkers,
-            testNames,
-            project
-        )
+        // Check and claim with no await in between.
+        this.ciRunQueue.assertManualStartAllowed()
+        this.assertNotBusy()
+        const releaseStarting = this.ciRunQueue.beginStarting()
+        let result: TestRunProcess
+        let project: string | undefined
+        try {
+            const projectFromFile = await this.testRepository.getProjectByFilePath(filePath)
+            project = projectFromFile || (await this.getExecutionProject())
+            result = await this.playwrightService.runTestGroup(
+                filePath,
+                maxWorkers,
+                testNames,
+                project
+            )
 
-        // Add process to tracker
-        activeProcessesTracker.addProcess({
-            runId: result.runId,
-            type: 'run-group',
-            filePath: filePath,
-            project,
-        })
+            // Add process to tracker
+            activeProcessesTracker.addProcess({
+                runId: result.runId,
+                type: 'run-group',
+                filePath: filePath,
+                project,
+            })
+        } finally {
+            releaseStarting()
+        }
 
         // Create test run record
         await this.runRepository.createTestRun({
@@ -533,6 +566,8 @@ export class TestService implements ITestService {
                     'run-group',
                     filePath
                 )
+
+                this.ciRunQueue.requestDrain()
             })
         }
 
@@ -546,23 +581,33 @@ export class TestService implements ITestService {
             throw new Error('Test not found')
         }
 
-        const project = test.project || (await this.getExecutionProject())
-        const result = await this.playwrightService.rerunSingleTest(
-            test.filePath,
-            test.name,
-            maxWorkers,
-            project
-        )
+        // Check and claim with no await in between (the lookup above is the only gap).
+        this.ciRunQueue.assertManualStartAllowed()
+        this.assertNotBusy()
+        const releaseStarting = this.ciRunQueue.beginStarting()
+        let result: TestRunProcess
+        let project: string | undefined
+        try {
+            project = test.project || (await this.getExecutionProject())
+            result = await this.playwrightService.rerunSingleTest(
+                test.filePath,
+                test.name,
+                maxWorkers,
+                project
+            )
 
-        // Add process to tracker
-        activeProcessesTracker.addProcess({
-            runId: result.runId,
-            type: 'rerun',
-            testId: testId,
-            originalTestId: testId,
-            filePath: test.filePath,
-            project,
-        })
+            // Add process to tracker
+            activeProcessesTracker.addProcess({
+                runId: result.runId,
+                type: 'rerun',
+                testId: testId,
+                originalTestId: testId,
+                filePath: test.filePath,
+                project,
+            })
+        } finally {
+            releaseStarting()
+        }
 
         // Create a new run for this rerun
         await this.runRepository.createTestRun({
@@ -630,6 +675,8 @@ export class TestService implements ITestService {
                 } catch (error) {
                     Logger.error('Error processing rerun results', error)
                 }
+
+                this.ciRunQueue.requestDrain()
             })
         }
 
@@ -638,6 +685,25 @@ export class TestService implements ITestService {
             testId,
             testName: test.name,
         }
+    }
+
+    private assertNotBusy(options: {ignorePipeline?: boolean} = {}): void {
+        if (!this.ciRunQueue.isBusy(options)) return
+
+        const currentRun = activeProcessesTracker.getActiveProcesses()[0]
+        throw new Error(
+            JSON.stringify({
+                code: 'TESTS_ALREADY_RUNNING',
+                message: 'Tests are already running',
+                currentRunId: currentRun?.id,
+                startedAt: currentRun?.startedAt,
+            })
+        )
+    }
+
+    /** After a manual tracker reset: a queued CI request may be waiting on an entry that will never close. */
+    requestQueueDrain(): void {
+        this.ciRunQueue.requestDrain()
     }
 
     async getDiagnostics(): Promise<{

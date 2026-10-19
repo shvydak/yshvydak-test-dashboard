@@ -15,6 +15,9 @@ async function startServer() {
         // Create database manager instance for cleanup
         const dbManager = new DatabaseManager(config.storage.outputDir)
 
+        // Before the server accepts requests, so a new pipeline's marker can't be mistaken for a stale one.
+        await serviceContainer.pipelineExecutionService.handleInterruptedOnStartup()
+
         // Start HTTP server
         const server = app.listen(config.server.port, () => {
             Logger.serverStart(config.server.port)

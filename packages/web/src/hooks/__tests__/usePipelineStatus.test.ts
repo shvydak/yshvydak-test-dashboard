@@ -231,4 +231,135 @@ describe('usePipelineStatus', () => {
             expect(apiStep?.status).toBe('queued')
         })
     })
+
+    describe('CI queue', () => {
+        const queued = [{pipeline: 'production', queuedAt: '2026-01-01T00:00:00.000Z'}]
+
+        it('starts with an empty queue', async () => {
+            const {result} = renderHook(() => usePipelineStatus())
+
+            await waitFor(() => expect(mockAuthGet).toHaveBeenCalled())
+            expect(result.current.queue).toEqual([])
+        })
+
+        it('rehydrates the queue from GET /pipeline/status/current, even with no pipeline', async () => {
+            mockAuthGet.mockResolvedValue(makeResponse({data: null, queue: queued}))
+
+            const {result} = renderHook(() => usePipelineStatus())
+
+            await waitFor(() => expect(result.current.queue).toEqual(queued))
+            expect(result.current.pipeline).toBeNull()
+        })
+
+        it('follows pipeline:queue-changed events, including emptying', () => {
+            const {result} = renderHook(() => usePipelineStatus())
+
+            act(() => {
+                result.current.applyPipelineEvent('pipeline:queue-changed', {queue: queued})
+            })
+            expect(result.current.queue).toEqual(queued)
+
+            act(() => {
+                result.current.applyPipelineEvent('pipeline:queue-changed', {queue: []})
+            })
+            expect(result.current.queue).toEqual([])
+        })
+
+        it('treats a malformed queue event as empty', () => {
+            const {result} = renderHook(() => usePipelineStatus())
+
+            act(() => {
+                result.current.applyPipelineEvent('pipeline:queue-changed', {queue: queued})
+                result.current.applyPipelineEvent('pipeline:queue-changed', {})
+            })
+
+            expect(result.current.queue).toEqual([])
+        })
+    })
+
+    describe('resync after a WebSocket reconnect', () => {
+        const startRunning = (result: {current: ReturnType<typeof usePipelineStatus>}) => {
+            act(() => {
+                result.current.applyPipelineEvent('pipeline:started', {
+                    pipelineRunId: 'p1',
+                    steps: [
+                        {
+                            project: 'API_Tests',
+                            displayName: 'API Tests',
+                            stopOnFailure: true,
+                            status: 'queued',
+                        },
+                    ],
+                })
+                result.current.applyPipelineEvent('pipeline:queue-changed', {
+                    queue: [{pipeline: 'production', queuedAt: '2026-01-01T00:00:00.000Z'}],
+                })
+            })
+            expect(result.current.pipeline?.status).toBe('running')
+            expect(result.current.queue).toHaveLength(1)
+        }
+
+        it('replaces a stale running pipeline and queue with the server state', async () => {
+            const {result} = renderHook(() => usePipelineStatus())
+            await waitFor(() => expect(mockAuthGet).toHaveBeenCalledTimes(1))
+            startRunning(result)
+
+            // pipeline:completed and the queue-emptied event were missed while offline
+            mockAuthGet.mockResolvedValue(
+                makeResponse({
+                    data: {
+                        pipelineRunId: 'p1',
+                        status: 'completed',
+                        steps: [],
+                        startedAt: '2026-01-01T00:00:00.000Z',
+                    },
+                    queue: [],
+                })
+            )
+            await act(async () => {
+                result.current.resync()
+            })
+
+            await waitFor(() => expect(result.current.pipeline?.status).toBe('completed'))
+            expect(result.current.queue).toEqual([])
+        })
+
+        it('clears a stale running pipeline when the server has none (404, e.g. after a restart)', async () => {
+            const {result} = renderHook(() => usePipelineStatus())
+            await waitFor(() => expect(mockAuthGet).toHaveBeenCalledTimes(1))
+            startRunning(result)
+
+            mockAuthGet.mockResolvedValue({ok: false, status: 404} as unknown as Response)
+            await act(async () => {
+                result.current.resync()
+            })
+
+            await waitFor(() => expect(result.current.pipeline).toBeNull())
+            expect(result.current.queue).toEqual([])
+        })
+
+        it('keeps the current state when the resync request itself fails', async () => {
+            const {result} = renderHook(() => usePipelineStatus())
+            await waitFor(() => expect(mockAuthGet).toHaveBeenCalledTimes(1))
+            startRunning(result)
+
+            mockAuthGet.mockRejectedValue(new Error('offline'))
+            await act(async () => {
+                result.current.resync()
+            })
+
+            expect(result.current.pipeline?.status).toBe('running')
+            expect(result.current.queue).toHaveLength(1)
+        })
+
+        it('does nothing when not authenticated', async () => {
+            const {result} = renderHook(() => usePipelineStatus(false))
+
+            await act(async () => {
+                result.current.resync()
+            })
+
+            expect(mockAuthGet).not.toHaveBeenCalled()
+        })
+    })
 })

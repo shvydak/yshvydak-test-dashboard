@@ -1,5 +1,11 @@
 import {describe, expect, it} from 'vitest'
-import {DEFAULT_CI_PIPELINE, normalizeCIPipelines, parseCIPipelineName} from '../ciPipeline.util'
+import {
+    CI_PIPELINE_DRAIN_ORDER,
+    DEFAULT_CI_PIPELINE,
+    getCIPipelineLabel,
+    normalizeCIPipelines,
+    parseCIPipelineName,
+} from '../ciPipeline.util'
 
 describe('parseCIPipelineName', () => {
     it('defaults missing values to develop', () => {
@@ -39,5 +45,22 @@ describe('normalizeCIPipelines', () => {
 
     it('prefers the pipelines array over the legacy flag', () => {
         expect(normalizeCIPipelines(['production'], true)).toEqual(['production'])
+    })
+})
+
+describe('getCIPipelineLabel', () => {
+    it('maps the known pipelines to their Slack labels', () => {
+        expect(getCIPipelineLabel('develop')).toBe('Development')
+        expect(getCIPipelineLabel('production')).toBe('Production')
+    })
+
+    it('shows an unknown name as-is', () => {
+        expect(getCIPipelineLabel('staging')).toBe('staging')
+    })
+})
+
+describe('CI_PIPELINE_DRAIN_ORDER', () => {
+    it('drains production before develop', () => {
+        expect(CI_PIPELINE_DRAIN_ORDER).toEqual(['production', 'develop'])
     })
 })

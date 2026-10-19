@@ -1103,6 +1103,29 @@ describe('useWebSocket', () => {
     })
 
     describe('Callbacks', () => {
+        it('forwards pipeline:queue-changed to onPipelineEvent', async () => {
+            const onPipelineEvent = vi.fn()
+
+            renderHook(() => useWebSocket('ws://localhost:3001', {onPipelineEvent}), {
+                wrapper: createWrapper(),
+            })
+
+            await act(async () => {
+                await Promise.resolve()
+            })
+
+            const message = {
+                type: 'pipeline:queue-changed',
+                data: {queue: [{pipeline: 'production', queuedAt: '2026-01-01T00:00:00.000Z'}]},
+            }
+
+            act(() => {
+                mockWebSocket.simulateMessage(message)
+            })
+
+            expect(onPipelineEvent).toHaveBeenCalledWith('pipeline:queue-changed', message.data)
+        })
+
         it('should call onRunCompleted on run:completed', async () => {
             const url = 'ws://localhost:3001'
             const onRunCompleted = vi.fn()

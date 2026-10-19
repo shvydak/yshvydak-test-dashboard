@@ -1,5 +1,6 @@
 import {describe, it, expect, vi, beforeEach, afterEach} from 'vitest'
 import {TestService} from '../test.service'
+import {CIRunQueueService} from '../ciRunQueue.service'
 import {FileUtil} from '../../utils/file.util'
 import type {TestResultData} from '../../types/database.types'
 import type {TestFilters} from '../../types/service.types'
@@ -44,6 +45,7 @@ describe('TestService', () => {
     let mockNoteService: any
     let mockSettingsService: any
     let mockAttachmentCleanupRepository: any
+    let mockCIRunQueue: any
 
     // Helper to create mock child process
     const createMockProcess = (): ChildProcess => {
@@ -145,6 +147,15 @@ describe('TestService', () => {
             markCleared: vi.fn().mockResolvedValue(undefined),
         }
 
+        mockSettingsService.getCIAutoRunPause = vi.fn().mockResolvedValue({paused: false})
+
+        mockCIRunQueue = {
+            assertManualStartAllowed: vi.fn(),
+            isBusy: vi.fn(() => false),
+            beginStarting: vi.fn(() => vi.fn()),
+            requestDrain: vi.fn(),
+        }
+
         // Create service instance
         testService = new TestService(
             mockTestRepository,
@@ -154,7 +165,8 @@ describe('TestService', () => {
             mockAttachmentService,
             mockNoteService,
             mockSettingsService,
-            mockAttachmentCleanupRepository
+            mockAttachmentCleanupRepository,
+            mockCIRunQueue
         )
     })
 
@@ -1422,6 +1434,197 @@ describe('TestService', () => {
             expect(mockRunRepository.updateTestRun).toHaveBeenCalledWith('rerun-789', {
                 status: 'failed',
             })
+        })
+    })
+
+    describe('CI queue integration', () => {
+        const startedRun = (runId: string) => ({
+            runId,
+            message: 'started',
+            timestamp: '2025-10-21T10:00:00.000Z',
+            process: createMockProcess(),
+        })
+
+        const arrangeRerun = () => {
+            mockTestRepository.getTestResult.mockResolvedValue({
+                id: 'exec-1',
+                testId: 'hash-1',
+                name: 'Test 1',
+                filePath: '/path/to/test.spec.ts',
+                project: 'All_Tests',
+            })
+            mockPlaywrightService.rerunSingleTest.mockResolvedValue(startedRun('rerun-1'))
+            mockRunRepository.createTestRun.mockResolvedValue('rerun-1')
+        }
+
+        it('refuses manual run-all, group and rerun while a CI request is queued', async () => {
+            mockCIRunQueue.assertManualStartAllowed.mockImplementation(() => {
+                throw new Error('CI_RUN_QUEUED')
+            })
+            arrangeRerun()
+
+            await expect(testService.runAllTests(2)).rejects.toThrow('CI_RUN_QUEUED')
+            await expect(testService.runTestGroup('/a.spec.ts')).rejects.toThrow('CI_RUN_QUEUED')
+            await expect(testService.rerunTest('exec-1')).rejects.toThrow('CI_RUN_QUEUED')
+
+            expect(mockPlaywrightService.runAllTests).not.toHaveBeenCalled()
+            expect(mockPlaywrightService.runTestGroup).not.toHaveBeenCalled()
+            expect(mockPlaywrightService.rerunSingleTest).not.toHaveBeenCalled()
+        })
+
+        it('refuses a manual run-all while the dashboard is busy (pipeline between steps, discovery)', async () => {
+            mockCIRunQueue.isBusy.mockReturnValue(true)
+
+            await expect(testService.runAllTests(2, true, 'API')).rejects.toThrow(
+                'TESTS_ALREADY_RUNNING'
+            )
+
+            expect(mockCIRunQueue.isBusy).toHaveBeenCalledWith({ignorePipeline: false})
+            expect(mockPlaywrightService.runAllTests).not.toHaveBeenCalled()
+            expect(mockCIRunQueue.beginStarting).not.toHaveBeenCalled()
+        })
+
+        it('with the real queue: manual run-all is refused between pipeline steps, a step is not', async () => {
+            const realQueue = new CIRunQueueService(mockWebSocketService)
+            realQueue.registerPipelineRunning(() => true) // pipeline running, nothing tracked
+            const service = new TestService(
+                mockTestRepository,
+                mockRunRepository,
+                mockPlaywrightService,
+                mockWebSocketService,
+                mockAttachmentService,
+                mockNoteService,
+                mockSettingsService,
+                mockAttachmentCleanupRepository,
+                realQueue
+            )
+            mockPlaywrightService.runAllTests.mockResolvedValue(startedRun('run-1'))
+
+            await expect(service.runAllTests(2, true, 'UI')).rejects.toThrow(
+                'TESTS_ALREADY_RUNNING'
+            )
+            expect(mockPlaywrightService.runAllTests).not.toHaveBeenCalled()
+
+            await service.runAllTests(2, true, 'UI', 'script', {pipelineStep: true})
+            expect(mockPlaywrightService.runAllTests).toHaveBeenCalledTimes(1)
+        })
+
+        it('a pipeline step ignores its own pipeline flag but still sees other busy sources', async () => {
+            mockPlaywrightService.runAllTests.mockResolvedValue(startedRun('run-1'))
+            mockCIRunQueue.isBusy.mockImplementation((o?: {ignorePipeline?: boolean}) => {
+                return !o?.ignorePipeline // only the pipeline flag is set
+            })
+
+            await testService.runAllTests(2, true, 'API', 'script', {pipelineStep: true})
+            expect(mockPlaywrightService.runAllTests).toHaveBeenCalledTimes(1)
+
+            mockCIRunQueue.isBusy.mockReturnValue(true) // e.g. a manual run is starting
+            await expect(
+                testService.runAllTests(2, true, 'API', 'script', {pipelineStep: true})
+            ).rejects.toThrow('TESTS_ALREADY_RUNNING')
+        })
+
+        it('refuses group and rerun whenever the dashboard is busy', async () => {
+            arrangeRerun()
+            mockPlaywrightService.runTestGroup.mockResolvedValue(startedRun('run-g'))
+            await testService.runTestGroup('/a.spec.ts')
+            await testService.rerunTest('exec-1')
+
+            mockCIRunQueue.isBusy.mockReturnValue(true) // pipeline, another run, or a start in flight
+            await expect(testService.runTestGroup('/a.spec.ts')).rejects.toThrow(
+                'TESTS_ALREADY_RUNNING'
+            )
+            await expect(testService.rerunTest('exec-1')).rejects.toThrow('TESTS_ALREADY_RUNNING')
+
+            expect(mockPlaywrightService.runTestGroup).toHaveBeenCalledTimes(1)
+            expect(mockPlaywrightService.rerunSingleTest).toHaveBeenCalledTimes(1)
+        })
+
+        it('does not refuse a CI script run-all or a pipeline step', async () => {
+            mockCIRunQueue.assertManualStartAllowed.mockImplementation(() => {
+                throw new Error('CI_RUN_QUEUED')
+            })
+            mockSettingsService.getCIAutoRunPause = vi.fn().mockResolvedValue({paused: false})
+            mockPlaywrightService.runAllTests.mockImplementation(async () => startedRun('run-x'))
+
+            await testService.runAllTests(undefined, true, 'API', 'script')
+            await testService.runAllTests(undefined, true, 'API', undefined, {pipelineStep: true})
+
+            expect(mockPlaywrightService.runAllTests).toHaveBeenCalledTimes(2)
+        })
+
+        it('is busy from before discovery until the process is tracked, then releases', async () => {
+            const release = vi.fn()
+            mockCIRunQueue.beginStarting.mockReturnValue(release)
+            mockPlaywrightService.runAllTests.mockResolvedValue(startedRun('run-1'))
+
+            const pending = testService.runAllTests(2, false, 'API')
+            expect(mockCIRunQueue.beginStarting).toHaveBeenCalledTimes(1)
+            expect(release).not.toHaveBeenCalled()
+            await pending
+
+            expect(release).toHaveBeenCalledTimes(1)
+        })
+
+        it('releases the starting claim when spawning fails', async () => {
+            const release = vi.fn()
+            mockCIRunQueue.beginStarting.mockReturnValue(release)
+            mockPlaywrightService.runAllTests.mockRejectedValue(new Error('spawn failed'))
+
+            await expect(testService.runAllTests(2, true, 'API')).rejects.toThrow('spawn failed')
+
+            expect(release).toHaveBeenCalledTimes(1)
+        })
+
+        it('drains the queue when a run-all process closes', async () => {
+            const run = startedRun('run-1')
+            mockPlaywrightService.runAllTests.mockResolvedValue(run)
+
+            await testService.runAllTests(2, true, 'API')
+            expect(mockCIRunQueue.requestDrain).not.toHaveBeenCalled()
+
+            run.process.emit('close', 0)
+
+            expect(mockCIRunQueue.requestDrain).toHaveBeenCalledTimes(1)
+        })
+
+        it('does not drain when a pipeline step closes (the pipeline drains on its own finish)', async () => {
+            const run = startedRun('run-1')
+            mockSettingsService.getCIAutoRunPause = vi.fn().mockResolvedValue({paused: false})
+            mockPlaywrightService.runAllTests.mockResolvedValue(run)
+
+            await testService.runAllTests(2, true, 'API', 'script', {pipelineStep: true})
+            run.process.emit('close', 0)
+
+            expect(mockCIRunQueue.requestDrain).not.toHaveBeenCalled()
+        })
+
+        it('drains the queue when a group run closes', async () => {
+            const run = startedRun('run-g')
+            mockPlaywrightService.runTestGroup.mockResolvedValue(run)
+
+            await testService.runTestGroup('/a.spec.ts', 1)
+            run.process.emit('close', 0)
+
+            expect(mockCIRunQueue.requestDrain).toHaveBeenCalledTimes(1)
+        })
+
+        it('drains the queue when a rerun closes', async () => {
+            arrangeRerun()
+            const run = startedRun('rerun-1')
+            mockPlaywrightService.rerunSingleTest.mockResolvedValue(run)
+
+            await testService.rerunTest('exec-1')
+            run.process.emit('close', 0)
+            await new Promise((resolve) => setImmediate(resolve))
+
+            expect(mockCIRunQueue.requestDrain).toHaveBeenCalledTimes(1)
+        })
+
+        it('requestQueueDrain asks the queue to drain', () => {
+            testService.requestQueueDrain()
+
+            expect(mockCIRunQueue.requestDrain).toHaveBeenCalledTimes(1)
         })
     })
 

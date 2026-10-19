@@ -37,6 +37,13 @@ export interface EnvironmentConfig {
         apiToken: string
         enabled: boolean
     }
+    ci: {
+        // Webhook unset → CI Slack notifier off.
+        slackWebhookUrl: string
+        // Link base for Slack messages, e.g. https://dashboard.example.com
+        publicDashboardUrl: string
+        pipelineTimeoutMinutes: number
+    }
 }
 
 export const config: EnvironmentConfig = {
@@ -144,6 +151,18 @@ export const config: EnvironmentConfig = {
         // guessed at, so a typo'd/missing var degrades to today's behavior instead of failing.
         get enabled() {
             return !!(config.jira.baseUrl && config.jira.email && config.jira.apiToken)
+        },
+    },
+    ci: {
+        get slackWebhookUrl() {
+            return (process.env.CI_SLACK_WEBHOOK_URL || '').trim()
+        },
+        get publicDashboardUrl() {
+            return (process.env.PUBLIC_DASHBOARD_URL || '').trim().replace(/\/+$/, '')
+        },
+        get pipelineTimeoutMinutes() {
+            const minutes = Number(process.env.CI_PIPELINE_TIMEOUT_MINUTES)
+            return Number.isFinite(minutes) && minutes > 0 ? minutes : 30
         },
     },
 }

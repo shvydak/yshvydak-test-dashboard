@@ -26,6 +26,8 @@ description: Where things live in this repo — testId generation, WebSocket URL
 | Tests list fetch (scoped by tab)                  | `packages/web/src/features/tests/store/testsStore.ts` — `listProject` → `GET /tests?project=&limit=`                    |
 | CI auto-run pause                                 | `packages/web/src/hooks/useCIAutoRun.ts` + `packages/web/src/features/dashboard/components/CIAutoRunPauseBanner.tsx`    |
 | CI pipeline (ordered multi-project runs)          | `packages/server/src/services/pipelineExecution.service.ts` + `packages/web/src/hooks/usePipelineStatus.ts`             |
+| CI queue / "busy" owner                           | `packages/server/src/services/ciRunQueue.service.ts`                                                                    |
+| CI result Slack (messages, link rules)            | `packages/server/src/utils/ciSlackMessage.util.ts` + `services/ciNotifier.service.ts`                                   |
 | Tab status badge/dot (passed/failed)              | `test.repository.ts` (`getProjectStatusSummary`) + `packages/web/src/hooks/useProjectStatusSummary.ts`                  |
 | Filter-bar unlimited counts                       | `test.repository.ts` (`getTestStatusCounts`) + `packages/web/src/features/tests/hooks/useTestStatusCounts.ts`           |
 | Dashboard "Total Tests" tile                      | `packages/web/src/features/dashboard/components/Dashboard.tsx` + `DashboardStats.tsx` (`useTestStatusCounts`, unscoped) |

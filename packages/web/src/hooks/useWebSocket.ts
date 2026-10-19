@@ -267,6 +267,7 @@ export function useWebSocket(url: string | null, options?: WebSocketOptions) {
             case 'pipeline:step-started':
             case 'pipeline:step-completed':
             case 'pipeline:completed':
+            case 'pipeline:queue-changed':
                 options?.onPipelineEvent?.(message.type, message.data)
                 break
 

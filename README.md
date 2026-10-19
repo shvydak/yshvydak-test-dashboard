@@ -119,9 +119,11 @@ node scripts/trigger-test-run.js --pipeline develop --wait
 
 Options: `--pipeline develop|production` (default `develop`), `--max-workers <n>`, `--wait`, `--timeout <seconds>`, `--silent`. Exit codes: 0 success, 1 stopped on a blocking failure / API error / timeout, 2 CI auto-run paused, 3 configuration error, 4 authentication error. A final `::PIPELINE_RESULT::{...}` JSON line is always printed. The script reads `BASE_URL`, `ADMIN_EMAIL` and `ADMIN_PASSWORD` from the repo-root `.env`, so it has to run where that file exists. `scripts/trigger-test-run.sh` is a wrapper.
 
-Endpoints: `POST /api/pipeline/run` (`{pipeline, maxWorkers, source}`; an unknown pipeline name is a 400), `GET /api/pipeline/status/current`, `GET /api/pipeline/status/:pipelineRunId`.
+Endpoints: `POST /api/pipeline/run` (`{pipeline, maxWorkers, source, notify}`; an unknown pipeline name is a 400), `GET /api/pipeline/status/current`, `GET /api/pipeline/status/:pipelineRunId` — see [API_REFERENCE.md](docs/API_REFERENCE.md#ci-pipelines).
 
-**Auto-run pause** (Settings > Test Execution, `GET/PUT /api/settings/ci-autorun-pause`) blocks every request with `source: 'script'`, whatever the pipeline name, with HTTP 423 `CI_AUTORUN_PAUSED`; the script exits 2 without retrying. UI-started runs still work. When a run is already active the API answers 409 `TESTS_ALREADY_RUNNING`; the script polls every 10 s for up to 30 min.
+**Auto-run pause** (Settings > Test Execution, `GET/PUT /api/settings/ci-autorun-pause`) blocks every request with `source: 'script'`, whatever the pipeline name, with HTTP 423 `CI_AUTORUN_PAUSED`; the script exits 2 without retrying. UI-started runs still work. When the dashboard is busy, a script request without `--wait` (it sends `notify: true`) is queued — HTTP 202, one slot per pipeline, newest replaces, production drains first — and the script exits 0; the UI's run buttons stay disabled while a slot is filled or a pipeline runs. With `--wait` the API answers 409 `TESTS_ALREADY_RUNNING` and the script polls every 10 s for up to 30 min.
+
+**Result Slack message:** a `notify` pipeline posts its result (passed / failed tabs / stopped early / timed out / interrupted by a restart) to the webhook in `CI_SLACK_WEBHOOK_URL`; see [CONFIGURATION.md](docs/CONFIGURATION.md#ci-result-notifications-optional).
 
 ### Tags and tickets
 

@@ -68,6 +68,7 @@ describe('TestGroupHeader', () => {
         ;(useTestsStore as any).mockReturnValue({
             runningGroups: new Set(),
             getIsAnyTestRunning: mockGetIsAnyTestRunning,
+            getCIBusyReason: () => null,
             runTestsGroup: mockRunTestsGroup,
         })
     })
@@ -223,6 +224,7 @@ describe('TestGroupHeader', () => {
             ;(useTestsStore as any).mockReturnValue({
                 runningGroups: new Set(['e2e/tests/auth.spec.ts']),
                 getIsAnyTestRunning: mockGetIsAnyTestRunning,
+                getCIBusyReason: () => null,
                 runTestsGroup: mockRunTestsGroup,
             })
 

@@ -42,9 +42,10 @@ describe('PipelineController', () => {
         vi.clearAllMocks()
 
         mockPipelineExecutionService = {
-            startPipeline: vi.fn(),
+            requestPipelineRun: vi.fn(),
             getPipeline: vi.fn(),
             getCurrentPipeline: vi.fn(),
+            getQueue: vi.fn().mockReturnValue([]),
         }
 
         controller = new PipelineController(mockPipelineExecutionService)
@@ -56,29 +57,94 @@ describe('PipelineController', () => {
         it('starts the pipeline and returns its initial state', async () => {
             const pipelineState = {pipelineRunId: 'p1', status: 'running', steps: []}
             mockReq.body = {maxWorkers: 2, source: 'script'}
-            mockPipelineExecutionService.startPipeline.mockResolvedValue(pipelineState)
+            mockPipelineExecutionService.requestPipelineRun.mockResolvedValue({
+                status: 'started',
+                pipeline: pipelineState,
+            })
 
             await controller.runPipeline(mockReq as ServiceRequest, mockRes as Response)
 
-            expect(mockPipelineExecutionService.startPipeline).toHaveBeenCalledWith(
-                2,
-                'script',
-                'develop'
-            )
+            expect(mockPipelineExecutionService.requestPipelineRun).toHaveBeenCalledWith({
+                maxWorkers: 2,
+                source: 'script',
+                pipeline: 'develop',
+                notify: false,
+            })
             expect(ResponseHelper.success).toHaveBeenCalledWith(mockRes, pipelineState)
+        })
+
+        it('passes notify: true through to the execution service', async () => {
+            mockReq.body = {source: 'script', notify: true}
+            mockPipelineExecutionService.requestPipelineRun.mockResolvedValue({
+                status: 'started',
+                pipeline: {pipelineRunId: 'p1'},
+            })
+
+            await controller.runPipeline(mockReq as ServiceRequest, mockRes as Response)
+
+            expect(mockPipelineExecutionService.requestPipelineRun).toHaveBeenCalledWith(
+                expect.objectContaining({notify: true})
+            )
+        })
+
+        it('treats a non-boolean notify as false', async () => {
+            mockReq.body = {source: 'script', notify: 'yes'}
+            mockPipelineExecutionService.requestPipelineRun.mockResolvedValue({
+                status: 'started',
+                pipeline: {pipelineRunId: 'p1'},
+            })
+
+            await controller.runPipeline(mockReq as ServiceRequest, mockRes as Response)
+
+            expect(mockPipelineExecutionService.requestPipelineRun).toHaveBeenCalledWith(
+                expect.objectContaining({notify: false})
+            )
+        })
+
+        it('answers 202 with the queued marker when the request was queued', async () => {
+            mockReq.body = {source: 'script', notify: true, pipeline: 'production'}
+            mockPipelineExecutionService.requestPipelineRun.mockResolvedValue({
+                status: 'queued',
+                pipeline: 'production',
+            })
+
+            await controller.runPipeline(mockReq as ServiceRequest, mockRes as Response)
+
+            expect(mockRes.status).toHaveBeenCalledWith(202)
+            expect(mockRes.json).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    success: true,
+                    data: {status: 'queued', pipeline: 'production'},
+                })
+            )
+            expect(ResponseHelper.success).not.toHaveBeenCalled()
+        })
+
+        it('returns 409 CI_RUN_QUEUED for a manual start while a CI run is queued', async () => {
+            mockPipelineExecutionService.requestPipelineRun.mockRejectedValue(
+                new Error(JSON.stringify({code: 'CI_RUN_QUEUED', message: 'A CI run is queued'}))
+            )
+
+            await controller.runPipeline(mockReq as ServiceRequest, mockRes as Response)
+
+            expect(mockRes.status).toHaveBeenCalledWith(409)
+            expect(mockRes.json).toHaveBeenCalledWith(
+                expect.objectContaining({success: false, code: 'CI_RUN_QUEUED'})
+            )
         })
 
         it('passes a named pipeline through to the execution service', async () => {
             const pipelineState = {pipelineRunId: 'p1', status: 'running', steps: []}
             mockReq.body = {source: 'script', pipeline: 'production'}
-            mockPipelineExecutionService.startPipeline.mockResolvedValue(pipelineState)
+            mockPipelineExecutionService.requestPipelineRun.mockResolvedValue({
+                status: 'started',
+                pipeline: pipelineState,
+            })
 
             await controller.runPipeline(mockReq as ServiceRequest, mockRes as Response)
 
-            expect(mockPipelineExecutionService.startPipeline).toHaveBeenCalledWith(
-                undefined,
-                'script',
-                'production'
+            expect(mockPipelineExecutionService.requestPipelineRun).toHaveBeenCalledWith(
+                expect.objectContaining({source: 'script', pipeline: 'production'})
             )
         })
 
@@ -88,7 +154,7 @@ describe('PipelineController', () => {
             await controller.runPipeline(mockReq as ServiceRequest, mockRes as Response)
 
             expect(ResponseHelper.badRequest).toHaveBeenCalled()
-            expect(mockPipelineExecutionService.startPipeline).not.toHaveBeenCalled()
+            expect(mockPipelineExecutionService.requestPipelineRun).not.toHaveBeenCalled()
         })
 
         it('returns 409 when tests are already running', async () => {
@@ -98,7 +164,7 @@ describe('PipelineController', () => {
                 currentRunId: 'existing-run-123',
                 startedAt: '2025-10-26T10:00:00.000Z',
             }
-            mockPipelineExecutionService.startPipeline.mockRejectedValue(
+            mockPipelineExecutionService.requestPipelineRun.mockRejectedValue(
                 new Error(JSON.stringify(errorData))
             )
 
@@ -120,7 +186,7 @@ describe('PipelineController', () => {
                 message: 'CI auto-run is paused',
                 resumeAt: '2025-10-26T12:00:00.000Z',
             }
-            mockPipelineExecutionService.startPipeline.mockRejectedValue(
+            mockPipelineExecutionService.requestPipelineRun.mockRejectedValue(
                 new Error(JSON.stringify(errorData))
             )
 
@@ -141,18 +207,25 @@ describe('PipelineController', () => {
                 code: 'PIPELINE_EMPTY',
                 message: 'No project tabs are configured to run in the CI pipeline',
             }
-            mockPipelineExecutionService.startPipeline.mockRejectedValue(
+            mockPipelineExecutionService.requestPipelineRun.mockRejectedValue(
                 new Error(JSON.stringify(errorData))
             )
 
             await controller.runPipeline(mockReq as ServiceRequest, mockRes as Response)
 
-            expect(ResponseHelper.badRequest).toHaveBeenCalledWith(mockRes, errorData.message)
+            expect(mockRes.status).toHaveBeenCalledWith(400)
+            expect(mockRes.json).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    success: false,
+                    message: errorData.message,
+                    code: 'PIPELINE_EMPTY',
+                })
+            )
         })
 
         it('handles unexpected errors with 500', async () => {
             const error = new Error('Something went wrong')
-            mockPipelineExecutionService.startPipeline.mockRejectedValue(error)
+            mockPipelineExecutionService.requestPipelineRun.mockRejectedValue(error)
 
             await controller.runPipeline(mockReq as ServiceRequest, mockRes as Response)
 
@@ -198,7 +271,42 @@ describe('PipelineController', () => {
                 mockRes as Response
             )
 
-            expect(ResponseHelper.success).toHaveBeenCalledWith(mockRes, pipelineState)
+            expect(mockRes.status).toHaveBeenCalledWith(200)
+            expect(mockRes.json).toHaveBeenCalledWith(
+                expect.objectContaining({success: true, data: pipelineState, queue: []})
+            )
+        })
+
+        it('carries the CI queue next to the pipeline state', async () => {
+            const pipelineState = {pipelineRunId: 'p1', status: 'running', steps: []}
+            const queue = [{pipeline: 'production', queuedAt: '2026-01-01T00:00:00.000Z'}]
+            mockPipelineExecutionService.getCurrentPipeline.mockReturnValue(pipelineState)
+            mockPipelineExecutionService.getQueue.mockReturnValue(queue)
+
+            await controller.getCurrentPipelineStatus(
+                mockReq as ServiceRequest,
+                mockRes as Response
+            )
+
+            expect(mockRes.json).toHaveBeenCalledWith(
+                expect.objectContaining({data: pipelineState, queue})
+            )
+        })
+
+        it('returns the queue with data null when only a request is queued', async () => {
+            const queue = [{pipeline: 'develop', queuedAt: '2026-01-01T00:00:00.000Z'}]
+            mockPipelineExecutionService.getCurrentPipeline.mockReturnValue(null)
+            mockPipelineExecutionService.getQueue.mockReturnValue(queue)
+
+            await controller.getCurrentPipelineStatus(
+                mockReq as ServiceRequest,
+                mockRes as Response
+            )
+
+            expect(ResponseHelper.notFound).not.toHaveBeenCalled()
+            expect(mockRes.json).toHaveBeenCalledWith(
+                expect.objectContaining({success: true, data: null, queue})
+            )
         })
 
         it('returns 404 when no pipeline has ever run', async () => {

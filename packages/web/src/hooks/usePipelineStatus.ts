@@ -14,41 +14,68 @@ export interface PipelineStep {
     failed?: number
 }
 
-export type PipelineRunStatus = 'running' | 'completed' | 'stopped_early'
+export type PipelineRunStatus = 'running' | 'completed' | 'stopped_early' | 'paused'
 
 export interface PipelineState {
     pipelineRunId: string
+    pipeline?: string
     status: PipelineRunStatus
     steps: PipelineStep[]
     startedAt: string
+    source?: string
+    notify?: boolean
+}
+
+/** A CI request waiting for the dashboard to become idle (one slot per pipeline name). */
+export interface QueuedPipeline {
+    pipeline: string
+    maxWorkers?: number
+    queuedAt: string
 }
 
 export interface UsePipelineStatusReturn {
     pipeline: PipelineState | null
+    queue: QueuedPipeline[]
     applyPipelineEvent: (type: string, data: any) => void
+    /** Re-reads pipeline + queue from the server; call after a WebSocket (re)connect. */
+    resync: () => void
 }
 
 /**
  * Tracks the live CI pipeline run so the tab bar can show per-project
- * running/queued/success/failed indicators. Rehydrates once on mount (in case
- * a pipeline is already in flight after a page refresh) and is otherwise
- * driven entirely by WebSocket events via applyPipelineEvent.
+ * running/queued/success/failed indicators. Rehydrates on mount and on every
+ * WebSocket reconnect (resync), and is otherwise driven by WebSocket events via
+ * applyPipelineEvent. Also tracks the CI request queue the same way.
  */
 export function usePipelineStatus(isAuthenticated = true): UsePipelineStatusReturn {
     const [pipeline, setPipeline] = useState<PipelineState | null>(null)
+    const [queue, setQueue] = useState<QueuedPipeline[]>([])
 
-    useEffect(() => {
+    // Replaces local state with the server's: events missed while offline must not leave a stale "running".
+    const resync = useCallback(() => {
         if (!isAuthenticated) return
 
         authGet(`${config.api.baseUrl}/pipeline/status/current`)
-            .then((res) => (res.ok ? res.json() : null))
-            .then((data) => {
-                if (data?.data) setPipeline(data.data)
+            .then(async (res) => {
+                if (res.status === 404) {
+                    // Nothing running, nothing queued (also after a server restart).
+                    setPipeline(null)
+                    setQueue([])
+                    return
+                }
+                if (!res.ok) return
+                const data = await res.json()
+                setPipeline(data?.data ?? null)
+                setQueue(Array.isArray(data?.queue) ? data.queue : [])
             })
             .catch(() => {
-                // No pipeline has run yet, or the request failed — start with no state
+                // Request failed — keep the current state
             })
     }, [isAuthenticated])
+
+    useEffect(() => {
+        resync()
+    }, [resync])
 
     const applyPipelineEvent = useCallback((type: string, data: any) => {
         switch (type) {
@@ -94,10 +121,14 @@ export function usePipelineStatus(isAuthenticated = true): UsePipelineStatusRetu
                 })
                 break
 
+            case 'pipeline:queue-changed':
+                setQueue(Array.isArray(data?.queue) ? data.queue : [])
+                break
+
             default:
             // Not a pipeline event - ignore
         }
     }, [])
 
-    return {pipeline, applyPipelineEvent}
+    return {pipeline, queue, applyPipelineEvent, resync}
 }

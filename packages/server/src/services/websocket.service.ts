@@ -77,9 +77,16 @@ export class WebSocketService implements IWebSocketService {
         })
     }
 
+    broadcastPipelineQueueChanged(queue: PipelineQueueEntry[]): void {
+        this.broadcast({
+            type: 'pipeline:queue-changed',
+            data: {queue},
+        })
+    }
+
     broadcastPipelineCompleted(
         pipelineRunId: string,
-        status: 'completed' | 'stopped_early',
+        status: PipelineFinishStatus,
         steps: PipelineStepSummary[]
     ): void {
         this.broadcast({
@@ -87,6 +94,15 @@ export class WebSocketService implements IWebSocketService {
             data: {pipelineRunId, status, steps},
         })
     }
+}
+
+// How a pipeline ended: 'paused' = CI auto-run was paused between steps, the rest was skipped.
+export type PipelineFinishStatus = 'completed' | 'stopped_early' | 'paused'
+
+export interface PipelineQueueEntry {
+    pipeline: string
+    maxWorkers?: number
+    queuedAt: string
 }
 
 export interface PipelineStepSummary {

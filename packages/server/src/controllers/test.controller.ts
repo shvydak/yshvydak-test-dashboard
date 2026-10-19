@@ -6,6 +6,7 @@ import {Logger} from '../utils/logger.util'
 import {ServiceRequest} from '../types/api.types'
 import {ProcessStartData, ProcessEndData} from '@yshvydak/core'
 import {activeProcessesTracker} from '../services/activeProcesses.service'
+import {respondIfAlreadyRunning, respondIfCIRunQueued} from '../utils/ciRunQueued.util'
 import {getWebSocketManager} from '../websocket/server'
 import path from 'path'
 
@@ -60,6 +61,8 @@ export class TestController {
             )
             ResponseHelper.success(res, result)
         } catch (error) {
+            if (respondIfCIRunQueued(res, error)) return
+
             // Check if this is a "tests already running" error
             if (error instanceof Error && error.message.includes('TESTS_ALREADY_RUNNING')) {
                 try {
@@ -125,6 +128,8 @@ export class TestController {
             const result = await this.testService.runTestGroup(filePath, maxWorkers, testNames)
             return ResponseHelper.success(res, result)
         } catch (error) {
+            if (respondIfCIRunQueued(res, error) || respondIfAlreadyRunning(res, error)) return res
+
             Logger.error('Error running group tests', error)
             return ResponseHelper.error(
                 res,
@@ -465,6 +470,8 @@ export class TestController {
 
             ResponseHelper.success(res, result, 'Test rerun started')
         } catch (error) {
+            if (respondIfCIRunQueued(res, error) || respondIfAlreadyRunning(res, error)) return
+
             if (error instanceof Error && error.message === 'Test not found') {
                 ResponseHelper.notFound(res, 'Test')
                 return
@@ -717,6 +724,7 @@ export class TestController {
 
             // Force reset
             activeProcessesTracker.forceReset()
+            this.testService.requestQueueDrain()
 
             // Get state after reset
             const stateAfter = activeProcessesTracker.getConnectionStatus()

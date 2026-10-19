@@ -4,6 +4,7 @@ import {
     ProjectTabConfig,
     CIAutoRunPause,
     JiraSettings,
+    InFlightPipelineMarker,
 } from '../repositories/settings.repository'
 import {ChipAlignment} from '../utils/chipAlignment.util'
 import {TagMode} from '../utils/tagMode.util'
@@ -15,7 +16,14 @@ export interface TestExecutionSettings {
     project: string
 }
 
-export type {DiskThresholds, ProjectTabConfig, CIAutoRunPause, JiraSettings, ChipAlignment}
+export type {
+    DiskThresholds,
+    ProjectTabConfig,
+    CIAutoRunPause,
+    JiraSettings,
+    ChipAlignment,
+    InFlightPipelineMarker,
+}
 
 export class SettingsService {
     constructor(
@@ -162,6 +170,18 @@ export class SettingsService {
                 : 'CI auto-run resumed'
         )
         return pause
+    }
+
+    async getInFlightPipeline(): Promise<InFlightPipelineMarker | null> {
+        return this.settingsRepository.getInFlightPipeline()
+    }
+
+    async setInFlightPipeline(marker: InFlightPipelineMarker): Promise<void> {
+        await this.settingsRepository.setInFlightPipeline(marker)
+    }
+
+    async clearInFlightPipeline(): Promise<void> {
+        await this.settingsRepository.clearInFlightPipeline()
     }
 
     async getJiraSettings(): Promise<JiraSettings> {

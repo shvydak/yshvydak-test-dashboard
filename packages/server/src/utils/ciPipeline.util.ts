@@ -4,6 +4,19 @@ export type CIPipelineName = (typeof CI_PIPELINE_NAMES)[number]
 
 export const DEFAULT_CI_PIPELINE: CIPipelineName = 'develop'
 
+// Queue drain order: production slot before develop, anything else after.
+export const CI_PIPELINE_DRAIN_ORDER: readonly CIPipelineName[] = ['production', 'develop']
+
+const CI_PIPELINE_LABELS: Record<CIPipelineName, string> = {
+    develop: 'Development',
+    production: 'Production',
+}
+
+/** Human label for Slack headers; an unknown name is shown as-is. */
+export function getCIPipelineLabel(pipeline: string): string {
+    return isCIPipelineName(pipeline) ? CI_PIPELINE_LABELS[pipeline] : pipeline
+}
+
 export function isCIPipelineName(value: unknown): value is CIPipelineName {
     return typeof value === 'string' && (CI_PIPELINE_NAMES as readonly string[]).includes(value)
 }

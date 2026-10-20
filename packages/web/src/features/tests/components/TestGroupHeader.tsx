@@ -13,7 +13,7 @@ export interface TestGroupHeaderProps {
 }
 
 export function TestGroupHeader({group, expanded, onToggle, filter}: TestGroupHeaderProps) {
-    const {runningGroups, getIsAnyTestRunning, runTestsGroup} = useTestsStore()
+    const {runningGroups, getIsAnyTestRunning, getCIBusyReason, runTestsGroup} = useTestsStore()
     const [searchParams] = useSearchParams()
     const activeProject = searchParams.get('project') || ''
     const isRunning = runningGroups.has(group.filePath)
@@ -66,7 +66,9 @@ export function TestGroupHeader({group, expanded, onToggle, filter}: TestGroupHe
                             </span>
                         )}
                     </div>
-                    <div className="relative inline-flex shrink-0 group/noproject">
+                    <div
+                        className="relative inline-flex shrink-0 group/noproject"
+                        title={getCIBusyReason() ?? undefined}>
                         <ActionButton
                             size="sm"
                             variant="secondary"

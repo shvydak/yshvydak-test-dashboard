@@ -391,10 +391,12 @@ export class PlaywrightService implements IPlaywrightService {
             NODE_ENV: env.NODE_ENV,
         })
 
+        // detached: own process group, so Stop can signal npx + Playwright + workers together.
         return spawn('npx', args, {
             cwd: config.playwright.projectDir,
             stdio: options.type === 'rerun' ? ['ignore', 'pipe', 'pipe'] : 'inherit',
             env,
+            detached: true,
         })
     }
 

@@ -77,9 +77,26 @@ export class WebSocketService implements IWebSocketService {
         })
     }
 
+    /** A Stop is cleaning up; the UI shows "Stopping..." until run:cancelled. */
+    broadcastRunStopping(reason: string): void {
+        this.broadcast({type: 'run:stopping', data: {reason}})
+    }
+
+    /** Stop finished: the runs' data is gone and every test shows its previous result again. */
+    broadcastRunCancelled(runIds: string[], reason: string, pipelineRunId?: string): void {
+        this.broadcast({type: 'run:cancelled', data: {runIds, reason, pipelineRunId}})
+    }
+
+    broadcastPipelineQueueChanged(queue: PipelineQueueEntry[]): void {
+        this.broadcast({
+            type: 'pipeline:queue-changed',
+            data: {queue},
+        })
+    }
+
     broadcastPipelineCompleted(
         pipelineRunId: string,
-        status: 'completed' | 'stopped_early',
+        status: PipelineFinishStatus,
         steps: PipelineStepSummary[]
     ): void {
         this.broadcast({
@@ -87,6 +104,15 @@ export class WebSocketService implements IWebSocketService {
             data: {pipelineRunId, status, steps},
         })
     }
+}
+
+// 'paused' = CI auto-run paused between steps; 'cancelled' = stopped, the run's results were removed.
+export type PipelineFinishStatus = 'completed' | 'stopped_early' | 'paused' | 'cancelled'
+
+export interface PipelineQueueEntry {
+    pipeline: string
+    maxWorkers?: number
+    queuedAt: string
 }
 
 export interface PipelineStepSummary {

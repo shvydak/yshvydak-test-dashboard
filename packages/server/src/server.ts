@@ -1,8 +1,10 @@
 import {createApp} from './app'
 import {createWebSocketServer, setWebSocketManager} from './websocket/server'
 import {config} from './config/environment.config'
+import {RUN_STOP} from './config/constants'
 import {Logger} from './utils/logger.util'
 import {DatabaseManager} from './database/database.manager'
+import {runProcessRegistry} from './services/runProcessRegistry.service'
 
 // Background Jira sync cadence. Manual "Refresh now" (POST /api/jira/refresh, from Settings)
 // runs on top of this, independent of the interval.
@@ -14,6 +16,9 @@ async function startServer() {
 
         // Create database manager instance for cleanup
         const dbManager = new DatabaseManager(config.storage.outputDir)
+
+        // Before listen: kills leftover Playwright groups and deletes what an interrupted run wrote.
+        await serviceContainer.pipelineExecutionService.handleInterruptedOnStartup()
 
         // Start HTTP server
         const server = app.listen(config.server.port, () => {
@@ -48,10 +53,17 @@ async function startServer() {
         }
 
         // Graceful shutdown handler
-        const gracefulShutdown = (signal: string) => {
+        const gracefulShutdown = async (signal: string) => {
             Logger.info(`🛑 Received ${signal}, shutting down gracefully...`)
 
             if (jiraSyncInterval) clearInterval(jiraSyncInterval)
+
+            // Detached Playwright groups would outlive us: SIGINT, SIGKILL survivors; the marker cleans their data next start.
+            setTimeout(() => {
+                Logger.error('⚠️ Graceful shutdown timeout exceeded, forcing exit')
+                process.exit(1)
+            }, 4500) // 4.5 seconds (slightly less than PM2's kill_timeout of 5s)
+            await runProcessRegistry.terminateAll(RUN_STOP.SHUTDOWN_GRACE_MS)
 
             // Stop accepting new connections
             server.close(() => {
@@ -69,12 +81,6 @@ async function startServer() {
                     process.exit(0)
                 })
             })
-
-            // Force shutdown if graceful shutdown takes too long
-            setTimeout(() => {
-                Logger.error('⚠️ Graceful shutdown timeout exceeded, forcing exit')
-                process.exit(1)
-            }, 4500) // 4.5 seconds (slightly less than PM2's kill_timeout of 5s)
         }
 
         // Handle shutdown signals

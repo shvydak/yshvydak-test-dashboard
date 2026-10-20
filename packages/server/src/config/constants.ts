@@ -47,3 +47,14 @@ export const PLAYWRIGHT_CONSTANTS = {
     PACKAGE_NAME: '@playwright/test',
     REPORTER_PACKAGE_NAME: 'playwright-dashboard-reporter',
 } as const
+
+export const RUN_STOP = {
+    /** SIGINT lets Playwright run its teardown; the group is SIGKILLed if it ignores it this long. */
+    KILL_AFTER_MS: 20_000,
+    /** Extra wait for `close` after SIGKILL before the stop gives up on a child. */
+    CLOSE_GIVE_UP_MS: 5_000,
+    /** Reporter requests already in flight when the child closes; deleting earlier would race them. */
+    LATE_POSTS_GRACE_MS: 1_000,
+    /** Server shutdown: SIGINT every group, SIGKILL the survivors after this (pm2 kill_timeout is 5 s). */
+    SHUTDOWN_GRACE_MS: 2_500,
+} as const

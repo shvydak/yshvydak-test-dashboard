@@ -38,6 +38,11 @@ export function useProjectRunStatus(): UseProjectRunStatusReturn {
                 break
             }
 
+            case 'run:cancelled':
+                // A stop ends every run; the force-killed path sends no process:ended / connection:status.
+                setRunningProjects(new Set())
+                break
+
             default:
             // `process:ended` doesn't carry project — the server always follows it
             // with a `connection:status` broadcast, which resyncs the set above.

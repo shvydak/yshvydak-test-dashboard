@@ -29,6 +29,20 @@ export class RunRepository extends BaseRepository implements IRunRepository {
         }
     }
 
+    /** Stop: removes the run rows (their results go with them via ON DELETE CASCADE). */
+    async deleteTestRuns(runIds: string[]): Promise<number> {
+        let deleted = 0
+        for (let i = 0; i < runIds.length; i += 900) {
+            const batch = runIds.slice(i, i + 900)
+            const result = await this.dbManager.execute(
+                `DELETE FROM test_runs WHERE id IN (${batch.map(() => '?').join(',')})`,
+                batch
+            )
+            deleted += result.changes || 0
+        }
+        return deleted
+    }
+
     async getStats(): Promise<any> {
         return this.dbManager.getStats()
     }

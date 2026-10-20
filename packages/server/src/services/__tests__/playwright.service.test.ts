@@ -971,6 +971,29 @@ describe('PlaywrightService', () => {
     // TEST EXECUTION - runTestGroup
     // ============================================================================
 
+    // Stop signals the whole process group (npx + Playwright + workers); that only works for a detached spawn.
+    describe('process group (detached spawn)', () => {
+        it.each([
+            ['runAllTests', () => service.runAllTests()],
+            ['runTestGroup', () => service.runTestGroup('test.spec.ts')],
+            ['rerunSingleTest', () => service.rerunSingleTest('test.spec.ts', 'a test')],
+        ])('%s spawns Playwright in its own process group', async (_name, start) => {
+            mockSpawn.mockReturnValue(createMockProcess(''))
+
+            await start()
+
+            expect(mockSpawn.mock.calls[0][2].detached).toBe(true)
+        })
+
+        it('test discovery (--list) is not a run: no own group', async () => {
+            mockSpawn.mockReturnValue(createMockProcess(JSON.stringify({suites: []})))
+
+            await service.discoverTests()
+
+            expect(mockSpawn.mock.calls[0][2].detached).toBeUndefined()
+        })
+    })
+
     describe('runTestGroup', () => {
         it('should spawn process with file path', async () => {
             // Arrange

@@ -434,4 +434,120 @@ describe('SettingsRepository', () => {
             })
         })
     })
+
+    describe('In-flight pipeline marker', () => {
+        const marker = {
+            pipeline: 'production' as const,
+            source: 'script',
+            notify: true,
+            startedAt: '2026-01-01T00:00:00.000Z',
+            runIds: ['run-1', 'run-2'],
+            projects: ['API', 'WEB'],
+            pgids: [4321],
+        }
+
+        it('is null when none was written', async () => {
+            expect(await repository.getInFlightPipeline()).toBeNull()
+        })
+
+        it('round-trips what was written', async () => {
+            await repository.setInFlightPipeline(marker)
+
+            expect(await repository.getInFlightPipeline()).toEqual(marker)
+        })
+
+        it('overwrites the previous marker', async () => {
+            await repository.setInFlightPipeline(marker)
+            await repository.setInFlightPipeline({...marker, runIds: ['run-1', 'run-2', 'run-3']})
+
+            expect((await repository.getInFlightPipeline())?.runIds).toHaveLength(3)
+        })
+
+        it('is gone after clearing, and clearing without a marker is harmless', async () => {
+            await repository.clearInFlightPipeline()
+            await repository.setInFlightPipeline(marker)
+            await repository.clearInFlightPipeline()
+
+            expect(await repository.getInFlightPipeline()).toBeNull()
+        })
+
+        it('fills defaults for a partial marker and ignores unparsable values', async () => {
+            await dbManager.execute('INSERT INTO app_settings (key, value) VALUES (?, ?)', [
+                'ci_inflight_pipeline',
+                JSON.stringify({pipeline: 'develop'}),
+            ])
+            expect(await repository.getInFlightPipeline()).toEqual({
+                pipeline: 'develop',
+                source: null,
+                notify: false,
+                startedAt: '',
+                runIds: [],
+                projects: [],
+                pgids: [],
+            })
+
+            await dbManager.execute('UPDATE app_settings SET value = ? WHERE key = ?', [
+                '{not json',
+                'ci_inflight_pipeline',
+            ])
+            expect(await repository.getInFlightPipeline()).toBeNull()
+        })
+    })
+
+    describe('In-flight run marker (manual runs)', () => {
+        const marker = {
+            runId: 'run-1',
+            pgid: 4321,
+            project: 'API',
+            pendingSince: '2026-01-01T00:00:00.000Z',
+            startedAt: '2026-01-01T00:00:01.000Z',
+        }
+
+        it('is null when none was written', async () => {
+            expect(await repository.getInFlightRun()).toBeNull()
+        })
+
+        it('round-trips, overwrites and clears', async () => {
+            await repository.setInFlightRun(marker)
+            expect(await repository.getInFlightRun()).toEqual(marker)
+
+            await repository.setInFlightRun({...marker, runId: 'run-2'})
+            expect((await repository.getInFlightRun())?.runId).toBe('run-2')
+
+            await repository.clearInFlightRun()
+            await repository.clearInFlightRun()
+            expect(await repository.getInFlightRun()).toBeNull()
+        })
+
+        it('is independent of the pipeline marker', async () => {
+            await repository.setInFlightRun(marker)
+            expect(await repository.getInFlightPipeline()).toBeNull()
+        })
+
+        it('fills defaults, and ignores a marker without a run id or with broken JSON', async () => {
+            await dbManager.execute('INSERT INTO app_settings (key, value) VALUES (?, ?)', [
+                'inflight_run',
+                JSON.stringify({runId: 'run-9'}),
+            ])
+            expect(await repository.getInFlightRun()).toEqual({
+                runId: 'run-9',
+                pgid: null,
+                project: null,
+                pendingSince: null,
+                startedAt: '',
+            })
+
+            await dbManager.execute('UPDATE app_settings SET value = ? WHERE key = ?', [
+                JSON.stringify({pgid: 1}),
+                'inflight_run',
+            ])
+            expect(await repository.getInFlightRun()).toBeNull()
+
+            await dbManager.execute('UPDATE app_settings SET value = ? WHERE key = ?', [
+                '{not json',
+                'inflight_run',
+            ])
+            expect(await repository.getInFlightRun()).toBeNull()
+        })
+    })
 })

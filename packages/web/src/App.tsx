@@ -92,7 +92,13 @@ function App() {
         navigate,
     ])
 
-    const {pipeline, applyPipelineEvent} = usePipelineStatus(isAuthenticated)
+    const {
+        pipeline,
+        queue: ciQueue,
+        stopping: ciStopping,
+        applyPipelineEvent,
+        resync: resyncPipeline,
+    } = usePipelineStatus(isAuthenticated)
     const {summary: projectStatusSummary} = useProjectStatusSummary(isAuthenticated)
     const {runningProjects, applyRunStatusEvent} = useProjectRunStatus()
 
@@ -102,7 +108,23 @@ function App() {
         isLoading: testsLoading,
         rerunTest,
         checkAndRestoreActiveStates,
+        setCIRunQueued,
+        setCIPipelineRunning,
+        setCIStopping,
     } = useTestsStore()
+
+    useEffect(() => {
+        setCIRunQueued(ciQueue.length > 0)
+    }, [ciQueue, setCIRunQueued])
+
+    useEffect(() => {
+        setCIStopping(ciStopping)
+    }, [ciStopping, setCIStopping])
+
+    const isPipelineRunning = pipeline?.status === 'running'
+    useEffect(() => {
+        setCIPipelineRunning(isPipelineRunning)
+    }, [isPipelineRunning, setCIPipelineRunning])
 
     // Setup global logout function
     useEffect(() => {
@@ -259,6 +281,11 @@ function App() {
         onPipelineEvent: applyPipelineEvent,
         onRunStatusEvent: applyRunStatusEvent,
     })
+
+    // A dropped socket may have missed pipeline:completed / queue events.
+    useEffect(() => {
+        if (isConnected) resyncPipeline()
+    }, [isConnected, resyncPipeline])
 
     useEffect(() => {
         // Scope list fetches to the active tab so filter counts match the Header badge.

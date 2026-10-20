@@ -8,11 +8,14 @@
  * from external automation systems like GitHub Actions or n8n.
  *
  * Features:
- * - Automatic authentication (if ENABLE_AUTH=true)
+ * - Automatic authentication (if ENABLE_AUTH=true; the run endpoint needs the JWT, the auth-off dashboard needs none)
  * - Health check before execution
- * - Real-time status monitoring across all pipeline steps
+ * - Real-time status monitoring across all pipeline steps (--wait)
  * - JSON output for CI/n8n integration
  * - Error handling and retries
+ *
+ * Without --wait it sends notify:true: the dashboard queues the request when busy (HTTP 202) and posts the Slack result.
+ * If the same pipeline's own notify run is active, the dashboard stops it first (newer deploy wins) and the new request waits for the drain.
  *
  * Usage:
  *   node scripts/trigger-test-run.js [options]
@@ -20,20 +23,21 @@
  * Options:
  *   --max-workers <number>  Maximum number of parallel workers (default: from config)
  *   --pipeline <name>       CI pipeline to run: develop | production (default: develop)
- *   --wait                  Wait for pipeline completion and return results
- *   --timeout <seconds>     Maximum wait time in seconds (default: 600)
+ *   --wait                  Wait for pipeline completion and return results (no dashboard Slack message, no queueing)
+ *   --timeout <seconds>     Maximum wait time in seconds, with --wait (default: 1200)
  *   --silent                Suppress console output (only JSON result)
  *
  * Exit codes:
- *   0 - Success (all steps ran; non-blocking failures still count as success)
- *   1 - Pipeline stopped early on a blocking failure, API error, or timeout
- *   2 - CI auto-run is paused (intentional skip)
+ *   0 - Success (all steps ran; non-blocking failures still count as success),
+ *       or the pipeline was started / queued and the script is not waiting (no --wait)
+ *   1 - Pipeline stopped early on a blocking failure, was cancelled, API error, or timeout
+ *   2 - CI auto-run is paused (intentional skip), also when paused between steps (--wait: paused_midway)
  *   3 - Configuration error (including no pipeline steps configured)
  *   4 - Authentication error
  *
  * A final `::PIPELINE_RESULT::{...}` JSON line is always printed to stdout so
- * the calling workflow can branch its notification (e.g. Slack) on the
- * outcome without re-parsing the human-readable log.
+ * the calling workflow can branch on the outcome without re-parsing the
+ * human-readable log. Without --wait its status is `triggered` or `queued`.
  *
  * Example:
  *   node scripts/trigger-test-run.js --wait --max-workers 2
@@ -174,7 +178,12 @@ async function makeRequest(url, options = {}) {
                 throw error
             }
 
-            throw new Error(data.message || `HTTP ${response.status}: ${response.statusText}`)
+            const error = new Error(
+                data.message || `HTTP ${response.status}: ${response.statusText}`
+            )
+            error.data = data
+            error.status = response.status
+            throw error
         }
 
         return data
@@ -239,8 +248,15 @@ async function triggerTestRun(baseUrl, token, maxWorkers, pipeline) {
         const data = await makeRequest(`${baseUrl}/api/pipeline/run`, {
             method: 'POST',
             headers,
-            body: JSON.stringify({maxWorkers, source: 'script', pipeline}),
+            // notify: the dashboard posts the result to Slack and queues this request while busy.
+            body: JSON.stringify({maxWorkers, source: 'script', pipeline, notify: !config.wait}),
         })
+
+        // 202: dashboard is busy, request sits in the pipeline's queue slot (no pipelineRunId yet).
+        if (data.data?.status === 'queued') {
+            log(`Dashboard is busy — "${data.data.pipeline}" pipeline queued`, 'success')
+            return {queued: true, pipeline: data.data.pipeline}
+        }
 
         if (data.status === 'success' || data.success) {
             log(`Pipeline started successfully: ${data.data.pipelineRunId}`, 'success')
@@ -272,6 +288,11 @@ async function triggerTestRun(baseUrl, token, maxWorkers, pipeline) {
             }
             printPipelineResult('paused', {message: 'CI auto-run is paused', resumeAt})
             process.exit(2)
+        }
+
+        // The run endpoint needs a JWT when ENABLE_AUTH is on (it can stop a running CI run).
+        if (error.status === 401) {
+            exitWithError(`Dashboard rejected the login token: ${error.message}`, 4, 'auth_failed')
         }
 
         if (error.data?.code === 'PIPELINE_EMPTY') {
@@ -415,12 +436,14 @@ Options:
   --max-workers <number>  Maximum number of parallel workers
   --pipeline <name>       Pipeline to run: develop | production (default: develop)
   --wait                  Wait for pipeline completion and return results
-  --timeout <seconds>     Maximum wait time (default: 600)
+                          (the dashboard then sends no Slack message and does not queue)
+  --timeout <seconds>     Maximum wait time with --wait (default: 1200)
   --silent                Suppress console output (JSON only)
   --help, -h              Show this help message
 
 Examples:
-  # Trigger the pipeline and exit immediately
+  # Trigger the pipeline and exit immediately (queued if the dashboard is busy;
+  # the dashboard posts the result to Slack)
   node scripts/trigger-test-run.js
 
   # Trigger the pipeline and wait for completion
@@ -433,9 +456,9 @@ Examples:
   node scripts/trigger-test-run.js --wait --silent
 
 Exit Codes:
-  0 - Success (non-blocking failures still count as success)
-  1 - Pipeline stopped early on a blocking failure, API error, or timeout
-  2 - CI auto-run is paused (intentional skip)
+  0 - Success (non-blocking failures still count as success), or started/queued without --wait
+  1 - Pipeline stopped early on a blocking failure, was cancelled, API error, or timeout
+  2 - CI auto-run is paused (intentional skip), also when paused between steps (--wait: paused_midway)
   3 - Configuration error (including no pipeline steps configured)
   4 - Authentication error
         `)
@@ -489,9 +512,19 @@ Exit Codes:
             if (error.code === 'TESTS_ALREADY_RUNNING') {
                 const errorData = error.data
                 log('Tests are already running — waiting for completion before retrying', 'warning')
-                log(`  Current Run ID: ${errorData.currentRunId}`, 'warning')
-                log(`  Started: ${new Date(errorData.startedAt).toLocaleString()}`, 'warning')
-                log(`  Estimated time remaining: ${errorData.estimatedTimeRemaining}s`, 'warning')
+                // Only a standalone run-all reports an estimate; pipeline 409s carry just id/start.
+                if (errorData.currentRunId) {
+                    log(`  Current Run ID: ${errorData.currentRunId}`, 'warning')
+                }
+                if (errorData.startedAt) {
+                    log(`  Started: ${new Date(errorData.startedAt).toLocaleString()}`, 'warning')
+                }
+                if (typeof errorData.estimatedTimeRemaining === 'number') {
+                    log(
+                        `  Estimated time remaining: ${errorData.estimatedTimeRemaining}s`,
+                        'warning'
+                    )
+                }
 
                 const free = await waitUntilFree(envConfig.baseUrl, token, errorData.currentRunId)
                 if (!free) {
@@ -507,6 +540,26 @@ Exit Codes:
                 throw error
             }
         }
+    }
+
+    // Busy dashboard accepted the request into its queue (202): nothing to wait for or report.
+    if (runData.queued) {
+        const result = {
+            success: true,
+            message: 'Pipeline queued',
+            pipeline: runData.pipeline,
+            dashboardUrl: envConfig.baseUrl,
+        }
+
+        if (config.silent) {
+            console.log(JSON.stringify(result, null, 2))
+        } else {
+            log('=== Pipeline queued ===')
+            log('It starts when the current run finishes; the dashboard posts the result.')
+        }
+
+        printPipelineResult('queued', {pipeline: runData.pipeline})
+        process.exit(0)
     }
 
     // If not waiting, return immediately
@@ -540,7 +593,11 @@ Exit Codes:
     )
 
     const steps = completionData.steps || []
-    const failedStepEntry = steps.find((s) => s.status === 'failed')
+    // The step that stopped the pipeline is the last failed one (earlier failures were non-blocking).
+    const failedStepEntry =
+        completionData.status === 'stopped_early'
+            ? [...steps].reverse().find((s) => s.status === 'failed')
+            : steps.find((s) => s.status === 'failed')
     const totalFailed = steps.reduce((sum, s) => sum + (s.failed || 0), 0)
 
     // stopped_early (a blocking step failed) and timeout are real problems.
@@ -552,6 +609,11 @@ Exit Codes:
         pipelineOutcome = 'timeout'
     } else if (completionData.status === 'stopped_early') {
         pipelineOutcome = 'stopped_early'
+    } else if (completionData.status === 'cancelled') {
+        pipelineOutcome = 'cancelled'
+    } else if (completionData.status === 'paused') {
+        // Auto-run was paused between steps (distinct from `paused` = refused at start).
+        pipelineOutcome = 'paused_midway'
     } else {
         pipelineOutcome = totalFailed > 0 ? 'completed_with_failures' : 'completed_success'
     }
@@ -572,7 +634,11 @@ Exit Codes:
                   ? 'Pipeline completed with non-blocking failures'
                   : pipelineOutcome === 'stopped_early'
                     ? `Pipeline stopped early at ${failedStepEntry?.project || 'unknown step'}`
-                    : 'Pipeline execution timeout',
+                    : pipelineOutcome === 'cancelled'
+                      ? 'Pipeline was cancelled'
+                      : pipelineOutcome === 'paused_midway'
+                        ? 'CI auto-run was paused — remaining steps were skipped'
+                        : 'Pipeline execution timeout',
         pipelineRunId: completionData.pipelineRunId,
         status: pipelineOutcome,
         steps,
@@ -615,7 +681,7 @@ Exit Codes:
     })
 
     // Exit with appropriate code
-    process.exit(success ? 0 : 1)
+    process.exit(success ? 0 : pipelineOutcome === 'paused_midway' ? 2 : 1)
 }
 
 // Run the script

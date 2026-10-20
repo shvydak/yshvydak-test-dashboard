@@ -110,4 +110,19 @@ describe('useProjectRunStatus', () => {
 
         expect(result.current.runningProjects.size).toBe(0)
     })
+
+    it('clears every project on run:cancelled (a force-killed stop sends no process:ended)', () => {
+        const {result} = renderHook(() => useProjectRunStatus())
+        act(() => {
+            result.current.applyRunStatusEvent('process:started', {runId: 'r1', project: 'API'})
+            result.current.applyRunStatusEvent('process:started', {runId: 'r1', project: 'WEB'})
+        })
+        expect(result.current.runningProjects.size).toBe(2)
+
+        act(() => {
+            result.current.applyRunStatusEvent('run:cancelled', {runIds: ['r1'], reason: 'manual'})
+        })
+
+        expect(result.current.runningProjects.size).toBe(0)
+    })
 })

@@ -117,4 +117,20 @@ describe('CINotifierService', () => {
         const logged = JSON.stringify(vi.mocked(Logger.error).mock.calls)
         expect(logged).not.toContain('secret')
     })
+
+    it('posts the manual-stop line', async () => {
+        await new CINotifierService().notifyStopped('develop', ['A', 'B'])
+
+        const body = JSON.parse(fetchMock.mock.calls[0][1].body)
+        expect(body.text).toContain('⏹️ Stopped manually — no result for this run')
+        expect(body.text).toContain('🔗 https://dash.example.com/tests')
+    })
+
+    it('posts the replaced line', async () => {
+        await new CINotifierService().notifyReplaced('production', ['Smoke'])
+
+        const body = JSON.parse(fetchMock.mock.calls[0][1].body)
+        expect(body.text).toContain('Production')
+        expect(body.text).toContain('⏹️ Cancelled by a newer deploy — a new run has started')
+    })
 })

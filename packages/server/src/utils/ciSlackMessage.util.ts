@@ -37,8 +37,11 @@ function block(ctx: CISlackContext, title: string, body: string | undefined): st
 const linkLine = (ctx: CISlackContext, url: string): string | undefined =>
     ctx.dashboardUrl ? `🔗 ${url}` : undefined
 
+// A cancelled pipeline has no result message (see buildStoppedMessage / buildReplacedMessage).
+export type PipelineResultStatus = Exclude<PipelineFinishStatus, 'cancelled'>
+
 export function classifyPipelineOutcome(
-    status: PipelineFinishStatus,
+    status: PipelineResultStatus,
     steps: PipelineStepSummary[]
 ): CIPipelineOutcome {
     if (status === 'stopped_early' || status === 'paused') return status
@@ -48,7 +51,7 @@ export function classifyPipelineOutcome(
 
 export function buildResultMessage(
     ctx: CISlackContext,
-    status: PipelineFinishStatus,
+    status: PipelineResultStatus,
     steps: PipelineStepSummary[]
 ): string {
     const projects = steps.map((s) => s.project)
@@ -97,6 +100,23 @@ export function buildInterruptedMessage(ctx: CISlackContext, projects: string[])
     return block(
         ctx,
         '⚠️ Test run was interrupted — the dashboard restarted',
+        linkLine(ctx, pipelineLink(ctx, projects))
+    )
+}
+
+export function buildStoppedMessage(ctx: CISlackContext, projects: string[]): string {
+    return block(
+        ctx,
+        '⏹️ Stopped manually — no result for this run',
+        linkLine(ctx, pipelineLink(ctx, projects))
+    )
+}
+
+// For a newer deploy replacing the running CI run (stop reason `replaced`); no caller yet.
+export function buildReplacedMessage(ctx: CISlackContext, projects: string[]): string {
+    return block(
+        ctx,
+        '⏹️ Cancelled by a newer deploy — a new run has started',
         linkLine(ctx, pipelineLink(ctx, projects))
     )
 }

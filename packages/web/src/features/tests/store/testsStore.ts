@@ -24,11 +24,17 @@ interface TestsState {
     ciRunQueued: boolean
     /** A CI pipeline is running; the server refuses manual Run All meanwhile. */
     ciPipelineRunning: boolean
+    /** A Stop is cleaning up the run's data; the Stop button is disabled meanwhile. */
+    ciStopping: boolean
+    /** Why the last Stop failed; shown next to the Stop button, never the page-wide `error` (the run goes on). */
+    stopError: string | null
     /** Project used for list fetches — WebSocket/interval refreshes reuse this. */
     listProject: string | null
 
     // Computed function
     getIsAnyTestRunning: () => boolean
+    /** A run Stop can end: pipeline, run-all, group or rerun (not a bare discovery). */
+    getIsStoppable: () => boolean
     /** Tooltip text for run buttons disabled by a CI pipeline / queued CI run, else null. */
     getCIBusyReason: () => string | null
 
@@ -48,6 +54,11 @@ interface TestsState {
     setRunningAllTests: (isRunning: boolean) => void
     setCIRunQueued: (queued: boolean) => void
     setCIPipelineRunning: (running: boolean) => void
+    setCIStopping: (stopping: boolean) => void
+    clearStopError: () => void
+    stopRun: () => Promise<void>
+    /** After run:cancelled: nothing is running any more, whatever the local flags still say. */
+    resetRunState: () => void
     checkAndRestoreActiveStates: () => Promise<void>
     selectExecution: (executionId: string | null) => void
     updateProgress: (progress: TestProgress) => void
@@ -89,6 +100,8 @@ export const useTestsStore = create<TestsState>()(
             listProject: null,
             ciRunQueued: false,
             ciPipelineRunning: false,
+            ciStopping: false,
+            stopError: null,
 
             // Computed function
             getIsAnyTestRunning: () => {
@@ -96,7 +109,18 @@ export const useTestsStore = create<TestsState>()(
                 return (
                     state.ciPipelineRunning ||
                     state.ciRunQueued ||
+                    state.ciStopping ||
                     state.isDiscovering ||
+                    state.isRunningAllTests ||
+                    state.runningTests.size > 0 ||
+                    state.runningGroups.size > 0
+                )
+            },
+
+            getIsStoppable: () => {
+                const state = get()
+                return (
+                    state.ciPipelineRunning ||
                     state.isRunningAllTests ||
                     state.runningTests.size > 0 ||
                     state.runningGroups.size > 0
@@ -468,6 +492,49 @@ export const useTestsStore = create<TestsState>()(
             setCIRunQueued: (queued: boolean) => set({ciRunQueued: queued}),
 
             setCIPipelineRunning: (running: boolean) => set({ciPipelineRunning: running}),
+
+            setCIStopping: (stopping: boolean) => set({ciStopping: stopping}),
+
+            clearStopError: () => set({stopError: null}),
+
+            // The server answers once the run's data is removed; run:cancelled clears the flag too.
+            stopRun: async () => {
+                try {
+                    set({ciStopping: true, stopError: null})
+                    const response = await authPost(`${API_BASE_URL}/pipeline/stop`, {
+                        reason: 'manual',
+                    })
+                    // Stop sits behind JWT like Settings: with ENABLE_AUTH off the server answers 403.
+                    if (response.status === 403) {
+                        throw new Error(
+                            'Sign-in is required to stop a run: enable ENABLE_AUTH on the server'
+                        )
+                    }
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`)
+                    }
+                    await get().fetchTests()
+                } catch (error) {
+                    console.error('Error stopping the run:', error)
+                    set({
+                        stopError:
+                            error instanceof Error ? error.message : 'Failed to stop the run',
+                    })
+                } finally {
+                    set({ciStopping: false})
+                }
+            },
+
+            resetRunState: () =>
+                set({
+                    ciStopping: false,
+                    stopError: null,
+                    isRunningAllTests: false,
+                    currentRunAllId: null,
+                    runningTests: new Set(),
+                    runningGroups: new Set(),
+                    activeProgress: null,
+                }),
 
             setRunningAllTests: (isRunning: boolean) => {
                 set({isRunningAllTests: isRunning})

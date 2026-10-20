@@ -362,4 +362,86 @@ describe('usePipelineStatus', () => {
             expect(mockAuthGet).not.toHaveBeenCalled()
         })
     })
+
+    describe('stopping and cancelled runs', () => {
+        it('is not stopping by default', () => {
+            const {result} = renderHook(() => usePipelineStatus())
+
+            expect(result.current.stopping).toBe(false)
+        })
+
+        it('shows stopping on run:stopping and clears it on run:cancelled', () => {
+            const {result} = renderHook(() => usePipelineStatus())
+
+            act(() => {
+                result.current.applyPipelineEvent('run:stopping', {reason: 'manual'})
+            })
+            expect(result.current.stopping).toBe(true)
+
+            act(() => {
+                result.current.applyPipelineEvent('run:cancelled', {
+                    runIds: ['r1'],
+                    reason: 'manual',
+                })
+            })
+            expect(result.current.stopping).toBe(false)
+        })
+
+        it('takes the cancelled status from pipeline:completed', () => {
+            const {result} = renderHook(() => usePipelineStatus())
+            act(() => {
+                result.current.applyPipelineEvent('pipeline:started', {
+                    pipelineRunId: 'p9',
+                    steps: [
+                        {
+                            project: 'API',
+                            displayName: 'API',
+                            stopOnFailure: false,
+                            status: 'running',
+                        },
+                    ],
+                })
+            })
+
+            act(() => {
+                result.current.applyPipelineEvent('pipeline:completed', {
+                    pipelineRunId: 'p9',
+                    status: 'cancelled',
+                    steps: [
+                        {
+                            project: 'API',
+                            displayName: 'API',
+                            stopOnFailure: false,
+                            status: 'skipped',
+                        },
+                    ],
+                })
+            })
+
+            expect(result.current.pipeline?.status).toBe('cancelled')
+            expect(result.current.pipeline?.steps[0].status).toBe('skipped')
+        })
+
+        it('rehydrates stopping from the server after a reload mid-stop', async () => {
+            mockAuthGet.mockResolvedValue(makeResponse({data: null, queue: [], stopping: true}))
+
+            const {result} = renderHook(() => usePipelineStatus())
+
+            await waitFor(() => expect(result.current.stopping).toBe(true))
+        })
+
+        it('a resync that finds nothing resets a stale stopping flag', async () => {
+            const {result} = renderHook(() => usePipelineStatus())
+            act(() => {
+                result.current.applyPipelineEvent('run:stopping', {reason: 'manual'})
+            })
+            mockAuthGet.mockResolvedValue({ok: false, status: 404} as Response)
+
+            act(() => {
+                result.current.resync()
+            })
+
+            await waitFor(() => expect(result.current.stopping).toBe(false))
+        })
+    })
 })

@@ -4,7 +4,9 @@ import {
     buildInterruptedMessage,
     buildNotStartedMessage,
     buildPausedMessage,
+    buildReplacedMessage,
     buildResultMessage,
+    buildStoppedMessage,
     buildTimeoutMessage,
     classifyPipelineOutcome,
 } from '../ciSlackMessage.util'
@@ -275,6 +277,48 @@ describe('timeout and interrupted messages', () => {
             `🔗 ${BASE}/tests`,
             SEP,
         ])
+    })
+})
+
+describe('stopped and replaced messages', () => {
+    it('manual stop: same 80-dash block, header and pipeline link, no result claimed', () => {
+        const message = buildStoppedMessage(ctx(), ['A', 'B'])
+
+        expect(lines(message)).toEqual([
+            SEP,
+            '🧪 Automated tests · Development',
+            '⏹️ Stopped manually — no result for this run',
+            `🔗 ${BASE}/tests`,
+            SEP,
+        ])
+    })
+
+    it('manual stop of a one-step pipeline deep-links to that tab', () => {
+        const message = buildStoppedMessage(ctx('production'), ['Smoke'])
+
+        expect(lines(message)[1]).toBe('🧪 Automated tests · Production')
+        expect(lines(message)[3]).toBe(`🔗 ${BASE}/tests?project=Smoke`)
+    })
+
+    it('replaced: names the newer deploy', () => {
+        const message = buildReplacedMessage(ctx(), ['A'])
+
+        expect(lines(message)).toEqual([
+            SEP,
+            '🧪 Automated tests · Development',
+            '⏹️ Cancelled by a newer deploy — a new run has started',
+            `🔗 ${BASE}/tests?project=A`,
+            SEP,
+        ])
+    })
+
+    it('both omit the link line when no dashboard URL is configured', () => {
+        expect(
+            lines(buildStoppedMessage(ctx('develop', ''), ['A'])).some((l) => l.startsWith('🔗'))
+        ).toBe(false)
+        expect(
+            lines(buildReplacedMessage(ctx('develop', ''), ['A'])).some((l) => l.startsWith('🔗'))
+        ).toBe(false)
     })
 })
 

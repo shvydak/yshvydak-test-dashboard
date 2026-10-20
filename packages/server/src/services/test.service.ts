@@ -19,9 +19,18 @@ import {SettingsService} from './settings.service'
 import {Logger} from '../utils/logger.util'
 import {FileUtil} from '../utils/file.util'
 import {activeProcessesTracker} from './activeProcesses.service'
+import {runProcessRegistry} from './runProcessRegistry.service'
 import {CIRunQueueService} from './ciRunQueue.service'
+import {createRunCancelledError} from '../utils/runStop.util'
+
+// A discovery this close before a run-all (UI: discover, then run) belongs to that run.
+const RECENT_DISCOVERY_MS = 30_000
 
 export class TestService implements ITestService {
+    private markerWrites: Promise<void> = Promise.resolve()
+    // Per project ('*' = all): when its last discovery began and ended, so a run can tell its own from a stale one.
+    private lastDiscoveries = new Map<string, {startedAt: string; finishedAtMs: number}>()
+
     constructor(
         private testRepository: TestRepository,
         private runRepository: RunRepository,
@@ -40,6 +49,7 @@ export class TestService implements ITestService {
     }
 
     async discoverTests(project?: string): Promise<TestDiscoveryResult> {
+        const startedAt = new Date().toISOString()
         try {
             // Clear existing pending tests before adding discovered ones.
             // Scoped to a single project when provided, so discovering/running one
@@ -68,6 +78,8 @@ export class TestService implements ITestService {
                     Logger.error(`Failed to save discovered test ${test.name}`, error)
                 }
             }
+
+            this.lastDiscoveries.set(project ?? '*', {startedAt, finishedAtMs: Date.now()})
 
             // Broadcast discovery update via WebSocket
             this.websocketService.broadcastDiscoveryCompleted(
@@ -218,8 +230,8 @@ export class TestService implements ITestService {
         message: string
         mode: 'strip' | 'full'
     }> {
-        // Prevent cleanup if tests are running
-        if (activeProcessesTracker.isAnyProcessRunning()) {
+        // Prevent cleanup while a run is alive (or being stopped and cleaned up)
+        if (this.ciRunQueue.isBusy()) {
             throw new Error('Cannot clean up data while tests are running')
         }
 
@@ -347,6 +359,36 @@ export class TestService implements ITestService {
         return resultId
     }
 
+    /** Reporter requests for a stopped run are dropped: its data is being (or was) deleted. */
+    isRunCancelled(runId: string): boolean {
+        return runProcessRegistry.isCancelled(runId)
+    }
+
+    // Stop: deletes what the runs wrote (files, results, run rows) and the discovery rows hiding older results; notes stay.
+    async discardRuns(
+        runIds: string[],
+        discoveryScopes: Array<{project?: string; since: string}> = []
+    ): Promise<void> {
+        if (runIds.length > 0) {
+            const resultIds = await this.testRepository.getResultIdsByRunIds(runIds)
+            for (const resultId of resultIds) {
+                try {
+                    await this.attachmentService.deleteAttachmentsForTestResult(resultId)
+                } catch (error) {
+                    Logger.error(`Failed to delete attachments for execution ${resultId}`, error)
+                }
+            }
+            await this.testRepository.deleteByRunIds(runIds)
+            await this.runRepository.deleteTestRuns(runIds)
+        }
+
+        for (const scope of discoveryScopes) {
+            await this.testRepository.deleteDiscoveryRowsHidingResults(scope.project, scope.since)
+        }
+
+        Logger.info(`Discarded ${runIds.length} stopped run(s)`)
+    }
+
     async getTestStats(): Promise<DatabaseStats> {
         return this.testRepository.getTestStats()
     }
@@ -380,6 +422,9 @@ export class TestService implements ITestService {
         source?: string,
         options: {pipelineStep?: boolean} = {}
     ): Promise<any> {
+        // Captured before any await: a Stop that lands while this start is still preparing bumps it.
+        const stopGeneration = runProcessRegistry.getStopGeneration()
+
         // Block CI script triggers when paused
         if (source === 'script') {
             const pause = await this.settingsService.getCIAutoRunPause()
@@ -428,6 +473,9 @@ export class TestService implements ITestService {
             this.ciRunQueue.assertManualStartAllowed()
         }
 
+        // The pause lookup above is an await: a Stop that arrived meanwhile must not start this run.
+        this.assertNotStopped(stopGeneration)
+
         // A step ignores its own pipeline's running flag; everything else sees the full busy state.
         this.assertNotBusy({ignorePipeline: options.pipelineStep === true})
 
@@ -435,6 +483,7 @@ export class TestService implements ITestService {
         const releaseStarting = this.ciRunQueue.beginStarting()
         let result: TestRunProcess
         let project: string | undefined
+        let pendingSince: string | undefined
         try {
             project =
                 requestedProject !== undefined && requestedProject !== ''
@@ -444,10 +493,31 @@ export class TestService implements ITestService {
             // Auto-discover tests before running unless explicitly skipped.
             // Scoped to the resolved project so this never resets other projects' pending status.
             if (!skipAutoDiscovery) {
+                pendingSince = new Date().toISOString()
                 await this.discoverTests(project)
+            } else {
+                // The UI discovers in its own request just before; with none (auto-discover off) there is nothing to undo.
+                pendingSince = this.recentDiscoveryStart(project)
+            }
+
+            if (this.isStopRequestedSince(stopGeneration)) {
+                // Spawn never happens; the discovery rows already hide older results, so undo them here.
+                if (pendingSince) {
+                    await this.testRepository.deleteDiscoveryRowsHidingResults(
+                        project,
+                        pendingSince
+                    )
+                }
+                throw createRunCancelledError()
             }
 
             result = await this.playwrightService.runAllTests(maxWorkers, project)
+
+            // Same tick as the spawn: a Stop can never see a child the registry does not know.
+            runProcessRegistry.register(
+                {runId: result.runId, type: 'run-all', project, pendingSince},
+                result.process
+            )
 
             // Add process to tracker
             activeProcessesTracker.addProcess({
@@ -476,6 +546,10 @@ export class TestService implements ITestService {
             },
         })
 
+        if (!options.pipelineStep) {
+            this.persistRunMarker(result, project, pendingSince)
+        }
+
         // Broadcast run start
         this.websocketService.broadcastRunStarted(result.runId, 'run-all')
 
@@ -490,10 +564,17 @@ export class TestService implements ITestService {
                     activeProcessesTracker.removeProcess(result.runId)
                 }
 
+                // A stopped run reports through run:cancelled once its data is deleted; the Stop drains.
+                // At shutdown the marker must survive: the next start deletes what this run wrote.
+                if (this.isRunSettledElsewhere(result.runId)) return
+
                 this.websocketService.broadcastRunCompleted(result.runId, code || 1, 'run-all')
 
                 // A pipeline step is not the end of the pipeline; the pipeline drains on its own finish.
-                if (!options.pipelineStep) this.ciRunQueue.requestDrain()
+                if (!options.pipelineStep) {
+                    this.clearRunMarker()
+                    this.ciRunQueue.requestDrain()
+                }
             })
         }
 
@@ -501,6 +582,7 @@ export class TestService implements ITestService {
     }
 
     async runTestGroup(filePath: string, maxWorkers?: number, testNames?: string[]): Promise<any> {
+        const stopGeneration = runProcessRegistry.getStopGeneration()
         // Check and claim with no await in between.
         this.ciRunQueue.assertManualStartAllowed()
         this.assertNotBusy()
@@ -510,11 +592,16 @@ export class TestService implements ITestService {
         try {
             const projectFromFile = await this.testRepository.getProjectByFilePath(filePath)
             project = projectFromFile || (await this.getExecutionProject())
+            this.assertNotStopped(stopGeneration)
             result = await this.playwrightService.runTestGroup(
                 filePath,
                 maxWorkers,
                 testNames,
                 project
+            )
+            runProcessRegistry.register(
+                {runId: result.runId, type: 'run-group', project},
+                result.process
             )
 
             // Add process to tracker
@@ -546,6 +633,8 @@ export class TestService implements ITestService {
             },
         })
 
+        this.persistRunMarker(result, project)
+
         // Broadcast run start
         this.websocketService.broadcastRunStarted(result.runId, 'run-group', filePath)
 
@@ -560,6 +649,8 @@ export class TestService implements ITestService {
                     activeProcessesTracker.removeProcess(result.runId)
                 }
 
+                if (this.isRunSettledElsewhere(result.runId)) return
+
                 this.websocketService.broadcastRunCompleted(
                     result.runId,
                     code || 1,
@@ -567,6 +658,7 @@ export class TestService implements ITestService {
                     filePath
                 )
 
+                this.clearRunMarker()
                 this.ciRunQueue.requestDrain()
             })
         }
@@ -575,6 +667,7 @@ export class TestService implements ITestService {
     }
 
     async rerunTest(testId: string, maxWorkers?: number, _project?: string): Promise<any> {
+        const stopGeneration = runProcessRegistry.getStopGeneration()
         // Get the test to rerun
         const test = await this.testRepository.getTestResult(testId)
         if (!test) {
@@ -589,11 +682,16 @@ export class TestService implements ITestService {
         let project: string | undefined
         try {
             project = test.project || (await this.getExecutionProject())
+            this.assertNotStopped(stopGeneration)
             result = await this.playwrightService.rerunSingleTest(
                 test.filePath,
                 test.name,
                 maxWorkers,
                 project
+            )
+            runProcessRegistry.register(
+                {runId: result.runId, type: 'rerun', project},
+                result.process
             )
 
             // Add process to tracker
@@ -627,6 +725,8 @@ export class TestService implements ITestService {
             },
         })
 
+        this.persistRunMarker(result, project)
+
         // Handle process completion
         if (result.process) {
             let _stdout = ''
@@ -641,6 +741,14 @@ export class TestService implements ITestService {
             })
 
             result.process.on('close', async (code) => {
+                // A stopped rerun is deleted by the Stop; nothing to record, broadcast or drain here.
+                if (this.isRunSettledElsewhere(result.runId)) {
+                    if (activeProcessesTracker.isProcessRunning(result.runId)) {
+                        activeProcessesTracker.removeProcess(result.runId)
+                    }
+                    return
+                }
+
                 try {
                     const runStatus = code === 0 ? 'completed' : 'failed'
                     await this.runRepository.updateTestRun(result.runId, {status: runStatus})
@@ -676,6 +784,7 @@ export class TestService implements ITestService {
                     Logger.error('Error processing rerun results', error)
                 }
 
+                this.clearRunMarker()
                 this.ciRunQueue.requestDrain()
             })
         }
@@ -685,6 +794,60 @@ export class TestService implements ITestService {
             testId,
             testName: test.name,
         }
+    }
+
+    private recentDiscoveryStart(project: string | undefined): string | undefined {
+        const candidates = [this.lastDiscoveries.get(project ?? '*')]
+        if (project) candidates.push(this.lastDiscoveries.get('*'))
+        const recent = candidates
+            .filter((d): d is {startedAt: string; finishedAtMs: number} => d !== undefined)
+            .filter((d) => Date.now() - d.finishedAtMs <= RECENT_DISCOVERY_MS)
+            .sort((a, b) => b.finishedAtMs - a.finishedAtMs)
+        return recent[0]?.startedAt
+    }
+
+    // A stopped run is cleaned up by the Stop; at shutdown the next start cleans up via the marker.
+    private isRunSettledElsewhere(runId: string): boolean {
+        return runProcessRegistry.isCancelled(runId) || runProcessRegistry.isShuttingDown()
+    }
+
+    private isStopRequestedSince(stopGeneration: number): boolean {
+        return (
+            runProcessRegistry.getStopGeneration() !== stopGeneration ||
+            runProcessRegistry.isShuttingDown()
+        )
+    }
+
+    private assertNotStopped(stopGeneration: number): void {
+        if (this.isStopRequestedSince(stopGeneration)) throw createRunCancelledError()
+    }
+
+    // Lets a restart clean up after a manual run (a pipeline step is covered by the pipeline marker).
+    // Writes run in call order, so a fast-closing run cannot have its clear overtaken by the set.
+    private persistRunMarker(
+        result: TestRunProcess,
+        project: string | undefined,
+        pendingSince?: string
+    ): void {
+        const marker = {
+            runId: result.runId,
+            pgid: result.process?.pid ?? null,
+            project: project ?? null,
+            pendingSince: pendingSince ?? null,
+            startedAt: new Date().toISOString(),
+        }
+        this.enqueueMarkerWrite(() => this.settingsService.setInFlightRun(marker))
+    }
+
+    clearRunMarker(): Promise<void> {
+        return this.enqueueMarkerWrite(() => this.settingsService.clearInFlightRun())
+    }
+
+    private enqueueMarkerWrite(write: () => Promise<void>): Promise<void> {
+        this.markerWrites = this.markerWrites
+            .then(write)
+            .catch((error) => Logger.error('Failed to write the in-flight run marker', error))
+        return this.markerWrites
     }
 
     private assertNotBusy(options: {ignorePipeline?: boolean} = {}): void {

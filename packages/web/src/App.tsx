@@ -95,6 +95,7 @@ function App() {
     const {
         pipeline,
         queue: ciQueue,
+        stopping: ciStopping,
         applyPipelineEvent,
         resync: resyncPipeline,
     } = usePipelineStatus(isAuthenticated)
@@ -109,11 +110,16 @@ function App() {
         checkAndRestoreActiveStates,
         setCIRunQueued,
         setCIPipelineRunning,
+        setCIStopping,
     } = useTestsStore()
 
     useEffect(() => {
         setCIRunQueued(ciQueue.length > 0)
     }, [ciQueue, setCIRunQueued])
+
+    useEffect(() => {
+        setCIStopping(ciStopping)
+    }, [ciStopping, setCIStopping])
 
     const isPipelineRunning = pipeline?.status === 'running'
     useEffect(() => {

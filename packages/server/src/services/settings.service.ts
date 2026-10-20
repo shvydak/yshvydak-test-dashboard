@@ -5,6 +5,7 @@ import {
     CIAutoRunPause,
     JiraSettings,
     InFlightPipelineMarker,
+    InFlightRunMarker,
 } from '../repositories/settings.repository'
 import {ChipAlignment} from '../utils/chipAlignment.util'
 import {TagMode} from '../utils/tagMode.util'
@@ -23,6 +24,7 @@ export type {
     JiraSettings,
     ChipAlignment,
     InFlightPipelineMarker,
+    InFlightRunMarker,
 }
 
 export class SettingsService {
@@ -182,6 +184,18 @@ export class SettingsService {
 
     async clearInFlightPipeline(): Promise<void> {
         await this.settingsRepository.clearInFlightPipeline()
+    }
+
+    async getInFlightRun(): Promise<InFlightRunMarker | null> {
+        return this.settingsRepository.getInFlightRun()
+    }
+
+    async setInFlightRun(marker: InFlightRunMarker): Promise<void> {
+        await this.settingsRepository.setInFlightRun(marker)
+    }
+
+    async clearInFlightRun(): Promise<void> {
+        await this.settingsRepository.clearInFlightRun()
     }
 
     async getJiraSettings(): Promise<JiraSettings> {

@@ -1,4 +1,4 @@
-import {describe, it, expect, vi, beforeEach} from 'vitest'
+import {describe, it, expect, vi, beforeEach, afterEach} from 'vitest'
 import {EventEmitter} from 'events'
 import {TestService} from '../test.service'
 import {PipelineExecutionService} from '../pipelineExecution.service'
@@ -29,12 +29,19 @@ function deferred<T>() {
     return {promise, resolve}
 }
 
-const startedRun = (runId: string) => ({
-    runId,
-    message: 'started',
-    timestamp: '2026-01-01T00:00:00.000Z',
-    process: new EventEmitter() as any,
-})
+// The registry is a process-wide singleton: every spawned fake child is closed after the test.
+const spawned: EventEmitter[] = []
+
+const startedRun = (runId: string) => {
+    const process = new EventEmitter()
+    spawned.push(process)
+    return {
+        runId,
+        message: 'started',
+        timestamp: '2026-01-01T00:00:00.000Z',
+        process: process as any,
+    }
+}
 
 describe('manual starts racing a CI pipeline start', () => {
     let testService: TestService
@@ -43,6 +50,10 @@ describe('manual starts racing a CI pipeline start', () => {
     let settings: any
     let testRepository: any
     let runRepository: any
+
+    afterEach(() => {
+        spawned.splice(0).forEach((process) => process.emit('close', 0))
+    })
 
     beforeEach(() => {
         vi.clearAllMocks()

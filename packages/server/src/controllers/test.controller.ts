@@ -7,6 +7,7 @@ import {ServiceRequest} from '../types/api.types'
 import {ProcessStartData, ProcessEndData} from '@yshvydak/core'
 import {activeProcessesTracker} from '../services/activeProcesses.service'
 import {respondIfAlreadyRunning, respondIfCIRunQueued} from '../utils/ciRunQueued.util'
+import {respondIfRunCancelled} from '../utils/runStop.util'
 import {getWebSocketManager} from '../websocket/server'
 import path from 'path'
 
@@ -61,7 +62,7 @@ export class TestController {
             )
             ResponseHelper.success(res, result)
         } catch (error) {
-            if (respondIfCIRunQueued(res, error)) return
+            if (respondIfCIRunQueued(res, error) || respondIfRunCancelled(res, error)) return
 
             // Check if this is a "tests already running" error
             if (error instanceof Error && error.message.includes('TESTS_ALREADY_RUNNING')) {
@@ -128,7 +129,13 @@ export class TestController {
             const result = await this.testService.runTestGroup(filePath, maxWorkers, testNames)
             return ResponseHelper.success(res, result)
         } catch (error) {
-            if (respondIfCIRunQueued(res, error) || respondIfAlreadyRunning(res, error)) return res
+            if (
+                respondIfCIRunQueued(res, error) ||
+                respondIfAlreadyRunning(res, error) ||
+                respondIfRunCancelled(res, error)
+            ) {
+                return res
+            }
 
             Logger.error('Error running group tests', error)
             return ResponseHelper.error(
@@ -391,6 +398,11 @@ export class TestController {
                 )
             }
 
+            // Late post of a stopped run (attachments included): acknowledged, never stored.
+            if (this.testService.isRunCancelled(testData.runId)) {
+                return ResponseHelper.success(res, {id: testData.id}, 'Ignored: run was stopped')
+            }
+
             const testResultData = {
                 id: testData.id,
                 runId: testData.runId,
@@ -470,7 +482,13 @@ export class TestController {
 
             ResponseHelper.success(res, result, 'Test rerun started')
         } catch (error) {
-            if (respondIfCIRunQueued(res, error) || respondIfAlreadyRunning(res, error)) return
+            if (
+                respondIfCIRunQueued(res, error) ||
+                respondIfAlreadyRunning(res, error) ||
+                respondIfRunCancelled(res, error)
+            ) {
+                return
+            }
 
             if (error instanceof Error && error.message === 'Test not found') {
                 ResponseHelper.notFound(res, 'Test')
@@ -585,6 +603,15 @@ export class TestController {
                 return
             }
 
+            if (this.testService.isRunCancelled(processData.runId)) {
+                ResponseHelper.success(
+                    res,
+                    {processId: processData.runId},
+                    'Ignored: run was stopped'
+                )
+                return
+            }
+
             // Add process to tracker
             activeProcessesTracker.addProcess(processData)
 
@@ -625,6 +652,11 @@ export class TestController {
                     res,
                     'Missing required fields: runId, testId, name, filePath'
                 )
+                return
+            }
+
+            if (this.testService.isRunCancelled(runId)) {
+                ResponseHelper.success(res, {testId}, 'Ignored: run was stopped')
                 return
             }
 

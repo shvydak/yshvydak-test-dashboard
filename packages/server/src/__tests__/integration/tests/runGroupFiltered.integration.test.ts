@@ -11,6 +11,7 @@
 
 import {describe, it, expect, beforeAll, afterAll, beforeEach, afterEach, vi} from 'vitest'
 import request from 'supertest'
+import {EventEmitter} from 'events'
 import type {TestServerInstance} from '../helpers/testServer'
 import {setupTestServer, teardownTestServer, cleanDatabase} from '../helpers/testServer'
 import {activeProcessesTracker} from '../../../services/activeProcesses.service'
@@ -37,7 +38,9 @@ describe('POST /api/tests/run-group - Filtered Group Run (Integration)', () => {
         activeProcessesTracker.forceReset()
     })
 
-    it('refuses a second group run while the first is still tracked (409)', async () => {
+    it('refuses a second group run while the first child process is alive (409)', async () => {
+        // Busy is read from the live child process (run registry), not from the progress tracker.
+        const child = new EventEmitter()
         vi.spyOn(
             server.serviceContainer.playwrightService as any,
             'runTestGroup'
@@ -45,7 +48,7 @@ describe('POST /api/tests/run-group - Filtered Group Run (Integration)', () => {
             runId: 'first-run',
             message: 'Tests started',
             timestamp: new Date().toISOString(),
-            process: null,
+            process: child,
         })
         const post = () =>
             request(server.app)
@@ -57,6 +60,8 @@ describe('POST /api/tests/run-group - Filtered Group Run (Integration)', () => {
         const second = await post().expect(409)
 
         expect(second.body).toMatchObject({success: false, code: 'TESTS_ALREADY_RUNNING'})
+
+        child.emit('close', 0)
     })
 
     describe('Success scenarios', () => {

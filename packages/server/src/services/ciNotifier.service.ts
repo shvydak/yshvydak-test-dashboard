@@ -4,11 +4,14 @@ import {
     buildInterruptedMessage,
     buildNotStartedMessage,
     buildPausedMessage,
+    buildReplacedMessage,
     buildResultMessage,
+    buildStoppedMessage,
     buildTimeoutMessage,
     CISlackContext,
+    PipelineResultStatus,
 } from '../utils/ciSlackMessage.util'
-import type {PipelineFinishStatus, PipelineStepSummary} from './websocket.service'
+import type {PipelineStepSummary} from './websocket.service'
 
 const POST_TIMEOUT_MS = 10_000
 
@@ -26,7 +29,7 @@ export class CINotifierService {
 
     notifyResult(
         pipeline: string,
-        status: PipelineFinishStatus,
+        status: PipelineResultStatus,
         steps: PipelineStepSummary[]
     ): Promise<void> {
         return this.send(buildResultMessage(this.context(pipeline), status, steps))
@@ -38,6 +41,14 @@ export class CINotifierService {
 
     notifyInterrupted(pipeline: string, projects: string[]): Promise<void> {
         return this.send(buildInterruptedMessage(this.context(pipeline), projects))
+    }
+
+    notifyStopped(pipeline: string, projects: string[]): Promise<void> {
+        return this.send(buildStoppedMessage(this.context(pipeline), projects))
+    }
+
+    notifyReplaced(pipeline: string, projects: string[]): Promise<void> {
+        return this.send(buildReplacedMessage(this.context(pipeline), projects))
     }
 
     notifyPaused(pipeline: string, message?: string): Promise<void> {

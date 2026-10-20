@@ -46,6 +46,8 @@ describe('PipelineController', () => {
             getPipeline: vi.fn(),
             getCurrentPipeline: vi.fn(),
             getQueue: vi.fn().mockReturnValue([]),
+            isStopping: vi.fn().mockReturnValue(false),
+            stop: vi.fn(),
         }
 
         controller = new PipelineController(mockPipelineExecutionService)
@@ -273,7 +275,12 @@ describe('PipelineController', () => {
 
             expect(mockRes.status).toHaveBeenCalledWith(200)
             expect(mockRes.json).toHaveBeenCalledWith(
-                expect.objectContaining({success: true, data: pipelineState, queue: []})
+                expect.objectContaining({
+                    success: true,
+                    data: pipelineState,
+                    queue: [],
+                    stopping: false,
+                })
             )
         })
 
@@ -309,6 +316,21 @@ describe('PipelineController', () => {
             )
         })
 
+        it('answers (not 404) while a stop is cleaning up, so a reload can show "Stopping..."', async () => {
+            mockPipelineExecutionService.getCurrentPipeline.mockReturnValue(null)
+            mockPipelineExecutionService.isStopping.mockReturnValue(true)
+
+            await controller.getCurrentPipelineStatus(
+                mockReq as ServiceRequest,
+                mockRes as Response
+            )
+
+            expect(ResponseHelper.notFound).not.toHaveBeenCalled()
+            expect(mockRes.json).toHaveBeenCalledWith(
+                expect.objectContaining({success: true, data: null, stopping: true})
+            )
+        })
+
         it('returns 404 when no pipeline has ever run', async () => {
             mockPipelineExecutionService.getCurrentPipeline.mockReturnValue(null)
 
@@ -318,6 +340,53 @@ describe('PipelineController', () => {
             )
 
             expect(ResponseHelper.notFound).toHaveBeenCalledWith(mockRes, 'Pipeline run')
+        })
+    })
+
+    describe('stopPipeline', () => {
+        it('stops with reason manual and returns the outcome once cleanup is done', async () => {
+            const outcome = {stopped: true, reason: 'manual', pipelineRunId: 'p1', runIds: ['r1']}
+            mockPipelineExecutionService.stop.mockResolvedValue(outcome)
+            mockReq.body = {reason: 'manual'}
+
+            await controller.stopPipeline(mockReq as ServiceRequest, mockRes as Response)
+
+            expect(mockPipelineExecutionService.stop).toHaveBeenCalledWith('manual')
+            expect(ResponseHelper.success).toHaveBeenCalledWith(mockRes, outcome)
+        })
+
+        it('treats a missing reason as manual', async () => {
+            mockPipelineExecutionService.stop.mockResolvedValue({stopped: false, runIds: []})
+            mockReq.body = {}
+
+            await controller.stopPipeline(mockReq as ServiceRequest, mockRes as Response)
+
+            expect(mockPipelineExecutionService.stop).toHaveBeenCalledWith('manual')
+        })
+
+        it.each(['timeout', 'restart', 'replaced', 'nonsense'])(
+            'rejects reason %s over HTTP (internal callers only)',
+            async (reason) => {
+                mockReq.body = {reason}
+
+                await controller.stopPipeline(mockReq as ServiceRequest, mockRes as Response)
+
+                expect(ResponseHelper.badRequest).toHaveBeenCalled()
+                expect(mockPipelineExecutionService.stop).not.toHaveBeenCalled()
+            }
+        )
+
+        it('answers 500 when the stop fails', async () => {
+            mockPipelineExecutionService.stop.mockRejectedValue(new Error('boom'))
+
+            await controller.stopPipeline(mockReq as ServiceRequest, mockRes as Response)
+
+            expect(ResponseHelper.error).toHaveBeenCalledWith(
+                mockRes,
+                'boom',
+                'Failed to stop the run',
+                500
+            )
         })
     })
 })

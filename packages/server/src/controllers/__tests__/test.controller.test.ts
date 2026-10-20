@@ -72,6 +72,7 @@ describe('TestController', () => {
 
         // Setup mock services
         mockTestService = {
+            isRunCancelled: vi.fn().mockReturnValue(false),
             requestQueueDrain: vi.fn(),
             discoverTests: vi.fn(),
             runAllTests: vi.fn(),
@@ -1162,6 +1163,78 @@ describe('TestController', () => {
                 'Diagnostics error',
                 'Failed to fetch diagnostics',
                 500
+            )
+        })
+    })
+
+    describe('reporter posts for a stopped run', () => {
+        beforeEach(() => {
+            mockTestService.isRunCancelled.mockImplementation((id: string) => id === 'stopped-run')
+        })
+
+        it('POST /tests is acknowledged but never stored', async () => {
+            mockReq.body = {
+                id: 'late-1',
+                testId: 'test-1',
+                runId: 'stopped-run',
+                name: 'Late test',
+                attachments: [{name: 'trace', path: '/tmp/trace.zip'}],
+            }
+
+            await controller.createTestResult(mockReq as ServiceRequest, mockRes as Response)
+
+            expect(mockTestService.saveTestResult).not.toHaveBeenCalled()
+            expect(activeProcessesTracker.updateProgress).not.toHaveBeenCalled()
+            expect(ResponseHelper.success).toHaveBeenCalledWith(
+                mockRes,
+                {id: 'late-1'},
+                'Ignored: run was stopped'
+            )
+        })
+
+        it('a run that was not stopped is still stored', async () => {
+            mockReq.body = {id: 'ok-1', testId: 'test-1', runId: 'live-run', name: 'Test'}
+            mockTestService.saveTestResult.mockResolvedValue(undefined)
+
+            await controller.createTestResult(mockReq as ServiceRequest, mockRes as Response)
+
+            expect(mockTestService.saveTestResult).toHaveBeenCalled()
+        })
+
+        it('process-start is ignored: no tracker entry (no ghost run), no broadcast', async () => {
+            mockReq.body = {runId: 'stopped-run', type: 'run-all'}
+            const mockWsManager = {
+                broadcastProcessStart: vi.fn(),
+                broadcastConnectionStatus: vi.fn(),
+            }
+            vi.mocked(getWebSocketManager).mockReturnValue(mockWsManager as any)
+
+            await controller.processStart(mockReq as ServiceRequest, mockRes as Response)
+
+            expect(activeProcessesTracker.addProcess).not.toHaveBeenCalled()
+            expect(mockWsManager.broadcastProcessStart).not.toHaveBeenCalled()
+            expect(ResponseHelper.success).toHaveBeenCalledWith(
+                mockRes,
+                {processId: 'stopped-run'},
+                'Ignored: run was stopped'
+            )
+        })
+
+        it('test-start is ignored: no progress update', async () => {
+            mockReq.body = {
+                runId: 'stopped-run',
+                testId: 'test-1',
+                name: 'Test 1',
+                filePath: 'test.spec.ts',
+            }
+
+            await controller.testStart(mockReq as ServiceRequest, mockRes as Response)
+
+            expect(activeProcessesTracker.startTest).not.toHaveBeenCalled()
+            expect(ResponseHelper.success).toHaveBeenCalledWith(
+                mockRes,
+                {testId: 'test-1'},
+                'Ignored: run was stopped'
             )
         })
     })

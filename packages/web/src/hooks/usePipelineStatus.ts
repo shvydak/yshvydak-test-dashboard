@@ -14,7 +14,7 @@ export interface PipelineStep {
     failed?: number
 }
 
-export type PipelineRunStatus = 'running' | 'completed' | 'stopped_early' | 'paused'
+export type PipelineRunStatus = 'running' | 'completed' | 'stopped_early' | 'paused' | 'cancelled'
 
 export interface PipelineState {
     pipelineRunId: string
@@ -36,6 +36,8 @@ export interface QueuedPipeline {
 export interface UsePipelineStatusReturn {
     pipeline: PipelineState | null
     queue: QueuedPipeline[]
+    /** A Stop is cleaning up (results being removed); the Stop button shows "Stopping...". */
+    stopping: boolean
     applyPipelineEvent: (type: string, data: any) => void
     /** Re-reads pipeline + queue from the server; call after a WebSocket (re)connect. */
     resync: () => void
@@ -50,6 +52,7 @@ export interface UsePipelineStatusReturn {
 export function usePipelineStatus(isAuthenticated = true): UsePipelineStatusReturn {
     const [pipeline, setPipeline] = useState<PipelineState | null>(null)
     const [queue, setQueue] = useState<QueuedPipeline[]>([])
+    const [stopping, setStopping] = useState(false)
 
     // Replaces local state with the server's: events missed while offline must not leave a stale "running".
     const resync = useCallback(() => {
@@ -61,12 +64,14 @@ export function usePipelineStatus(isAuthenticated = true): UsePipelineStatusRetu
                     // Nothing running, nothing queued (also after a server restart).
                     setPipeline(null)
                     setQueue([])
+                    setStopping(false)
                     return
                 }
                 if (!res.ok) return
                 const data = await res.json()
                 setPipeline(data?.data ?? null)
                 setQueue(Array.isArray(data?.queue) ? data.queue : [])
+                setStopping(data?.stopping === true)
             })
             .catch(() => {
                 // Request failed — keep the current state
@@ -125,10 +130,18 @@ export function usePipelineStatus(isAuthenticated = true): UsePipelineStatusRetu
                 setQueue(Array.isArray(data?.queue) ? data.queue : [])
                 break
 
+            case 'run:stopping':
+                setStopping(true)
+                break
+
+            case 'run:cancelled':
+                setStopping(false)
+                break
+
             default:
             // Not a pipeline event - ignore
         }
     }, [])
 
-    return {pipeline, queue, applyPipelineEvent, resync}
+    return {pipeline, queue, stopping, applyPipelineEvent, resync}
 }

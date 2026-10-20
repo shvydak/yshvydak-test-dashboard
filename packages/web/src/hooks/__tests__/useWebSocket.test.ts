@@ -113,6 +113,7 @@ describe('useWebSocket', () => {
             setRunningAllTests: vi.fn(),
             updateProgress: vi.fn(),
             clearProgress: vi.fn(),
+            resetRunState: vi.fn(),
         }
 
         // Mock useTestsStore to return our mock actions
@@ -655,6 +656,50 @@ describe('useWebSocket', () => {
             })
 
             expect(mockStoreActions.setTestRunning).toHaveBeenCalledWith('123', false)
+        })
+
+        it('run:cancelled reverts the list: resets local run state, refetches, invalidates caches and tells the pipeline hook', async () => {
+            const onPipelineEvent = vi.fn()
+            const onRunStatusEvent = vi.fn()
+            renderHook(
+                () => useWebSocket('ws://localhost:3001', {onPipelineEvent, onRunStatusEvent}),
+                {wrapper: createWrapper()}
+            )
+            await act(async () => {
+                await Promise.resolve()
+            })
+            const invalidate = vi.spyOn(queryClient, 'invalidateQueries')
+
+            const data = {runIds: ['r1'], reason: 'manual', pipelineRunId: 'p1'}
+            act(() => {
+                mockWebSocket.simulateMessage({type: 'run:cancelled', data})
+            })
+
+            expect(mockStoreActions.resetRunState).toHaveBeenCalledTimes(1)
+            expect(mockStoreActions.fetchTests).toHaveBeenCalled()
+            expect(mockStoreActions.fetchRuns).toHaveBeenCalled()
+            expect(invalidate).toHaveBeenCalledWith({queryKey: ['test-status-counts']})
+            expect(invalidate).toHaveBeenCalledWith({queryKey: ['project-status-summary']})
+            expect(onPipelineEvent).toHaveBeenCalledWith('run:cancelled', data)
+            // the header project spinners resync from it too
+            expect(onRunStatusEvent).toHaveBeenCalledWith('run:cancelled', data)
+        })
+
+        it('run:stopping is forwarded to the pipeline hook and changes nothing else', async () => {
+            const onPipelineEvent = vi.fn()
+            renderHook(() => useWebSocket('ws://localhost:3001', {onPipelineEvent}), {
+                wrapper: createWrapper(),
+            })
+            await act(async () => {
+                await Promise.resolve()
+            })
+
+            act(() => {
+                mockWebSocket.simulateMessage({type: 'run:stopping', data: {reason: 'manual'}})
+            })
+
+            expect(onPipelineEvent).toHaveBeenCalledWith('run:stopping', {reason: 'manual'})
+            expect(mockStoreActions.resetRunState).not.toHaveBeenCalled()
         })
 
         it('should handle connection message (no-op)', async () => {

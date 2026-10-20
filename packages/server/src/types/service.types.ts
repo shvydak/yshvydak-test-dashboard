@@ -154,6 +154,10 @@ export interface ITestRepository {
     getExecutionIdsByProject(project: string): Promise<string[]>
     getDistinctTestIdsByProject(project: string): Promise<string[]>
     deleteByProject(project: string): Promise<number>
+    // Stop: remove everything a stopped run wrote
+    getResultIdsByRunIds(runIds: string[]): Promise<string[]>
+    deleteByRunIds(runIds: string[]): Promise<number>
+    deleteDiscoveryRowsHidingResults(project: string | undefined, since: string): Promise<number>
     getTestStatusCounts(project?: string): Promise<TestStatusCounts>
     // Latest-row metadata (JSON string, possibly double-encoded — same as everywhere else in the
     // codebase) for every test, unscoped by project. Used only to discover which Jira ticket-key
@@ -174,4 +178,5 @@ export interface IRunRepository {
     createTestRun(runData: TestRunData): Promise<string>
     updateTestRun(runId: string, updates: Partial<TestRunData>): Promise<void>
     getTestRun(runId: string): Promise<TestRunData | null>
+    deleteTestRuns(runIds: string[]): Promise<number>
 }

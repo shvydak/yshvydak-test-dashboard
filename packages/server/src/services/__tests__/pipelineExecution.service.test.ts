@@ -19,6 +19,7 @@ vi.mock('../activeProcesses.service', () => ({
 }))
 
 import {activeProcessesTracker} from '../activeProcesses.service'
+import {runProcessRegistry} from '../runProcessRegistry.service'
 
 function flushPromises() {
     return new Promise((resolve) => setImmediate(resolve))
@@ -39,15 +40,22 @@ describe('PipelineExecutionService', () => {
 
     beforeEach(() => {
         vi.clearAllMocks()
-        vi.mocked(activeProcessesTracker.isAnyProcessRunning).mockReturnValue(false)
+        // Fake children are never registered as busy; tests flip this to model a live process.
+        vi.spyOn(runProcessRegistry, 'isAnyRunning').mockReturnValue(false)
         vi.mocked(activeProcessesTracker.getActiveProcesses).mockReturnValue([])
 
-        mockTestService = {runAllTests: vi.fn()}
+        mockTestService = {
+            runAllTests: vi.fn(),
+            discardRuns: vi.fn().mockResolvedValue(undefined),
+            clearRunMarker: vi.fn().mockResolvedValue(undefined),
+        }
         mockSettingsService = {
             getCIAutoRunPause: vi.fn().mockResolvedValue({paused: false, resumeAt: null}),
             setCIAutoRunPause: vi.fn(),
             getPipelineSteps: vi.fn().mockResolvedValue([]),
             getInFlightPipeline: vi.fn().mockResolvedValue(null),
+            getInFlightRun: vi.fn().mockResolvedValue(null),
+            clearInFlightRun: vi.fn().mockResolvedValue(undefined),
             setInFlightPipeline: vi.fn().mockResolvedValue(undefined),
             clearInFlightPipeline: vi.fn().mockResolvedValue(undefined),
         }
@@ -58,6 +66,8 @@ describe('PipelineExecutionService', () => {
             broadcastPipelineStepCompleted: vi.fn(),
             broadcastPipelineCompleted: vi.fn(),
             broadcastPipelineQueueChanged: vi.fn(),
+            broadcastRunStopping: vi.fn(),
+            broadcastRunCancelled: vi.fn(),
         }
         mockNotifier = {
             notifyResult: vi.fn().mockResolvedValue(undefined),
@@ -65,6 +75,8 @@ describe('PipelineExecutionService', () => {
             notifyInterrupted: vi.fn().mockResolvedValue(undefined),
             notifyPaused: vi.fn().mockResolvedValue(undefined),
             notifyNotStarted: vi.fn().mockResolvedValue(undefined),
+            notifyStopped: vi.fn().mockResolvedValue(undefined),
+            notifyReplaced: vi.fn().mockResolvedValue(undefined),
         }
 
         queue = new CIRunQueueService(mockWebSocketService)
@@ -87,7 +99,7 @@ describe('PipelineExecutionService', () => {
         })
 
         it('throws TESTS_ALREADY_RUNNING when a process is already active', async () => {
-            vi.mocked(activeProcessesTracker.isAnyProcessRunning).mockReturnValue(true)
+            vi.mocked(runProcessRegistry.isAnyRunning).mockReturnValue(true)
             mockSettingsService.getPipelineSteps.mockResolvedValue([
                 {project: 'A', displayName: 'A', stopPipelineOnFailure: false},
             ])
@@ -429,7 +441,7 @@ describe('PipelineExecutionService', () => {
         })
 
         it('queues a script+notify request while a tracked process is running', async () => {
-            vi.mocked(activeProcessesTracker.isAnyProcessRunning).mockReturnValue(true)
+            vi.mocked(runProcessRegistry.isAnyRunning).mockReturnValue(true)
 
             const result = await service.requestPipelineRun({
                 source: 'script',
@@ -447,7 +459,7 @@ describe('PipelineExecutionService', () => {
         })
 
         it('newest request replaces the queued one for the same pipeline', async () => {
-            vi.mocked(activeProcessesTracker.isAnyProcessRunning).mockReturnValue(true)
+            vi.mocked(runProcessRegistry.isAnyRunning).mockReturnValue(true)
 
             await service.requestPipelineRun({source: 'script', notify: true, maxWorkers: 1})
             await service.requestPipelineRun({source: 'script', notify: true, maxWorkers: 4})
@@ -457,7 +469,7 @@ describe('PipelineExecutionService', () => {
         })
 
         it('keeps a separate slot per pipeline, production first', async () => {
-            vi.mocked(activeProcessesTracker.isAnyProcessRunning).mockReturnValue(true)
+            vi.mocked(runProcessRegistry.isAnyRunning).mockReturnValue(true)
 
             await service.requestPipelineRun({source: 'script', notify: true, pipeline: 'develop'})
             await service.requestPipelineRun({
@@ -470,7 +482,7 @@ describe('PipelineExecutionService', () => {
         })
 
         it('keeps the 409 for a --wait caller (script without notify)', async () => {
-            vi.mocked(activeProcessesTracker.isAnyProcessRunning).mockReturnValue(true)
+            vi.mocked(runProcessRegistry.isAnyRunning).mockReturnValue(true)
 
             await expect(service.requestPipelineRun({source: 'script'})).rejects.toThrow(
                 'TESTS_ALREADY_RUNNING'
@@ -479,7 +491,7 @@ describe('PipelineExecutionService', () => {
         })
 
         it('keeps the 409 for a non-script request even with notify', async () => {
-            vi.mocked(activeProcessesTracker.isAnyProcessRunning).mockReturnValue(true)
+            vi.mocked(runProcessRegistry.isAnyRunning).mockReturnValue(true)
 
             await expect(service.requestPipelineRun({notify: true})).rejects.toThrow(
                 'TESTS_ALREADY_RUNNING'
@@ -488,7 +500,7 @@ describe('PipelineExecutionService', () => {
         })
 
         it('answers CI_AUTORUN_PAUSED at request time instead of queueing', async () => {
-            vi.mocked(activeProcessesTracker.isAnyProcessRunning).mockReturnValue(true)
+            vi.mocked(runProcessRegistry.isAnyRunning).mockReturnValue(true)
             mockSettingsService.getCIAutoRunPause.mockResolvedValue({paused: true, resumeAt: null})
 
             await expect(
@@ -498,7 +510,7 @@ describe('PipelineExecutionService', () => {
         })
 
         it('answers PIPELINE_EMPTY at request time instead of queueing', async () => {
-            vi.mocked(activeProcessesTracker.isAnyProcessRunning).mockReturnValue(true)
+            vi.mocked(runProcessRegistry.isAnyRunning).mockReturnValue(true)
             stubPipelines({})
 
             await expect(
@@ -521,7 +533,7 @@ describe('PipelineExecutionService', () => {
             await flushPromises()
 
             // Step 1 is closed and untracked, step 2 has not spawned yet.
-            expect(activeProcessesTracker.isAnyProcessRunning()).toBe(false)
+            expect(runProcessRegistry.isAnyRunning()).toBe(false)
             expect(queue.isBusy()).toBe(true)
             await expect(service.startPipeline(undefined, 'script')).rejects.toThrow(
                 'TESTS_ALREADY_RUNNING'
@@ -563,16 +575,16 @@ describe('PipelineExecutionService', () => {
         })
 
         it('refuses a manual pipeline start while a CI request is queued', async () => {
-            vi.mocked(activeProcessesTracker.isAnyProcessRunning).mockReturnValue(true)
+            vi.mocked(runProcessRegistry.isAnyRunning).mockReturnValue(true)
             await service.requestPipelineRun({source: 'script', notify: true})
-            vi.mocked(activeProcessesTracker.isAnyProcessRunning).mockReturnValue(false)
+            vi.mocked(runProcessRegistry.isAnyRunning).mockReturnValue(false)
 
             await expect(service.startPipeline()).rejects.toThrow('CI_RUN_QUEUED')
             expect(mockTestService.runAllTests).not.toHaveBeenCalled()
         })
 
         it('exposes the queue through getQueue()', async () => {
-            vi.mocked(activeProcessesTracker.isAnyProcessRunning).mockReturnValue(true)
+            vi.mocked(runProcessRegistry.isAnyRunning).mockReturnValue(true)
             await service.requestPipelineRun({source: 'script', notify: true})
 
             expect(service.getQueue()).toEqual(queue.getQueue())
@@ -632,7 +644,7 @@ describe('PipelineExecutionService', () => {
         })
 
         it('drains when a non-pipeline run closes (requestDrain from the run close handler)', async () => {
-            vi.mocked(activeProcessesTracker.isAnyProcessRunning).mockReturnValue(true)
+            vi.mocked(runProcessRegistry.isAnyRunning).mockReturnValue(true)
             stubRuns()
             await service.requestPipelineRun({source: 'script', notify: true})
 
@@ -640,7 +652,7 @@ describe('PipelineExecutionService', () => {
             await flushPromises()
             expect(mockTestService.runAllTests).not.toHaveBeenCalled()
 
-            vi.mocked(activeProcessesTracker.isAnyProcessRunning).mockReturnValue(false)
+            vi.mocked(runProcessRegistry.isAnyRunning).mockReturnValue(false)
             queue.requestDrain()
             await flushPromises()
 
@@ -734,9 +746,9 @@ describe('PipelineExecutionService', () => {
         })
 
         it('puts the request back when something else started in the meantime', async () => {
-            vi.mocked(activeProcessesTracker.isAnyProcessRunning).mockReturnValue(true)
+            vi.mocked(runProcessRegistry.isAnyRunning).mockReturnValue(true)
             await service.requestPipelineRun({source: 'script', notify: true, maxWorkers: 2})
-            vi.mocked(activeProcessesTracker.isAnyProcessRunning).mockReturnValue(false)
+            vi.mocked(runProcessRegistry.isAnyRunning).mockReturnValue(false)
             vi.spyOn(service, 'startPipeline').mockRejectedValueOnce(
                 new Error(JSON.stringify({code: 'TESTS_ALREADY_RUNNING', message: 'busy'}))
             )
@@ -1141,23 +1153,28 @@ describe('PipelineExecutionService', () => {
             delete process.env.CI_PIPELINE_TIMEOUT_MINUTES
         })
 
-        it('posts the timeout once after 30 minutes by default, kills nothing, and skips the result message', async () => {
+        it('posts the timeout once after 30 minutes by default, asks for a stop with reason timeout, and skips the result message', async () => {
+            // The stop itself is covered in pipelineStop.service.test.ts; here it is a spy.
+            const stop = vi.spyOn(service, 'stop').mockResolvedValue({stopped: true, runIds: []})
             const procs = stubRuns()
             await service.startPipeline(undefined, 'script', 'develop', {notify: true})
             await flushPromises()
 
             vi.advanceTimersByTime(29 * 60 * 1000)
             expect(mockNotifier.notifyTimeout).not.toHaveBeenCalled()
+            expect(stop).not.toHaveBeenCalled()
 
             vi.advanceTimersByTime(60 * 1000)
             expect(mockNotifier.notifyTimeout).toHaveBeenCalledTimes(1)
             expect(mockNotifier.notifyTimeout).toHaveBeenCalledWith('develop', ['API', 'WEB'])
+            expect(stop).toHaveBeenCalledWith('timeout')
             expect(service.getCurrentPipeline()?.status).toBe('running')
 
             vi.advanceTimersByTime(60 * 60 * 1000)
             expect(mockNotifier.notifyTimeout).toHaveBeenCalledTimes(1)
+            expect(stop).toHaveBeenCalledTimes(1)
 
-            // the pipeline still waits for the real end, but no result message follows
+            // with the stop mocked the pipeline still waits for the real end, but no result message follows
             procs[0].emit('close', 0)
             await flushPromises()
             procs[1].emit('close', 0)
@@ -1275,6 +1292,7 @@ describe('PipelineExecutionService', () => {
                 startedAt: '2026-01-01T00:00:00.000Z',
                 runIds: ['run-1'],
                 projects: ['Smoke'],
+                pgids: [],
             })
 
             await service.handleInterruptedOnStartup()
@@ -1292,6 +1310,7 @@ describe('PipelineExecutionService', () => {
                 startedAt: '2026-01-01T00:00:00.000Z',
                 runIds: [],
                 projects: ['API'],
+                pgids: [],
             })
 
             await service.handleInterruptedOnStartup()

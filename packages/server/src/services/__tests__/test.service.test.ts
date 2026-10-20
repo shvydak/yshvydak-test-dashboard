@@ -1,6 +1,7 @@
 import {describe, it, expect, vi, beforeEach, afterEach} from 'vitest'
 import {TestService} from '../test.service'
 import {CIRunQueueService} from '../ciRunQueue.service'
+import {runProcessRegistry} from '../runProcessRegistry.service'
 import {FileUtil} from '../../utils/file.util'
 import type {TestResultData} from '../../types/database.types'
 import type {TestFilters} from '../../types/service.types'
@@ -47,9 +48,13 @@ describe('TestService', () => {
     let mockAttachmentCleanupRepository: any
     let mockCIRunQueue: any
 
+    // The run registry is a process-wide singleton: every fake child is closed after each test.
+    const createdProcesses: EventEmitter[] = []
+
     // Helper to create mock child process
     const createMockProcess = (): ChildProcess => {
         const process = new EventEmitter() as any
+        createdProcesses.push(process)
         process.stdout = new EventEmitter()
         process.stderr = new EventEmitter()
         process.kill = vi.fn()
@@ -88,6 +93,9 @@ describe('TestService', () => {
             getExecutionIdsByProject: vi.fn().mockResolvedValue([]),
             getDistinctTestIdsByProject: vi.fn().mockResolvedValue([]),
             deleteByProject: vi.fn().mockResolvedValue(0),
+            deleteDiscoveryRowsHidingResults: vi.fn().mockResolvedValue(0),
+            getResultIdsByRunIds: vi.fn().mockResolvedValue([]),
+            deleteByRunIds: vi.fn().mockResolvedValue(0),
             getProjectStatusSummary: vi.fn().mockResolvedValue([]),
             getTestStatusCounts: vi.fn().mockResolvedValue({
                 total: 0,
@@ -103,6 +111,7 @@ describe('TestService', () => {
             createTestRun: vi.fn(),
             updateTestRun: vi.fn(),
             getTestRun: vi.fn(),
+            deleteTestRuns: vi.fn().mockResolvedValue(0),
         }
 
         mockPlaywrightService = {
@@ -141,6 +150,8 @@ describe('TestService', () => {
             getGlobalPlaywrightProject: vi.fn().mockResolvedValue(''),
             getTestExecutionSettings: vi.fn(),
             setGlobalPlaywrightProject: vi.fn(),
+            setInFlightRun: vi.fn().mockResolvedValue(undefined),
+            clearInFlightRun: vi.fn().mockResolvedValue(undefined),
         }
 
         mockAttachmentCleanupRepository = {
@@ -171,6 +182,7 @@ describe('TestService', () => {
     })
 
     afterEach(() => {
+        createdProcesses.splice(0).forEach((process) => process.emit('close', 0))
         vi.clearAllMocks()
     })
 
@@ -2383,6 +2395,485 @@ describe('TestService', () => {
             await expect(
                 testService.cleanupData({type: 'date', value: 'not-a-date'})
             ).rejects.toThrow('Invalid date provided')
+        })
+    })
+
+    describe('Stop support', () => {
+        const startedRun = (runId: string) => ({
+            runId,
+            message: 'started',
+            timestamp: '2025-10-21T10:00:00.000Z',
+            process: createMockProcess(),
+        })
+
+        describe('run registry', () => {
+            it('registers the spawned child so it is the busy source, and drops it when the child closes', async () => {
+                const run = startedRun('reg-1')
+                mockPlaywrightService.runAllTests.mockResolvedValue(run)
+
+                await testService.runAllTests(2, true, 'API')
+                expect(runProcessRegistry.has('reg-1')).toBe(true)
+                expect(runProcessRegistry.isAnyRunning()).toBe(true)
+
+                run.process.emit('close', 0)
+                expect(runProcessRegistry.has('reg-1')).toBe(false)
+            })
+
+            it('registers group runs and reruns as well', async () => {
+                const group = startedRun('reg-group')
+                mockPlaywrightService.runTestGroup.mockResolvedValue(group)
+                await testService.runTestGroup('/a.spec.ts')
+
+                expect(runProcessRegistry.has('reg-group')).toBe(true)
+                group.process.emit('close', 0)
+
+                mockTestRepository.getTestResult.mockResolvedValue({
+                    id: 'exec-1',
+                    testId: 'hash-1',
+                    name: 'Test 1',
+                    filePath: '/a.spec.ts',
+                    project: 'API',
+                })
+                const rerun = startedRun('reg-rerun')
+                mockPlaywrightService.rerunSingleTest.mockResolvedValue(rerun)
+                await testService.rerunTest('exec-1')
+
+                expect(runProcessRegistry.has('reg-rerun')).toBe(true)
+                rerun.process.emit('close', 0)
+            })
+
+            it('the child stays the busy source after the progress tracker dropped its entry', async () => {
+                const run = startedRun('reg-2')
+                mockPlaywrightService.runAllTests.mockResolvedValue(run)
+                await testService.runAllTests(2, true, 'API')
+
+                // The tracker is a mock here and holds nothing; the registry alone says busy.
+                expect(runProcessRegistry.isAnyRunning()).toBe(true)
+                run.process.emit('close', 0)
+            })
+        })
+
+        describe('a Stop that lands while a start is still preparing', () => {
+            it('run-all: after discovery it does not spawn, undoes its own discovery rows and throws RUN_CANCELLED', async () => {
+                let finishDiscovery!: () => void
+                mockPlaywrightService.discoverTests.mockImplementation(
+                    () => new Promise((resolve) => (finishDiscovery = () => resolve([])))
+                )
+                const release = vi.fn()
+                mockCIRunQueue.beginStarting.mockReturnValue(release)
+
+                const started = testService.runAllTests(2, false, 'API')
+                const rejection = expect(started).rejects.toThrow('RUN_CANCELLED')
+                await new Promise((resolve) => setImmediate(resolve))
+                runProcessRegistry.beginStop()
+                finishDiscovery()
+                await rejection
+
+                expect(mockPlaywrightService.runAllTests).not.toHaveBeenCalled()
+                expect(mockTestRepository.deleteDiscoveryRowsHidingResults).toHaveBeenCalledWith(
+                    'API',
+                    expect.any(String)
+                )
+                expect(mockRunRepository.createTestRun).not.toHaveBeenCalled()
+                expect(release).toHaveBeenCalledTimes(1)
+            })
+
+            describe('run-all with skipAutoDiscovery (the UI discovers in its own request)', () => {
+                // The project comes from settings, which is an await: the Stop lands before the spawn check.
+                const startThenStop = () => {
+                    mockSettingsService.getGlobalPlaywrightProject.mockResolvedValue('API')
+                    const run = testService.runAllTests(2, true)
+                    runProcessRegistry.beginStop()
+                    return run
+                }
+
+                afterEach(() => {
+                    vi.useRealTimers()
+                })
+
+                it("a discovery of the same project just before the run is the run's own: a Stop before the spawn undoes it", async () => {
+                    await testService.discoverTests('API')
+
+                    await expect(startThenStop()).rejects.toThrow('RUN_CANCELLED')
+
+                    expect(
+                        mockTestRepository.deleteDiscoveryRowsHidingResults
+                    ).toHaveBeenCalledWith('API', expect.any(String))
+                    expect(mockPlaywrightService.runAllTests).not.toHaveBeenCalled()
+                })
+
+                it('auto-discover off (no discovery at all): a Stop before the spawn deletes no pending rows', async () => {
+                    await expect(startThenStop()).rejects.toThrow('RUN_CANCELLED')
+
+                    expect(
+                        mockTestRepository.deleteDiscoveryRowsHidingResults
+                    ).not.toHaveBeenCalled()
+                })
+
+                it("a stale discovery (older than 30 s) is not the run's own: nothing is deleted on Stop", async () => {
+                    vi.useFakeTimers({toFake: ['Date']})
+                    await testService.discoverTests('API')
+                    vi.setSystemTime(Date.now() + 31_000)
+
+                    await expect(startThenStop()).rejects.toThrow('RUN_CANCELLED')
+                    expect(
+                        mockTestRepository.deleteDiscoveryRowsHidingResults
+                    ).not.toHaveBeenCalled()
+                })
+
+                it('the spawned run remembers its discovery start only when there was a recent one', async () => {
+                    const withDiscovery = startedRun('with-discovery')
+                    mockPlaywrightService.runAllTests.mockResolvedValueOnce(withDiscovery)
+                    await testService.discoverTests('API')
+                    await testService.runAllTests(2, true, 'API')
+                    expect(
+                        runProcessRegistry.getRuns().find((r) => r.runId === 'with-discovery')
+                            ?.pendingSince
+                    ).toEqual(expect.any(String))
+                    withDiscovery.process.emit('close', 0)
+
+                    const noDiscovery = startedRun('no-discovery')
+                    mockPlaywrightService.runAllTests.mockResolvedValueOnce(noDiscovery)
+                    ;(testService as any).lastDiscoveries.clear()
+                    await testService.runAllTests(2, true, 'API')
+                    expect(
+                        runProcessRegistry.getRuns().find((r) => r.runId === 'no-discovery')
+                            ?.pendingSince
+                    ).toBeUndefined()
+                    noDiscovery.process.emit('close', 0)
+                })
+
+                it('a discovery of all projects also counts for a run on one project', async () => {
+                    await testService.discoverTests()
+
+                    await expect(startThenStop()).rejects.toThrow('RUN_CANCELLED')
+                    expect(
+                        mockTestRepository.deleteDiscoveryRowsHidingResults
+                    ).toHaveBeenCalledWith('API', expect.any(String))
+                })
+
+                it('a discovery of another project does not count', async () => {
+                    await testService.discoverTests('WEB')
+
+                    await expect(startThenStop()).rejects.toThrow('RUN_CANCELLED')
+                    expect(
+                        mockTestRepository.deleteDiscoveryRowsHidingResults
+                    ).not.toHaveBeenCalled()
+                })
+            })
+
+            it('run-all: a Stop during the pause lookup (before the busy check) also prevents the start', async () => {
+                mockSettingsService.getCIAutoRunPause.mockImplementation(async () => {
+                    runProcessRegistry.beginStop()
+                    return {paused: false}
+                })
+
+                await expect(
+                    testService.runAllTests(2, true, 'API', 'script', {pipelineStep: true})
+                ).rejects.toThrow('RUN_CANCELLED')
+
+                expect(mockPlaywrightService.runAllTests).not.toHaveBeenCalled()
+                expect(mockCIRunQueue.beginStarting).not.toHaveBeenCalled()
+            })
+
+            it('group run: does not spawn after a Stop', async () => {
+                mockTestRepository.getProjectByFilePath.mockImplementation(async () => {
+                    runProcessRegistry.beginStop()
+                    return 'API'
+                })
+
+                await expect(testService.runTestGroup('/a.spec.ts')).rejects.toThrow(
+                    'RUN_CANCELLED'
+                )
+
+                expect(mockPlaywrightService.runTestGroup).not.toHaveBeenCalled()
+            })
+
+            it('rerun: does not spawn after a Stop', async () => {
+                mockTestRepository.getTestResult.mockResolvedValue({
+                    id: 'exec-1',
+                    testId: 'hash-1',
+                    name: 'Test 1',
+                    filePath: '/a.spec.ts',
+                    project: '',
+                })
+                mockSettingsService.getGlobalPlaywrightProject.mockImplementation(async () => {
+                    runProcessRegistry.beginStop()
+                    return 'API'
+                })
+
+                await expect(testService.rerunTest('exec-1')).rejects.toThrow('RUN_CANCELLED')
+
+                expect(mockPlaywrightService.rerunSingleTest).not.toHaveBeenCalled()
+            })
+
+            it('a start made after the Stop is not affected by it', async () => {
+                runProcessRegistry.beginStop()
+                const run = startedRun('after-stop')
+                mockPlaywrightService.runAllTests.mockResolvedValue(run)
+
+                await expect(testService.runAllTests(2, true, 'API')).resolves.toBeDefined()
+
+                run.process.emit('close', 0)
+            })
+
+            it('nothing starts while the server is shutting down', async () => {
+                vi.spyOn(runProcessRegistry, 'isShuttingDown').mockReturnValue(true)
+
+                await expect(testService.runAllTests(2, true, 'API')).rejects.toThrow(
+                    'RUN_CANCELLED'
+                )
+            })
+        })
+
+        describe('a stopped run reports through the Stop, not through the close handlers', () => {
+            it('run-all: no run:completed broadcast, no drain', async () => {
+                const run = startedRun('stopped-all')
+                mockPlaywrightService.runAllTests.mockResolvedValue(run)
+                await testService.runAllTests(2, true, 'API')
+                runProcessRegistry.markCancelled(['stopped-all'])
+
+                run.process.emit('close', 130)
+
+                expect(mockWebSocketService.broadcastRunCompleted).not.toHaveBeenCalled()
+                expect(mockCIRunQueue.requestDrain).not.toHaveBeenCalled()
+            })
+
+            it('group: no run:completed broadcast, no drain', async () => {
+                const run = startedRun('stopped-group')
+                mockPlaywrightService.runTestGroup.mockResolvedValue(run)
+                await testService.runTestGroup('/a.spec.ts')
+                runProcessRegistry.markCancelled(['stopped-group'])
+
+                run.process.emit('close', 130)
+
+                expect(mockWebSocketService.broadcastRunCompleted).not.toHaveBeenCalled()
+                expect(mockCIRunQueue.requestDrain).not.toHaveBeenCalled()
+            })
+
+            it('rerun: the run row is not updated (it is deleted by the Stop) and nothing is broadcast', async () => {
+                mockTestRepository.getTestResult.mockResolvedValue({
+                    id: 'exec-1',
+                    testId: 'hash-1',
+                    name: 'Test 1',
+                    filePath: '/a.spec.ts',
+                    project: 'API',
+                })
+                const run = startedRun('stopped-rerun')
+                mockPlaywrightService.rerunSingleTest.mockResolvedValue(run)
+                await testService.rerunTest('exec-1')
+                runProcessRegistry.markCancelled(['stopped-rerun'])
+
+                run.process.emit('close', 130)
+                await new Promise((resolve) => setImmediate(resolve))
+
+                expect(mockRunRepository.updateTestRun).not.toHaveBeenCalled()
+                expect(mockWebSocketService.broadcast).not.toHaveBeenCalled()
+                expect(mockCIRunQueue.requestDrain).not.toHaveBeenCalled()
+            })
+
+            it('a run that finishes normally still broadcasts and drains', async () => {
+                const run = startedRun('normal-run')
+                mockPlaywrightService.runAllTests.mockResolvedValue(run)
+                await testService.runAllTests(2, true, 'API')
+
+                run.process.emit('close', 0)
+
+                expect(mockWebSocketService.broadcastRunCompleted).toHaveBeenCalled()
+                expect(mockCIRunQueue.requestDrain).toHaveBeenCalled()
+            })
+
+            it('isRunCancelled follows the registry', () => {
+                expect(testService.isRunCancelled('someone-else')).toBe(false)
+                runProcessRegistry.markCancelled(['flagged'])
+                expect(testService.isRunCancelled('flagged')).toBe(true)
+            })
+        })
+
+        describe('in-flight run marker (manual runs)', () => {
+            const flush = () => new Promise((resolve) => setImmediate(resolve))
+
+            it('a manual run-all writes the marker with its pgid and discovery start, and clears it on close', async () => {
+                const run = startedRun('marker-1')
+                ;(run.process as any).pid = 5150
+                mockPlaywrightService.runAllTests.mockResolvedValue(run)
+
+                await testService.runAllTests(2, false, 'API')
+                await flush()
+
+                expect(mockSettingsService.setInFlightRun).toHaveBeenCalledWith(
+                    expect.objectContaining({
+                        runId: 'marker-1',
+                        pgid: 5150,
+                        project: 'API',
+                        pendingSince: expect.any(String),
+                    })
+                )
+
+                run.process.emit('close', 0)
+                await flush()
+                expect(mockSettingsService.clearInFlightRun).toHaveBeenCalledTimes(1)
+            })
+
+            it('the set always lands before a clear from a run that closes at once', async () => {
+                const calls: string[] = []
+                mockSettingsService.setInFlightRun.mockImplementation(async () => {
+                    await new Promise((resolve) => setTimeout(resolve, 5))
+                    calls.push('set')
+                })
+                mockSettingsService.clearInFlightRun.mockImplementation(async () => {
+                    calls.push('clear')
+                })
+                const run = startedRun('marker-fast')
+                mockPlaywrightService.runAllTests.mockResolvedValue(run)
+
+                await testService.runAllTests(2, true, 'API')
+                run.process.emit('close', 0)
+                await new Promise((resolve) => setTimeout(resolve, 30))
+
+                expect(calls).toEqual(['set', 'clear'])
+            })
+
+            it('a run killed for server shutdown keeps its marker (the next start deletes its data) and broadcasts nothing', async () => {
+                const run = startedRun('marker-shutdown')
+                mockPlaywrightService.runAllTests.mockResolvedValue(run)
+                await testService.runAllTests(2, true, 'API')
+                await flush()
+                vi.spyOn(runProcessRegistry, 'isShuttingDown').mockReturnValue(true)
+
+                run.process.emit('close', 130)
+                await flush()
+
+                expect(mockSettingsService.clearInFlightRun).not.toHaveBeenCalled()
+                expect(mockWebSocketService.broadcastRunCompleted).not.toHaveBeenCalled()
+                expect(mockCIRunQueue.requestDrain).not.toHaveBeenCalled()
+            })
+
+            it('a pipeline step writes no run marker (the pipeline marker covers it)', async () => {
+                const run = startedRun('step-1')
+                mockPlaywrightService.runAllTests.mockResolvedValue(run)
+
+                await testService.runAllTests(2, false, 'API', 'script', {pipelineStep: true})
+                run.process.emit('close', 0)
+                await flush()
+
+                expect(mockSettingsService.setInFlightRun).not.toHaveBeenCalled()
+                expect(mockSettingsService.clearInFlightRun).not.toHaveBeenCalled()
+            })
+
+            it('a failing marker write never breaks the run', async () => {
+                mockSettingsService.setInFlightRun.mockRejectedValue(new Error('db locked'))
+                const run = startedRun('marker-2')
+                mockPlaywrightService.runAllTests.mockResolvedValue(run)
+
+                await expect(testService.runAllTests(2, true, 'API')).resolves.toBeDefined()
+                await flush()
+                run.process.emit('close', 0)
+            })
+
+            it('group and rerun runs are covered too', async () => {
+                const group = startedRun('marker-group')
+                mockPlaywrightService.runTestGroup.mockResolvedValue(group)
+                await testService.runTestGroup('/a.spec.ts')
+                await flush()
+
+                expect(mockSettingsService.setInFlightRun).toHaveBeenCalledWith(
+                    expect.objectContaining({runId: 'marker-group', pendingSince: null})
+                )
+                group.process.emit('close', 0)
+            })
+        })
+
+        describe('discardRuns', () => {
+            it('deletes attachment files per result, then the results, then the run rows', async () => {
+                const order: string[] = []
+                mockTestRepository.getResultIdsByRunIds.mockResolvedValue(['res-1', 'res-2'])
+                mockAttachmentService.deleteAttachmentsForTestResult = vi.fn(async (id: string) => {
+                    order.push(`files:${id}`)
+                    return 1
+                })
+                mockTestRepository.deleteByRunIds.mockImplementation(async () => {
+                    order.push('results')
+                    return 2
+                })
+                mockRunRepository.deleteTestRuns.mockImplementation(async () => {
+                    order.push('runs')
+                    return 1
+                })
+
+                await testService.discardRuns(['run-1'])
+
+                expect(order).toEqual(['files:res-1', 'files:res-2', 'results', 'runs'])
+                expect(mockTestRepository.getResultIdsByRunIds).toHaveBeenCalledWith(['run-1'])
+                expect(mockTestRepository.deleteByRunIds).toHaveBeenCalledWith(['run-1'])
+                expect(mockRunRepository.deleteTestRuns).toHaveBeenCalledWith(['run-1'])
+            })
+
+            it('keeps going when one attachment cannot be deleted', async () => {
+                mockTestRepository.getResultIdsByRunIds.mockResolvedValue(['res-1', 'res-2'])
+                mockAttachmentService.deleteAttachmentsForTestResult = vi
+                    .fn()
+                    .mockRejectedValueOnce(new Error('EBUSY'))
+                    .mockResolvedValue(1)
+
+                await testService.discardRuns(['run-1'])
+
+                expect(mockAttachmentService.deleteAttachmentsForTestResult).toHaveBeenCalledTimes(
+                    2
+                )
+                expect(mockTestRepository.deleteByRunIds).toHaveBeenCalled()
+                expect(mockRunRepository.deleteTestRuns).toHaveBeenCalled()
+            })
+
+            it('then removes the discovery rows that hide older results, per scope', async () => {
+                await testService.discardRuns(
+                    ['run-1'],
+                    [
+                        {project: 'API', since: '2026-01-01T00:00:00.000Z'},
+                        {since: '2026-01-02T00:00:00.000Z'},
+                    ]
+                )
+
+                expect(mockTestRepository.deleteDiscoveryRowsHidingResults).toHaveBeenNthCalledWith(
+                    1,
+                    'API',
+                    '2026-01-01T00:00:00.000Z'
+                )
+                expect(mockTestRepository.deleteDiscoveryRowsHidingResults).toHaveBeenNthCalledWith(
+                    2,
+                    undefined,
+                    '2026-01-02T00:00:00.000Z'
+                )
+            })
+
+            it('with no runs, still cleans the discovery rows (a stop before anything spawned)', async () => {
+                await testService.discardRuns(
+                    [],
+                    [{project: 'API', since: '2026-01-01T00:00:00.000Z'}]
+                )
+
+                expect(mockTestRepository.getResultIdsByRunIds).not.toHaveBeenCalled()
+                expect(mockRunRepository.deleteTestRuns).not.toHaveBeenCalled()
+                expect(mockTestRepository.deleteDiscoveryRowsHidingResults).toHaveBeenCalledTimes(1)
+            })
+
+            it('leaves test notes alone (they are not run-scoped)', async () => {
+                mockTestRepository.getResultIdsByRunIds.mockResolvedValue(['res-1'])
+
+                await testService.discardRuns(['run-1'])
+
+                expect(mockNoteService.deleteNote).not.toHaveBeenCalled()
+            })
+        })
+
+        describe('cleanupData while a run is alive or being stopped', () => {
+            it('is refused while the dashboard is busy', async () => {
+                mockCIRunQueue.isBusy.mockReturnValue(true)
+
+                await expect(testService.cleanupData({type: 'count', value: 5})).rejects.toThrow(
+                    'Cannot clean up data while tests are running'
+                )
+            })
         })
     })
 })

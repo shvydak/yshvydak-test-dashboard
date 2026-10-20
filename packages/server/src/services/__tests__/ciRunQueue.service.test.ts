@@ -5,13 +5,7 @@ vi.mock('../../utils/logger.util', () => ({
     Logger: {info: vi.fn(), error: vi.fn(), warn: vi.fn()},
 }))
 
-vi.mock('../activeProcesses.service', () => ({
-    activeProcessesTracker: {
-        isAnyProcessRunning: vi.fn(() => false),
-    },
-}))
-
-import {activeProcessesTracker} from '../activeProcesses.service'
+import {runProcessRegistry} from '../runProcessRegistry.service'
 
 describe('CIRunQueueService', () => {
     let queue: CIRunQueueService
@@ -19,7 +13,7 @@ describe('CIRunQueueService', () => {
 
     beforeEach(() => {
         vi.clearAllMocks()
-        vi.mocked(activeProcessesTracker.isAnyProcessRunning).mockReturnValue(false)
+        vi.spyOn(runProcessRegistry, 'isAnyRunning').mockReturnValue(false)
         mockWebSocket = {broadcastPipelineQueueChanged: vi.fn()}
         queue = new CIRunQueueService(mockWebSocket as any)
     })
@@ -29,8 +23,8 @@ describe('CIRunQueueService', () => {
             expect(queue.isBusy()).toBe(false)
         })
 
-        it('is busy while a process is tracked', () => {
-            vi.mocked(activeProcessesTracker.isAnyProcessRunning).mockReturnValue(true)
+        it('is busy while a child process is registered', () => {
+            vi.mocked(runProcessRegistry.isAnyRunning).mockReturnValue(true)
             expect(queue.isBusy()).toBe(true)
         })
 
@@ -53,7 +47,7 @@ describe('CIRunQueueService', () => {
             expect(queue.isBusy({ignorePipeline: true})).toBe(true)
             release()
 
-            vi.mocked(activeProcessesTracker.isAnyProcessRunning).mockReturnValue(true)
+            vi.mocked(runProcessRegistry.isAnyRunning).mockReturnValue(true)
             expect(queue.isBusy({ignorePipeline: true})).toBe(true)
         })
 
@@ -88,6 +82,55 @@ describe('CIRunQueueService', () => {
             releaseB()
             await flush()
             expect(handler).toHaveBeenCalledTimes(1)
+        })
+    })
+
+    describe('stopping claim and waiting for starts', () => {
+        const flush = () => new Promise((resolve) => setImmediate(resolve))
+
+        it('is busy from beginStopping until released, and a release is idempotent', () => {
+            const release = queue.beginStopping()
+            expect(queue.isBusy()).toBe(true)
+            expect(queue.isBusy({ignorePipeline: true})).toBe(true)
+            expect(queue.isStopping()).toBe(true)
+
+            release()
+            release()
+            expect(queue.isBusy()).toBe(false)
+            expect(queue.isStopping()).toBe(false)
+        })
+
+        it('drains the queue when the stop is done, not before', async () => {
+            const handler = vi.fn().mockResolvedValue(undefined)
+            queue.registerDrainHandler(handler)
+            queue.enqueue('develop')
+
+            const release = queue.beginStopping()
+            await flush()
+            expect(handler).not.toHaveBeenCalled()
+
+            release()
+            await flush()
+            expect(handler).toHaveBeenCalledTimes(1)
+        })
+
+        it('waitForStartsToSettle resolves at once when nothing is starting', async () => {
+            await expect(queue.waitForStartsToSettle()).resolves.toBeUndefined()
+        })
+
+        it('waitForStartsToSettle waits for every starting claim', async () => {
+            const releaseA = queue.beginStarting()
+            const releaseB = queue.beginStarting()
+            let settled = false
+            queue.waitForStartsToSettle().then(() => (settled = true))
+
+            releaseA()
+            await flush()
+            expect(settled).toBe(false)
+
+            releaseB()
+            await flush()
+            expect(settled).toBe(true)
         })
     })
 

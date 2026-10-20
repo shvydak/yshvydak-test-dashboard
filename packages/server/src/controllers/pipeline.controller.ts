@@ -113,6 +113,28 @@ export class PipelineController {
         }
     }
 
+    // POST /api/pipeline/stop - Stop every active run and remove its results (JWT, see pipeline.routes)
+    stopPipeline = async (req: ServiceRequest, res: Response): Promise<Response> => {
+        try {
+            const reason = req.body?.reason ?? 'manual'
+            // Only the Stop button comes in over HTTP; timeout/restart/replaced are internal callers.
+            if (reason !== 'manual') {
+                return ResponseHelper.badRequest(res, 'Only reason "manual" is accepted')
+            }
+
+            const outcome = await this.pipelineExecutionService.stop('manual')
+            return ResponseHelper.success(res, outcome)
+        } catch (error) {
+            Logger.error('Error stopping the run', error)
+            return ResponseHelper.error(
+                res,
+                error instanceof Error ? error.message : 'Unknown error',
+                'Failed to stop the run',
+                500
+            )
+        }
+    }
+
     // GET /api/pipeline/status/:pipelineRunId - Poll pipeline run state
     getPipelineStatus = async (req: ServiceRequest, res: Response): Promise<Response> => {
         try {
@@ -140,9 +162,10 @@ export class PipelineController {
         try {
             const pipeline = this.pipelineExecutionService.getCurrentPipeline()
             const queue = this.pipelineExecutionService.getQueue()
+            const stopping = this.pipelineExecutionService.isStopping()
 
-            // Queue is a sibling of `data` so the pipeline-state contract stays unchanged.
-            if (!pipeline && queue.length === 0) {
+            // Queue and stopping are siblings of `data` so the pipeline-state contract stays unchanged.
+            if (!pipeline && queue.length === 0 && !stopping) {
                 return ResponseHelper.notFound(res, 'Pipeline run')
             }
 
@@ -150,6 +173,7 @@ export class PipelineController {
                 success: true,
                 data: pipeline,
                 queue,
+                stopping,
                 timestamp: new Date().toISOString(),
             })
         } catch (error) {

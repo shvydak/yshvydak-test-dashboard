@@ -4,12 +4,16 @@ import {SettingsService} from './settings.service'
 import {RunRepository} from '../repositories/run.repository'
 import {WebSocketService, PipelineStepSummary, PipelineFinishStatus} from './websocket.service'
 import {activeProcessesTracker} from './activeProcesses.service'
+import {runProcessRegistry} from './runProcessRegistry.service'
 import {CIRunQueueService, QueuedPipelineRequest} from './ciRunQueue.service'
 import {CINotifierService} from './ciNotifier.service'
 import {config} from '../config/environment.config'
+import {RUN_STOP} from '../config/constants'
 import {Logger} from '../utils/logger.util'
 import {CIPipelineName, DEFAULT_CI_PIPELINE} from '../utils/ciPipeline.util'
 import {parseServiceError} from '../utils/ciRunQueued.util'
+import {RUN_CANCELLED_CODE, StopReason} from '../utils/runStop.util'
+import {killLeftoverPlaywrightGroups} from '../utils/processGroup.util'
 
 const FINISHED_PIPELINES_KEPT = 10
 
@@ -37,8 +41,22 @@ export interface PipelineRunRequest {
     notify?: boolean
 }
 
+export interface StopOutcome {
+    // False when nothing was running.
+    stopped: boolean
+    reason?: StopReason
+    pipelineRunId?: string
+    runIds: string[]
+}
+
+const sleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms))
+
 export class PipelineExecutionService {
     private currentPipeline: PipelineState | null = null
+    private pipelineLoops = new Map<string, Promise<void>>()
+    // Stop generation seen when each pipeline began: a newer one means a Stop was requested since.
+    private startGenerations = new Map<string, number>()
+    private stopInFlight: Promise<StopOutcome> | null = null
     private watchdog: ReturnType<typeof setTimeout> | null = null
     private timedOutPipelineRunIds = new Set<string>()
     private draining = false
@@ -119,6 +137,9 @@ export class PipelineExecutionService {
             throw this.createAlreadyRunningError()
         }
 
+        // Captured with the starting claim (no await since the busy check): a Stop that lands from here on bumps it.
+        const stopGeneration = runProcessRegistry.getStopGeneration()
+
         // Held until currentPipeline exists: the awaits below must not look idle to a second request.
         const releaseStarting = this.ciRunQueue.beginStarting()
         let pipeline: PipelineState
@@ -146,6 +167,7 @@ export class PipelineExecutionService {
                 notify: options.notify === true,
             }
             this.currentPipeline = pipeline
+            this.startGenerations.set(pipeline.pipelineRunId, stopGeneration)
         } finally {
             releaseStarting()
         }
@@ -153,36 +175,215 @@ export class PipelineExecutionService {
         this.startWatchdog(pipeline)
         this.websocketService.broadcastPipelineStarted(pipeline.pipelineRunId, pipeline.steps)
 
-        this.runSteps(pipeline.pipelineRunId, maxWorkers, source).catch((error) => {
+        const loop = this.runSteps(pipeline.pipelineRunId, maxWorkers, source).catch((error) => {
             Logger.error('Pipeline execution failed unexpectedly', error)
             const running = this.getPipeline(pipeline.pipelineRunId)
             if (running?.status === 'running') {
                 this.finish(running, 'stopped_early')
             }
         })
+        this.pipelineLoops.set(pipeline.pipelineRunId, loop)
 
         return pipeline
     }
 
-    // Server start: a leftover in-flight marker means the previous process died mid-run.
+    // Startup, before anything runs: kills the marker's leftover groups and deletes the marker's runIds only (old stuck `running` rows are history).
     async handleInterruptedOnStartup(): Promise<void> {
         try {
             const marker = await this.settingsService.getInFlightPipeline()
-            if (!marker) return
+            const runMarker = await this.settingsService.getInFlightRun()
+            if (!marker && !runMarker) return
 
-            Logger.warn(
-                `CI pipeline "${marker.pipeline}" was interrupted by a restart (started ${marker.startedAt})`
-            )
-            await this.settingsService.clearInFlightPipeline()
+            const killed = await killLeftoverPlaywrightGroups([
+                ...(marker?.pgids ?? []).map((pgid) => ({
+                    pgid,
+                    markerWrittenAt: marker?.writtenAt,
+                })),
+                ...(runMarker?.pgid
+                    ? [{pgid: runMarker.pgid, markerWrittenAt: runMarker.startedAt}]
+                    : []),
+            ])
+            if (killed.length > 0) {
+                Logger.warn(`Killed leftover Playwright process group(s): ${killed.join(', ')}`)
+            }
 
-            if (marker.notify) {
-                this.ciNotifier
-                    .notifyInterrupted(marker.pipeline, marker.projects)
-                    .catch((error) => Logger.error('Interrupted-run notification failed', error))
+            if (marker) {
+                Logger.warn(
+                    `CI pipeline "${marker.pipeline}" was interrupted by a restart (started ${marker.startedAt})`
+                )
+                await this.discardInterrupted(
+                    marker.runIds,
+                    marker.projects.map((project) => ({project, since: marker.startedAt}))
+                )
+                await this.settingsService.clearInFlightPipeline()
+
+                if (marker.notify) {
+                    this.ciNotifier
+                        .notifyInterrupted(marker.pipeline, marker.projects)
+                        .catch((error) =>
+                            Logger.error('Interrupted-run notification failed', error)
+                        )
+                }
+            }
+
+            if (runMarker) {
+                Logger.warn(`Run ${runMarker.runId} was interrupted by a restart`)
+                // Whatever status the killed run reached (its reporter may have marked it failed), it was cut short.
+                await this.discardInterrupted(
+                    [runMarker.runId],
+                    runMarker.pendingSince
+                        ? [
+                              {
+                                  project: runMarker.project ?? undefined,
+                                  since: runMarker.pendingSince,
+                              },
+                          ]
+                        : []
+                )
+                await this.settingsService.clearInFlightRun()
             }
         } catch (error) {
-            Logger.error('Failed to process the in-flight pipeline marker', error)
+            Logger.error('Failed to process the in-flight run markers', error)
         }
+    }
+
+    private async discardInterrupted(
+        runIds: string[],
+        scopes: Array<{project?: string; since: string}>
+    ): Promise<void> {
+        try {
+            await this.testService.discardRuns(runIds, scopes)
+        } catch (error) {
+            Logger.error('Failed to delete the data of the interrupted run', error)
+        }
+    }
+
+    isStopping(): boolean {
+        return this.stopInFlight !== null
+    }
+
+    // Stops everything active and deletes what it wrote; resolves after cleanup, a second call joins the first.
+    async stop(reason: StopReason): Promise<StopOutcome> {
+        if (this.stopInFlight) return this.stopInFlight
+        if (!this.ciRunQueue.isBusy()) return {stopped: false, runIds: []}
+
+        // performStop runs synchronously up to its first await: flags are set before anyone else runs.
+        this.stopInFlight = this.performStop(reason).finally(() => {
+            this.stopInFlight = null
+        })
+        return this.stopInFlight
+    }
+
+    // Stop order: cancel flags -> signal -> wait for close + late reporter posts -> delete -> end the pipeline.
+    private async performStop(reason: StopReason): Promise<StopOutcome> {
+        // Busy (and so no new start) until cleanup is done; releasing it drains the queue.
+        const releaseStopping = this.ciRunQueue.beginStopping()
+        try {
+            runProcessRegistry.beginStop()
+            const live = runProcessRegistry.getRuns()
+            runProcessRegistry.markCancelled([
+                ...live.map((r) => r.runId),
+                ...this.stepRunIds(this.runningPipeline()),
+            ])
+            this.websocketService.broadcastRunStopping(reason)
+            Logger.warn(`Stopping the active run(s), reason: ${reason}`)
+
+            const closed = live.map((r) => runProcessRegistry.terminate(r.runId))
+
+            // Starts still in discovery/lookups notice the new generation and unwind without spawning.
+            await this.ciRunQueue.waitForStartsToSettle()
+
+            const pipeline = this.runningPipeline()
+            const loop = pipeline ? this.pipelineLoops.get(pipeline.pipelineRunId) : undefined
+            await Promise.all([...closed, loop])
+            await sleep(RUN_STOP.LATE_POSTS_GRACE_MS)
+
+            const pipelineRunIds = this.stepRunIds(pipeline)
+            const standalone = live.filter((r) => !pipelineRunIds.includes(r.runId))
+            const runIds = [...new Set([...pipelineRunIds, ...live.map((r) => r.runId)])]
+            runProcessRegistry.markCancelled(runIds)
+
+            const discoveryScopes = [
+                ...(pipeline
+                    ? pipeline.steps.map((s) => ({project: s.project, since: pipeline.startedAt}))
+                    : []),
+                ...standalone.flatMap((r) =>
+                    r.pendingSince ? [{project: r.project, since: r.pendingSince}] : []
+                ),
+            ]
+            // A failed delete must still end the pipeline and free the dashboard; the error is rethrown below (HTTP 500).
+            let cleanupError: unknown
+            try {
+                await this.testService.discardRuns(runIds, discoveryScopes)
+                await this.testService.clearRunMarker()
+            } catch (error) {
+                cleanupError = error
+                Logger.error(
+                    `STOP CLEANUP FAILED: the stopped run(s) may still have rows or files; delete them by hand (run ids: ${runIds.join(', ') || 'none'})`,
+                    error
+                )
+            }
+            for (const runId of runIds) {
+                // A late reporter post must not leave a ghost "running" entry behind.
+                if (activeProcessesTracker.isProcessRunning(runId)) {
+                    activeProcessesTracker.removeProcess(runId)
+                }
+            }
+
+            if (pipeline) this.finishCancelled(pipeline, reason)
+            this.websocketService.broadcastRunCancelled(runIds, reason, pipeline?.pipelineRunId)
+
+            if (cleanupError) throw cleanupError
+            return {stopped: true, reason, pipelineRunId: pipeline?.pipelineRunId, runIds}
+        } catch (error) {
+            Logger.error('Stop failed', error)
+            throw error
+        } finally {
+            releaseStopping()
+        }
+    }
+
+    // The pipeline's results are gone, so its steps read as never run.
+    private finishCancelled(pipeline: PipelineState, reason: StopReason): void {
+        for (const step of pipeline.steps) {
+            step.status = 'skipped'
+            delete step.runId
+            delete step.passed
+            delete step.failed
+        }
+        this.finish(pipeline, 'cancelled', reason)
+    }
+
+    // A timeout was already announced by the watchdog; a restart is announced at startup.
+    private notifyCancelled(pipeline: PipelineState, reason?: StopReason): void {
+        const projects = pipeline.steps.map((s) => s.project)
+        if (reason === 'manual') {
+            this.ciNotifier
+                .notifyStopped(pipeline.pipeline, projects)
+                .catch((error) => Logger.error('Stopped notification failed', error))
+        } else if (reason === 'replaced') {
+            this.ciNotifier
+                .notifyReplaced(pipeline.pipeline, projects)
+                .catch((error) => Logger.error('Replaced notification failed', error))
+        }
+    }
+
+    private runningPipeline(): PipelineState | null {
+        return this.currentPipeline?.status === 'running' ? this.currentPipeline : null
+    }
+
+    private stepRunIds(pipeline: PipelineState | null): string[] {
+        return pipeline ? pipeline.steps.flatMap((s) => (s.runId ? [s.runId] : [])) : []
+    }
+
+    // True once a Stop was requested after this pipeline began, or the server is shutting down.
+    private shouldHalt(pipeline: PipelineState): boolean {
+        if (runProcessRegistry.isShuttingDown()) return true
+        const startGeneration = this.startGenerations.get(pipeline.pipelineRunId)
+        return (
+            startGeneration !== undefined &&
+            runProcessRegistry.getStopGeneration() !== startGeneration
+        )
     }
 
     private async runSteps(
@@ -196,12 +397,17 @@ export class PipelineExecutionService {
         await this.persistMarker(pipeline)
 
         for (const step of pipeline.steps) {
+            // A Stop (or shutdown) owns the ending from here: this loop only has to stop spawning.
+            if (this.shouldHalt(pipeline)) return
+
             // Between steps only: the running step always finishes; its results stay.
             if (await this.isAutoRunPaused(source)) {
+                if (this.shouldHalt(pipeline)) return
                 this.skipRemaining(pipeline, step)
                 this.finish(pipeline, 'paused')
                 return
             }
+            if (this.shouldHalt(pipeline)) return
 
             step.status = 'running'
 
@@ -215,7 +421,9 @@ export class PipelineExecutionService {
                     {pipelineStep: true}
                 )
             } catch (error) {
-                if (parseServiceError(error).code === 'CI_AUTORUN_PAUSED') {
+                const errorCode = parseServiceError(error).code
+                if (errorCode === RUN_CANCELLED_CODE || this.shouldHalt(pipeline)) return
+                if (errorCode === 'CI_AUTORUN_PAUSED') {
                     // Paused between our check and the spawn: not a failure of this step.
                     step.status = 'queued'
                     this.skipRemaining(pipeline, step)
@@ -241,6 +449,9 @@ export class PipelineExecutionService {
             )
 
             await closed
+
+            // Stopped (or shutting down) while this step ran: its results are deleted, not read.
+            if (this.shouldHalt(pipeline)) return
 
             const run = await this.runRepository.getTestRun(result.runId)
             const passed = run?.passedTests ?? 0
@@ -321,7 +532,15 @@ export class PipelineExecutionService {
         }
     }
 
-    private finish(pipeline: PipelineState, status: PipelineFinishStatus): void {
+    private finish(
+        pipeline: PipelineState,
+        status: PipelineFinishStatus,
+        stopReason?: StopReason
+    ): void {
+        if (pipeline.status !== 'running') return
+        // A Stop in progress ends the pipeline itself (as 'cancelled', after cleanup).
+        if (status !== 'cancelled' && this.shouldHalt(pipeline)) return
+
         pipeline.status = status
         this.clearWatchdog()
         this.rememberFinished(pipeline)
@@ -335,7 +554,9 @@ export class PipelineExecutionService {
             // The Slack message, marker clear and queue drain must not depend on the UI broadcast.
             Logger.error('Pipeline completion broadcast failed', error)
         }
-        this.finalize(pipeline, status).catch((error) =>
+        this.startGenerations.delete(pipeline.pipelineRunId)
+        this.pipelineLoops.delete(pipeline.pipelineRunId)
+        this.finalize(pipeline, status, stopReason).catch((error) =>
             Logger.error('Pipeline finalization failed', error)
         )
     }
@@ -348,12 +569,20 @@ export class PipelineExecutionService {
         }
     }
 
-    private async finalize(pipeline: PipelineState, status: PipelineFinishStatus): Promise<void> {
+    private async finalize(
+        pipeline: PipelineState,
+        status: PipelineFinishStatus,
+        stopReason?: StopReason
+    ): Promise<void> {
         const timedOut = this.timedOutPipelineRunIds.delete(pipeline.pipelineRunId)
-        if (pipeline.notify && !timedOut) {
-            this.ciNotifier
-                .notifyResult(pipeline.pipeline, status, pipeline.steps)
-                .catch((error) => Logger.error('Result notification failed', error))
+        if (pipeline.notify) {
+            if (status === 'cancelled') {
+                this.notifyCancelled(pipeline, stopReason)
+            } else if (!timedOut) {
+                this.ciNotifier
+                    .notifyResult(pipeline.pipeline, status, pipeline.steps)
+                    .catch((error) => Logger.error('Result notification failed', error))
+            }
         }
 
         // Cleared before the drain: the next pipeline writes its own marker on start.
@@ -375,13 +604,15 @@ export class PipelineExecutionService {
                 startedAt: pipeline.startedAt,
                 runIds: pipeline.steps.flatMap((s) => (s.runId ? [s.runId] : [])),
                 projects: pipeline.steps.map((s) => s.project),
+                pgids: runProcessRegistry.getPgids(),
+                writtenAt: new Date().toISOString(),
             })
         } catch (error) {
             Logger.error('Failed to persist the in-flight pipeline marker', error)
         }
     }
 
-    // Reports only — nothing is killed; the pipeline keeps waiting for the real end.
+    // Posts the timeout once, then stops the pipeline (reason timeout) so a hung Playwright frees the dashboard.
     private startWatchdog(pipeline: PipelineState): void {
         if (!pipeline.notify) return
 
@@ -400,6 +631,8 @@ export class PipelineExecutionService {
                     running.steps.map((s) => s.project)
                 )
                 .catch((error) => Logger.error('Timeout notification failed', error))
+
+            this.stop('timeout').catch((error) => Logger.error('Stop after timeout failed', error))
         }, timeoutMs)
         this.watchdog.unref?.()
     }

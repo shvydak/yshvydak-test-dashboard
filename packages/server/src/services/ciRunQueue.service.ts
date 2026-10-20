@@ -1,4 +1,4 @@
-import {activeProcessesTracker} from './activeProcesses.service'
+import {runProcessRegistry} from './runProcessRegistry.service'
 import {WebSocketService} from './websocket.service'
 import {CI_PIPELINE_DRAIN_ORDER, CIPipelineName} from '../utils/ciPipeline.util'
 import {createCIRunQueuedError} from '../utils/ciRunQueued.util'
@@ -10,9 +10,11 @@ export interface QueuedPipelineRequest {
     queuedAt: string
 }
 
-// Single owner of "busy" (tracked process, running pipeline, run still starting) and of the per-pipeline CI queue.
+// Single owner of "busy" (live child process, running pipeline, run still starting, stop in progress) and of the per-pipeline CI queue.
 export class CIRunQueueService {
     private startingCount = 0
+    private stoppingCount = 0
+    private startSettledWaiters: Array<() => void> = []
     private slots = new Map<CIPipelineName, QueuedPipelineRequest>()
     private pipelineRunningProvider: () => boolean = () => false
     private drainHandler: (() => Promise<void>) | null = null
@@ -30,9 +32,10 @@ export class CIRunQueueService {
     // ignorePipeline: a pipeline's own step must not see its own running flag.
     isBusy(options: {ignorePipeline?: boolean} = {}): boolean {
         return (
-            activeProcessesTracker.isAnyProcessRunning() ||
+            runProcessRegistry.isAnyRunning() ||
             (!options.ignorePipeline && this.pipelineRunningProvider()) ||
-            this.startingCount > 0
+            this.startingCount > 0 ||
+            this.stoppingCount > 0
         )
     }
 
@@ -44,9 +47,34 @@ export class CIRunQueueService {
             if (released) return
             released = true
             this.startingCount--
-            // A failed start (no process ever closes) would leave a queued request waiting forever.
-            if (this.startingCount === 0) setImmediate(() => this.requestDrain())
+            if (this.startingCount === 0) {
+                this.startSettledWaiters.splice(0).forEach((resolve) => resolve())
+                // A failed start (no process ever closes) would leave a queued request waiting forever.
+                setImmediate(() => this.requestDrain())
+            }
         }
+    }
+
+    /** Marks a stop as in progress: the dashboard stays busy until cleanup is done, then drains. */
+    beginStopping(): () => void {
+        this.stoppingCount++
+        let released = false
+        return () => {
+            if (released) return
+            released = true
+            this.stoppingCount--
+            if (this.stoppingCount === 0) setImmediate(() => this.requestDrain())
+        }
+    }
+
+    isStopping(): boolean {
+        return this.stoppingCount > 0
+    }
+
+    /** Resolves once no run is in its starting phase (a Stop waits for those to notice it and unwind). */
+    waitForStartsToSettle(): Promise<void> {
+        if (this.startingCount === 0) return Promise.resolve()
+        return new Promise((resolve) => this.startSettledWaiters.push(resolve))
     }
 
     hasQueued(): boolean {

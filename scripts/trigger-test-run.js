@@ -8,13 +8,14 @@
  * from external automation systems like GitHub Actions or n8n.
  *
  * Features:
- * - Automatic authentication (if ENABLE_AUTH=true)
+ * - Automatic authentication (if ENABLE_AUTH=true; the run endpoint needs the JWT, the auth-off dashboard needs none)
  * - Health check before execution
  * - Real-time status monitoring across all pipeline steps (--wait)
  * - JSON output for CI/n8n integration
  * - Error handling and retries
  *
  * Without --wait it sends notify:true: the dashboard queues the request when busy (HTTP 202) and posts the Slack result.
+ * If the same pipeline's own notify run is active, the dashboard stops it first (newer deploy wins) and the new request waits for the drain.
  *
  * Usage:
  *   node scripts/trigger-test-run.js [options]
@@ -181,6 +182,7 @@ async function makeRequest(url, options = {}) {
                 data.message || `HTTP ${response.status}: ${response.statusText}`
             )
             error.data = data
+            error.status = response.status
             throw error
         }
 
@@ -286,6 +288,11 @@ async function triggerTestRun(baseUrl, token, maxWorkers, pipeline) {
             }
             printPipelineResult('paused', {message: 'CI auto-run is paused', resumeAt})
             process.exit(2)
+        }
+
+        // The run endpoint needs a JWT when ENABLE_AUTH is on (it can stop a running CI run).
+        if (error.status === 401) {
+            exitWithError(`Dashboard rejected the login token: ${error.message}`, 4, 'auth_failed')
         }
 
         if (error.data?.code === 'PIPELINE_EMPTY') {

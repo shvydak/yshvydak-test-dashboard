@@ -600,7 +600,8 @@ describe('PipelineExecutionService', () => {
 
         it('starts the production slot before the develop slot when a pipeline finishes', async () => {
             const procs = stubRuns()
-            await service.startPipeline(undefined, 'script', 'develop', {notify: true})
+            // No notify: a notify run of the same pipeline would be replaced, not waited for.
+            await service.startPipeline(undefined, 'script', 'develop')
             await flushPromises()
 
             await service.requestPipelineRun({source: 'script', notify: true, pipeline: 'develop'})
@@ -728,7 +729,7 @@ describe('PipelineExecutionService', () => {
 
         it('keeps draining after a dropped request', async () => {
             const procs = stubRuns()
-            await service.startPipeline(undefined, 'script', 'develop', {notify: true})
+            await service.startPipeline(undefined, 'script', 'develop')
             await flushPromises()
             await service.requestPipelineRun({
                 source: 'script',

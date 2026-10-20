@@ -574,6 +574,116 @@ describe('Stop a run (Integration)', () => {
         })
     })
 
+    describe('POST /api/pipeline/run (replace + JWT)', () => {
+        let notifyReplaced: MockInstance<any>
+
+        beforeEach(() => {
+            notifyReplaced = vi.spyOn(CINotifierService.prototype, 'notifyReplaced')
+            notifyReplaced.mockResolvedValue(undefined)
+        })
+
+        afterEach(async () => {
+            process.env.ENABLE_AUTH = 'true'
+            // A queued request starts when the run ends: close children until the dashboard is idle again.
+            const pipelines = server.serviceContainer.pipelineExecutionService
+            const settled = () =>
+                pipelines.getQueue().length === 0 &&
+                pipelines.getCurrentPipeline()?.status !== 'running' &&
+                !pipelines.isStopping()
+            for (let i = 0; i < 20 && !settled(); i++) {
+                Object.values(children).forEach((child) => child.emit('close', 0))
+                await new Promise((resolve) => setTimeout(resolve, 20))
+            }
+        })
+
+        it('a newer script+notify request stops the running CI run, deletes its results, and starts on the drain', async () => {
+            fakePlaywright({API: ['t1'], WEB: ['t3']})
+            await api()
+                .post('/api/pipeline/run')
+                .send({pipeline: 'develop', source: 'script', notify: true})
+                .expect(200)
+            await waitFor(() => spawned.length === 1)
+            const oldRun = spawned[0]
+            await reporter.processStart(oldRun).expect(200)
+            await reporter.testStart(oldRun, 'test-t1').expect(200)
+            await reporter.result(oldRun, 'new-t1', 'test-t1', 'API', 'failed').expect(200)
+
+            const second = await api()
+                .post('/api/pipeline/run')
+                .send({pipeline: 'develop', source: 'script', notify: true})
+                .expect(202)
+
+            expect(second.body.data).toEqual({status: 'queued', pipeline: 'develop'})
+            // The new pipeline starts once the old one is cleaned up.
+            await waitFor(() => spawned.length === 2)
+            expect(children[oldRun].kill).toHaveBeenCalledWith('SIGINT')
+            expect(
+                await db().queryAll('SELECT id FROM test_results WHERE run_id = ?', [oldRun])
+            ).toEqual([])
+            expect(await db().queryAll('SELECT id FROM test_runs WHERE id = ?', [oldRun])).toEqual(
+                []
+            )
+            expect(notifyReplaced).toHaveBeenCalledTimes(1)
+            expect(notifyStopped).not.toHaveBeenCalled()
+            expect(notifyResult).not.toHaveBeenCalled()
+
+            const current = await api().get('/api/pipeline/status/current').expect(200)
+            expect(current.body.data).toMatchObject({status: 'running', pipeline: 'develop'})
+            expect(current.body.queue).toEqual([])
+        })
+
+        it('a --wait caller (no notify) is not replaced: it queues and the 409 rule is unchanged for non-script callers', async () => {
+            fakePlaywright({API: ['t1'], WEB: ['t3']})
+            await api()
+                .post('/api/pipeline/run')
+                .send({pipeline: 'develop', source: 'script'})
+                .expect(200)
+            await waitFor(() => spawned.length === 1)
+
+            await api()
+                .post('/api/pipeline/run')
+                .send({pipeline: 'develop', source: 'script', notify: true})
+                .expect(202)
+            await api().post('/api/pipeline/run').send({pipeline: 'develop'}).expect(409)
+
+            expect(children[spawned[0]].kill).not.toHaveBeenCalled()
+            expect(notifyReplaced).not.toHaveBeenCalled()
+        })
+
+        it('requires a JWT: 401 without a token and with a bad one, and nothing is stopped or started', async () => {
+            fakePlaywright({API: ['t1'], WEB: ['t3']})
+            await api()
+                .post('/api/pipeline/run')
+                .send({pipeline: 'develop', source: 'script', notify: true})
+                .expect(200)
+            await waitFor(() => spawned.length === 1)
+            const body = {pipeline: 'develop', source: 'script', notify: true}
+
+            await request(server.app).post('/api/pipeline/run').send(body).expect(401)
+            await request(server.app)
+                .post('/api/pipeline/run')
+                .set('Authorization', 'Bearer not-a-token')
+                .send(body)
+                .expect(401)
+
+            expect(children[spawned[0]].kill).not.toHaveBeenCalled()
+            expect(server.serviceContainer.pipelineExecutionService.getQueue()).toEqual([])
+            expect(notifyReplaced).not.toHaveBeenCalled()
+        })
+
+        it('with authentication disabled the endpoint stays open (local use), unlike /pipeline/stop', async () => {
+            process.env.ENABLE_AUTH = 'false'
+            expect(config.auth.enableAuth).toBe(false)
+            fakePlaywright({API: ['t1'], WEB: ['t3']})
+
+            await request(server.app)
+                .post('/api/pipeline/run')
+                .send({pipeline: 'develop', source: 'script'})
+                .expect(200)
+            await waitFor(() => spawned.length === 1)
+        })
+    })
+
     describe('restart cleanup', () => {
         it('deletes the marker runs only; old stuck "running" rows with history are left alone', async () => {
             // History: an old run stuck in "running" with results (like the local dev database).

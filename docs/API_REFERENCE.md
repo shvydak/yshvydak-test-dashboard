@@ -1642,11 +1642,11 @@ Triggers an immediate sync (same logic as the 30-minute background job): discove
 
 ## CI Pipelines
 
-Named pipelines (`develop`, `production`) are ordered lists of project tabs (Settings > Project Tabs). No auth middleware on `/api/pipeline/*` except `POST /api/pipeline/stop` (JWT).
+Named pipelines (`develop`, `production`) are ordered lists of project tabs (Settings > Project Tabs). Auth: `POST /api/pipeline/run` needs a JWT when `ENABLE_AUTH=true` (401 without one) and is open when auth is off; `POST /api/pipeline/stop` always needs a JWT (403 when auth is off); the `GET` status endpoints have no auth middleware.
 
 ### POST /api/pipeline/run
 
-Starts a pipeline; the steps run in the background, one tab after another.
+Starts a pipeline; the steps run in the background, one tab after another. It can also stop a running CI run (see **Replace**), so it needs the JWT (`Authorization: Bearer <token>`) when `ENABLE_AUTH=true`: 401 without or with a bad token. With auth off it stays open — unlike `/api/settings/*` and `/api/pipeline/stop`, which answer 403 then — so local runs and the trigger script work without a login. `scripts/trigger-test-run.js` logs in and sends the Bearer whenever its `.env` has `ENABLE_AUTH=true`, and exits 4 (`auth_failed`) on a 401.
 
 **Request Body:**
 
@@ -1666,13 +1666,16 @@ Starts a pipeline; the steps run in the background, one tab after another.
 | Status | Body                                                                     | When                                                                                                    |
 | ------ | ------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------- |
 | 200    | `{"success": true, "data": <pipeline state>}`                            | started                                                                                                 |
-| 202    | `{"success": true, "data": {"status": "queued", "pipeline": "develop"}}` | `source: "script"` + `notify: true` while busy; not started yet                                         |
+| 202    | `{"success": true, "data": {"status": "queued", "pipeline": "develop"}}` | `source: "script"` + `notify: true` while busy; not started yet (also when it replaces a running run)   |
+| 401    | auth middleware message                                                  | `ENABLE_AUTH=true` and no / invalid JWT                                                                 |
 | 400    | `PIPELINE_EMPTY` / unknown pipeline                                      | no tab assigned to the pipeline (also checked at request time before queueing)                          |
 | 409    | `TESTS_ALREADY_RUNNING` (`currentRunId`, `startedAt`)                    | busy and the request is not script+notify (`--wait` callers keep polling)                               |
 | 409    | `CI_RUN_QUEUED`                                                          | a manual (non-`script`) start while a CI request waits in the queue; also `run-all`, `run-group`, rerun |
 | 423    | `CI_AUTORUN_PAUSED` (`resumeAt`)                                         | `source: "script"` while auto-run is paused                                                             |
 
 **Busy** = a live Playwright child process (the server's own runId → process map, not the progress tracker), a pipeline running (including the gap between its steps), a run still starting (discovery before spawn), or a stop still cleaning up.
+
+**Replace:** a `source: "script"` + `notify: true` request for pipeline X while a CI run of X is active — a pipeline X that is running or still starting, itself started with `source: "script"` + `notify: true` — stops that run (reason `replaced`: kill, delete everything it wrote, pipeline `cancelled`; see `POST /api/pipeline/stop`) and puts the new request into X's slot; the answer is the usual 202 `queued` and it starts on the normal drain (a queued production request still goes first). Slack for the stopped run: `⏹️ Cancelled by a newer deploy — a new run has started`. Not replaced, queued as before: a run without `notify` (`--wait`), a manually started pipeline or run, another pipeline name. A stop already in progress (Stop button, watchdog, an earlier replace) is not repeated or re-announced — the request just fills or replaces the slot, so a burst of requests causes one stop and the newest wins. A paused auto-run or an empty pipeline refuses the request (423 / 400) before anything is stopped.
 
 **Queue:** one in-memory slot per pipeline name, the newest request replaces the queued one; lost on server restart. The queue drains when a non-pipeline run's process closes, when a pipeline finishes, when the last start claim is released without a process (a failed start), and after `POST /api/tests/force-reset` (never between steps, never on the reporter's `process-end`), production slot first, then develop. At drain the pause and the pipeline's tabs are checked again; a request that can no longer start is dropped and, as it always has `notify`, posts `⏸️ Auto-run is paused — tests were not started` or `❌ Did not start (pipeline_empty)`.
 
@@ -1713,7 +1716,7 @@ Starts a pipeline; the steps run in the background, one tab after another.
 | dashboard restarted mid-run      | `⚠️ Test run was interrupted — the dashboard restarted`  | pipeline link                                                                                                     |
 | auto-run paused mid-pipeline     | `⏸️ Paused — remaining steps were skipped`               | pipeline link                                                                                                     |
 | stopped with the Stop button     | `⏹️ Stopped manually — no result for this run`           | pipeline link                                                                                                     |
-| replaced by a newer deploy       | `⏹️ Cancelled by a newer deploy — a new run has started` | pipeline link (reason `replaced`; no caller yet)                                                                  |
+| replaced by a newer deploy       | `⏹️ Cancelled by a newer deploy — a new run has started` | pipeline link (reason `replaced`, see **Replace**)                                                                |
 
 Tab names are display names, URLs use the project slug. A failed webhook POST is logged and never reaches the pipeline.
 

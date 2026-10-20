@@ -8,7 +8,8 @@ export function createPipelineRoutes(container: ServiceContainer): Router {
     const pipelineController = new PipelineController(container.pipelineExecutionService)
     const authMiddleware = createAuthMiddleware(container.authService)
 
-    router.post('/run', pipelineController.runPipeline)
+    // Can stop a running CI run (replace): JWT when ENABLE_AUTH is on, open when off (local use, scripts)
+    router.post('/run', authMiddleware, pipelineController.runPipeline)
     // Destructive: signed-in users only, like /settings/* (403 when ENABLE_AUTH is off)
     router.post('/stop', authMiddleware, requireJWT(), pipelineController.stopPipeline)
     // Specific route must come before the parameterized one below

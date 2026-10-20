@@ -60,6 +60,8 @@ export class PipelineExecutionService {
     private watchdog: ReturnType<typeof setTimeout> | null = null
     private timedOutPipelineRunIds = new Set<string>()
     private draining = false
+    // The pipeline whose start claim is open (before currentPipeline exists): a newer deploy can still replace it.
+    private startingPipeline: Pick<PipelineState, 'pipeline' | 'source' | 'notify'> | null = null
     // A queued pipeline can start the moment the previous one finishes; --wait pollers still need the final state.
     private finishedPipelines = new Map<string, PipelineState>()
 
@@ -91,6 +93,7 @@ export class PipelineExecutionService {
     }
 
     // Entry for POST /api/pipeline/run: only script+notify requests queue while busy, the rest keep the 409.
+    // A script+notify request for a pipeline whose own CI run (also notify) is active replaces that run.
     async requestPipelineRun(request: PipelineRunRequest): Promise<PipelineRunRequestResult> {
         const pipelineName = request.pipeline ?? DEFAULT_CI_PIPELINE
 
@@ -100,6 +103,8 @@ export class PipelineExecutionService {
 
             // Re-check with no await before enqueue: the run may have ended during the checks above.
             if (this.ciRunQueue.isBusy()) {
+                // No await from here: the stop's flags are set before anything else runs, and it keeps the dashboard busy until the drain.
+                this.replaceActiveRun(pipelineName)
                 this.ciRunQueue.enqueue(pipelineName, request.maxWorkers)
                 return {status: 'queued', pipeline: pipelineName}
             }
@@ -114,6 +119,20 @@ export class PipelineExecutionService {
             }
         )
         return {status: 'started', pipeline}
+    }
+
+    // Stops the same pipeline's active CI run (newer deploy). A stop already in flight is left alone: it ends the run and posts its own line.
+    private replaceActiveRun(pipelineName: CIPipelineName): void {
+        if (this.stopInFlight) return
+
+        const active = this.runningPipeline() ?? this.startingPipeline
+        if (!active || active.pipeline !== pipelineName) return
+        if (active.source !== 'script' || !active.notify) return
+
+        Logger.info(`CI pipeline "${pipelineName}" is replaced by a newer request`)
+        this.stop('replaced').catch((error) =>
+            Logger.error('Stop of the replaced CI run failed', error)
+        )
     }
 
     // Returns the initial state at once; steps run sequentially in the background.
@@ -142,6 +161,11 @@ export class PipelineExecutionService {
 
         // Held until currentPipeline exists: the awaits below must not look idle to a second request.
         const releaseStarting = this.ciRunQueue.beginStarting()
+        this.startingPipeline = {
+            pipeline: pipelineName,
+            source,
+            notify: options.notify === true,
+        }
         let pipeline: PipelineState
         try {
             const configuredSteps = await this.settingsService.getPipelineSteps(pipelineName)
@@ -169,6 +193,7 @@ export class PipelineExecutionService {
             this.currentPipeline = pipeline
             this.startGenerations.set(pipeline.pipelineRunId, stopGeneration)
         } finally {
+            this.startingPipeline = null
             releaseStarting()
         }
 
@@ -619,7 +644,8 @@ export class PipelineExecutionService {
         const timeoutMs = config.ci.pipelineTimeoutMinutes * 60 * 1000
         this.watchdog = setTimeout(() => {
             const running = this.getPipeline(pipeline.pipelineRunId)
-            if (!running || running.status !== 'running') return
+            // A stop already ends the pipeline (e.g. a newer deploy replacing it): "did not report completion" would be untrue.
+            if (!running || running.status !== 'running' || this.stopInFlight) return
 
             Logger.warn(
                 `CI pipeline "${running.pipeline}" exceeded ${config.ci.pipelineTimeoutMinutes} min`

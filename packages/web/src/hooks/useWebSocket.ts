@@ -29,6 +29,7 @@ export function useWebSocket(url: string | null, options?: WebSocketOptions) {
         setRunningAllTests,
         updateProgress,
         clearProgress,
+        resetRunState,
     } = useTestsStore()
     const reconnectTimeoutRef = useRef<NodeJS.Timeout>()
     const reconnectAttempts = useRef(0)
@@ -238,6 +239,24 @@ export function useWebSocket(url: string | null, options?: WebSocketOptions) {
                 }
                 break
 
+            case 'run:stopping':
+                options?.onPipelineEvent?.(message.type, message.data)
+                break
+
+            case 'run:cancelled':
+                // The stopped run's data is gone: every test shows its previous result again.
+                queryClient.invalidateQueries({queryKey: ['tests']})
+                queryClient.invalidateQueries({queryKey: ['runs']})
+                queryClient.invalidateQueries({queryKey: ['dashboard-stats']})
+                queryClient.invalidateQueries({queryKey: ['project-status-summary']})
+                queryClient.invalidateQueries({queryKey: ['test-status-counts']})
+                resetRunState()
+                fetchTests()
+                fetchRuns()
+                options?.onPipelineEvent?.(message.type, message.data)
+                options?.onRunStatusEvent?.(message.type, message.data)
+                break
+
             case 'connection':
                 break
 
@@ -267,6 +286,7 @@ export function useWebSocket(url: string | null, options?: WebSocketOptions) {
             case 'pipeline:step-started':
             case 'pipeline:step-completed':
             case 'pipeline:completed':
+            case 'pipeline:queue-changed':
                 options?.onPipelineEvent?.(message.type, message.data)
                 break
 

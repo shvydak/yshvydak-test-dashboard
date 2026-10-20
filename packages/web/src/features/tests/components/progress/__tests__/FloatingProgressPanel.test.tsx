@@ -20,6 +20,7 @@ import {render, screen, fireEvent} from '@testing-library/react'
 import {FloatingProgressPanel} from '../FloatingProgressPanel'
 import {useTestsStore} from '@features/tests/store/testsStore'
 import type {TestProgress} from '@yshvydak/core'
+import {TestDetailModal} from '@features/tests/components/testDetail/TestDetailModal'
 
 // Mock the store
 vi.mock('@features/tests/store/testsStore', () => ({
@@ -429,6 +430,84 @@ describe('FloatingProgressPanel', () => {
 
             // Should not crash
             expect(container).toBeInTheDocument()
+        })
+    })
+
+    describe('FloatingProgressPanel stacking and stopping', () => {
+        const progress = (): TestProgress => ({
+            processId: 'run-1',
+            type: 'run-all',
+            totalTests: 10,
+            completedTests: 5,
+            passedTests: 5,
+            failedTests: 0,
+            skippedTests: 0,
+            runningTests: [],
+            startTime: Date.now() - 26_000,
+        })
+
+        const mockStore = (extra: Record<string, unknown> = {}) =>
+            vi.mocked(useTestsStore).mockReturnValue({
+                activeProgress: progress(),
+                clearProgress: vi.fn(),
+                tests: [],
+                ...extra,
+            } as any)
+
+        it('sits below the dialogs (z-30): the confirm dialog and Settings (z-50) stay above it', () => {
+            mockStore()
+            render(<FloatingProgressPanel />)
+
+            const panel = screen.getByText('Running Tests').closest('.fixed') as HTMLElement
+            expect(panel.className).toContain('z-30')
+            expect(panel.className).not.toMatch(/\bz-50\b/)
+        })
+
+        it('the minimized pill sits below the dialogs too', () => {
+            mockStore()
+            render(<FloatingProgressPanel />)
+            fireEvent.click(screen.getByLabelText('Minimize'))
+
+            expect(screen.getByLabelText('Expand progress panel').className).toContain('z-30')
+        })
+
+        it('renders the test detail modal outside the panel, so its own z-index is not capped by the panel', () => {
+            vi.mocked(TestDetailModal).mockImplementation((() => (
+                <div data-testid="detail-modal" />
+            )) as any)
+            mockStore()
+            render(<FloatingProgressPanel />)
+
+            const panel = screen.getByText('Running Tests').closest('.fixed') as HTMLElement
+            expect(screen.getByTestId('detail-modal')).toBeInTheDocument()
+            expect(panel.contains(screen.getByTestId('detail-modal'))).toBe(false)
+        })
+
+        it('shows "Stopping..." instead of the elapsed time while a stop cleans up', () => {
+            mockStore({ciStopping: true})
+            render(<FloatingProgressPanel />)
+
+            expect(screen.getByText('Stopping...')).toBeInTheDocument()
+            expect(screen.queryByText('Running Tests')).toBeNull()
+            expect(screen.queryByText('Elapsed:')).toBeNull()
+            expect(screen.getByText(/removing its results/i)).toBeInTheDocument()
+        })
+
+        it('the minimized pill says "Stopping..." as well', () => {
+            mockStore({ciStopping: true})
+            render(<FloatingProgressPanel />)
+            fireEvent.click(screen.getByLabelText('Minimize'))
+
+            expect(screen.getByText('Stopping...')).toBeInTheDocument()
+            expect(screen.queryByText('5/10 tests')).toBeNull()
+        })
+
+        it('keeps the elapsed time when nothing is stopping', () => {
+            mockStore({ciStopping: false})
+            render(<FloatingProgressPanel />)
+
+            expect(screen.getByText('Elapsed:')).toBeInTheDocument()
+            expect(screen.queryByText('Stopping...')).toBeNull()
         })
     })
 })

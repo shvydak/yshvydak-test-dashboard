@@ -483,7 +483,7 @@ Execute all tests in the project.
 
 **Notes:**
 
-- This endpoint prevents duplicate test runs. If tests are already running, it returns HTTP 409.
+- This endpoint prevents duplicate test runs. If anything is busy (a tracked run, a CI pipeline incl. the gap between its steps, a run still starting), it returns HTTP 409 `TESTS_ALREADY_RUNNING`; while a CI request waits in the queue, 409 `CI_RUN_QUEUED`. `run-group` and rerun answer the same two 409s.
 - The `estimatedTimeRemaining` field provides seconds until the current run is expected to complete.
 - Clients should wait and retry after the estimated time, or check status via WebSocket events.
 - Useful for automation systems (n8n, CI/CD) to avoid triggering duplicate runs.
@@ -1640,6 +1640,119 @@ Triggers an immediate sync (same logic as the 30-minute background job): discove
 
 `failed` counts keys whose batch request errored (Jira auth/rate-limit/network failure) — logged server-side, never thrown to the client. `400 Bad request` when the integration isn't configured (`{"message": "Jira integration is not configured (JIRA_BASE_URL / JIRA_EMAIL / JIRA_API_TOKEN)"}`).
 
+## CI Pipelines
+
+Named pipelines (`develop`, `production`) are ordered lists of project tabs (Settings > Project Tabs). Auth: `POST /api/pipeline/run` needs a JWT when `ENABLE_AUTH=true` (401 without one) and is open when auth is off; `POST /api/pipeline/stop` always needs a JWT (403 when auth is off); the `GET` status endpoints have no auth middleware.
+
+### POST /api/pipeline/run
+
+Starts a pipeline; the steps run in the background, one tab after another. It can also stop a running CI run (see **Replace**), so it needs the JWT (`Authorization: Bearer <token>`) when `ENABLE_AUTH=true`: 401 without or with a bad token. With auth off it stays open — unlike `/api/settings/*` and `/api/pipeline/stop`, which answer 403 then — so local runs and the trigger script work without a login. `scripts/trigger-test-run.js` logs in and sends the Bearer whenever its `.env` has `ENABLE_AUTH=true`, and exits 4 (`auth_failed`) on a 401.
+
+**Request Body:**
+
+```json
+{"pipeline": "develop", "maxWorkers": 2, "source": "script", "notify": true}
+```
+
+| Field        | Notes                                                                                                              |
+| ------------ | ------------------------------------------------------------------------------------------------------------------ |
+| `pipeline`   | `develop` or `production`; missing → `develop`, unknown → 400                                                      |
+| `maxWorkers` | optional; a tab's own `workers` override wins                                                                      |
+| `source`     | `script` = CI caller: subject to the auto-run pause and eligible for queueing                                      |
+| `notify`     | `true` = post the result to Slack when the pipeline ends (needs `CI_SLACK_WEBHOOK_URL`) and queue instead of a 409 |
+
+**Responses:**
+
+| Status | Body                                                                     | When                                                                                                    |
+| ------ | ------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------- |
+| 200    | `{"success": true, "data": <pipeline state>}`                            | started                                                                                                 |
+| 202    | `{"success": true, "data": {"status": "queued", "pipeline": "develop"}}` | `source: "script"` + `notify: true` while busy; not started yet (also when it replaces a running run)   |
+| 401    | auth middleware message                                                  | `ENABLE_AUTH=true` and no / invalid JWT                                                                 |
+| 400    | `PIPELINE_EMPTY` / unknown pipeline                                      | no tab assigned to the pipeline (also checked at request time before queueing)                          |
+| 409    | `TESTS_ALREADY_RUNNING` (`currentRunId`, `startedAt`)                    | busy and the request is not script+notify (`--wait` callers keep polling)                               |
+| 409    | `CI_RUN_QUEUED`                                                          | a manual (non-`script`) start while a CI request waits in the queue; also `run-all`, `run-group`, rerun |
+| 423    | `CI_AUTORUN_PAUSED` (`resumeAt`)                                         | `source: "script"` while auto-run is paused                                                             |
+
+**Busy** = a live Playwright child process (the server's own runId → process map, not the progress tracker), a pipeline running (including the gap between its steps), a run still starting (discovery before spawn), or a stop still cleaning up.
+
+**Replace:** a `source: "script"` + `notify: true` request for pipeline X while a CI run of X is active — a pipeline X that is running or still starting, itself started with `source: "script"` + `notify: true` — stops that run (reason `replaced`: kill, delete everything it wrote, pipeline `cancelled`; see `POST /api/pipeline/stop`) and puts the new request into X's slot; the answer is the usual 202 `queued` and it starts on the normal drain (a queued production request still goes first). Slack for the stopped run: `⏹️ Cancelled by a newer deploy — a new run has started`. Not replaced, queued as before: a run without `notify` (`--wait`), a manually started pipeline or run, another pipeline name. A stop already in progress (Stop button, watchdog, an earlier replace) is not repeated or re-announced — the request just fills or replaces the slot, so a burst of requests causes one stop and the newest wins. A paused auto-run or an empty pipeline refuses the request (423 / 400) before anything is stopped.
+
+**Queue:** one in-memory slot per pipeline name, the newest request replaces the queued one; lost on server restart. The queue drains when a non-pipeline run's process closes, when a pipeline finishes, when the last start claim is released without a process (a failed start), and after `POST /api/tests/force-reset` (never between steps, never on the reporter's `process-end`), production slot first, then develop. At drain the pause and the pipeline's tabs are checked again; a request that can no longer start is dropped and, as it always has `notify`, posts `⏸️ Auto-run is paused — tests were not started` or `❌ Did not start (pipeline_empty)`.
+
+**Pipeline state:**
+
+```json
+{
+    "pipelineRunId": "6f1c…",
+    "pipeline": "develop",
+    "status": "running",
+    "startedAt": "2026-10-19T10:00:00.000Z",
+    "source": "script",
+    "notify": true,
+    "steps": [
+        {
+            "project": "API_Tests",
+            "displayName": "API Tests",
+            "stopOnFailure": true,
+            "status": "running",
+            "runId": "…",
+            "passed": 0,
+            "failed": 0
+        }
+    ]
+}
+```
+
+`status`: `running` | `completed` | `stopped_early` | `paused` | `cancelled`. `cancelled`: stopped (see `POST /api/pipeline/stop`); every step is `skipped` and its results are deleted. `paused`: CI auto-run was paused while the pipeline ran; the running step finished, the remaining steps are `skipped` (none `failed`), finished steps keep their results. Step `status`: `queued` | `running` | `success` | `failed` | `skipped`. A step whose process closed while its run row is still `running` (the reporter's `onEnd` never landed) is `failed` and stops the pipeline (`stopped_early`).
+
+**Result Slack message** (only when `notify: true`; payload `{"text": …}`): an 80-dash separator, `🧪 Automated tests · Development|Production`, a title, a `🔗` line, separator.
+
+| Outcome                          | Title                                                    | Link `<PUBLIC_DASHBOARD_URL>…`                                                                                    |
+| -------------------------------- | -------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| all steps passed                 | `✅ Test run passed`                                     | `/tests?project=<slug>` for a one-step pipeline, else `/tests`                                                    |
+| completed, some tests failed     | `⚠️ N test(s) failed in <tab names, comma separated>`    | the failing tab's slug when exactly one tab failed, else the pipeline link                                        |
+| stopped early on a blocking step | `⛔ Stopped at <tab> — remaining steps were skipped`     | the failed step's slug (no failed step → the pipeline link)                                                       |
+| running longer than the timeout  | `⏱️ Timed out — dashboard did not report completion`     | pipeline link; no result message follows; the pipeline is then stopped (reason `timeout`) and its results deleted |
+| dashboard restarted mid-run      | `⚠️ Test run was interrupted — the dashboard restarted`  | pipeline link                                                                                                     |
+| auto-run paused mid-pipeline     | `⏸️ Paused — remaining steps were skipped`               | pipeline link                                                                                                     |
+| stopped with the Stop button     | `⏹️ Stopped manually — no result for this run`           | pipeline link                                                                                                     |
+| replaced by a newer deploy       | `⏹️ Cancelled by a newer deploy — a new run has started` | pipeline link (reason `replaced`, see **Replace**)                                                                |
+
+Tab names are display names, URLs use the project slug. A failed webhook POST is logged and never reaches the pipeline.
+
+### POST /api/pipeline/stop
+
+Stops everything active (a CI pipeline, a Run All, a group run, a rerun) and removes what it wrote: **a stopped run counts as never run**. JWT required (`authMiddleware` + `requireJWT`, like `/api/settings/*`; with `ENABLE_AUTH` off it answers 403).
+
+**Request Body:** `{"reason": "manual"}` — the only value accepted over HTTP (omitted = `manual`; anything else → 400). `timeout` (watchdog), `restart` and `replaced` are internal callers of `PipelineExecutionService.stop()`.
+
+**Response (200), sent once the cleanup is done** (up to ~25 s for a Playwright that ignores SIGINT; the UI shows "Stopping..." meanwhile):
+
+```json
+{
+    "success": true,
+    "data": {"stopped": true, "reason": "manual", "pipelineRunId": "6f1c…", "runIds": ["…"]}
+}
+```
+
+`stopped: false` (`runIds: []`) when nothing was running. A second stop while one runs joins it. If the delete step fails the pipeline still ends `cancelled`, the dashboard is freed, the error is logged (`STOP CLEANUP FAILED`) and the call answers 500; the leftover rows must be deleted by hand. A run-all / run-group / rerun request that finds a stop requested while it was still preparing answers 409 `RUN_CANCELLED` and never spawns.
+
+**Order:** set the cancel flag for every run of the stop (reporter `process-start`, `test-start`, `POST /api/tests` and their attachments for those runIds are acknowledged and ignored) → SIGINT to the run's process group (SIGKILL after 20 s) → wait for the process to close + 1 s for late reporter posts → delete the attachment files, `test_results` rows (FK cascade removes attachment rows) and `test_runs` rows → delete the discovery `pending` rows (`run_id IS NULL`, same project) written by the run's own discovery — its auto-discovery, or the UI's discovery request in the 30 s before it; a run with no such discovery deletes none — for tests that have an older real result → pipeline ends `cancelled`, then the Slack line (reason `manual` / `replaced`, only with `notify`), then the queue drains (production first). `test_notes` are not touched. Works with no child yet (discovery, between steps): the next spawn simply never happens. A pipeline stop deletes the results of **every** step, finished ones included.
+
+**Process groups:** Playwright is spawned `detached` (own group; `npx` sits between the server and Playwright). Chromium launched by Playwright runs in its own group but is wired over a pipe and exits with Playwright, also after SIGKILL of the group. The server shutdown (`SIGTERM`/`SIGINT`) SIGINTs every group and SIGKILLs the survivors after 2.5 s (inside pm2 `kill_timeout` 5 s). The in-flight markers (`ci_inflight_pipeline` for a pipeline, `inflight_run` for a manual run) hold the groups and runIds: at startup, before the server listens, groups still alive are SIGKILLed (only when a member's command line mentions Playwright and it started no later than the marker's last write, so a reused group id of an unrelated run is left alone) and the marker's runs are deleted (nothing else; old `running` rows are history). A restart posts `⚠️ Test run was interrupted — the dashboard restarted` as before.
+
+### GET /api/pipeline/status/current
+
+```json
+{"success": true, "data": <pipeline state or null>, "queue": [{"pipeline": "production", "maxWorkers": 2, "queuedAt": "2026-10-19T10:01:00.000Z"}], "stopping": false}
+```
+
+`queue` is in drain order; `stopping` (boolean) is true while a stop cleans up. 404 only when no pipeline ran yet, nothing is queued and no stop is running. While a slot is filled or a pipeline runs, the UI disables every run button (WebSocket `pipeline:queue-changed`; it re-reads this endpoint on each WebSocket reconnect).
+
+### GET /api/pipeline/status/:pipelineRunId
+
+The pipeline state; the last 10 finished pipelines stay readable, so a `--wait` caller still gets its result when a queued pipeline started right after it. 404 otherwise.
+
 ## Process Tracking
 
 ### POST /api/tests/process-start
@@ -1713,7 +1826,7 @@ Mark a test process as completed.
 
 ### POST /api/tests/force-reset
 
-Emergency endpoint to clear all active processes.
+Emergency endpoint to clear all active processes. Also lets a queued CI request start if the cleared entries were what kept the dashboard busy.
 
 **Response:**
 
@@ -1778,6 +1891,14 @@ Broadcast when a test process completes.
     }
 }
 ```
+
+### Pipeline Events
+
+`pipeline:started` (`pipelineRunId`, `steps`), `pipeline:step-started` (`pipelineRunId`, `project`, `runId`), `pipeline:step-completed` (`pipelineRunId`, `step`), `pipeline:completed` (`pipelineRunId`, `status`, `steps`), `pipeline:queue-changed` (`queue`: the full list of queued CI requests, as in `GET /api/pipeline/status/current`). `pipeline:completed` carries `status: "cancelled"` after a stop.
+
+### Stop Events
+
+`run:stopping` (`reason`) — a stop started cleaning up; the Stop button shows "Stopping...". `run:cancelled` (`runIds`, `reason`, `pipelineRunId?`) — the runs' data is deleted: clients reset their run state and refetch, every test shows its previous result. A stopped run sends no `run:completed`.
 
 ### Test Events
 

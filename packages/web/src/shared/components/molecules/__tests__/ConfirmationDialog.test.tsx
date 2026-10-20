@@ -140,4 +140,130 @@ describe('ConfirmationDialog', () => {
         expect(screen.getByText("Delete 'Test-123' <Special>")).toBeInTheDocument()
         expect(screen.getByText("Are you sure? This can't be undone!")).toBeInTheDocument()
     })
+
+    describe('keyboard and focus', () => {
+        it('Escape cancels, like the Cancel button', () => {
+            const onCancel = vi.fn()
+            const onConfirm = vi.fn()
+            render(
+                <ConfirmationDialog {...defaultProps} onCancel={onCancel} onConfirm={onConfirm} />
+            )
+
+            fireEvent.keyDown(document, {key: 'Escape'})
+
+            expect(onCancel).toHaveBeenCalledTimes(1)
+            expect(onConfirm).not.toHaveBeenCalled()
+        })
+
+        it('other keys do nothing', () => {
+            const onCancel = vi.fn()
+            render(<ConfirmationDialog {...defaultProps} onCancel={onCancel} />)
+
+            fireEvent.keyDown(document, {key: 'Enter'})
+            fireEvent.keyDown(document, {key: 'a'})
+
+            expect(onCancel).not.toHaveBeenCalled()
+        })
+
+        it('a closed dialog does not listen for Escape', () => {
+            const onCancel = vi.fn()
+            render(<ConfirmationDialog {...defaultProps} isOpen={false} onCancel={onCancel} />)
+
+            fireEvent.keyDown(document, {key: 'Escape'})
+
+            expect(onCancel).not.toHaveBeenCalled()
+        })
+
+        it('stops listening once closed', () => {
+            const onCancel = vi.fn()
+            const {rerender} = render(<ConfirmationDialog {...defaultProps} onCancel={onCancel} />)
+            rerender(<ConfirmationDialog {...defaultProps} isOpen={false} onCancel={onCancel} />)
+
+            fireEvent.keyDown(document, {key: 'Escape'})
+
+            expect(onCancel).not.toHaveBeenCalled()
+        })
+
+        it('Escape is ignored while the confirmed action is loading', () => {
+            const onCancel = vi.fn()
+            render(<ConfirmationDialog {...defaultProps} isLoading onCancel={onCancel} />)
+
+            fireEvent.keyDown(document, {key: 'Escape'})
+
+            expect(onCancel).not.toHaveBeenCalled()
+        })
+
+        it('focuses the Cancel button when it opens (the safe choice)', () => {
+            render(<ConfirmationDialog {...defaultProps} />)
+
+            expect(screen.getByText('Cancel')).toHaveFocus()
+        })
+    })
+
+    describe('stacking and nesting', () => {
+        it('is portaled to document.body, out of any stacking context of the page', () => {
+            const {container} = render(
+                <div className="animate-fade-in" data-testid="page-wrapper">
+                    <ConfirmationDialog {...defaultProps} />
+                </div>
+            )
+
+            const root = screen.getByText('Delete Test').closest('.fixed') as HTMLElement
+            expect(root.parentElement).toBe(document.body)
+            expect(container.contains(root)).toBe(false)
+        })
+
+        it('sits above the detail modal (z-[60]) and the floating panel (z-30)', () => {
+            render(<ConfirmationDialog {...defaultProps} />)
+
+            const root = screen.getByText('Delete Test').closest('.fixed') as HTMLElement
+            expect(root.className).toContain('z-[70]')
+        })
+
+        it('still reacts to clicks and keeps them from reaching the modal underneath', () => {
+            const onOuterClick = vi.fn()
+            const onConfirm = vi.fn()
+            render(
+                <div onClick={onOuterClick}>
+                    <ConfirmationDialog {...defaultProps} onConfirm={onConfirm} />
+                </div>
+            )
+
+            fireEvent.click(screen.getByText('Confirm'))
+
+            expect(onConfirm).toHaveBeenCalledTimes(1)
+            expect(onOuterClick).not.toHaveBeenCalled()
+        })
+
+        it('Escape inside a confirm opened from a modal closes only the confirm, not the modal', () => {
+            // The modal listens on document like TestDetailModal does.
+            const closeModal = vi.fn()
+            const onCancel = vi.fn()
+            const listener = (e: KeyboardEvent) => {
+                if (e.key === 'Escape') closeModal()
+            }
+            document.addEventListener('keydown', listener)
+            render(<ConfirmationDialog {...defaultProps} onCancel={onCancel} />)
+
+            fireEvent.keyDown(screen.getByText('Cancel'), {key: 'Escape'})
+
+            expect(onCancel).toHaveBeenCalledTimes(1)
+            expect(closeModal).not.toHaveBeenCalled()
+            document.removeEventListener('keydown', listener)
+        })
+
+        it('with the confirm closed, Escape reaches the modal again', () => {
+            const closeModal = vi.fn()
+            const listener = (e: KeyboardEvent) => {
+                if (e.key === 'Escape') closeModal()
+            }
+            document.addEventListener('keydown', listener)
+            render(<ConfirmationDialog {...defaultProps} isOpen={false} />)
+
+            fireEvent.keyDown(document.body, {key: 'Escape'})
+
+            expect(closeModal).toHaveBeenCalledTimes(1)
+            document.removeEventListener('keydown', listener)
+        })
+    })
 })

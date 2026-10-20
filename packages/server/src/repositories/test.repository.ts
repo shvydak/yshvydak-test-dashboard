@@ -259,6 +259,62 @@ export class TestRepository extends BaseRepository implements ITestRepository {
         return result.changes || 0
     }
 
+    // Stop deletes what a run wrote; DELETE keeps the INSERT-only rule intact.
+    async getResultIdsByRunIds(runIds: string[]): Promise<string[]> {
+        const ids: string[] = []
+        for (const batch of this.batches(runIds)) {
+            const rows = await this.queryAll<{id: string}>(
+                `SELECT id FROM test_results WHERE run_id IN (${batch.map(() => '?').join(',')})`,
+                batch
+            )
+            ids.push(...rows.map((r) => r.id))
+        }
+        return ids
+    }
+
+    async deleteByRunIds(runIds: string[]): Promise<number> {
+        let deleted = 0
+        for (const batch of this.batches(runIds)) {
+            const result = await this.dbManager.execute(
+                `DELETE FROM test_results WHERE run_id IN (${batch.map(() => '?').join(',')})`,
+                batch
+            )
+            deleted += result.changes || 0
+        }
+        return deleted
+    }
+
+    // Drops discovery rows since `since` that hide an older real result; never-run tests keep theirs.
+    async deleteDiscoveryRowsHidingResults(
+        project: string | undefined,
+        since: string
+    ): Promise<number> {
+        const params: any[] = [since]
+        let projectClause = ''
+        if (project) {
+            projectClause = 'AND project = ?'
+            params.push(project)
+        }
+        const result = await this.dbManager.execute(
+            `DELETE FROM test_results
+             WHERE run_id IS NULL AND status = 'pending' AND created_at >= ? ${projectClause}
+               AND EXISTS (
+                   SELECT 1 FROM test_results older
+                   WHERE older.test_id = test_results.test_id
+                     AND older.status != 'pending'
+                     AND older.created_at < test_results.created_at
+               )`,
+            params
+        )
+        return result.changes || 0
+    }
+
+    private batches<T>(items: T[], size = 900): T[][] {
+        const out: T[][] = []
+        for (let i = 0; i < items.length; i += size) out.push(items.slice(i, i + size))
+        return out
+    }
+
     async getFlakyTests(days: number = 30, thresholdPercent: number = 10): Promise<any[]> {
         const sql = `
             SELECT

@@ -20,6 +20,8 @@ import {NoteImageService} from '../services/noteImage.service'
 import {SettingsService} from '../services/settings.service'
 import {JiraService} from '../services/jira.service'
 import {PipelineExecutionService} from '../services/pipelineExecution.service'
+import {CIRunQueueService} from '../services/ciRunQueue.service'
+import {CINotifierService} from '../services/ciNotifier.service'
 import {AttachmentManager} from '../storage/attachmentManager'
 import {config} from '../config/environment.config'
 
@@ -77,6 +79,7 @@ export async function createServiceContainer(): Promise<ServiceContainer> {
     const noteImageService = new NoteImageService(noteImageRepository, noteRepository)
     const noteService = new NoteService(noteRepository, noteImageService)
     const settingsService = new SettingsService(settingsRepository, playwrightService)
+    const ciRunQueue = new CIRunQueueService(websocketService)
     const testService = new TestService(
         testRepository,
         runRepository,
@@ -85,13 +88,16 @@ export async function createServiceContainer(): Promise<ServiceContainer> {
         attachmentService,
         noteService,
         settingsService,
-        attachmentCleanupRepository
+        attachmentCleanupRepository,
+        ciRunQueue
     )
     const pipelineExecutionService = new PipelineExecutionService(
         testService,
         settingsService,
         runRepository,
-        websocketService
+        websocketService,
+        ciRunQueue,
+        new CINotifierService()
     )
     const jiraService = new JiraService(jiraTicketRepository, testRepository)
 

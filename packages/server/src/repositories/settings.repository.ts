@@ -13,6 +13,8 @@ const CI_AUTORUN_RESUME_AT_KEY = 'ci_autorun_resume_at'
 const JIRA_BASE_URL_KEY = 'jira_base_url'
 const CHIP_ALIGNMENT_KEY = 'chip_alignment'
 const CHIP_TAG_MODE_KEY = 'chip_tag_mode'
+const CI_INFLIGHT_PIPELINE_KEY = 'ci_inflight_pipeline'
+const INFLIGHT_RUN_KEY = 'inflight_run'
 
 const DISK_WARNING_DEFAULT = 20
 const DISK_CRITICAL_DEFAULT = 5
@@ -47,6 +49,31 @@ export interface JiraSettings {
     tagMode: TagMode
 }
 
+/** Written while a CI pipeline runs, cleared on finish; a marker found at startup = interrupted by a restart. */
+export interface InFlightPipelineMarker {
+    pipeline: CIPipelineName
+    source: string | null
+    notify: boolean
+    startedAt: string
+    runIds: string[]
+    // Step project slugs — lets the restart message build the same link rules as a result message.
+    projects: string[]
+    // Process groups of the spawned steps; startup SIGKILLs the ones still alive.
+    pgids: number[]
+    // Last write (after the latest spawn): a process younger than this is not the marker's run.
+    writtenAt?: string
+}
+
+/** Written while a manual (non-pipeline) run is alive, so a restart can clean up after it too. */
+export interface InFlightRunMarker {
+    runId: string
+    pgid: number | null
+    project: string | null
+    // Run-all: discovery rows newer than this are removed with the run's results.
+    pendingSince: string | null
+    startedAt: string
+}
+
 export interface ISettingsRepository {
     getGlobalPlaywrightProject(): Promise<string>
     setGlobalPlaywrightProject(project: string): Promise<void>
@@ -60,6 +87,12 @@ export interface ISettingsRepository {
     setCIAutoRunPause(pause: CIAutoRunPause): Promise<void>
     getJiraSettings(): Promise<JiraSettings>
     setJiraSettings(settings: JiraSettings): Promise<void>
+    getInFlightPipeline(): Promise<InFlightPipelineMarker | null>
+    setInFlightPipeline(marker: InFlightPipelineMarker): Promise<void>
+    clearInFlightPipeline(): Promise<void>
+    getInFlightRun(): Promise<InFlightRunMarker | null>
+    setInFlightRun(marker: InFlightRunMarker): Promise<void>
+    clearInFlightRun(): Promise<void>
 }
 
 export class SettingsRepository extends BaseRepository implements ISettingsRepository {
@@ -241,5 +274,85 @@ export class SettingsRepository extends BaseRepository implements ISettingsRepos
         await this.execute(upsertSql, [JIRA_BASE_URL_KEY, settings.baseUrl])
         await this.execute(upsertSql, [CHIP_ALIGNMENT_KEY, settings.chipAlignment])
         await this.execute(upsertSql, [CHIP_TAG_MODE_KEY, settings.tagMode])
+    }
+
+    async getInFlightPipeline(): Promise<InFlightPipelineMarker | null> {
+        const row = await this.queryOne<AppSettingRow>(
+            'SELECT key, value FROM app_settings WHERE key = ?',
+            [CI_INFLIGHT_PIPELINE_KEY]
+        )
+        if (!row?.value) return null
+
+        try {
+            const parsed = JSON.parse(row.value) as Partial<InFlightPipelineMarker>
+            return {
+                pipeline: parsed.pipeline ?? 'develop',
+                source: parsed.source ?? null,
+                notify: parsed.notify === true,
+                startedAt: parsed.startedAt ?? '',
+                runIds: Array.isArray(parsed.runIds) ? parsed.runIds : [],
+                projects: Array.isArray(parsed.projects) ? parsed.projects : [],
+                pgids: Array.isArray(parsed.pgids) ? parsed.pgids : [],
+                ...(parsed.writtenAt ? {writtenAt: parsed.writtenAt} : {}),
+            }
+        } catch {
+            return null
+        }
+    }
+
+    async setInFlightPipeline(marker: InFlightPipelineMarker): Promise<void> {
+        await this.execute(
+            `
+                INSERT INTO app_settings (key, value)
+                VALUES (?, ?)
+                ON CONFLICT(key) DO UPDATE SET
+                    value = excluded.value,
+                    updated_at = CURRENT_TIMESTAMP
+            `,
+            [CI_INFLIGHT_PIPELINE_KEY, JSON.stringify(marker)]
+        )
+    }
+
+    async clearInFlightPipeline(): Promise<void> {
+        await this.execute('DELETE FROM app_settings WHERE key = ?', [CI_INFLIGHT_PIPELINE_KEY])
+    }
+
+    async getInFlightRun(): Promise<InFlightRunMarker | null> {
+        const row = await this.queryOne<AppSettingRow>(
+            'SELECT key, value FROM app_settings WHERE key = ?',
+            [INFLIGHT_RUN_KEY]
+        )
+        if (!row?.value) return null
+
+        try {
+            const parsed = JSON.parse(row.value) as Partial<InFlightRunMarker>
+            if (!parsed.runId) return null
+            return {
+                runId: parsed.runId,
+                pgid: typeof parsed.pgid === 'number' ? parsed.pgid : null,
+                project: parsed.project ?? null,
+                pendingSince: parsed.pendingSince ?? null,
+                startedAt: parsed.startedAt ?? '',
+            }
+        } catch {
+            return null
+        }
+    }
+
+    async setInFlightRun(marker: InFlightRunMarker): Promise<void> {
+        await this.execute(
+            `
+                INSERT INTO app_settings (key, value)
+                VALUES (?, ?)
+                ON CONFLICT(key) DO UPDATE SET
+                    value = excluded.value,
+                    updated_at = CURRENT_TIMESTAMP
+            `,
+            [INFLIGHT_RUN_KEY, JSON.stringify(marker)]
+        )
+    }
+
+    async clearInFlightRun(): Promise<void> {
+        await this.execute('DELETE FROM app_settings WHERE key = ?', [INFLIGHT_RUN_KEY])
     }
 }

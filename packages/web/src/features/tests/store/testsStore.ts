@@ -182,6 +182,8 @@ export const useTestsStore = create<TestsState>()(
                         // because a call site forgot to invalidate them.
                         queryClient.invalidateQueries({queryKey: ['project-status-summary']})
                         queryClient.invalidateQueries({queryKey: ['test-status-counts']})
+                        // Prefix match: every status filter + project of the filtered list
+                        queryClient.invalidateQueries({queryKey: ['filtered-tests-by-status']})
                     } else {
                         throw new Error('Invalid response format')
                     }

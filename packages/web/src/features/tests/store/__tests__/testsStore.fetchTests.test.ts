@@ -8,9 +8,10 @@ vi.mock('@features/authentication/utils/authFetch', () => ({
     authDelete: vi.fn(),
 }))
 
-import {authGet} from '@features/authentication/utils/authFetch'
+import {authGet, authDelete} from '@features/authentication/utils/authFetch'
 
 const mockAuthGet = authGet as ReturnType<typeof vi.fn>
+const mockAuthDelete = authDelete as ReturnType<typeof vi.fn>
 
 function makeResponse(body: unknown, ok = true) {
     return {
@@ -36,6 +37,29 @@ describe('testsStore.fetchTests — status-count cache invalidation', () => {
             queryKey: ['project-status-summary'],
         })
         expect(invalidateQueriesSpy).toHaveBeenCalledWith({queryKey: ['test-status-counts']})
+    })
+
+    it('invalidates every status-filtered list (any filter/project) after a successful fetch', async () => {
+        mockAuthGet.mockResolvedValue(makeResponse({success: true, data: []}))
+        const invalidateQueriesSpy = vi.spyOn(queryClient, 'invalidateQueries')
+
+        await useTestsStore.getState().fetchTests()
+
+        expect(invalidateQueriesSpy).toHaveBeenCalledWith({
+            queryKey: ['filtered-tests-by-status'],
+        })
+    })
+
+    it('a status-filtered list is refetched after deleting a test', async () => {
+        mockAuthDelete.mockResolvedValue(makeResponse({success: true}))
+        mockAuthGet.mockResolvedValue(makeResponse({success: true, data: []}))
+        const invalidateQueriesSpy = vi.spyOn(queryClient, 'invalidateQueries')
+
+        await useTestsStore.getState().deleteTest('t1')
+
+        expect(invalidateQueriesSpy).toHaveBeenCalledWith({
+            queryKey: ['filtered-tests-by-status'],
+        })
     })
 
     it('does not invalidate caches when the fetch fails', async () => {

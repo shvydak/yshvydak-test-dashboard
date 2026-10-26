@@ -130,6 +130,7 @@ describe('TestService', () => {
             broadcastRunStarted: vi.fn(),
             broadcastRunCompleted: vi.fn(),
             broadcastDashboardRefresh: vi.fn(),
+            broadcastTestsDeleted: vi.fn(),
         }
 
         mockAttachmentService = {
@@ -727,6 +728,14 @@ describe('TestService', () => {
             expect(mockTestRepository.clearAllTests).toHaveBeenCalled()
         })
 
+        it('broadcasts tests:deleted after clearing', async () => {
+            mockTestRepository.clearAllTests.mockResolvedValue(undefined)
+
+            await testService.clearAllTests()
+
+            expect(mockWebSocketService.broadcastTestsDeleted).toHaveBeenCalledWith('all')
+        })
+
         it('should propagate errors from repository', async () => {
             mockTestRepository.clearAllTests.mockRejectedValue(new Error('Clear failed'))
 
@@ -756,6 +765,9 @@ describe('TestService', () => {
             expect(mockNoteService.deleteNote).toHaveBeenCalledWith('test-2')
             expect(mockTestRepository.deleteByProject).toHaveBeenCalledWith('API_Tests')
             expect(result).toEqual({deletedExecutions: 2})
+            expect(mockWebSocketService.broadcastTestsDeleted).toHaveBeenCalledWith('project', {
+                project: 'API_Tests',
+            })
         })
 
         it('should not touch other projects data (only deleteByProject with the given project)', async () => {
@@ -1924,6 +1936,11 @@ describe('TestService', () => {
 
             // Should return deleted count
             expect(result).toEqual({deletedExecutions: 2})
+
+            // Other browsers must refresh
+            expect(mockWebSocketService.broadcastTestsDeleted).toHaveBeenCalledWith('test', {
+                testId,
+            })
         })
 
         it('should handle deletion when no executions exist', async () => {
@@ -2076,6 +2093,10 @@ describe('TestService', () => {
 
             // Should return success
             expect(result).toEqual({success: true})
+
+            expect(mockWebSocketService.broadcastTestsDeleted).toHaveBeenCalledWith('execution', {
+                executionId,
+            })
         })
 
         it('should return success=false when execution not found', async () => {
@@ -2312,6 +2333,21 @@ describe('TestService', () => {
     })
 
     describe('cleanupData', () => {
+        it('broadcasts tests:deleted only when something was cleaned', async () => {
+            mockTestRepository.getStrippableIdsByCount.mockResolvedValue([])
+            await testService.cleanupData({type: 'count', value: 20})
+            expect(mockWebSocketService.broadcastTestsDeleted).not.toHaveBeenCalled()
+
+            mockTestRepository.getStrippableIdsByCount.mockResolvedValue(['a'])
+            mockTestRepository.getAttachmentsSizeForIds.mockResolvedValue({
+                total: 1,
+                perId: {a: 1},
+            })
+            mockAttachmentService.deleteAttachmentsForTestResult.mockResolvedValue(1)
+            await testService.cleanupData({type: 'count', value: 20})
+            expect(mockWebSocketService.broadcastTestsDeleted).toHaveBeenCalledWith('cleanup')
+        })
+
         it('should default to strip mode: delete attachments, keep rows, mark cleared', async () => {
             mockTestRepository.getStrippableIdsByCount.mockResolvedValue(['a', 'b'])
             mockTestRepository.getAttachmentsSizeForIds.mockResolvedValue({

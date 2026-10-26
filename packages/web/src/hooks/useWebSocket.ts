@@ -14,6 +14,65 @@ interface WebSocketOptions {
     onRunCompleted?: (data: any) => void
     onPipelineEvent?: (type: string, data: any) => void
     onRunStatusEvent?: (type: string, data: any) => void
+    onTestsDeleted?: (data: any) => void
+}
+
+// Max one list refresh per window while results stream in. Shared by every socket on the
+// page (App, modal, Dashboard each open one), so a progress event never triggers 2-3 fetches.
+// A refresh is a full list GET + count queries, so the window is long and a hidden tab skips it.
+export const PROGRESS_REFRESH_INTERVAL_MS = 10000
+// Delete events arrive once per socket (2-3 per page): coalesce them into one refresh.
+export const DELETE_REFRESH_DELAY_MS = 300
+let lastProgressRefresh = 0
+let progressRefreshTimer: ReturnType<typeof setTimeout> | null = null
+let deleteRefreshTimer: ReturnType<typeof setTimeout> | null = null
+let pendingWhileHidden: (() => unknown) | null = null
+
+export function resetProgressRefreshThrottle() {
+    lastProgressRefresh = 0
+    pendingWhileHidden = null
+    if (progressRefreshTimer) clearTimeout(progressRefreshTimer)
+    if (deleteRefreshTimer) clearTimeout(deleteRefreshTimer)
+    progressRefreshTimer = null
+    deleteRefreshTimer = null
+}
+
+function refreshTestsThrottled(fetchTests: () => unknown) {
+    if (typeof document !== 'undefined' && document.hidden) {
+        pendingWhileHidden = fetchTests
+        return
+    }
+    if (progressRefreshTimer) return
+    const wait = PROGRESS_REFRESH_INTERVAL_MS - (Date.now() - lastProgressRefresh)
+    if (wait <= 0) {
+        lastProgressRefresh = Date.now()
+        fetchTests()
+        return
+    }
+    // Trailing call so the last results of a burst are not left until the 30s poll
+    progressRefreshTimer = setTimeout(() => {
+        progressRefreshTimer = null
+        lastProgressRefresh = Date.now()
+        fetchTests()
+    }, wait)
+}
+
+function refreshAfterDelete(refresh: () => unknown) {
+    if (deleteRefreshTimer) return
+    deleteRefreshTimer = setTimeout(() => {
+        deleteRefreshTimer = null
+        refresh()
+    }, DELETE_REFRESH_DELAY_MS)
+}
+
+// One refresh when the tab becomes visible again, if results arrived while it was hidden
+if (typeof document !== 'undefined') {
+    document.addEventListener('visibilitychange', () => {
+        if (document.hidden || !pendingWhileHidden) return
+        const fetchTests = pendingWhileHidden
+        pendingWhileHidden = null
+        refreshTestsThrottled(fetchTests)
+    })
 }
 
 export function useWebSocket(url: string | null, options?: WebSocketOptions) {
@@ -33,7 +92,10 @@ export function useWebSocket(url: string | null, options?: WebSocketOptions) {
     } = useTestsStore()
     const reconnectTimeoutRef = useRef<NodeJS.Timeout>()
     const reconnectAttempts = useRef(0)
-    const maxReconnectAttempts = 5
+    const hasConnectedBefore = useRef(false)
+    // Set by disconnect(): a close we caused (unmount, URL null) must never reconnect, whatever
+    // its close code (a socket closed while CONNECTING reports 1006, not 1000).
+    const closedByUs = useRef(false)
 
     const handleConnectionStatus = (statusData: any) => {
         const {activeRuns, activeGroups: _activeGroups, isAnyProcessRunning} = statusData
@@ -86,14 +148,21 @@ export function useWebSocket(url: string | null, options?: WebSocketOptions) {
         }
 
         try {
-            wsRef.current = new WebSocket(url)
+            const ws = new WebSocket(url)
+            wsRef.current = ws
 
-            wsRef.current.onopen = () => {
+            ws.onopen = () => {
                 setIsConnected(true)
                 reconnectAttempts.current = 0
+                // Events broadcast while the socket was down are lost: re-read once.
+                if (hasConnectedBefore.current) {
+                    fetchTests()
+                    fetchRuns()
+                }
+                hasConnectedBefore.current = true
             }
 
-            wsRef.current.onmessage = (event) => {
+            ws.onmessage = (event) => {
                 try {
                     const message: WebSocketMessage = JSON.parse(event.data)
                     setLastMessage(message)
@@ -103,23 +172,22 @@ export function useWebSocket(url: string | null, options?: WebSocketOptions) {
                 }
             }
 
-            wsRef.current.onclose = (_event) => {
+            ws.onclose = () => {
+                // A replaced socket (URL change) or one we closed ourselves is not a drop
+                if (closedByUs.current || wsRef.current !== ws) return
                 setIsConnected(false)
 
-                // Attempt to reconnect
-                if (reconnectAttempts.current < maxReconnectAttempts) {
-                    const delay = Math.min(1000 * Math.pow(2, reconnectAttempts.current), 30000)
+                // Keep retrying (a server restart can outlast any fixed attempt count); backoff caps at 30s.
+                const delay = Math.min(1000 * Math.pow(2, reconnectAttempts.current), 30000)
 
-                    reconnectTimeoutRef.current = setTimeout(() => {
-                        reconnectAttempts.current++
-                        connect()
-                    }, delay)
-                } else {
-                    console.error('❌ Max reconnection attempts reached')
-                }
+                reconnectTimeoutRef.current = setTimeout(() => {
+                    if (closedByUs.current) return
+                    reconnectAttempts.current++
+                    connect()
+                }, delay)
             }
 
-            wsRef.current.onerror = (error) => {
+            ws.onerror = (error) => {
                 console.error('❌ WebSocket error:', error)
             }
         } catch (error) {
@@ -146,8 +214,6 @@ export function useWebSocket(url: string | null, options?: WebSocketOptions) {
                 queryClient.invalidateQueries({
                     queryKey: ['dashboard-stats'],
                 })
-                queryClient.invalidateQueries({queryKey: ['tests']})
-                queryClient.invalidateQueries({queryKey: ['runs']})
                 queryClient.invalidateQueries({queryKey: ['project-status-summary']})
                 queryClient.invalidateQueries({queryKey: ['test-status-counts']})
                 fetchTests()
@@ -160,7 +226,6 @@ export function useWebSocket(url: string | null, options?: WebSocketOptions) {
                 break
 
             case 'test:completed':
-                queryClient.invalidateQueries({queryKey: ['tests']})
                 queryClient.invalidateQueries({
                     queryKey: ['dashboard-stats'],
                 })
@@ -170,7 +235,6 @@ export function useWebSocket(url: string | null, options?: WebSocketOptions) {
                 break
 
             case 'test:status':
-                queryClient.invalidateQueries({queryKey: ['tests']})
                 fetchTests()
                 break
 
@@ -179,6 +243,19 @@ export function useWebSocket(url: string | null, options?: WebSocketOptions) {
                 if (message.data) {
                     updateProgress(message.data)
                 }
+                // One saved result = one progress event: keep row statuses live during a run
+                refreshTestsThrottled(fetchTests)
+                break
+
+            case 'tests:deleted':
+                // Delete (test, execution, project, all, cleanup) from any client: re-read lists.
+                refreshAfterDelete(() => {
+                    queryClient.invalidateQueries({queryKey: ['storage-stats']})
+                    queryClient.invalidateQueries({queryKey: ['dashboard-stats']})
+                    fetchTests()
+                    fetchRuns()
+                })
+                options?.onTestsDeleted?.(message.data)
                 break
 
             case 'stats:update':
@@ -189,7 +266,6 @@ export function useWebSocket(url: string | null, options?: WebSocketOptions) {
                 break
 
             case 'discovery:completed':
-                queryClient.invalidateQueries({queryKey: ['tests']})
                 queryClient.invalidateQueries({
                     queryKey: ['dashboard-stats'],
                 })
@@ -200,13 +276,10 @@ export function useWebSocket(url: string | null, options?: WebSocketOptions) {
                 break
 
             case 'run:started':
-                queryClient.invalidateQueries({queryKey: ['runs']})
                 fetchRuns()
                 break
 
             case 'run:completed':
-                queryClient.invalidateQueries({queryKey: ['tests']})
-                queryClient.invalidateQueries({queryKey: ['runs']})
                 queryClient.invalidateQueries({
                     queryKey: ['dashboard-stats'],
                 })
@@ -245,8 +318,6 @@ export function useWebSocket(url: string | null, options?: WebSocketOptions) {
 
             case 'run:cancelled':
                 // The stopped run's data is gone: every test shows its previous result again.
-                queryClient.invalidateQueries({queryKey: ['tests']})
-                queryClient.invalidateQueries({queryKey: ['runs']})
                 queryClient.invalidateQueries({queryKey: ['dashboard-stats']})
                 queryClient.invalidateQueries({queryKey: ['project-status-summary']})
                 queryClient.invalidateQueries({queryKey: ['test-status-counts']})
@@ -302,6 +373,7 @@ export function useWebSocket(url: string | null, options?: WebSocketOptions) {
     }
 
     const disconnect = () => {
+        closedByUs.current = true
         if (reconnectTimeoutRef.current) {
             clearTimeout(reconnectTimeoutRef.current)
         }
@@ -314,6 +386,7 @@ export function useWebSocket(url: string | null, options?: WebSocketOptions) {
     useEffect(() => {
         // Only try to connect if we have a valid URL
         if (url) {
+            closedByUs.current = false
             connect()
         } else {
             // Disconnect existing connection if URL becomes null

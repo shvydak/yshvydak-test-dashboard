@@ -8,28 +8,28 @@ describe('extractJiraTicketKeys', () => {
     })
 
     it('extracts ticket-key tags only, dropping other tags', () => {
-        expect(extractJiraTicketKeys(['@PB-4531', '@to-fix', '@sanity'])).toEqual(['PB-4531'])
+        expect(extractJiraTicketKeys(['@DEMO-4531', '@to-fix', '@sanity'])).toEqual(['DEMO-4531'])
     })
 
     it('de-duplicates repeated keys', () => {
-        expect(extractJiraTicketKeys(['@PB-1', '@PB-1'])).toEqual(['PB-1'])
+        expect(extractJiraTicketKeys(['@DEMO-1', '@DEMO-1'])).toEqual(['DEMO-1'])
     })
 
     it('ignores non-string entries and trims whitespace', () => {
-        expect(extractJiraTicketKeys([' @PB-1 ', 42, null])).toEqual(['PB-1'])
+        expect(extractJiraTicketKeys([' @DEMO-1 ', 42, null])).toEqual(['DEMO-1'])
     })
 })
 
 describe('extractJiraTicketKeysFromMetadataRows', () => {
     it('collects keys across multiple rows, de-duplicated', () => {
         const rows = [
-            {metadata: JSON.stringify({tags: ['@PB-1', '@to-fix']})},
-            {metadata: JSON.stringify({tags: ['@PB-2']})},
-            {metadata: JSON.stringify({tags: ['@PB-1']})},
+            {metadata: JSON.stringify({tags: ['@DEMO-1', '@to-fix']})},
+            {metadata: JSON.stringify({tags: ['@DEMO-2']})},
+            {metadata: JSON.stringify({tags: ['@DEMO-1']})},
         ]
 
         expect(extractJiraTicketKeysFromMetadataRows(rows)).toEqual(
-            expect.arrayContaining(['PB-1', 'PB-2'])
+            expect.arrayContaining(['DEMO-1', 'DEMO-2'])
         )
         expect(extractJiraTicketKeysFromMetadataRows(rows)).toHaveLength(2)
     })
@@ -43,8 +43,10 @@ describe('extractJiraTicketKeysFromMetadataRows', () => {
     })
 
     it('tolerates double-encoded metadata (JSON string of a JSON string)', () => {
-        const doubleEncoded = JSON.stringify(JSON.stringify({tags: ['@PB-9']}))
-        expect(extractJiraTicketKeysFromMetadataRows([{metadata: doubleEncoded}])).toEqual(['PB-9'])
+        const doubleEncoded = JSON.stringify(JSON.stringify({tags: ['@DEMO-9']}))
+        expect(extractJiraTicketKeysFromMetadataRows([{metadata: doubleEncoded}])).toEqual([
+            'DEMO-9',
+        ])
     })
 
     it('skips rows whose metadata has no tags field', () => {

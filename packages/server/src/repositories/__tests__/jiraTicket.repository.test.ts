@@ -8,12 +8,12 @@ describe('JiraTicketRepository', () => {
     let dbManager: DatabaseManager
 
     const ticket = (overrides: Partial<JiraTicketInfo> = {}): JiraTicketInfo => ({
-        key: 'PB-4531',
+        key: 'DEMO-101',
         issueType: 'Bug',
         statusName: 'To Do',
         statusCategory: 'new',
-        summary: 'Was able to add the same item twice',
-        assignee: 'Tamir Scherzer',
+        summary: 'Demo ticket summary',
+        assignee: 'Jane Doe',
         fetchedAt: '2026-09-24T10:00:00.000Z',
         ...overrides,
     })
@@ -35,17 +35,21 @@ describe('JiraTicketRepository', () => {
         })
 
         it('returns [] for keys that were never cached', async () => {
-            const result = await repository.getByKeys(['PB-999'])
+            const result = await repository.getByKeys(['DEMO-999'])
             expect(result).toEqual([])
         })
 
         it('returns only the requested, cached keys', async () => {
-            await repository.upsertMany([ticket({key: 'PB-1'}), ticket({key: 'PB-2'})])
+            await repository.upsertMany([ticket({key: 'DEMO-1'}), ticket({key: 'DEMO-2'})])
 
-            const result = await repository.getByKeys(['PB-1', 'PB-999'])
+            const result = await repository.getByKeys(['DEMO-1', 'DEMO-999'])
 
             expect(result).toHaveLength(1)
-            expect(result[0]).toMatchObject({key: 'PB-1', issueType: 'Bug', statusCategory: 'new'})
+            expect(result[0]).toMatchObject({
+                key: 'DEMO-1',
+                issueType: 'Bug',
+                statusCategory: 'new',
+            })
         })
     })
 
@@ -53,15 +57,15 @@ describe('JiraTicketRepository', () => {
         it('inserts a new ticket', async () => {
             await repository.upsertMany([ticket()])
 
-            const [result] = await repository.getByKeys(['PB-4531'])
+            const [result] = await repository.getByKeys(['DEMO-101'])
 
             expect(result).toMatchObject({
-                key: 'PB-4531',
+                key: 'DEMO-101',
                 issueType: 'Bug',
                 statusName: 'To Do',
                 statusCategory: 'new',
-                summary: 'Was able to add the same item twice',
-                assignee: 'Tamir Scherzer',
+                summary: 'Demo ticket summary',
+                assignee: 'Jane Doe',
             })
         })
 
@@ -71,7 +75,7 @@ describe('JiraTicketRepository', () => {
                 ticket({statusName: 'Done', statusCategory: 'done', assignee: null}),
             ])
 
-            const [result] = await repository.getByKeys(['PB-4531'])
+            const [result] = await repository.getByKeys(['DEMO-101'])
 
             expect(result.statusName).toBe('Done')
             expect(result.statusCategory).toBe('done')
@@ -87,7 +91,7 @@ describe('JiraTicketRepository', () => {
             // exactly the bug this guards: the frontend parses that as LOCAL time, not UTC.
             await repository.upsertMany([ticket({fetchedAt: '2020-01-01T00:00:00.000Z'})])
 
-            const [result] = await repository.getByKeys(['PB-4531'])
+            const [result] = await repository.getByKeys(['DEMO-101'])
 
             expect(result.fetchedAt).toBe('2020-01-01T00:00:00.000Z')
         })

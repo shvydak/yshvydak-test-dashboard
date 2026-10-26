@@ -37,7 +37,7 @@ function jiraIssue(
     }> = {}
 ) {
     return {
-        key: overrides.key ?? 'PB-1',
+        key: overrides.key ?? 'DEMO-1',
         fields: {
             issuetype: {name: overrides.type ?? 'Bug'},
             status: {
@@ -151,7 +151,7 @@ describe('JiraService', () => {
         it('delegates to the repository for the requested keys', async () => {
             const cached: JiraTicketInfo[] = [
                 {
-                    key: 'PB-1',
+                    key: 'DEMO-1',
                     issueType: 'Bug',
                     statusName: 'To Do',
                     statusCategory: 'new',
@@ -162,19 +162,19 @@ describe('JiraService', () => {
             ]
             jiraTicketRepository.getByKeys.mockResolvedValue(cached)
 
-            const result = await service.getTicketInfo(['PB-1'])
+            const result = await service.getTicketInfo(['DEMO-1'])
 
-            expect(jiraTicketRepository.getByKeys).toHaveBeenCalledWith(['PB-1'])
+            expect(jiraTicketRepository.getByKeys).toHaveBeenCalledWith(['DEMO-1'])
             expect(result).toEqual(cached)
         })
 
         it('returns [] and never touches the repository once the integration is disabled — even if a cache from an earlier configuration still exists', async () => {
             mockConfig.jira.enabled = false
             jiraTicketRepository.getByKeys.mockResolvedValue([
-                {key: 'PB-1'} as unknown as JiraTicketInfo,
+                {key: 'DEMO-1'} as unknown as JiraTicketInfo,
             ])
 
-            const result = await service.getTicketInfo(['PB-1'])
+            const result = await service.getTicketInfo(['DEMO-1'])
 
             expect(result).toEqual([])
             expect(jiraTicketRepository.getByKeys).not.toHaveBeenCalled()
@@ -209,17 +209,17 @@ describe('JiraService', () => {
 
         it('POSTs to /rest/api/3/issue/bulkfetch with issueIdsOrKeys + fields, Basic auth', async () => {
             testRepository.getAllLatestMetadata.mockResolvedValue([
-                {metadata: JSON.stringify({tags: ['@PB-1', '@to-fix']})},
-                {metadata: JSON.stringify({tags: ['@PB-2']})},
+                {metadata: JSON.stringify({tags: ['@DEMO-1', '@to-fix']})},
+                {metadata: JSON.stringify({tags: ['@DEMO-2']})},
             ])
             fetchMock.mockResolvedValue({
                 ok: true,
                 status: 200,
                 json: async () => ({
                     issues: [
-                        jiraIssue({key: 'PB-1', category: 'new', status: 'To Do'}),
+                        jiraIssue({key: 'DEMO-1', category: 'new', status: 'To Do'}),
                         jiraIssue({
-                            key: 'PB-2',
+                            key: 'DEMO-2',
                             type: 'Task',
                             category: 'done',
                             status: 'Completed (In Prod)',
@@ -240,7 +240,7 @@ describe('JiraService', () => {
             )
             expect(calledInit.method).toBe('POST')
             expect(JSON.parse(calledInit.body)).toEqual({
-                issueIdsOrKeys: ['PB-1', 'PB-2'],
+                issueIdsOrKeys: ['DEMO-1', 'DEMO-2'],
                 fields: ['issuetype', 'status', 'summary', 'assignee'],
             })
             expect(calledInit.headers.Authorization).toBe(
@@ -249,9 +249,9 @@ describe('JiraService', () => {
             expect(calledInit.headers['Content-Type']).toBe('application/json')
 
             expect(jiraTicketRepository.upsertMany).toHaveBeenCalledWith([
-                expect.objectContaining({key: 'PB-1', statusCategory: 'new'}),
+                expect.objectContaining({key: 'DEMO-1', statusCategory: 'new'}),
                 expect.objectContaining({
-                    key: 'PB-2',
+                    key: 'DEMO-2',
                     issueType: 'Task',
                     statusCategory: 'done',
                     assignee: null,
@@ -280,14 +280,14 @@ describe('JiraService', () => {
 
         it('a key Jira could not resolve (issueErrors) does not fail its batch-mates', async () => {
             testRepository.getAllLatestMetadata.mockResolvedValue([
-                {metadata: JSON.stringify({tags: ['@PB-1', '@PB-2']})},
+                {metadata: JSON.stringify({tags: ['@DEMO-1', '@DEMO-2']})},
             ])
             fetchMock.mockResolvedValue({
                 ok: true,
                 status: 200,
                 json: async () => ({
-                    issues: [jiraIssue({key: 'PB-1'})],
-                    issueErrors: [{id: 'PB-2', errorMessage: 'Issue does not exist'}],
+                    issues: [jiraIssue({key: 'DEMO-1'})],
+                    issueErrors: [{id: 'DEMO-2', errorMessage: 'Issue does not exist'}],
                 }),
             })
 
@@ -295,10 +295,10 @@ describe('JiraService', () => {
 
             expect(result).toEqual({checked: 2, updated: 1, failed: 1})
             expect(jiraTicketRepository.upsertMany).toHaveBeenCalledWith([
-                expect.objectContaining({key: 'PB-1'}),
+                expect.objectContaining({key: 'DEMO-1'}),
             ])
             // A partial-resolve batch is not a sync FAILURE (no exception was thrown) — it just
-            // leaves PB-2 without data, same as any other never-synced key.
+            // leaves DEMO-2 without data, same as any other never-synced key.
             expect(jiraTicketRepository.setLastSyncStatus).toHaveBeenCalledWith(
                 expect.objectContaining({ok: true, errorReason: null})
             )
@@ -306,7 +306,7 @@ describe('JiraService', () => {
 
         it('degrades gracefully on a non-OK Jira response: no throw, batch marked failed, reason recorded', async () => {
             testRepository.getAllLatestMetadata.mockResolvedValue([
-                {metadata: JSON.stringify({tags: ['@PB-1']})},
+                {metadata: JSON.stringify({tags: ['@DEMO-1']})},
             ])
             fetchMock.mockResolvedValue({ok: false, status: 401, statusText: 'Unauthorized'})
 
@@ -327,7 +327,7 @@ describe('JiraService', () => {
             [418, 'sync failed (418)'],
         ])('maps HTTP %i to the reason %j', async (status, reason) => {
             testRepository.getAllLatestMetadata.mockResolvedValue([
-                {metadata: JSON.stringify({tags: ['@PB-1']})},
+                {metadata: JSON.stringify({tags: ['@DEMO-1']})},
             ])
             fetchMock.mockResolvedValue({ok: false, status, statusText: 'x'})
 
@@ -340,7 +340,7 @@ describe('JiraService', () => {
 
         it('degrades gracefully on a network error: no throw, batch marked failed, generic reason', async () => {
             testRepository.getAllLatestMetadata.mockResolvedValue([
-                {metadata: JSON.stringify({tags: ['@PB-1']})},
+                {metadata: JSON.stringify({tags: ['@DEMO-1']})},
             ])
             fetchMock.mockRejectedValue(new Error('network down'))
 
@@ -354,31 +354,31 @@ describe('JiraService', () => {
 
         it('falls back to "indeterminate" for an unrecognised status category', async () => {
             testRepository.getAllLatestMetadata.mockResolvedValue([
-                {metadata: JSON.stringify({tags: ['@PB-1']})},
+                {metadata: JSON.stringify({tags: ['@DEMO-1']})},
             ])
             fetchMock.mockResolvedValue({
                 ok: true,
                 status: 200,
                 json: async () => ({
-                    issues: [jiraIssue({key: 'PB-1', category: 'some-unknown-value'})],
+                    issues: [jiraIssue({key: 'DEMO-1', category: 'some-unknown-value'})],
                 }),
             })
 
             await service.refreshAllKnownKeys()
 
             expect(jiraTicketRepository.upsertMany).toHaveBeenCalledWith([
-                expect.objectContaining({key: 'PB-1', statusCategory: 'indeterminate'}),
+                expect.objectContaining({key: 'DEMO-1', statusCategory: 'indeterminate'}),
             ])
         })
 
         it('stamps each ticket with an explicit ISO (Z) fetchedAt, never relying on SQL-side CURRENT_TIMESTAMP', async () => {
             testRepository.getAllLatestMetadata.mockResolvedValue([
-                {metadata: JSON.stringify({tags: ['@PB-1']})},
+                {metadata: JSON.stringify({tags: ['@DEMO-1']})},
             ])
             fetchMock.mockResolvedValue({
                 ok: true,
                 status: 200,
-                json: async () => ({issues: [jiraIssue({key: 'PB-1'})]}),
+                json: async () => ({issues: [jiraIssue({key: 'DEMO-1'})]}),
             })
 
             await service.refreshAllKnownKeys()
@@ -390,7 +390,7 @@ describe('JiraService', () => {
 
         it('a concurrent call while a sync is in flight reuses the same result instead of starting a second sync', async () => {
             testRepository.getAllLatestMetadata.mockResolvedValue([
-                {metadata: JSON.stringify({tags: ['@PB-1']})},
+                {metadata: JSON.stringify({tags: ['@DEMO-1']})},
             ])
             let resolveFetch!: (value: unknown) => void
             fetchMock.mockReturnValue(
@@ -405,7 +405,7 @@ describe('JiraService', () => {
             resolveFetch({
                 ok: true,
                 status: 200,
-                json: async () => ({issues: [jiraIssue({key: 'PB-1'})]}),
+                json: async () => ({issues: [jiraIssue({key: 'DEMO-1'})]}),
             })
             const [firstResult, secondResult] = await Promise.all([first, second])
 
@@ -416,12 +416,12 @@ describe('JiraService', () => {
 
         it('a later call, after the in-flight sync finished, starts a fresh sync', async () => {
             testRepository.getAllLatestMetadata.mockResolvedValue([
-                {metadata: JSON.stringify({tags: ['@PB-1']})},
+                {metadata: JSON.stringify({tags: ['@DEMO-1']})},
             ])
             fetchMock.mockResolvedValue({
                 ok: true,
                 status: 200,
-                json: async () => ({issues: [jiraIssue({key: 'PB-1'})]}),
+                json: async () => ({issues: [jiraIssue({key: 'DEMO-1'})]}),
             })
 
             await service.refreshAllKnownKeys()

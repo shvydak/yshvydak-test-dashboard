@@ -33,7 +33,7 @@ function wrapper({children}: {children: React.ReactNode}) {
 }
 
 const ticket = (overrides: Partial<JiraTicketInfo> = {}): JiraTicketInfo => ({
-    key: 'PB-1',
+    key: 'DEMO-1',
     issueType: 'Bug',
     statusName: 'To Do',
     statusCategory: 'new',
@@ -58,33 +58,33 @@ describe('useJiraTicketInfo', () => {
     it('fetches a comma-joined, sorted, de-duplicated key list', async () => {
         mockAuthGet.mockResolvedValue(makeResponse({data: []}))
 
-        renderHook(() => useJiraTicketInfo(['PB-2', 'PB-1', 'PB-1']), {wrapper})
+        renderHook(() => useJiraTicketInfo(['DEMO-2', 'DEMO-1', 'DEMO-1']), {wrapper})
 
         await waitFor(() => expect(mockAuthGet).toHaveBeenCalledTimes(1))
         expect(mockAuthGet).toHaveBeenCalledWith(
-            'http://localhost:3000/api/jira/tickets?keys=PB-1%2CPB-2'
+            'http://localhost:3000/api/jira/tickets?keys=DEMO-1%2CDEMO-2'
         )
     })
 
     it('returns a map keyed by ticket key', async () => {
         mockAuthGet.mockResolvedValue(
             makeResponse({
-                data: [ticket({key: 'PB-1'}), ticket({key: 'PB-2', statusCategory: 'done'})],
+                data: [ticket({key: 'DEMO-1'}), ticket({key: 'DEMO-2', statusCategory: 'done'})],
             })
         )
 
-        const {result} = renderHook(() => useJiraTicketInfo(['PB-1', 'PB-2']), {wrapper})
+        const {result} = renderHook(() => useJiraTicketInfo(['DEMO-1', 'DEMO-2']), {wrapper})
 
         await waitFor(() => expect(result.current.ticketInfo.size).toBe(2))
-        expect(result.current.ticketInfo.get('PB-1')).toMatchObject({statusCategory: 'new'})
-        expect(result.current.ticketInfo.get('PB-2')).toMatchObject({statusCategory: 'done'})
-        expect(result.current.ticketInfo.get('PB-999')).toBeUndefined()
+        expect(result.current.ticketInfo.get('DEMO-1')).toMatchObject({statusCategory: 'new'})
+        expect(result.current.ticketInfo.get('DEMO-2')).toMatchObject({statusCategory: 'done'})
+        expect(result.current.ticketInfo.get('DEMO-999')).toBeUndefined()
     })
 
     it('starts with an empty map while the request is in flight', () => {
         mockAuthGet.mockReturnValue(new Promise(() => {})) // never resolves
 
-        const {result} = renderHook(() => useJiraTicketInfo(['PB-1']), {wrapper})
+        const {result} = renderHook(() => useJiraTicketInfo(['DEMO-1']), {wrapper})
 
         expect(result.current.ticketInfo.size).toBe(0)
         expect(result.current.isLoading).toBe(true)
@@ -93,7 +93,7 @@ describe('useJiraTicketInfo', () => {
     it('degrades to an empty map (not a throw) when the request fails', async () => {
         mockAuthGet.mockResolvedValue(makeResponse({}, false))
 
-        const {result} = renderHook(() => useJiraTicketInfo(['PB-1']), {wrapper})
+        const {result} = renderHook(() => useJiraTicketInfo(['DEMO-1']), {wrapper})
 
         await waitFor(() => expect(result.current.isLoading).toBe(false))
         expect(result.current.ticketInfo.size).toBe(0)

@@ -539,7 +539,7 @@ Users must be authenticated to access:
 
 ### External Reporter Compatibility
 
-The external reporter at `/Users/y.shvydak/QA/probuild-qa/e2e/testUtils/yshvydakReporter.ts` requires minimal changes:
+The external reporter at `/path/to/your-playwright-project/e2e/testUtils/yshvydakReporter.ts` requires minimal changes:
 
 **Simple API requests:**
 

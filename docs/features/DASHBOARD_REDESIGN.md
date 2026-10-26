@@ -437,7 +437,7 @@ useEffect(() => {
 
 ```
 ┌──────────────────────────────────────────────────┐
-│ API - Change Action Status                  25% │
+│ API - Update Order Status                  25% │
 │ tests/api/actions.spec.ts                  2/8  │
 │ ✅❌✅✅❌✅✅✅                              │
 └──────────────────────────────────────────────────┘
@@ -647,7 +647,7 @@ Authorization: Bearer {jwt-token}
     "data": [
         {
             "testId": "test-xv3dl2",
-            "name": "Change Action status",
+            "name": "Update order status",
             "filePath": "tests/api/actions.spec.ts",
             "totalRuns": 8,
             "failedRuns": 2,

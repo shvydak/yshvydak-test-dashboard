@@ -34,7 +34,7 @@ description: Where things live in this repo — testId generation, WebSocket URL
 | Filter-bar unlimited counts                       | `test.repository.ts` (`getTestStatusCounts`) + `packages/web/src/features/tests/hooks/useTestStatusCounts.ts`           |
 | Dashboard "Total Tests" tile                      | `packages/web/src/features/dashboard/components/Dashboard.tsx` + `DashboardStats.tsx` (`useTestStatusCounts`, unscoped) |
 | Tab status icons (running/queued)                 | `packages/web/src/shared/components/Header.tsx` (`renderStatusDot` — spinner = running, clock = queued)                 |
-| GitHub Actions CI workflow                        | **Separate repo** — `probuildGit/test-dashboard`, `.github/workflows/trigger-tests.yml` (self-hosted qa01 runner)       |
+| GitHub Actions CI workflow                        | **Separate repo** — a separate deployment repo holds `.github/workflows/trigger-tests.yml`                              |
 | Jira ticket type/status sync + cache              | `packages/server/src/services/jira.service.ts` + `repositories/jiraTicket.repository.ts` (table `jira_ticket_cache`)    |
 | Jira-enriched ticket chip (icon + status lozenge) | `packages/web/src/features/tests/components/TicketChips.tsx` (`JiraEnrichedChip`) + `hooks/useJiraTicketInfo.ts`        |
 

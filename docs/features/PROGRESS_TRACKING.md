@@ -340,9 +340,9 @@ case 'test:progress':
   </StatusGrid>
 
   <CurrentlyRunning>
-    🔄 API - Link Budget Item
+    🔄 API - Add Order Item
        api/api.test.ts
-    🔄 API - Create Contract
+    🔄 API - Create User
        api/api.test.ts
   </CurrentlyRunning>
 
@@ -441,9 +441,9 @@ export interface TestProgressUpdate extends WebSocketMessage {
 │                                     │
 │ Currently Running:                  │
 │ ┌─────────────────────────────────┐ │
-│ │🔄 API - Link Budget Item        │ │
+│ │🔄 API - Add Order Item        │ │
 │ │  api/api.test.ts                │ │
-│ │🔄 API - Create Contract         │ │
+│ │🔄 API - Create User         │ │
 │ │  api/api.test.ts                │ │
 │ └─────────────────────────────────┘ │
 │                                     │

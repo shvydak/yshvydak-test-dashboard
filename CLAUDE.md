@@ -60,7 +60,7 @@ Check Context7-MCP for current docs and breaking changes before adding, updating
 - **CI pause is global for `source: 'script'`.** Do not special-case a pipeline name unless there is a user-facing setting for it.
 - **`pipelines: ['develop']` in tests infers `string[]`.** Type the fixture as `ProjectTabConfig[]` (or `as const`) or `tsc` fails.
 - **Renaming a test orphans its old `testId` row forever.** INSERT-only + hash-based id (invariant 2/3) means the old id never updates again but still counts in aggregates (`status-counts`, etc.) until deleted via `DELETE /api/tests/:testId`. A "failed" count that doesn't match any visible test is often one of these.
-- **Branch flow: `feature/*` → PR to `develop` → PR `develop` → `main`, merge commits.** No CI checks run on PRs — local gates are the only gate.
+- **Branch flow: `feature/*` → PR to `main`, merge commits; no `develop` branch.** No CI checks run on PRs — local gates are the only gate.
 - **Popovers/tooltips in the test list must portal to `document.body`.** Sticky group headers and the `overflow-y-auto` list clip or cover absolutely positioned children (see `TicketChips.tsx`).
 - **`npm run format` (including via pre-commit/pre-push hooks) redrifts `CLAUDE.md` and `docs/README.md` table widths on every run, even with no content changes.** `git checkout -- CLAUDE.md docs/README.md` after formatting/committing to keep it out of your diff.
 

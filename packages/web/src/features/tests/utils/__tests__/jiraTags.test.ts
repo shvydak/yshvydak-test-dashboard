@@ -10,7 +10,7 @@ import {
 } from '../jiraTags'
 
 describe('isJiraTag', () => {
-    it.each(['@ABC-816', '@APP-1', '@A1-22', '@PROJECT2-12345'])('accepts %s', (tag) => {
+    it.each(['@ABC-816', '@DEMO-1', '@A1-22', '@PROJECT2-12345'])('accepts %s', (tag) => {
         expect(isJiraTag(tag)).toBe(true)
     })
 

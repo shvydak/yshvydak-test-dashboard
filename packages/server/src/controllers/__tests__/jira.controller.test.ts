@@ -92,9 +92,12 @@ describe('JiraController', () => {
             vi.mocked(ResponseHelper.success).mockReturnValue({} as any)
             const res = createMockResponse()
 
-            await controller.getTickets(createMockRequest({query: {keys: 'PB-1, PB-2,PB-1'}}), res)
+            await controller.getTickets(
+                createMockRequest({query: {keys: 'DEMO-1, DEMO-2,DEMO-1'}}),
+                res
+            )
 
-            expect(mockJiraService.getTicketInfo).toHaveBeenCalledWith(['PB-1', 'PB-2'])
+            expect(mockJiraService.getTicketInfo).toHaveBeenCalledWith(['DEMO-1', 'DEMO-2'])
         })
 
         it('returns 500 on service error', async () => {
@@ -103,7 +106,7 @@ describe('JiraController', () => {
             vi.mocked(ResponseHelper.error).mockReturnValue({} as any)
             const res = createMockResponse()
 
-            await controller.getTickets(createMockRequest({query: {keys: 'PB-1'}}), res)
+            await controller.getTickets(createMockRequest({query: {keys: 'DEMO-1'}}), res)
 
             expect(ResponseHelper.error).toHaveBeenCalledWith(
                 res,

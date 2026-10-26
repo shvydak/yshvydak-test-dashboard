@@ -86,7 +86,7 @@ Retrieve all test results with optional filtering.
     "data": [
         {
             "testId": "test-66jqtq",
-            "name": "API - Change Action Status",
+            "name": "API - Update Order Status",
             "status": "passed",
             "timestamp": "2025-09-24 13:41:11",
             "createdAt": "2025-09-24 13:41:11",
@@ -111,7 +111,7 @@ Validation: `id`, `testId` and `runId` must match `[A-Za-z0-9_-]{1,128}` (UUID o
 ```json
 {
     "testId": "test-66jqtq",
-    "name": "API - Change Action Status",
+    "name": "API - Update Order Status",
     "status": "passed",
     "file": "tests/api/actions.spec.ts",
     "duration": 1500,
@@ -1071,7 +1071,7 @@ The response `count` field is the **total** execution count for the test (exclud
             "id": "af679466-96f7-4a00-ad72-c02adc779fd8",
             "testId": "test-66jqtq",
             "runId": "run_123",
-            "name": "API - Change Action Status",
+            "name": "API - Update Order Status",
             "filePath": "tests/api/actions.spec.ts",
             "status": "passed",
             "duration": 1500,
@@ -1096,7 +1096,7 @@ The response `count` field is the **total** execution count for the test (exclud
             "id": "bf789577-a8e8-5b11-be83-d13bec889fe9",
             "testId": "test-66jqtq",
             "runId": "run_456",
-            "name": "API - Change Action Status",
+            "name": "API - Update Order Status",
             "status": "failed",
             "duration": 2100,
             "errorMessage": "Expected 200 but got 500",
@@ -1152,7 +1152,7 @@ Authorization: Bearer {jwt-token}
     "data": [
         {
             "testId": "test-xv3dl2",
-            "name": "Change Action status",
+            "name": "Update order status",
             "filePath": "tests/api/actions.spec.ts",
             "totalRuns": 8,
             "failedRuns": 2,
@@ -1957,13 +1957,13 @@ See [Progress Tracking](features/PROGRESS_TRACKING.md) for implementation detail
         "runningTests": [
             {
                 "testId": "test-hash-1",
-                "name": "API - Link Budget Item",
+                "name": "API - Add Order Item",
                 "filePath": "api/api.test.ts",
                 "startedAt": "2025-10-28T09:30:00Z"
             },
             {
                 "testId": "test-hash-2",
-                "name": "API - Create Contract",
+                "name": "API - Create User",
                 "filePath": "api/api.test.ts",
                 "startedAt": "2025-10-28T09:30:01Z"
             }

@@ -264,10 +264,10 @@ describe('Test ID Generation Algorithm', () => {
             const title = 'should test something'
 
             // All these paths should produce the SAME testId after normalization
-            const id1 = generateStableTestId('e2e/tests/actions/actionPopUp.test.ts', title)
-            const id2 = generateStableTestId('tests/actions/actionPopUp.test.ts', title)
-            const id3 = generateStableTestId('e2e/actions/actionPopUp.test.ts', title)
-            const id4 = generateStableTestId('actions/actionPopUp.test.ts', title)
+            const id1 = generateStableTestId('e2e/tests/orders/orderPopUp.test.ts', title)
+            const id2 = generateStableTestId('tests/orders/orderPopUp.test.ts', title)
+            const id3 = generateStableTestId('e2e/orders/orderPopUp.test.ts', title)
+            const id4 = generateStableTestId('orders/orderPopUp.test.ts', title)
 
             // They should all be equal
             expect(id1).toBe(id2)
@@ -315,20 +315,20 @@ describe('Test ID Generation Algorithm', () => {
             expect(id1).toMatch(/^test-[a-z0-9]+$/)
         })
 
-        it('should handle real-world scenario: probuild-qa vs funzy-qa', () => {
-            const testTitle = 'Change Action status'
+        it('should handle real-world scenario: project in a subfolder vs project at repo root', () => {
+            const testTitle = 'Update order status'
 
-            // probuild-qa structure: e2e/tests/actions/actionPopUp.test.ts
-            const probuildId = generateStableTestId(
-                'e2e/tests/actions/actionPopUp.test.ts',
+            // subfolder project structure: e2e/tests/orders/orderPopUp.test.ts
+            const subfolderId = generateStableTestId(
+                'e2e/tests/orders/orderPopUp.test.ts',
                 testTitle
             )
 
-            // funzy-qa structure: tests/actions/actionPopUp.test.ts
-            const funzyId = generateStableTestId('tests/actions/actionPopUp.test.ts', testTitle)
+            // root project structure: tests/orders/orderPopUp.test.ts
+            const rootId = generateStableTestId('tests/orders/orderPopUp.test.ts', testTitle)
 
             // After normalization, both should produce same testId
-            expect(probuildId).toBe(funzyId)
+            expect(subfolderId).toBe(rootId)
         })
     })
 })

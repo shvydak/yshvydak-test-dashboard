@@ -179,22 +179,22 @@ describe('PlaywrightService', () => {
 
         it('should discover tests nested 3+ levels deep (file > describe > nested describe > test)', async () => {
             // Arrange - mirrors real-world configs where describe blocks nest inside
-            // describe blocks, e.g. api-tests/accounts/accounts.api.test.ts:
-            // "Accounts API" > "POST /accounts/accountCompany" > test
+            // describe blocks, e.g. api-tests/users/users.api.test.ts:
+            // "Users API" > "POST /users" > test
             const mockPlaywrightOutput = {
                 suites: [
                     {
-                        title: 'api-tests/accounts/accounts.api.test.ts',
+                        title: 'api-tests/users/users.api.test.ts',
                         suites: [
                             {
-                                title: 'Accounts API',
+                                title: 'Users API',
                                 suites: [
                                     {
-                                        title: 'POST /accounts/accountCompany',
+                                        title: 'POST /users',
                                         specs: [
                                             {
-                                                title: 'creates main contractor company for account',
-                                                file: 'api-tests/accounts/accounts.api.test.ts',
+                                                title: 'creates a user',
+                                                file: 'api-tests/users/users.api.test.ts',
                                                 line: 12,
                                             },
                                         ],
@@ -213,8 +213,8 @@ describe('PlaywrightService', () => {
 
             // Assert
             expect(tests).toHaveLength(1)
-            expect(tests[0].name).toBe('creates main contractor company for account')
-            expect(tests[0].filePath).toBe('api-tests/accounts/accounts.api.test.ts')
+            expect(tests[0].name).toBe('creates a user')
+            expect(tests[0].filePath).toBe('api-tests/users/users.api.test.ts')
         })
 
         it('should discover tests from both top-level and nested suites', async () => {

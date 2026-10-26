@@ -15,7 +15,7 @@ The package lives in `packages/reporter`. It is versioned independently of the d
 
 Placeholders below: `X.Y.Z` is the new version, `<bump>` is `patch`, `minor` or `major`.
 
-1. **Preconditions.** On `develop`, clean tree (`git status`). Check the account and the current registry version:
+1. **Preconditions.** On `main`, clean tree (`git status`). Check the account and the current registry version:
 
     ```bash
     npm whoami
@@ -69,7 +69,7 @@ Placeholders below: `X.Y.Z` is the new version, `<bump>` is `patch`, `minor` or 
 
     ```bash
     git tag reporter-vX.Y.Z -m "Reporter release X.Y.Z"
-    git push origin develop --follow-tags
+    git push origin main --follow-tags
     ```
 
 8. **Update consumers.** In each test project that uses the reporter:
@@ -94,7 +94,7 @@ The three packages are versioned with Changesets (`.changeset/config.json`, one 
     ```
 
 3. Commit: `chore: release vX.Y.Z`.
-4. Tag: `git tag dashboard-vX.Y.Z -m "Dashboard release X.Y.Z"` (use the version from `packages/server/package.json`), then `git push origin <branch> --follow-tags`.
+4. Tag: `git tag dashboard-vX.Y.Z -m "Dashboard release X.Y.Z"` (use the version from `packages/server/package.json`), then `git push origin main --follow-tags`.
 
 Skip the changeset for documentation-only, test-only and internal refactoring changes.
 

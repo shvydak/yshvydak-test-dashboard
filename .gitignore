@@ -85,3 +85,6 @@ packages/server/test-results/
 .turbo/cookies
 .env.production
 runScript.txt
+
+# Playwright MCP
+.playwright-mcp/

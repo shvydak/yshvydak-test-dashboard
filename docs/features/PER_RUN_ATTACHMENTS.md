@@ -268,17 +268,17 @@ Attachments saved to: {PLAYWRIGHT_PROJECT}/test-results/{test-name}-{hash}/
 // External reporter (yshvydakReporter.ts)
 const result = {
     testId: 'test-66jqtq',
-    name: 'API - Change Action Status',
+    name: 'API - Update Order Status',
     status: 'passed',
     attachments: [
         {
             name: 'video',
-            path: '/Users/.../test-results/api-change-action-abcd1234/video.webm',
+            path: '/Users/.../test-results/api-update-order-abcd1234/video.webm',
             contentType: 'video/webm',
         },
         {
             name: 'trace',
-            path: '/Users/.../test-results/api-change-action-abcd1234/trace.zip',
+            path: '/Users/.../test-results/api-update-order-abcd1234/trace.zip',
             contentType: 'application/zip',
         },
     ],

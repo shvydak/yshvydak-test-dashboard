@@ -292,7 +292,7 @@ When a test is rerun from modal, the following events are broadcast:
         "runId": "c3699b22-cbec-4f26-a7cb-8524927b7072",
         "exitCode": 0,
         "testId": "test-xv3dl2", // Stable test identifier
-        "testName": "Change Action status",
+        "testName": "Update order status",
         "originalTestId": "1b2a658d-d563-4d2d-8f4f-ff8d7d5e151a", // Execution result ID
         "isRerun": true,
         "type": "rerun"

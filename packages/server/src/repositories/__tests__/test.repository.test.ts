@@ -1101,16 +1101,16 @@ describe('TestRepository - Core Functionality', () => {
     describe('getAllLatestMetadata()', () => {
         it('returns only the latest row per test_id, unscoped by project', async () => {
             await repository.saveTestResult(
-                createTestResult('test-a', 'failed', {metadata: {tags: ['@PB-1']}})
+                createTestResult('test-a', 'failed', {metadata: {tags: ['@DEMO-1']}})
             )
             await new Promise((resolve) => setTimeout(resolve, 100))
             await repository.saveTestResult(
-                createTestResult('test-a', 'passed', {metadata: {tags: ['@PB-2']}}) // latest for test-a
+                createTestResult('test-a', 'passed', {metadata: {tags: ['@DEMO-2']}}) // latest for test-a
             )
             await repository.saveTestResult(
                 createTestResult('test-b', 'passed', {
                     project: 'Other_Project',
-                    metadata: {tags: ['@PB-3']},
+                    metadata: {tags: ['@DEMO-3']},
                 })
             )
 
@@ -1119,7 +1119,7 @@ describe('TestRepository - Core Functionality', () => {
 
             expect(rows).toHaveLength(2)
             expect(parsed.map((m) => m.tags)).toEqual(
-                expect.arrayContaining([['@PB-2'], ['@PB-3']])
+                expect.arrayContaining([['@DEMO-2'], ['@DEMO-3']])
             )
         })
 
@@ -1664,7 +1664,7 @@ describe('TestRepository - Core Functionality', () => {
         })
 
         it('should return the most recent project when file has multiple executions', async () => {
-            const filePath = 'e2e/tests/budget.test.ts'
+            const filePath = 'e2e/tests/orders.test.ts'
             await repository.saveTestResult(
                 createTestResult('test-3', 'failed', {filePath, project: 'All_Tests'})
             )

@@ -501,7 +501,7 @@ Authorization: Bearer {jwt-token}
             "id": "fd7fdb1e-b573-4dd3-9809-7a46f923b690",
             "testId": "test-66jqtq",
             "runId": "run-abc123",
-            "name": "API - Change Action Status",
+            "name": "API - Update Order Status",
             "filePath": "tests/api/actions.spec.ts",
             "status": "passed",
             "duration": 7900,
@@ -604,7 +604,7 @@ CREATE INDEX IF NOT EXISTS idx_attachments_test_result_id ON attachments(test_re
 The reporter already generates unique execution IDs, so no changes were needed:
 
 ```typescript
-// External reporter: /Users/y.shvydak/QA/probuild-qa/e2e/testUtils/yshvydakReporter.ts
+// External reporter: /path/to/your-playwright-project/e2e/testUtils/yshvydakReporter.ts
 
 onTestEnd(test: TestCase, result: TestResult) {
     const testResult: YShvydakTestResult = {
@@ -636,8 +636,8 @@ onTestEnd(test: TestCase, result: TestResult) {
 
 **User Actions:**
 
-1. Run "Change Action Status" test (first time)
-2. Run "Change Action Status" test (second time)
+1. Run "Update Order Status" test (first time)
+2. Run "Update Order Status" test (second time)
 3. Open test modal
 4. Click "History" tab
 

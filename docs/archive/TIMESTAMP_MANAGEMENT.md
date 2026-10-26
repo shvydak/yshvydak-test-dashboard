@@ -127,7 +127,7 @@ function formatLastRun(test: any): string {
 ```json
 {
     "testId": "test-66jqtq",
-    "name": "API - Change Action Status",
+    "name": "API - Update Order Status",
     "status": "passed",
     "timestamp": "2025-09-24 13:41:11", // Legacy field (created_at)
     "createdAt": "2025-09-24 13:41:11", // Discovery time

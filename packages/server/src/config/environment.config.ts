@@ -10,6 +10,7 @@ export interface EnvironmentConfig {
     playwright: {
         projectDir: string
         reporterPath: string
+        outputDir: string
     }
     storage: {
         outputDir: string
@@ -59,6 +60,14 @@ export const config: EnvironmentConfig = {
         },
         get reporterPath() {
             return 'playwright-dashboard-reporter'
+        },
+        // Where Playwright writes attachments; only files under it are copied into storage.
+        // Playwright default is `test-results` under the project dir — set PLAYWRIGHT_OUTPUT_DIR if the project's `outputDir` differs.
+        get outputDir() {
+            return (
+                process.env.PLAYWRIGHT_OUTPUT_DIR ||
+                path.join(config.playwright.projectDir, 'test-results')
+            )
         },
     },
     storage: {

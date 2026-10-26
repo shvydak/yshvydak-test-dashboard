@@ -13,8 +13,8 @@ export function createPipelineRoutes(container: ServiceContainer): Router {
     // Destructive: signed-in users only, like /settings/* (403 when ENABLE_AUTH is off)
     router.post('/stop', authMiddleware, requireJWT(), pipelineController.stopPipeline)
     // Specific route must come before the parameterized one below
-    router.get('/status/current', pipelineController.getCurrentPipelineStatus)
-    router.get('/status/:pipelineRunId', pipelineController.getPipelineStatus)
+    router.get('/status/current', authMiddleware, pipelineController.getCurrentPipelineStatus)
+    router.get('/status/:pipelineRunId', authMiddleware, pipelineController.getPipelineStatus)
 
     return router
 }

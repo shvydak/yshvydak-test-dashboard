@@ -32,6 +32,9 @@ vi.mock('../../config/environment.config', () => ({
         storage: {
             outputDir: '/test/output/dir',
         },
+        playwright: {
+            outputDir: '/pw/out',
+        },
     },
 }))
 
@@ -120,7 +123,7 @@ describe('AttachmentService', () => {
             const attachments = [
                 {
                     name: 'screenshot',
-                    path: '/source/screenshot.png',
+                    path: '/pw/out/screenshot.png',
                     contentType: 'image/png',
                 },
             ]
@@ -140,7 +143,7 @@ describe('AttachmentService', () => {
             })
 
             expect(mockAttachmentManager.copyPlaywrightAttachment).toHaveBeenCalledWith(
-                '/source/screenshot.png',
+                '/pw/out/screenshot.png',
                 testResultId,
                 'screenshot'
             )
@@ -170,12 +173,12 @@ describe('AttachmentService', () => {
             const attachments = [
                 {
                     name: 'screenshot',
-                    path: '/source/screenshot.png',
+                    path: '/pw/out/screenshot.png',
                     contentType: 'image/png',
                 },
                 {
                     name: 'video',
-                    path: '/source/video.webm',
+                    path: '/pw/out/video.webm',
                     contentType: 'video/webm',
                 },
             ]
@@ -191,7 +194,7 @@ describe('AttachmentService', () => {
         it('should skip attachment with missing name', async () => {
             const attachments = [
                 {
-                    path: '/source/screenshot.png',
+                    path: '/pw/out/screenshot.png',
                     contentType: 'image/png',
                 },
             ]
@@ -223,7 +226,7 @@ describe('AttachmentService', () => {
             const attachments = [
                 {
                     name: 'screenshot',
-                    path: '/non/existent/file.png',
+                    path: '/pw/out/missing/file.png',
                     contentType: 'image/png',
                 },
             ]
@@ -243,7 +246,7 @@ describe('AttachmentService', () => {
             const attachments = [
                 {
                     name: 'screenshot.png',
-                    path: '/source/screenshot.png',
+                    path: '/pw/out/screenshot.png',
                 },
             ]
 
@@ -271,12 +274,12 @@ describe('AttachmentService', () => {
             const attachments = [
                 {
                     name: 'valid',
-                    path: '/source/valid.png',
+                    path: '/pw/out/valid.png',
                     contentType: 'image/png',
                 },
                 {
                     name: 'invalid',
-                    path: '/source/invalid.png',
+                    path: '/pw/out/invalid.png',
                     contentType: 'image/png',
                 },
             ]
@@ -295,7 +298,7 @@ describe('AttachmentService', () => {
             const attachments = [
                 {
                     name: 'screenshot with spaces & special-chars',
-                    path: '/source/screenshot.png',
+                    path: '/pw/out/screenshot.png',
                     contentType: 'image/png',
                 },
             ]
@@ -320,7 +323,7 @@ describe('AttachmentService', () => {
             const attachments = [
                 {
                     name: 'trace',
-                    path: '/source/trace.zip',
+                    path: '/pw/out/trace.zip',
                     contentType: 'application/zip',
                 },
             ]
@@ -408,7 +411,7 @@ describe('AttachmentService', () => {
             const attachments = [
                 {
                     name: 'screenshot',
-                    path: '/source/screenshot.png',
+                    path: '/pw/out/screenshot.png',
                     contentType: 'image/png',
                 },
             ]
@@ -449,12 +452,12 @@ describe('AttachmentService', () => {
             const attachments = [
                 {
                     name: 'screenshot',
-                    path: '/source/screenshot.png',
+                    path: '/pw/out/screenshot.png',
                     contentType: 'image/png',
                 },
                 {
                     name: 'video',
-                    path: '/source/video.webm',
+                    path: '/pw/out/video.webm',
                     contentType: 'video/webm',
                 },
             ]
@@ -471,7 +474,7 @@ describe('AttachmentService', () => {
             const attachments = [
                 {
                     name: 'screenshot',
-                    path: '/non/existent/file.png',
+                    path: '/pw/out/missing/file.png',
                     contentType: 'image/png',
                 },
             ]
@@ -522,17 +525,17 @@ describe('AttachmentService', () => {
             const attachments = [
                 {
                     name: 'screenshot',
-                    path: '/source/screenshot.png',
+                    path: '/pw/out/screenshot.png',
                     contentType: 'image/png',
                 },
                 {
                     name: 'video',
-                    path: '/source/video.webm',
+                    path: '/pw/out/video.webm',
                     contentType: 'video/webm',
                 },
                 {
                     name: 'trace',
-                    path: '/source/trace.zip',
+                    path: '/pw/out/trace.zip',
                     contentType: 'application/zip',
                 },
             ]
@@ -588,17 +591,17 @@ describe('AttachmentService', () => {
             const attachments = [
                 {
                     name: 'valid',
-                    path: '/source/valid.png',
+                    path: '/pw/out/valid.png',
                     contentType: 'image/png',
                 },
                 {
                     name: 'will-fail',
-                    path: '/non/existent/file.png',
+                    path: '/pw/out/missing/file.png',
                     contentType: 'image/png',
                 },
                 {
                     name: 'also-valid',
-                    path: '/source/also-valid.png',
+                    path: '/pw/out/also-valid.png',
                     contentType: 'image/png',
                 },
             ]
@@ -705,7 +708,7 @@ describe('AttachmentService', () => {
             const attachments = [
                 {
                     name: 'screenshot',
-                    path: '/source/screenshot.png',
+                    path: '/pw/out/screenshot.png',
                     contentType: 'image/png',
                 },
             ]
@@ -725,7 +728,7 @@ describe('AttachmentService', () => {
             const attachments = [
                 {
                     name: 'screenshot',
-                    path: '/source/screenshot.png',
+                    path: '/pw/out/screenshot.png',
                     contentType: 'image/png',
                 },
             ]

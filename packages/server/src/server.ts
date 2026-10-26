@@ -4,6 +4,7 @@ import {config} from './config/environment.config'
 import {RUN_STOP} from './config/constants'
 import {Logger} from './utils/logger.util'
 import {DatabaseManager} from './database/database.manager'
+import {startInternalListener, closeInternalListener} from './utils/internalListener.util'
 import {runProcessRegistry} from './services/runProcessRegistry.service'
 
 // Background Jira sync cadence. Manual "Refresh now" (POST /api/jira/refresh, from Settings)
@@ -19,6 +20,10 @@ async function startServer() {
 
         // Before listen: kills leftover Playwright groups and deletes what an interrupted run wrote.
         await serviceContainer.pipelineExecutionService.handleInterruptedOnStartup()
+
+        // Loopback listener for the spawned reporter (JWT-free reporter routes only; see auth.middleware).
+        // Before the main listen/ready signal, so no run can start without it.
+        const internalServer = await startInternalListener(app)
 
         // Start HTTP server
         const server = app.listen(config.server.port, () => {
@@ -64,6 +69,8 @@ async function startServer() {
                 process.exit(1)
             }, 4500) // 4.5 seconds (slightly less than PM2's kill_timeout of 5s)
             await runProcessRegistry.terminateAll(RUN_STOP.SHUTDOWN_GRACE_MS)
+
+            closeInternalListener(internalServer)
 
             // Stop accepting new connections
             server.close(() => {

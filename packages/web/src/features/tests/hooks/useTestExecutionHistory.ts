@@ -1,4 +1,4 @@
-import {useState, useEffect, useCallback} from 'react'
+import {useState, useEffect, useCallback, useRef} from 'react'
 import {TestResult} from '@yshvydak/core'
 import {authGet} from '@features/authentication/utils/authFetch'
 import {config} from '@config/environment.config'
@@ -25,32 +25,49 @@ export function useTestExecutionHistory(testId: string): UseTestExecutionHistory
     const [loadingMore, setLoadingMore] = useState(false)
     const [error, setError] = useState<string | null>(null)
     const [refreshTrigger, setRefreshTrigger] = useState(0)
+    // Which test the list on screen belongs to, and how many rows are loaded: a refetch of the
+    // same test runs in the background (no skeleton) and keeps the loaded pages.
+    const loadedTestIdRef = useRef<string | null>(null)
+    const loadedCountRef = useRef(0)
 
     const refetch = useCallback(() => {
         setRefreshTrigger((prev) => prev + 1)
     }, [])
+
+    useEffect(() => {
+        loadedCountRef.current = executions.length
+    }, [executions.length])
 
     // First page (or reload). Replaces the list and resets the total.
     useEffect(() => {
         if (!testId) {
             setExecutions([])
             setTotal(0)
+            loadedTestIdRef.current = null
+            loadedCountRef.current = 0
             return
         }
 
+        const background = loadedTestIdRef.current === testId
+        // A late response for a previous test (or an older refetch) must not land on this one
+        let cancelled = false
+
         const fetchHistory = async () => {
-            setLoading(true)
+            if (!background) setLoading(true)
             setError(null)
             try {
                 // byTestId=true tells the server we already have the stable test_id
                 // (not an execution id), so it can skip an extra SELECT + attachment
                 // lookup that exists for backwards-compatible execution-id callers.
                 const response = await authGet(
-                    `${config.api.serverUrl}/api/tests/${testId}/history?limit=${PAGE_SIZE}&byTestId=true`
+                    `${config.api.serverUrl}/api/tests/${testId}/history?limit=${background ? Math.max(PAGE_SIZE, loadedCountRef.current) : PAGE_SIZE}&byTestId=true`
                 )
 
+                if (cancelled) return
                 if (response.ok) {
                     const data = await response.json()
+                    if (cancelled) return
+                    loadedTestIdRef.current = testId
                     setExecutions(data.data || [])
                     // `count` is the TOTAL execution count, not the page length.
                     setTotal(typeof data.count === 'number' ? data.count : (data.data || []).length)
@@ -58,13 +75,16 @@ export function useTestExecutionHistory(testId: string): UseTestExecutionHistory
                     setError('Failed to load execution history')
                 }
             } catch (err) {
-                setError(err instanceof Error ? err.message : 'Unknown error')
+                if (!cancelled) setError(err instanceof Error ? err.message : 'Unknown error')
             } finally {
-                setLoading(false)
+                if (!cancelled) setLoading(false)
             }
         }
 
         fetchHistory()
+        return () => {
+            cancelled = true
+        }
     }, [testId, refreshTrigger])
 
     // Fetch the next page of older executions using a keyset cursor (created_at of

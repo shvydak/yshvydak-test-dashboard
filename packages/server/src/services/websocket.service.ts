@@ -56,6 +56,17 @@ export class WebSocketService implements IWebSocketService {
         })
     }
 
+    /** Data was deleted (test, execution, project, all, cleanup): every client re-reads its lists. */
+    broadcastTestsDeleted(
+        scope: 'test' | 'execution' | 'project' | 'all' | 'cleanup',
+        details?: {testId?: string; executionId?: string; project?: string}
+    ): void {
+        this.broadcast({
+            type: 'tests:deleted',
+            data: {scope, ...details, timestamp: new Date().toISOString()},
+        })
+    }
+
     broadcastPipelineStarted(pipelineRunId: string, steps: PipelineStepSummary[]): void {
         this.broadcast({
             type: 'pipeline:started',

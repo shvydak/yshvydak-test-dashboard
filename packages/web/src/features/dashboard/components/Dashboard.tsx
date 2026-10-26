@@ -46,8 +46,15 @@ export default function Dashboard() {
         fetchTests()
     }, [queryClient, fetchTests])
 
+    // The socket hook already re-reads tests/counts on a delete; only the stats widgets are left
+    const handleTestsDeleted = useCallback(() => {
+        queryClient.invalidateQueries({queryKey: ['flaky-tests']})
+        queryClient.invalidateQueries({queryKey: ['test-timeline']})
+    }, [queryClient])
+
     useWebSocket(webSocketUrl, {
         onRunCompleted: handleRunCompleted,
+        onTestsDeleted: handleTestsDeleted,
     })
 
     useEffect(() => {

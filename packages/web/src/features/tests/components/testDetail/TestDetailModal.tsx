@@ -142,19 +142,39 @@ export function TestDetailModal({test, isOpen, onClose}: TestDetailModalProps) {
 
     const handleRunCompleted = useCallback(
         (data: any) => {
-            if (
-                data.isRerun &&
+            const isThisRerun =
+                data?.isRerun &&
                 (data.testId === test?.testId || data.originalTestId === currentExecution?.id)
-            ) {
-                refetchHistory()
-                selectExecution(null)
-            }
+            // Skip runs that cannot have added an execution for this test: another test's
+            // rerun, or a group run of another file. Anything else (run-all, pipeline step,
+            // no usable payload) refetches in the background — one cheap history GET.
+            const otherRerun = data?.isRerun && !isThisRerun
+            const otherGroup =
+                data?.type === 'run-group' && data.filePath && data.filePath !== test?.filePath
+            if (otherRerun || otherGroup) return
+
+            refetchHistory()
+            if (isThisRerun) selectExecution(null)
         },
-        [test?.testId, currentExecution?.id, refetchHistory, selectExecution]
+        [test?.testId, test?.filePath, currentExecution?.id, refetchHistory, selectExecution]
     )
+
+    // Data deleted from another client: close when this test is gone, else refresh history
+    const handleTestsDeleted = (data: any) => {
+        const gone =
+            data?.scope === 'all' ||
+            (data?.scope === 'test' && data.testId === test?.testId) ||
+            (data?.scope === 'project' && !!data.project && data.project === test?.project)
+        if (gone) {
+            handleClose()
+            return
+        }
+        refetchHistory()
+    }
 
     useWebSocket(webSocketUrl, {
         onRunCompleted: handleRunCompleted,
+        onTestsDeleted: handleTestsDeleted,
     })
 
     const handleRerun = async (testId: string) => {
@@ -255,7 +275,7 @@ export function TestDetailModal({test, isOpen, onClose}: TestDetailModalProps) {
         // Invalidate tests cache to refetch with updated note, and the "Noted"
         // filter-bar count — saving a note doesn't touch test_results at all, so
         // nothing else (websocket, fetchTests) would ever refresh it otherwise
-        queryClient.invalidateQueries({queryKey: ['tests']})
+        queryClient.invalidateQueries({queryKey: ['filtered-tests-by-status']})
         queryClient.invalidateQueries({queryKey: ['test-status-counts']})
         refetchHistory()
     }
@@ -267,7 +287,7 @@ export function TestDetailModal({test, isOpen, onClose}: TestDetailModalProps) {
 
         // Invalidate tests cache to refetch with updated note, and the "Noted"
         // filter-bar count (see handleSaveNote)
-        queryClient.invalidateQueries({queryKey: ['tests']})
+        queryClient.invalidateQueries({queryKey: ['filtered-tests-by-status']})
         queryClient.invalidateQueries({queryKey: ['test-status-counts']})
         refetchHistory()
     }

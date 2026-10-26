@@ -1915,6 +1915,10 @@ Broadcast when a test process completes.
 
 `run:stopping` (`reason`) — a stop started cleaning up; the Stop button shows "Stopping...". `run:cancelled` (`runIds`, `reason`, `pipelineRunId?`) — the runs' data is deleted: clients reset their run state and refetch, every test shows its previous result. A stopped run sends no `run:completed`.
 
+### Delete Events
+
+`tests:deleted` (`scope`: `test` | `execution` | `project` | `all` | `cleanup`; `testId?`, `executionId?`, `project?`, `timestamp`) — sent after a successful `DELETE /api/tests/:testId`, `DELETE /api/tests/:testId/executions/:executionId`, `DELETE /api/tests/all` (also `?project=`) or a `POST /api/tests/cleanup` that touched rows. Every client re-reads its test lists, counts and open history; no `run:*` event is sent for deletes.
+
 ### Test Events
 
 #### test:status
@@ -1940,6 +1944,8 @@ Broadcast when:
 
 - A test starts execution (`POST /api/tests/test-start`)
 - A test completes (`POST /api/tests`)
+
+The web UI also refreshes the test list from this event, throttled to one fetch per 10 s (trailing call included, skipped while the browser tab is hidden, one refresh when it becomes visible again), so row statuses change while a run is in progress.
 
 See [Progress Tracking](features/PROGRESS_TRACKING.md) for implementation details.
 

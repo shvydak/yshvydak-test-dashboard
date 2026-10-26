@@ -5,7 +5,7 @@
  *
  * Test Coverage:
  * - Connection lifecycle (connect, disconnect, reconnect)
- * - Reconnection logic with exponential backoff (max 5 attempts)
+ * - Reconnection with capped exponential backoff (never gives up)
  * - Message parsing and handling
  * - State synchronization (tests, runs, running states)
  * - handleConnectionStatus() - restore active processes
@@ -18,7 +18,12 @@
 import {describe, it, expect, vi, beforeEach, afterEach} from 'vitest'
 import {renderHook, act} from '@testing-library/react'
 import {QueryClient, QueryClientProvider} from '@tanstack/react-query'
-import {useWebSocket} from '../useWebSocket'
+import {
+    useWebSocket,
+    resetProgressRefreshThrottle,
+    PROGRESS_REFRESH_INTERVAL_MS,
+    DELETE_REFRESH_DELAY_MS,
+} from '../useWebSocket'
 import {useTestsStore} from '@features/tests/store/testsStore'
 import React from 'react'
 
@@ -103,6 +108,7 @@ describe('useWebSocket', () => {
     beforeEach(() => {
         vi.clearAllMocks()
         vi.useFakeTimers()
+        resetProgressRefreshThrottle()
 
         // Mock store actions
         mockStoreActions = {
@@ -291,57 +297,6 @@ describe('useWebSocket', () => {
                 const callsAfter = (global.WebSocket as any).mock.calls.length
                 expect(callsAfter).toBe(callsBefore + 1)
             }
-        })
-
-        it.skip('should stop reconnecting after max attempts (5)', async () => {
-            const url = 'ws://localhost:3001'
-            const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
-
-            renderHook(() => useWebSocket(url), {
-                wrapper: createWrapper(),
-            })
-
-            await act(async () => {
-                await Promise.resolve()
-            })
-
-            // Close connection and reconnect 5 times (hitting the limit)
-            for (let i = 0; i < 5; i++) {
-                act(() => {
-                    mockWebSocket.close()
-                    vi.advanceTimersByTime(0)
-                })
-
-                await act(async () => {
-                    vi.advanceTimersByTime(30000) // Max delay
-                    await Promise.resolve()
-                })
-            }
-
-            // At this point, we've had 5 reconnection attempts
-            const callsBeforeFinal = (global.WebSocket as any).mock.calls.length
-
-            // Close one more time - this should NOT trigger another reconnect
-            act(() => {
-                mockWebSocket.close()
-                vi.advanceTimersByTime(0)
-            })
-
-            await act(async () => {
-                vi.advanceTimersByTime(30000)
-                await Promise.resolve()
-            })
-
-            // Should NOT have attempted reconnection
-            const callsAfterFinal = (global.WebSocket as any).mock.calls.length
-            expect(callsAfterFinal).toBe(callsBeforeFinal)
-
-            // Should log error
-            expect(consoleErrorSpy).toHaveBeenCalledWith(
-                expect.stringContaining('Max reconnection attempts reached')
-            )
-
-            consoleErrorSpy.mockRestore()
         })
 
         it('should reset reconnection counter on successful connection', async () => {
@@ -533,6 +488,256 @@ describe('useWebSocket', () => {
             expect(invalidateQueriesSpy).toHaveBeenCalled()
             expect(mockStoreActions.fetchTests).toHaveBeenCalled()
             expect(mockStoreActions.fetchRuns).toHaveBeenCalled()
+        })
+    })
+
+    describe('Reconnect keeps trying', () => {
+        // A server that is down: the first socket connects, every later one never opens
+        // and closes straight away (code 1006), like a refused connection.
+        class DownServerSocket {
+            static instances: DownServerSocket[] = []
+            static CONNECTING = 0
+            static OPEN = 1
+            static CLOSING = 2
+            static CLOSED = 3
+            readyState = 0
+            onopen: any = null
+            onclose: any = null
+            onmessage: any = null
+            onerror: any = null
+            closeCalls: Array<[number?, string?]> = []
+            constructor(public url: string) {
+                DownServerSocket.instances.push(this)
+            }
+            close(code?: number, reason?: string) {
+                this.closeCalls.push([code, reason])
+                this.readyState = 3
+                // Browsers report 1006 for a socket closed while still CONNECTING
+                const wasConnecting = this.closeCalls.length === 1 && this.neverOpened
+                queueMicrotask(() =>
+                    this.onclose?.({code: wasConnecting ? 1006 : (code ?? 1005), reason: ''})
+                )
+            }
+            neverOpened = true
+            send() {}
+            drop() {
+                this.readyState = 3
+                this.onclose?.({code: 1006, reason: ''})
+            }
+        }
+
+        const installDownServer = () => {
+            DownServerSocket.instances = []
+            global.WebSocket = DownServerSocket as any
+        }
+
+        it('keeps reconnecting after more than 5 failed attempts, with backoff capped at 30s', async () => {
+            installDownServer()
+            renderHook(() => useWebSocket('ws://localhost:3001'), {wrapper: createWrapper()})
+            expect(DownServerSocket.instances).toHaveLength(1)
+
+            // The server is down: each socket fails without ever opening.
+            for (let i = 0; i < 9; i++) {
+                act(() => {
+                    DownServerSocket.instances[DownServerSocket.instances.length - 1].drop()
+                })
+                await act(async () => {
+                    vi.advanceTimersByTime(30000)
+                    await Promise.resolve()
+                })
+            }
+
+            // Old behaviour stopped at 6 sockets (1 + 5 retries); now it never gives up
+            expect(DownServerSocket.instances).toHaveLength(10)
+        })
+
+        it('waits no longer than 30s between attempts', async () => {
+            installDownServer()
+            renderHook(() => useWebSocket('ws://localhost:3001'), {wrapper: createWrapper()})
+            for (let i = 0; i < 8; i++) {
+                act(() => {
+                    DownServerSocket.instances[DownServerSocket.instances.length - 1].drop()
+                })
+                await act(async () => {
+                    vi.advanceTimersByTime(30000)
+                })
+            }
+            const before = DownServerSocket.instances.length
+            act(() => {
+                DownServerSocket.instances[before - 1].drop()
+            })
+            await act(async () => {
+                vi.advanceTimersByTime(29000)
+            })
+            expect(DownServerSocket.instances).toHaveLength(before)
+            await act(async () => {
+                vi.advanceTimersByTime(1000)
+            })
+            expect(DownServerSocket.instances).toHaveLength(before + 1)
+        })
+
+        it('unmount while still CONNECTING (close code 1006) never reconnects or leaks a socket', async () => {
+            installDownServer()
+            const {unmount} = renderHook(() => useWebSocket('ws://localhost:3001'), {
+                wrapper: createWrapper(),
+            })
+            expect(DownServerSocket.instances).toHaveLength(1)
+
+            unmount()
+            await act(async () => {
+                await Promise.resolve()
+                vi.advanceTimersByTime(120000)
+                await Promise.resolve()
+            })
+
+            expect(DownServerSocket.instances).toHaveLength(1)
+            expect(DownServerSocket.instances[0].closeCalls).toHaveLength(1)
+        })
+
+        it('refreshes tests and runs once after a reconnect, not on the first connect', async () => {
+            renderHook(() => useWebSocket('ws://localhost:3001'), {wrapper: createWrapper()})
+            await act(async () => {
+                await Promise.resolve()
+            })
+            expect(mockStoreActions.fetchTests).not.toHaveBeenCalled()
+
+            act(() => {
+                mockWebSocket.close()
+                vi.advanceTimersByTime(0)
+            })
+            await act(async () => {
+                vi.advanceTimersByTime(1000)
+                await Promise.resolve()
+            })
+
+            expect(mockStoreActions.fetchTests).toHaveBeenCalledTimes(1)
+            expect(mockStoreActions.fetchRuns).toHaveBeenCalledTimes(1)
+        })
+
+        it('does not reconnect after an intentional disconnect (unmount)', async () => {
+            const {unmount} = renderHook(() => useWebSocket('ws://localhost:3001'), {
+                wrapper: createWrapper(),
+            })
+            await act(async () => {
+                await Promise.resolve()
+            })
+            const calls = (global.WebSocket as any).mock.calls.length
+
+            unmount()
+            await act(async () => {
+                vi.advanceTimersByTime(60000)
+                await Promise.resolve()
+            })
+
+            expect((global.WebSocket as any).mock.calls.length).toBe(calls)
+        })
+    })
+
+    describe('Delete and progress refresh', () => {
+        const open = async (options?: any) => {
+            renderHook(() => useWebSocket('ws://localhost:3001', options), {
+                wrapper: createWrapper(),
+            })
+            await act(async () => {
+                await Promise.resolve()
+            })
+        }
+
+        it('tests:deleted refreshes tests and runs and notifies the caller', async () => {
+            const onTestsDeleted = vi.fn()
+            await open({onTestsDeleted})
+
+            act(() => {
+                mockWebSocket.simulateMessage({
+                    type: 'tests:deleted',
+                    data: {scope: 'test', testId: 't1'},
+                })
+            })
+
+            expect(onTestsDeleted).toHaveBeenCalledWith({scope: 'test', testId: 't1'})
+            act(() => {
+                vi.advanceTimersByTime(DELETE_REFRESH_DELAY_MS)
+            })
+            expect(mockStoreActions.fetchTests).toHaveBeenCalledTimes(1)
+            expect(mockStoreActions.fetchRuns).toHaveBeenCalledTimes(1)
+        })
+
+        it('test:progress refreshes the list, at most once per window, with a trailing refresh', async () => {
+            await open()
+            const progress = {type: 'test:progress', data: {runId: 'r1'}}
+
+            act(() => {
+                mockWebSocket.simulateMessage(progress)
+                mockWebSocket.simulateMessage(progress)
+                mockWebSocket.simulateMessage(progress)
+            })
+            // First one goes through now, the rest collapse into one trailing call
+            expect(mockStoreActions.fetchTests).toHaveBeenCalledTimes(1)
+
+            act(() => {
+                vi.advanceTimersByTime(PROGRESS_REFRESH_INTERVAL_MS)
+            })
+            expect(mockStoreActions.fetchTests).toHaveBeenCalledTimes(2)
+
+            act(() => {
+                vi.advanceTimersByTime(PROGRESS_REFRESH_INTERVAL_MS * 3)
+            })
+            expect(mockStoreActions.fetchTests).toHaveBeenCalledTimes(2)
+        })
+
+        it('uses a window of at least 10s between progress refreshes', () => {
+            expect(PROGRESS_REFRESH_INTERVAL_MS).toBeGreaterThanOrEqual(10000)
+        })
+
+        describe('hidden tab', () => {
+            const setHidden = (hidden: boolean) => {
+                Object.defineProperty(document, 'hidden', {configurable: true, value: hidden})
+                document.dispatchEvent(new Event('visibilitychange'))
+            }
+            afterEach(() => setHidden(false))
+
+            it('skips progress refreshes while hidden, then refreshes once when visible again', async () => {
+                await open()
+                setHidden(true)
+
+                act(() => {
+                    mockWebSocket.simulateMessage({type: 'test:progress', data: {runId: 'r1'}})
+                    mockWebSocket.simulateMessage({type: 'test:progress', data: {runId: 'r1'}})
+                })
+                act(() => {
+                    vi.advanceTimersByTime(PROGRESS_REFRESH_INTERVAL_MS * 3)
+                })
+                expect(mockStoreActions.fetchTests).not.toHaveBeenCalled()
+
+                act(() => setHidden(false))
+                expect(mockStoreActions.fetchTests).toHaveBeenCalledTimes(1)
+            })
+
+            it('does not refresh on becoming visible when nothing changed while hidden', async () => {
+                await open()
+                act(() => setHidden(true))
+                act(() => setHidden(false))
+
+                expect(mockStoreActions.fetchTests).not.toHaveBeenCalled()
+            })
+        })
+
+        it('coalesces the delete event of several sockets into one refresh', async () => {
+            await open()
+            const msg = {type: 'tests:deleted', data: {scope: 'test', testId: 't1'}}
+
+            act(() => {
+                mockWebSocket.simulateMessage(msg)
+                mockWebSocket.simulateMessage(msg)
+                mockWebSocket.simulateMessage(msg)
+            })
+            expect(mockStoreActions.fetchTests).not.toHaveBeenCalled()
+
+            act(() => {
+                vi.advanceTimersByTime(DELETE_REFRESH_DELAY_MS)
+            })
+            expect(mockStoreActions.fetchTests).toHaveBeenCalledTimes(1)
+            expect(mockStoreActions.fetchRuns).toHaveBeenCalledTimes(1)
         })
     })
 

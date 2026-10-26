@@ -155,6 +155,7 @@ export class TestService implements ITestService {
         const deletedCount = await this.testRepository.deleteByTestId(testId)
 
         Logger.info(`Deleted test ${testId}: ${deletedCount} executions`)
+        this.websocketService.broadcastTestsDeleted('test', {testId})
 
         return {deletedExecutions: deletedCount}
     }
@@ -176,6 +177,7 @@ export class TestService implements ITestService {
         }
 
         Logger.info(`Deleted execution ${executionId}`)
+        this.websocketService.broadcastTestsDeleted('execution', {executionId})
 
         return {success: true}
     }
@@ -208,6 +210,7 @@ export class TestService implements ITestService {
         const deletedCount = await this.testRepository.deleteByProject(project)
 
         Logger.info(`Cleared project ${project}: ${deletedCount} executions`)
+        this.websocketService.broadcastTestsDeleted('project', {project})
 
         return {deletedExecutions: deletedCount}
     }
@@ -218,6 +221,8 @@ export class TestService implements ITestService {
 
         // Clear physical attachment files
         await this.attachmentService.clearAllAttachments()
+
+        this.websocketService.broadcastTestsDeleted('all')
     }
 
     async cleanupData(options: {
@@ -304,6 +309,8 @@ export class TestService implements ITestService {
                 `Cleanup complete (strip): freed ${freedSpace} bytes from ${ids.length} executions, history kept`
             )
 
+            this.websocketService.broadcastTestsDeleted('cleanup')
+
             return {
                 deletedExecutions: ids.length,
                 freedSpace,
@@ -317,6 +324,8 @@ export class TestService implements ITestService {
         Logger.info(
             `Cleanup complete (full): deleted ${deletedCount} records, freed ${freedSpace} bytes`
         )
+
+        this.websocketService.broadcastTestsDeleted('cleanup')
 
         return {
             deletedExecutions: deletedCount,

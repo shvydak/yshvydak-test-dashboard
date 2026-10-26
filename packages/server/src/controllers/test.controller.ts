@@ -10,6 +10,8 @@ import {respondIfAlreadyRunning, respondIfCIRunQueued} from '../utils/ciRunQueue
 import {respondIfRunCancelled} from '../utils/runStop.util'
 import {getWebSocketManager} from '../websocket/server'
 import path from 'path'
+import {config} from '../config/environment.config'
+import {isSafeCliPath, isSafeId} from '../utils/security.util'
 
 export class TestController {
     constructor(
@@ -124,6 +126,9 @@ export class TestController {
             const {filePath, maxWorkers, testNames} = req.body
             if (!filePath) {
                 return ResponseHelper.badRequest(res, 'Missing filePath parameter')
+            }
+            if (!isSafeCliPath(filePath, config.playwright.projectDir)) {
+                return ResponseHelper.badRequest(res, 'Invalid filePath')
             }
 
             const result = await this.testService.runTestGroup(filePath, maxWorkers, testNames)
@@ -396,6 +401,11 @@ export class TestController {
                     res,
                     'Missing required fields: id, testId, runId, name'
                 )
+            }
+
+            // ids become directory names and DB keys: reject anything but UUID / stable-hash shape
+            if (!isSafeId(testData.id) || !isSafeId(testData.testId) || !isSafeId(testData.runId)) {
+                return ResponseHelper.badRequest(res, 'Invalid id, testId or runId')
             }
 
             // Late post of a stopped run (attachments included): acknowledged, never stored.

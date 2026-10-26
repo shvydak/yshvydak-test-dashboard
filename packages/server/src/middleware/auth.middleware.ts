@@ -3,6 +3,7 @@ import {AuthService} from '../services/auth.service'
 import {ResponseHelper} from '../utils/response.helper'
 import {Logger} from '../utils/logger.util'
 import {config} from '../config/environment.config'
+import {getInternalPort} from '../utils/internalListener.util'
 
 // Extend Request type to include user and auth info
 declare global {
@@ -17,17 +18,42 @@ declare global {
     }
 }
 
-// Public endpoints that don't require authentication
-const PUBLIC_ENDPOINTS = [
-    '/api/health',
-    '/api/tests/diagnostics',
-    '/api/auth/login',
-    '/api/auth/config',
-]
+// Public endpoints that don't require authentication. Matched against the full request path
+// (originalUrl): `req.path` is relative to the router mount, so it never starts with /api.
+const PUBLIC_ENDPOINTS = ['/api/health', '/api/auth']
+
+function fullPath(req: Request): string {
+    return (req.originalUrl || req.url || '').split('?')[0]
+}
 
 // Check if endpoint should be public
 function isPublicEndpoint(path: string): boolean {
-    return PUBLIC_ENDPOINTS.some((endpoint) => path.startsWith(endpoint))
+    return PUBLIC_ENDPOINTS.some((endpoint) => path === endpoint || path.startsWith(`${endpoint}/`))
+}
+
+// The only routes the spawned Playwright reporter calls (no credentials).
+function isReporterRoute(method: string, path: string): boolean {
+    const p = path.length > 1 ? path.replace(/\/+$/, '') : path
+    if (method === 'POST') {
+        return [
+            '/api/tests',
+            '/api/tests/process-start',
+            '/api/tests/test-start',
+            '/api/tests/process-end',
+        ].includes(p)
+    }
+    if (method === 'PUT') return /^\/api\/runs\/[^/]+$/.test(p)
+    return false
+}
+
+/** Reporter route reached through the internal loopback listener — the one JWT-free path. */
+export function isInternalReporterRequest(req: Request): boolean {
+    const internalPort = getInternalPort()
+    return (
+        internalPort !== null &&
+        req.socket?.localPort === internalPort &&
+        isReporterRoute(req.method, fullPath(req))
+    )
 }
 
 // Create authentication middleware factory
@@ -42,7 +68,7 @@ export function createAuthMiddleware(authService: AuthService) {
             }
 
             // Skip authentication for public endpoints
-            if (isPublicEndpoint(req.path)) {
+            if (isPublicEndpoint(fullPath(req))) {
                 req.authType = 'none'
                 next()
                 return
@@ -84,6 +110,19 @@ export function createAuthMiddleware(authService: AuthService) {
             Logger.error('Authentication middleware error', error)
             ResponseHelper.serverError(res, 'Authentication service error')
         }
+    }
+}
+
+// JWT for every /api data route; reporter routes on the internal listener skip it.
+export function createApiAuthMiddleware(authService: AuthService) {
+    const authMiddleware = createAuthMiddleware(authService)
+    return (req: Request, res: Response, next: NextFunction): void => {
+        if (config.auth.enableAuth && isInternalReporterRequest(req)) {
+            req.authType = 'none'
+            next()
+            return
+        }
+        void authMiddleware(req, res, next)
     }
 }
 

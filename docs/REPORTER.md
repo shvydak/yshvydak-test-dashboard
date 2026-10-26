@@ -15,7 +15,7 @@ npm install --save-dev playwright-dashboard-reporter
 npx playwright test [--project=<name>] [--workers=<n>] --reporter=playwright-dashboard-reporter
 ```
 
-with `DASHBOARD_API_URL` (always `http://localhost:<PORT>`) and `RUN_ID` in the environment. Discovery uses `npx playwright test --list --reporter=json`. The reporter is resolved from the test project's `node_modules`; if it is missing, `GET /api/tests/diagnostics` lists `Reporter npm package not found: ...` under `playwright.validation.issues`.
+with `DASHBOARD_API_URL` (`http://127.0.0.1:<internal port>`, the loopback listener) and `RUN_ID` in the environment. Discovery uses `npx playwright test --list --reporter=json`. The reporter is resolved from the test project's `node_modules`; if it is missing, `GET /api/tests/diagnostics` lists `Reporter npm package not found: ...` under `playwright.validation.issues`.
 
 Manual use is possible too: `npx playwright test --reporter=playwright-dashboard-reporter` with `DASHBOARD_API_URL` set.
 
@@ -89,7 +89,7 @@ Tag tests with Playwright's `tag` option, for example `test('...', {tag: ['@ABC-
 1. `npm list playwright-dashboard-reporter` in the test project.
 2. `curl http://localhost:3001/api/health`.
 3. Check `PLAYWRIGHT_PROJECT_DIR` and `PORT` in the dashboard `.env`.
-4. `curl http://localhost:3001/api/tests/diagnostics`.
+4. `curl http://localhost:3001/api/tests/diagnostics` (add `-H "Authorization: Bearer <token>"` when `ENABLE_AUTH=true`).
 
 **`Reporter npm package not found`.** Install the package in the test project (`npm install --save-dev playwright-dashboard-reporter`).
 

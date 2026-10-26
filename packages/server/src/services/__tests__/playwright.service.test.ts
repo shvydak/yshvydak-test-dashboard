@@ -14,6 +14,7 @@
 
 import {describe, it, expect, beforeEach, vi, afterEach, Mock} from 'vitest'
 import {PlaywrightService} from '../playwright.service'
+import {setInternalPortForTests} from '../../utils/internalListener.util'
 import {ChildProcess, spawn} from 'child_process'
 import {EventEmitter} from 'events'
 import {Readable} from 'stream'
@@ -779,6 +780,48 @@ describe('PlaywrightService', () => {
             expect(options.env.NODE_ENV).toBe('test')
         })
 
+        it('should not pass server secrets to the Playwright child env', async () => {
+            const secrets = {
+                JWT_SECRET: 'jwt',
+                ADMIN_EMAIL: 'a@b.c',
+                ADMIN_PASSWORD: 'pw',
+                ADMIN_USERS: 'a:b',
+                JIRA_BASE_URL: 'https://x.atlassian.net',
+                JIRA_EMAIL: 'j@b.c',
+                JIRA_API_TOKEN: 'tok',
+                CI_SLACK_WEBHOOK_URL: 'https://hooks.slack.test/x',
+            }
+            const saved = {...process.env}
+            Object.assign(process.env, secrets, {PB_UNRELATED_VAR: 'keep-me'})
+            mockSpawn.mockReturnValue(createMockProcess(''))
+
+            try {
+                await service.runAllTests()
+            } finally {
+                for (const key of [...Object.keys(secrets), 'PB_UNRELATED_VAR']) {
+                    if (saved[key] === undefined) delete process.env[key]
+                    else process.env[key] = saved[key]
+                }
+            }
+
+            const env = mockSpawn.mock.calls[0][2].env
+            for (const name of Object.keys(secrets)) expect(env).not.toHaveProperty(name)
+            expect(env.PB_UNRELATED_VAR).toBe('keep-me')
+        })
+
+        it('should point the reporter at the internal loopback listener when it runs', async () => {
+            setInternalPortForTests(45678)
+            mockSpawn.mockReturnValue(createMockProcess(''))
+
+            try {
+                await service.runAllTests()
+            } finally {
+                setInternalPortForTests(null)
+            }
+
+            expect(mockSpawn.mock.calls[0][2].env.DASHBOARD_API_URL).toBe('http://127.0.0.1:45678')
+        })
+
         it('should return unique runId for each execution', async () => {
             // Arrange
             mockSpawn.mockReturnValue(createMockProcess(''))
@@ -991,6 +1034,30 @@ describe('PlaywrightService', () => {
             await service.discoverTests()
 
             expect(mockSpawn.mock.calls[0][2].detached).toBeUndefined()
+        })
+    })
+
+    describe('spec path safety', () => {
+        it.each(['--config=evil.js', '../../etc/passwd', '/etc/passwd'])(
+            'should refuse a spec path that is an option or outside the project: %s',
+            async (bad) => {
+                await expect(service.runTestGroup(bad)).rejects.toThrow('Invalid test file path')
+                await expect(service.rerunSingleTest(bad, 'x')).rejects.toThrow(
+                    'Invalid test file path'
+                )
+                expect(mockSpawn).not.toHaveBeenCalled()
+            }
+        )
+
+        it('should strip server secrets from the --list discovery env', async () => {
+            process.env.JWT_SECRET = 'jwt'
+            mockSpawn.mockReturnValue(createMockProcess('{"suites":[]}'))
+            try {
+                await service.discoverTests()
+            } finally {
+                delete process.env.JWT_SECRET
+            }
+            expect(mockSpawn.mock.calls[0][2].env).not.toHaveProperty('JWT_SECRET')
         })
     })
 

@@ -4,6 +4,19 @@
 
 All API endpoints return consistent `ApiResponse<T>` format with proper error handling and status codes.
 
+## Authentication
+
+With `ENABLE_AUTH=false` (local use) nothing needs a token. With `ENABLE_AUTH=true`:
+
+| Route group                                                            | Auth on the main port                                               |
+| ---------------------------------------------------------------------- | ------------------------------------------------------------------- |
+| `/api/health`, `/api/auth/*`                                           | none                                                                |
+| `/api/tests/*` (incl. `/diagnostics`), `/api/runs/*`, `/api/storage/*` | JWT (`Authorization: Bearer <token>` or `?token=<token>`), else 401 |
+| `/api/pipeline/status/*`, `POST /api/pipeline/run`                     | JWT, else 401                                                       |
+| `/api/pipeline/stop`, `/api/settings/*`, `/api/jira/*`                 | JWT, else 401 (403 when auth is off)                                |
+
+**Internal reporter listener.** Besides `PORT`, the server listens on `127.0.0.1` on an ephemeral port. Playwright processes it spawns get `DASHBOARD_API_URL=http://127.0.0.1:<port>`. Only the five reporter routes skip the JWT there — `POST /api/tests`, `POST /api/tests/process-start`, `/test-start`, `/process-end`, `PUT /api/runs/:id` — and only when the request arrived on that local port (`req.socket.localPort`; never the remote address, because nginx proxies public traffic from localhost). Every other route on that port still needs a JWT. A reporter started outside the dashboard (not spawned by it) therefore gets 401 when auth is on.
+
 ## Base URL
 
 - **Development**: `http://localhost:3001/api`
@@ -29,7 +42,7 @@ Health check endpoint for monitoring dashboard status.
 
 ### GET /api/tests/diagnostics
 
-Complete integration status and configuration validation.
+Complete integration status and configuration validation. Requires a JWT when `ENABLE_AUTH=true`.
 
 **Response:**
 
@@ -89,7 +102,9 @@ Retrieve all test results with optional filtering.
 
 ### POST /api/tests
 
-Save test results from Playwright reporter.
+Save test results from Playwright reporter. Reporter route: accepted without a JWT on the internal listener, JWT on the main port (see **Authentication**).
+
+Validation: `id`, `testId` and `runId` must match `[A-Za-z0-9_-]{1,128}` (UUID or stable-hash shape), else 400 — they become directory names. An `attachments[].path` is copied only if it resolves (symlinks followed) inside the Playwright output dir (`PLAYWRIGHT_OUTPUT_DIR`, default `<PLAYWRIGHT_PROJECT_DIR>/test-results`); other attachments are skipped and logged, the result is still saved.
 
 **Request Body:**
 
@@ -409,7 +424,7 @@ Two modes (`mode` parameter):
 
 **✨ New in v1.5.0** - Get available Playwright projects defined in `playwright.config.ts`.
 
-**Authentication**: Not required (public endpoint)
+**Authentication**: JWT when `ENABLE_AUTH=true`
 
 **Response (200 - Success):**
 
@@ -506,7 +521,7 @@ Execute a group of tests by file path, with optional filtering by test names.
 
 **Parameters:**
 
-- `filePath` (required) - Path to the test file relative to Playwright's testDir (e.g., `"api/actions.spec.ts"` or `"auth.spec.ts"`). Paths are determined by your Playwright project structure.
+- `filePath` (required) - Path to the test file relative to Playwright's testDir (e.g., `"api/actions.spec.ts"` or `"auth.spec.ts"`). Paths are determined by your Playwright project structure. Values starting with `-` or resolving outside `PLAYWRIGHT_PROJECT_DIR` are rejected with 400 (they would reach the Playwright CLI as options).
 - `maxWorkers` (optional) - Maximum number of parallel workers (default: Playwright config)
 - `testNames` (optional) - Array of test names to run. When provided, only specified tests are executed using Playwright's `--grep` flag
 
@@ -815,7 +830,7 @@ Authorization: Bearer {jwt-token}
 
 **Validation Rules:**
 
-- File must be an image (MIME type starting with `image/`)
+- File must be an image (MIME type starting with `image/`), except `image/svg+xml` (rejected: SVG can carry script)
 - Maximum file size: 5MB
 - Supported formats: PNG, JPEG, GIF, WebP, etc. (any valid image format)
 
@@ -1642,7 +1657,7 @@ Triggers an immediate sync (same logic as the 30-minute background job): discove
 
 ## CI Pipelines
 
-Named pipelines (`develop`, `production`) are ordered lists of project tabs (Settings > Project Tabs). Auth: `POST /api/pipeline/run` needs a JWT when `ENABLE_AUTH=true` (401 without one) and is open when auth is off; `POST /api/pipeline/stop` always needs a JWT (403 when auth is off); the `GET` status endpoints have no auth middleware.
+Named pipelines (`develop`, `production`) are ordered lists of project tabs (Settings > Project Tabs). Auth: `POST /api/pipeline/run` needs a JWT when `ENABLE_AUTH=true` (401 without one) and is open when auth is off; `POST /api/pipeline/stop` always needs a JWT (403 when auth is off); the `GET` status endpoints need a JWT when `ENABLE_AUTH=true`.
 
 ### POST /api/pipeline/run
 

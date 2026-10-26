@@ -15,6 +15,8 @@ beforeAll(() => {
     process.env.JWT_EXPIRES_IN = '1h'
     process.env.ADMIN_EMAIL = 'test-admin@example.com'
     process.env.ADMIN_PASSWORD = 'test-password-123'
+    // A developer's .env may enable auth; suites opt in explicitly
+    process.env.ENABLE_AUTH = 'false'
 
     // Use temporary database for tests to avoid conflicts
     // Each test run gets a unique temp directory

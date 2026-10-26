@@ -53,7 +53,7 @@ export function createTestRoutes(container: ServiceContainer): Router {
     router.get('/:testId/notes/images', noteImageController.getImages)
     router.delete('/:testId/notes/images/:imageId', noteImageController.deleteImage)
 
-    // Trace file endpoint (no auth middleware - JWT validation in controller)
+    // Trace file endpoint (router-level auth accepts ?token= for trace.playwright.dev; controller re-checks)
     router.get('/traces/:attachmentId', testController.getTraceFile)
 
     return router

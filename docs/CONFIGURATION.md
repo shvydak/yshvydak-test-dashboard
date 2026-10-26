@@ -9,6 +9,7 @@ The project uses a **minimal .env configuration** where users only need to set 5
 - `PORT` - API server port (default: 3001)
 - `NODE_ENV` - Environment mode (development/production)
 - `PLAYWRIGHT_PROJECT_DIR` - Path to your Playwright project directory (REQUIRED)
+- `PLAYWRIGHT_OUTPUT_DIR` - Where Playwright writes attachments, as an absolute path (a relative one resolves against the server cwd and skips every attachment); only files under it are copied into storage (optional, defaults to `<PLAYWRIGHT_PROJECT_DIR>/test-results`; set it if the project's `outputDir` differs)
 - `BASE_URL` - Base URL for all services (e.g., http://localhost:3001)
 - `VITE_BASE_URL` - Same as BASE_URL but accessible to web client
 - `VITE_PORT` - Web development server port (optional, defaults to derived value)

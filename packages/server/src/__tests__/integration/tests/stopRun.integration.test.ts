@@ -214,7 +214,10 @@ describe('Stop a run (Integration)', () => {
     describe('a CI pipeline', () => {
         it('stop deletes every step (finished ones too), the discovery takeover and the attachments; previous results show again', async () => {
             fakePlaywright({API: ['t1', 't2', 't4'], WEB: ['t3']})
-            const trace = path.join(tmpDir, 'trace.zip')
+            // Only files under Playwright's output dir are copied into storage.
+            const outputDir = path.join(server.dbPath, 'test-results')
+            fs.mkdirSync(outputDir, {recursive: true})
+            const trace = path.join(outputDir, 'trace.zip')
             fs.writeFileSync(trace, 'zip-bytes')
 
             await api()

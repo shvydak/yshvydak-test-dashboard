@@ -38,12 +38,14 @@ vi.mock('../../utils/logger.util', () => ({
 
 // Helper function to create mock Express request
 function createMockRequest(overrides?: Partial<Request>): Request {
-    return {
+    const merged = {
         path: '/api/tests',
         method: 'GET',
         headers: {},
         ...overrides,
-    } as Request
+    }
+    // Express keeps the full URL in originalUrl; `path` is mount-relative inside routers
+    return {originalUrl: merged.path, ...merged} as Request
 }
 
 // Helper function to create mock Express response
@@ -110,15 +112,24 @@ describe('Authentication Middleware', () => {
                 expect(mockAuthService.verifyJWT).not.toHaveBeenCalled()
             })
 
-            it('should allow /api/tests/diagnostics without authentication', async () => {
+            it('should require authentication for /api/tests/diagnostics', async () => {
                 req = createMockRequest({path: '/api/tests/diagnostics'})
+
+                const middleware = createAuthMiddleware(mockAuthService as any)
+                await middleware(req, res as Response, next)
+
+                expect(next).not.toHaveBeenCalled()
+                expect(res.status).toHaveBeenCalledWith(401)
+            })
+
+            it('should match public endpoints on the full URL, not the mount-relative path', async () => {
+                req = createMockRequest({path: '/health', originalUrl: '/api/health?x=1'})
 
                 const middleware = createAuthMiddleware(mockAuthService as any)
                 await middleware(req, res as Response, next)
 
                 expect(req.authType).toBe('none')
                 expect(next).toHaveBeenCalledOnce()
-                expect(mockAuthService.verifyJWT).not.toHaveBeenCalled()
             })
 
             it('should allow /api/auth/login without authentication', async () => {

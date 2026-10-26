@@ -97,7 +97,7 @@ PLAYWRIGHT_PROJECT_DIR=/path/to/your/playwright/project
 ### Health Checks
 
 - **API Health**: `GET /api/health`
-- **Diagnostics**: `GET /api/tests/diagnostics`
+- **Diagnostics**: `GET /api/tests/diagnostics` (JWT when `ENABLE_AUTH=true`)
 - **WebSocket Status**: Monitor connection events in browser console
 
 ### Log Management

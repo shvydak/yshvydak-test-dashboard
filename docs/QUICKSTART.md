@@ -180,7 +180,7 @@ ls -la /path/from/env
 **Run diagnostics:**
 
 ```bash
-curl http://localhost:3001/api/tests/diagnostics
+curl http://localhost:3001/api/tests/diagnostics   # add -H "Authorization: Bearer <token>" when ENABLE_AUTH=true
 ```
 
 ### Can't login

@@ -11,7 +11,7 @@ The YShvydak Test Dashboard implements a simplified JWT-based authentication sys
 The system implements **JWT authentication for web users only**:
 
 1. **JWT Authentication** - For user browser sessions and web interface
-2. **Open API** - Reporter endpoints are publicly accessible in local network
+2. **Internal reporter listener** - the five reporter routes skip the JWT only on a loopback-only port used by spawned Playwright processes
 
 This approach prioritizes simplicity and ease of configuration while maintaining security for the web dashboard.
 
@@ -38,8 +38,8 @@ This approach prioritizes simplicity and ease of configuration while maintaining
 
 ```
 1. Reporter starts → Connects directly to API endpoints
-2. Reporter sends test data → No authentication required
-3. Server accepts all reporter data → Stores in database
+2. Reporter sends test data → No JWT, accepted only on the internal loopback listener
+3. Server accepts the reporter data → Stores in database
 4. Dashboard users view data → Protected by JWT authentication
 ```
 
@@ -259,7 +259,7 @@ Authorization: Bearer <jwt-token>
 
 #### API Endpoints:
 
-Reporter API endpoints (`/api/tests/*`, `/api/runs/*`) are publicly accessible for local network integration.
+With `ENABLE_AUTH=true`, `/api/tests/*`, `/api/runs/*`, `/api/storage/*` and `/api/pipeline/status/*` require a JWT on the main port. Only the five reporter routes skip it, and only on the internal loopback listener. See API_REFERENCE → Authentication.
 
 #### Special Trace File Access:
 
@@ -274,7 +274,7 @@ GET /api/tests/traces/:attachmentId?token=jwt_token
 These endpoints remain publicly accessible:
 
 - `GET /api/health`
-- `GET /api/tests/diagnostics`
+- `/api/auth/*`
 
 ### Protected Endpoints with Special Authentication
 

@@ -15,6 +15,15 @@ import {PLAYWRIGHT_CONSTANTS} from '../config/constants'
 import {Logger} from '../utils/logger.util'
 import {normalizeAnnotations, finiteNumber} from '../utils/playwrightMetadata.util'
 import {DiscoveredTestMetadata} from '../types/database.types'
+import {getInternalApiUrl} from '../utils/internalListener.util'
+import {isSafeCliPath, stripServerSecrets} from '../utils/security.util'
+
+// A spec path becomes a Playwright positional: no leading '-', and under the project dir.
+function assertSafeSpecPath(filePath: string): void {
+    if (!isSafeCliPath(filePath, config.playwright.projectDir)) {
+        throw new Error(`Invalid test file path: ${filePath}`)
+    }
+}
 
 export class PlaywrightService implements IPlaywrightService {
     // ============================================================================
@@ -115,6 +124,7 @@ export class PlaywrightService implements IPlaywrightService {
         const runId = uuidv4()
         Logger.testRun('run-group', runId)
 
+        assertSafeSpecPath(filePath)
         // Use file path directly - Playwright handles path resolution
         const args = ['playwright', 'test', filePath]
 
@@ -165,6 +175,7 @@ export class PlaywrightService implements IPlaywrightService {
         const runId = uuidv4()
         Logger.testRerun(testName, runId)
 
+        assertSafeSpecPath(testFile)
         const grepPattern = this.buildGrepPattern([testName])
 
         const args = ['playwright', 'test', testFile, '--grep', grepPattern]
@@ -377,9 +388,10 @@ export class PlaywrightService implements IPlaywrightService {
     private spawnPlaywrightProcess(args: string[], options: PlaywrightSpawnOptions): ChildProcess {
         // Use localhost directly so the reporter bypasses any reverse proxy (Nginx/WAF)
         // that may block certain API endpoints based on request body content (e.g. stack traces)
-        const internalApiUrl = `http://localhost:${config.server.port}`
+        // The internal loopback listener lets the reporter post without a JWT; main port is the fallback.
+        const internalApiUrl = getInternalApiUrl() ?? `http://localhost:${config.server.port}`
         const env = {
-            ...process.env,
+            ...stripServerSecrets(process.env),
             DASHBOARD_API_URL: internalApiUrl,
             ...options.env,
             NODE_ENV: config.server.environment,
@@ -404,6 +416,7 @@ export class PlaywrightService implements IPlaywrightService {
      * Executes the playwright test --list command and returns parsed JSON output
      */
     private async executePlaywrightListCommand(project?: string): Promise<PlaywrightListOutput> {
+        const parentEnv = process.env // the spawned child below shadows `process`
         return new Promise((resolve, reject) => {
             const args = [
                 'playwright',
@@ -417,6 +430,7 @@ export class PlaywrightService implements IPlaywrightService {
             const process = spawn('npx', args, {
                 cwd: config.playwright.projectDir,
                 stdio: ['ignore', 'pipe', 'pipe'],
+                env: stripServerSecrets(parentEnv),
             })
 
             let stdout = ''

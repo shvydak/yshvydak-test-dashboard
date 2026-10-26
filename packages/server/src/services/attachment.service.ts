@@ -6,6 +6,7 @@ import {AttachmentManager, AttachmentType} from '../storage/attachmentManager'
 import {config} from '../config/environment.config'
 import {Logger} from '../utils/logger.util'
 import fs from 'fs'
+import {isInsideDir, isSafeId} from '../utils/security.util'
 
 /**
  * Service for managing test attachments (videos, screenshots, traces)
@@ -31,9 +32,25 @@ export class AttachmentService implements IAttachmentService {
     async processAttachments(attachments: any[], testResultId: string): Promise<AttachmentData[]> {
         const processedAttachments: AttachmentData[] = []
 
+        if (!isSafeId(testResultId)) {
+            Logger.warn(`[AttachmentService] Rejected unsafe test result id: ${testResultId}`)
+            return processedAttachments
+        }
+
         for (const attachment of attachments) {
             if (attachment.name && attachment.path) {
                 const sourceFilePath = attachment.path
+
+                // Only files Playwright wrote (its output dir) may be copied into storage.
+                if (
+                    typeof sourceFilePath !== 'string' ||
+                    !isInsideDir(sourceFilePath, config.playwright.outputDir)
+                ) {
+                    Logger.warn(
+                        `[AttachmentService] Skipped attachment outside Playwright output dir: ${sourceFilePath}`
+                    )
+                    continue
+                }
 
                 if (!fs.existsSync(sourceFilePath)) {
                     Logger.warn(`[AttachmentService] Source file not found: ${sourceFilePath}`)

@@ -97,7 +97,8 @@ Variables are read from the root `.env` (the server loads `../../.env` relative 
 With `ENABLE_AUTH=true` the web UI requires login (`POST /api/auth/login`, JWT). Middleware coverage as implemented (`packages/server/src/app.ts`, `routes/index.routes.ts`):
 
 - JWT required: `/api/settings/*`, `/api/jira/*`, `POST /api/pipeline/stop`, `POST /api/pipeline/run`, and the static routes `/reports`, `/attachments`, `/note-images`, `/test-results`. `/api/settings/*`, `/api/jira/*` and `/api/pipeline/stop` also demand a JWT specifically, so they answer 403 when `ENABLE_AUTH` is not `true`; `POST /api/pipeline/run` stays open when auth is off (local runs, the trigger script).
-- No auth middleware: `/api/health`, `/api/auth/*`, `/api/tests/*` (including the reporter's `POST /api/tests` and `/api/tests/diagnostics`), `/api/runs/*`, `/api/storage/*`, the `GET /api/pipeline/status/*` endpoints.
+- JWT required too: `/api/tests/*` (including `/api/tests/diagnostics`), `/api/runs/*`, `/api/storage/*`, `GET /api/pipeline/status/*`. The five reporter routes skip the JWT only on the server's internal loopback listener, which spawned Playwright processes use (see API_REFERENCE → Authentication).
+- No auth middleware: `/api/health`, `/api/auth/*`.
 
 ## Usage
 
@@ -155,7 +156,7 @@ Besides the result fields, the reporter stores extra keys in each result's `meta
 
 ### Troubleshooting
 
-- Health: `curl http://localhost:3001/api/health`. Integration status: `curl http://localhost:3001/api/tests/diagnostics`.
+- Health: `curl http://localhost:3001/api/health`. Integration status: `curl http://localhost:3001/api/tests/diagnostics` (add `-H "Authorization: Bearer <token>"` when `ENABLE_AUTH=true`).
 - Tests not listed: check `PLAYWRIGHT_PROJECT_DIR` and press Discover Tests (the server runs `playwright test --list --reporter=json` there).
 - No results arrive: check that `playwright-dashboard-reporter` is installed in the test project (`npm list playwright-dashboard-reporter`).
 - A "failed" count that matches no visible test is usually a renamed test: the old `testId` row is never updated again. Delete it with `DELETE /api/tests/:testId`.

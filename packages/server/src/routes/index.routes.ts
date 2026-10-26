@@ -8,6 +8,7 @@ import {createStorageRoutes} from './storage.routes'
 import {createSettingsRoutes} from './settings.routes'
 import {createPipelineRoutes} from './pipeline.routes'
 import {createJiraRoutes} from './jira.routes'
+import {createApiAuthMiddleware, createAuthMiddleware} from '../middleware/auth.middleware'
 
 export function createApiRoutes(container: ServiceContainer): Router {
     const router = Router()
@@ -17,10 +18,18 @@ export function createApiRoutes(container: ServiceContainer): Router {
     router.get('/health', healthController.healthCheck)
     router.use('/auth', createAuthRoutes())
 
-    // Public API routes for reporter integration (no authentication)
-    router.use('/tests', createTestRoutes(container))
-    router.use('/runs', createRunRoutes(container))
-    router.use('/storage', createStorageRoutes(container))
+    // JWT required when ENABLE_AUTH=true. The 5 reporter routes skip it only on the internal listener.
+    router.use(
+        '/tests',
+        createApiAuthMiddleware(container.authService),
+        createTestRoutes(container)
+    )
+    router.use('/runs', createApiAuthMiddleware(container.authService), createRunRoutes(container))
+    router.use(
+        '/storage',
+        createAuthMiddleware(container.authService),
+        createStorageRoutes(container)
+    )
     router.use('/settings', createSettingsRoutes(container))
     router.use('/pipeline', createPipelineRoutes(container))
     router.use('/jira', createJiraRoutes(container))

@@ -107,4 +107,6 @@ export async function cleanDatabase(testRepository: any): Promise<void> {
     await db.execute('DELETE FROM attachments')
     await db.execute('DELETE FROM test_results')
     await db.execute('DELETE FROM test_runs')
+    await db.execute('DELETE FROM test_catalog')
+    await db.execute("DELETE FROM app_settings WHERE key = 'catalog_last_full_scan'")
 }

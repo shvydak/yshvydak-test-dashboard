@@ -122,6 +122,64 @@ describe('POST /api/tests/run-all - Run All Tests (Integration)', () => {
         })
     })
 
+    describe('Auto-discovery keeps resetting statuses (reset mode)', () => {
+        it('run-all with auto-discovery makes every listed test pending and fills the catalog', async () => {
+            await server.testRepository.saveTestResult({
+                id: 'old-pass',
+                testId: 'test-guard-1',
+                runId: null,
+                name: 'Guarded',
+                filePath: 'e2e/guard.spec.ts',
+                status: 'passed',
+                duration: 1,
+                project: 'P',
+                timestamp: new Date(Date.now() - 3_600_000).toISOString(),
+            } as any)
+            vi.spyOn(
+                server.serviceContainer.playwrightService as any,
+                'discoverTests'
+            ).mockResolvedValue([
+                {
+                    id: 'disc-1',
+                    testId: 'test-guard-1',
+                    runId: null,
+                    name: 'Guarded',
+                    filePath: 'e2e/guard.spec.ts',
+                    status: 'pending',
+                    duration: 0,
+                    project: 'P',
+                    projects: ['P'],
+                    metadata: {line: 1, playwrightId: null, tags: [], discoveredAt: 'x'},
+                    timestamp: new Date().toISOString(),
+                },
+            ])
+            vi.spyOn(
+                server.serviceContainer.playwrightService as any,
+                'runAllTests'
+            ).mockResolvedValue({
+                runId: 'run-guard',
+                message: 'started',
+                timestamp: new Date().toISOString(),
+                process: null,
+            })
+
+            await request(server.app)
+                .post('/api/tests/run-all')
+                .set('Authorization', `Bearer ${server.authToken}`)
+                .send({project: 'P'})
+                .expect(200)
+
+            const latest = await server.testRepository.getAllTests({project: 'P'})
+            expect(latest.map((t: any) => [t.testId, t.status])).toEqual([
+                ['test-guard-1', 'pending'],
+            ])
+            const catalog = await server.testRepository.dbManager
+                .queryAll('SELECT project, test_id FROM test_catalog')
+                .catch(() => []) // no table = empty catalog: the assertion below decides
+            expect(catalog).toEqual([{project: 'P', test_id: 'test-guard-1'}])
+        })
+    })
+
     describe('Conflict detection (409)', () => {
         it('should return 409 when tests are already running', async () => {
             const firstRunId = 'run-first-123'

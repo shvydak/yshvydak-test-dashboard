@@ -45,6 +45,10 @@ export class WebSocketService implements IWebSocketService {
         })
     }
 
+    broadcastJiraSynced(): void {
+        this.broadcast({type: 'jira:synced', data: {timestamp: new Date().toISOString()}})
+    }
+
     broadcastDashboardRefresh(reason: string, additionalData?: any): void {
         this.broadcast({
             type: 'dashboard:refresh',

@@ -22,8 +22,16 @@ export class TestController {
     // POST /api/tests/discovery - Discover tests (optionally scoped to a single project)
     discoverTests = async (req: ServiceRequest, res: Response): Promise<Response> => {
         try {
-            const {project} = req.body
-            const result = await this.testService.discoverTests(project)
+            const {project, mode} = req.body
+            if (mode !== undefined && mode !== 'reset' && mode !== 'incremental') {
+                return ResponseHelper.error(
+                    res,
+                    `Invalid discovery mode: ${String(mode)}`,
+                    "mode must be 'reset' or 'incremental'",
+                    400
+                )
+            }
+            const result = await this.testService.discoverTests(project, mode)
             return ResponseHelper.success(res, result)
         } catch (error) {
             Logger.error('Error during test discovery', error)

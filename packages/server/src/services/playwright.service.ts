@@ -338,6 +338,8 @@ export class PlaywrightService implements IPlaywrightService {
         const stableTestId = this.generateStableTestId(filePath, spec.title)
         // Project comes from the first test entry's projectName (Playwright JSON reporter)
         const project = spec.tests?.[0]?.projectName || ''
+        // A spec can run in several projects; the catalog keeps one row per project.
+        const projects = [...new Set((spec.tests ?? []).map((t) => t.projectName || ''))]
 
         return {
             id: uuidv4(),
@@ -348,6 +350,7 @@ export class PlaywrightService implements IPlaywrightService {
             status: 'pending',
             duration: 0,
             project,
+            projects: projects.length > 0 ? projects : [''],
             metadata: this.buildDiscoveredMetadata(spec, describe),
             timestamp: new Date().toISOString(),
         }
@@ -446,7 +449,7 @@ export class PlaywrightService implements IPlaywrightService {
 
             process.on('close', (code) => {
                 if (code !== 0) {
-                    const details = stderr.trim() || this.extractListErrors(stdout)
+                    const details = stderr.trim().slice(0, 2000) || this.extractListErrors(stdout)
                     reject(new Error(`Playwright command failed with code ${code}: ${details}`))
                     return
                 }

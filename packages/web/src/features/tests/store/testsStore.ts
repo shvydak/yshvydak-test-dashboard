@@ -7,6 +7,8 @@ import {getMaxWorkersFromStorage} from '@/hooks/usePlaywrightWorkers'
 import {getProjectWorkersOverride} from '@/hooks/useProjectTabs'
 import {getAutoDiscoverFromStorage} from '@/hooks/useAutoDiscoverSetting'
 
+export type DiscoveryMode = 'reset' | 'incremental'
+
 interface TestsState {
     tests: TestResult[]
     runs: TestRun[]
@@ -45,7 +47,8 @@ interface TestsState {
     rerunTest: (testId: string) => Promise<void>
     deleteTest: (testId: string) => Promise<void>
     deleteExecution: (testId: string, executionId: string) => Promise<void>
-    discoverTests: (project?: string) => Promise<void>
+    // 'incremental' (manual Discover): keep statuses; 'reset' (default): rebuild pending rows
+    discoverTests: (project?: string, mode?: DiscoveryMode) => Promise<void>
     runAllTests: (project?: string) => Promise<void>
     runTestsGroup: (filePath: string, testNames?: string[], project?: string) => Promise<void>
     clearError: () => void
@@ -78,6 +81,17 @@ async function httpError(response: Response): Promise<Error> {
         } catch {
             // fall through to the generic message
         }
+    }
+    return new Error(`HTTP error! status: ${response.status}`)
+}
+
+// A failed discovery answers 500 with the real reason in `error` (e.g. a spec file that throws on import).
+async function discoveryError(response: Response): Promise<Error> {
+    try {
+        const body = await response.json()
+        if (typeof body?.error === 'string' && body.error) return new Error(body.error)
+    } catch {
+        // fall through to the generic message
     }
     return new Error(`HTTP error! status: ${response.status}`)
 }
@@ -320,16 +334,17 @@ export const useTestsStore = create<TestsState>()(
                 }
             },
 
-            discoverTests: async (project?: string) => {
+            discoverTests: async (project?: string, mode: DiscoveryMode = 'reset') => {
                 try {
                     set({isDiscovering: true, error: null})
 
                     const response = await authPost(`${API_BASE_URL}/tests/discovery`, {
                         project: project || undefined,
+                        mode,
                     })
 
                     if (!response.ok) {
-                        throw new Error(`HTTP error! status: ${response.status}`)
+                        throw await discoveryError(response)
                     }
 
                     const data = await response.json()
@@ -363,7 +378,7 @@ export const useTestsStore = create<TestsState>()(
                                 {project: project || undefined}
                             )
                             if (!discoveryResponse.ok) {
-                                throw new Error(`HTTP error! status: ${discoveryResponse.status}`)
+                                throw await discoveryError(discoveryResponse)
                             }
                             const discoveryData = await discoveryResponse.json()
                             if (!discoveryData.success) {

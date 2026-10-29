@@ -472,7 +472,14 @@ export class DatabaseManager {
 
     async clearAllData(): Promise<void> {
         // Clear all data from all tables (cascading delete will handle related records)
-        const tables = ['test_runs', 'test_results', 'attachments', 'test_notes', 'note_images']
+        const tables = [
+            'test_runs',
+            'test_results',
+            'test_catalog',
+            'attachments',
+            'test_notes',
+            'note_images',
+        ]
 
         for (const table of tables) {
             await this.run(`DELETE FROM ${table}`)

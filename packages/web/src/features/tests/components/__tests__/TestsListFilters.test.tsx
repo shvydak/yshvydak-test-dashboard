@@ -19,6 +19,7 @@ interface StoreOverrides {
 }
 
 const stopRun = vi.fn()
+const discoverTests = vi.fn()
 const clearStopError = vi.fn()
 
 // The store folds the CI flags into getIsAnyTestRunning / getIsStoppable; getCIBusyReason supplies the tooltip.
@@ -31,7 +32,7 @@ function mockStore(overrides: StoreOverrides = {}) {
     const stoppable = Boolean(overrides.ciPipelineRunning || overrides.isRunningAllTests)
     vi.mocked(useTestsStore).mockReturnValue({
         runAllTests: vi.fn(),
-        discoverTests: vi.fn(),
+        discoverTests,
         stopRun,
         clearStopError,
         stopError: overrides.stopError ?? null,
@@ -101,6 +102,22 @@ describe('TestsListFilters Run All', () => {
 
         expect(screen.getByRole('button', {name: /run all/i})).toBeDisabled()
         expect(screen.queryByRole('button', {name: /^stop/i})).toBeNull()
+    })
+})
+
+describe('TestsListFilters Discover', () => {
+    beforeEach(() => {
+        vi.clearAllMocks()
+    })
+
+    it('the Discover Tests menu entry asks for an incremental discovery of the active project', () => {
+        mockStore()
+        renderFilters()
+
+        fireEvent.click(screen.getByRole('button', {name: /discovery options/i}))
+        fireEvent.click(screen.getByRole('button', {name: /discover tests/i}))
+
+        expect(discoverTests).toHaveBeenCalledWith('API_Tests', 'incremental')
     })
 })
 

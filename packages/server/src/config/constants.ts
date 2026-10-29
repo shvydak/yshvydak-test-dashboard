@@ -30,6 +30,7 @@ export const WEBSOCKET_EVENTS = {
     RUN_STARTED: 'run:started',
     RUN_COMPLETED: 'run:completed',
     DISCOVERY_COMPLETED: 'discovery:completed',
+    JIRA_SYNCED: 'jira:synced',
     DASHBOARD_REFRESH: 'dashboard:refresh',
 } as const
 

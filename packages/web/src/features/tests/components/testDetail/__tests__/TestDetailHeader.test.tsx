@@ -75,3 +75,56 @@ describe('TestDetailHeader tag chips', () => {
         expect(document.querySelector('[data-kind]')).toBeNull()
     })
 })
+
+describe('TestDetailHeader not in code', () => {
+    const renderOrphan = (notInCode: boolean) => {
+        const queryClient = new QueryClient()
+        queryClient.setQueryData(JIRA_SETTINGS_QUERY_KEY, {
+            baseUrl: 'https://x.atlassian.net/browse/',
+            chipAlignment: 'right',
+            tagMode: 'all',
+        })
+        return render(
+            <QueryClientProvider client={queryClient}>
+                <TestDetailHeader
+                    testName="Gone test"
+                    testStatus="passed"
+                    isLatest
+                    onClose={vi.fn()}
+                    onBackToLatest={vi.fn()}
+                    onDelete={vi.fn()}
+                    onRerun={vi.fn()}
+                    notInCode={notInCode}
+                    project="UI_Tests"
+                />
+            </QueryClientProvider>
+        )
+    }
+
+    it('says Delete removes the whole history in every project, and turns Run off', () => {
+        renderOrphan(true)
+
+        expect(
+            screen.getByText(
+                /Not found in UI_Tests's latest Discover\. Delete removes this test's whole history in every project\./
+            )
+        ).toBeInTheDocument()
+        expect(screen.getByRole('button', {name: /run/i})).toBeDisabled()
+    })
+
+    it('keeps Delete visible at every width for a not-in-code test, desktop-only otherwise', () => {
+        const {unmount} = renderOrphan(true)
+        expect(screen.getByRole('button', {name: /delete test/i}).className).not.toContain('hidden')
+        unmount()
+
+        renderOrphan(false)
+        expect(screen.getByRole('button', {name: /delete test/i}).className).toContain('hidden')
+    })
+
+    it('shows no notice for a test that is in code', () => {
+        renderOrphan(false)
+
+        expect(screen.queryByText(/latest Discover/)).toBeNull()
+        expect(screen.getByRole('button', {name: /run/i})).toBeEnabled()
+    })
+})

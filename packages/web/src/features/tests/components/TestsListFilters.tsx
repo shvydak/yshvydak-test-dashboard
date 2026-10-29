@@ -119,7 +119,7 @@ export function TestsListFilters({
                                 type="button"
                                 onClick={() => {
                                     setShowDiscoverMenu(false)
-                                    discoverTests(activeProject)
+                                    discoverTests(activeProject, 'incremental')
                                 }}
                                 className="flex w-full items-center gap-2 px-4 py-2.5 text-left text-sm text-gray-700 hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-white/[0.06]">
                                 <Search className="h-3.5 w-3.5" />

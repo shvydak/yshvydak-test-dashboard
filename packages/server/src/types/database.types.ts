@@ -72,6 +72,12 @@ export interface TestResultRow {
     // Joined attachment_cleanups field
     attachments_cleared_at?: string
     project?: string
+    // Joined test_catalog fields (latest-row list only; see TestRepository.getAllTests)
+    catalog_metadata?: string | null
+    catalog_discovered_at?: string | null
+    catalog_last_scan?: string | null
+    in_any_catalog?: number | null
+    catalog_last_full_scan?: string | null
 }
 
 export interface TestAnnotationMeta {

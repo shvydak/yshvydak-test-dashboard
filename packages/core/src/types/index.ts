@@ -22,6 +22,8 @@ export interface TestResult {
     attachmentsClearedAt?: string
     // Playwright project this test was run under. Empty string = discovered/unrun.
     project?: string
+    // Set by GET /api/tests (latest-row list): this project's latest Discover no longer lists the test.
+    notInCode?: boolean
 }
 
 export type ConsoleEntryType = 'stdout' | 'stderr'

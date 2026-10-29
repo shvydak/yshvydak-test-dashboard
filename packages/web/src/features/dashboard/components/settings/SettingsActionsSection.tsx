@@ -28,7 +28,7 @@ export function SettingsActionsSection({activeProject}: SettingsActionsSectionPr
                     fullWidth
                     loading={isDiscovering}
                     disabled={isAnyTestRunning}
-                    onClick={() => discoverTests()}>
+                    onClick={() => discoverTests(undefined, 'incremental')}>
                     {isDiscovering ? (
                         'Discovering...'
                     ) : (

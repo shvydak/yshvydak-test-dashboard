@@ -346,6 +346,8 @@ export function TestDetailModal({test, isOpen, onClose}: TestDetailModalProps) {
                                 !!activeProgress?.runningTests.find((t) => t.testId === test.testId)
                             }
                             isAnyTestRunning={getIsAnyTestRunning()}
+                            notInCode={!!test.notInCode}
+                            project={test.project}
                         />
                     </div>
 
@@ -386,6 +388,7 @@ export function TestDetailModal({test, isOpen, onClose}: TestDetailModalProps) {
                                 onDeleteExecution={handleDeleteExecutionClick}
                                 testId={currentExecution?.id || test.id}
                                 onRerun={handleRerun}
+                                notInCode={!!test.notInCode}
                                 loading={historyLoading}
                                 error={historyError || undefined}
                             />

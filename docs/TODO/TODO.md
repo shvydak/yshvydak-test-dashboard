@@ -2,7 +2,6 @@
 
 ## ToDo
 
-- Doscover for specific project
 - testModalWindow - attachments loader doesn't centered
 
 - ⚠️ ALLOWED_ORIGINS not set in production - allowing all origins (not recommended)
@@ -22,7 +21,9 @@ Found during other work, consciously postponed. Each entry: what, where, why it 
 - `[ ]` **Jira: reconcile ticket "automation test" fields with test tags** (2026-09-24, idea). Report where a ticket's custom field names a test title that no test tags, and vice versa. Needs a configurable custom-field id; catches links broken by test renames.
 
 - `[ ]` **Security leftovers after API auth hardening** (2026-10-25). (1) CORS: `ALLOWED_ORIGINS` unset in production still allows every origin (`cors.middleware.ts`) — set it on the deploy host or fail closed. (2) Login has no rate limit/lockout, and the password compare is plain `!==` (`auth.service.ts`). (3) JWT in `?token=` URLs (WebSocket, `/attachments`, `/traces`) lands in proxy logs. (4) Vulnerable deps that need a major bump: `sqlite3` 6 (tar / @tootallnate/once / brace-expansion, build-time chain), `uuid` ≥11.1.1, `react-router-dom` 7, dev-only `vitest` 5 (tinypool), `turbo`. (5) `deleteExecution`/`deleteTestAttachments` build a path from the `:executionId` URL param — behind a JWT now, but still unvalidated. (6) Reporter run outside the dashboard (no spawn) gets 401 with auth on — design C has no reporter credential.
-- `[ ]` **Server integration tests are not isolated** (2026-10-26, found in P3 gates). (1) They share one DB file: `environment.config.ts:75` reads `OUTPUT_DIR` once at import, so parallel vitest processes wipe each other's rows (`stopRun.integration` fails when another run is active). Fix: per-process temp `OUTPUT_DIR` (getter, like the `jira` block) or a per-worker DB path. (2) "stop deletes every step…" in `stopRun.integration` fails on clean `main` under `--sequence.shuffle` (seeds 11/22/33): order-dependent shared state. Why it matters: a red integration run can be a collision, not a regression.
+- `[ ]` **`stopRun.integration` is order-dependent** (2026-10-26, found in P3 gates). "stop deletes every step…" fails on clean `main` under `--sequence.shuffle` (seeds 11/22/33): shared state between tests of the file. Why it matters: a red integration run can be an ordering artefact, not a regression. (The shared-DB-file part of the old entry is fixed: `vitest.setup.ts` gives each run its own `OUTPUT_DIR`.)
+
+- `[ ]` **"Not in code" filter** (2026-10-26, deferred from Discover-keeps-statuses). Filter bar option for tests flagged `notInCode`. Needs server-side filtering plus a count in `getTestStatusCounts` (no client-side filtering beyond `filter === 'all'`).
 
 ### Completed Issues ✅
 

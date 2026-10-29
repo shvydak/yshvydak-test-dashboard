@@ -34,6 +34,39 @@ describe('DatabaseManager', () => {
             testDb.close()
         })
 
+        it('creates test_catalog on a file DB without touching existing rows, and again on a restart', async () => {
+            const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'catalog-migration-'))
+            try {
+                const first = new DatabaseManager(dir)
+                await first.initialize()
+                await first.execute(
+                    `INSERT INTO test_results (id, test_id, name, file_path, status, created_at, updated_at)
+                     VALUES ('r1', 't1', 'T', 'a.ts', 'passed', '2026-01-01T00:00:00.000Z', '2026-01-02T00:00:00.000Z')`
+                )
+                await first.execute('DROP TABLE test_catalog') // an install from before this table
+                await first.close()
+
+                for (let i = 0; i < 2; i++) {
+                    const again = new DatabaseManager(dir)
+                    await again.initialize()
+                    const tables = await again.queryAll<{name: string}>(
+                        `SELECT name FROM sqlite_master WHERE name IN ('test_catalog', 'idx_test_catalog_test_id')`
+                    )
+                    expect(tables.map((t) => t.name).sort()).toEqual([
+                        'idx_test_catalog_test_id',
+                        'test_catalog',
+                    ])
+                    const row = await again.queryOne<{updated_at: string}>(
+                        `SELECT updated_at FROM test_results WHERE id = 'r1'`
+                    )
+                    expect(row?.updated_at).toBe('2026-01-02T00:00:00.000Z')
+                    await again.close()
+                }
+            } finally {
+                fs.rmSync(dir, {recursive: true, force: true})
+            }
+        })
+
         it('should enable foreign keys constraint', async () => {
             // Try to insert test result without corresponding run (should fail due to FK)
             const testResult: TestResultData = {

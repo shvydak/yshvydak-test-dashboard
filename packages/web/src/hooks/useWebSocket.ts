@@ -275,6 +275,11 @@ export function useWebSocket(url: string | null, options?: WebSocketOptions) {
                 fetchRuns()
                 break
 
+            case 'jira:synced':
+                // The chips query fired before the post-Discover sync ended and cached "absent" keys.
+                queryClient.invalidateQueries({queryKey: ['jira-ticket-info']})
+                break
+
             case 'run:started':
                 fetchRuns()
                 break

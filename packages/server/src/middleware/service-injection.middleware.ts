@@ -9,6 +9,7 @@ import {NoteRepository} from '../repositories/note.repository'
 import {NoteImageRepository} from '../repositories/noteImage.repository'
 import {SettingsRepository} from '../repositories/settings.repository'
 import {JiraTicketRepository} from '../repositories/jiraTicket.repository'
+import {TestCatalogRepository} from '../repositories/testCatalog.repository'
 import {TestService} from '../services/test.service'
 import {PlaywrightService} from '../services/playwright.service'
 import {WebSocketService} from '../services/websocket.service'
@@ -69,6 +70,7 @@ export async function createServiceContainer(): Promise<ServiceContainer> {
     const noteImageRepository = new NoteImageRepository(dbManager)
     const settingsRepository = new SettingsRepository(dbManager)
     const jiraTicketRepository = new JiraTicketRepository(dbManager)
+    const testCatalogRepository = new TestCatalogRepository(dbManager)
 
     // Initialize services
     const websocketService = new WebSocketService()
@@ -80,6 +82,7 @@ export async function createServiceContainer(): Promise<ServiceContainer> {
     const noteService = new NoteService(noteRepository, noteImageService)
     const settingsService = new SettingsService(settingsRepository, playwrightService)
     const ciRunQueue = new CIRunQueueService(websocketService)
+    const jiraService = new JiraService(jiraTicketRepository, testRepository)
     const testService = new TestService(
         testRepository,
         runRepository,
@@ -89,7 +92,9 @@ export async function createServiceContainer(): Promise<ServiceContainer> {
         noteService,
         settingsService,
         attachmentCleanupRepository,
-        ciRunQueue
+        ciRunQueue,
+        testCatalogRepository,
+        jiraService
     )
     const pipelineExecutionService = new PipelineExecutionService(
         testService,
@@ -99,7 +104,6 @@ export async function createServiceContainer(): Promise<ServiceContainer> {
         ciRunQueue,
         new CINotifierService()
     )
-    const jiraService = new JiraService(jiraTicketRepository, testRepository)
 
     return {
         testRepository,

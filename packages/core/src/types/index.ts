@@ -223,6 +223,23 @@ export interface TestProgress {
     runningTests: RunningTestInfo[]
     startTime: number
     estimatedEndTime?: number
+    /** `started`: a test began; `saved`: its result was stored (then `result` is set). Absent on old servers. */
+    phase?: 'started' | 'saved'
+    result?: LiveTestResult
+}
+
+/** The saved result's row fields, sent in `test:progress` so clients patch one row without a list reload. */
+export interface LiveTestResult {
+    id: string
+    testId: string
+    runId: string
+    name: string
+    filePath: string
+    status: TestResult['status']
+    duration: number
+    errorMessage?: string
+    timestamp?: string
+    project: string
 }
 
 export interface TestProgressUpdate extends WebSocketMessage {

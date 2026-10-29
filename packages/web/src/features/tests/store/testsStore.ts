@@ -1,6 +1,6 @@
 import {create} from 'zustand'
 import {devtools} from 'zustand/middleware'
-import {TestResult, TestRun, TestProgress} from '@yshvydak/core'
+import {TestResult, TestRun, TestProgress, LiveTestResult} from '@yshvydak/core'
 import {queryClient} from '@config/queryClient'
 import {authGet, authPost, authDelete} from '@features/authentication/utils/authFetch'
 import {getMaxWorkersFromStorage} from '@/hooks/usePlaywrightWorkers'
@@ -65,6 +65,8 @@ interface TestsState {
     checkAndRestoreActiveStates: () => Promise<void>
     selectExecution: (executionId: string | null) => void
     updateProgress: (progress: TestProgress) => void
+    /** Patch one row from a saved result (store + filtered lists); false = row unknown, caller reloads. */
+    applyLiveResult: (result: LiveTestResult) => boolean
     clearProgress: () => void
 }
 
@@ -94,6 +96,83 @@ async function discoveryError(response: Response): Promise<Error> {
         // fall through to the generic message
     }
     return new Error(`HTTP error! status: ${response.status}`)
+}
+
+// Count queries only (no list GET); at most one refresh per window, shared by every socket.
+export const LIVE_COUNTS_REFRESH_DELAY_MS = 1500
+let liveCountsTimer: ReturnType<typeof setTimeout> | null = null
+
+export function resetLiveCountsTimer() {
+    if (liveCountsTimer) clearTimeout(liveCountsTimer)
+    liveCountsTimer = null
+    liveCountsPendingWhileHidden = false
+}
+
+let liveCountsPendingWhileHidden = false
+
+function refreshCounts() {
+    queryClient.invalidateQueries({queryKey: ['project-status-summary']})
+    queryClient.invalidateQueries({queryKey: ['test-status-counts']})
+}
+
+function scheduleCountsRefresh() {
+    if (liveCountsTimer) return
+    liveCountsTimer = setTimeout(() => {
+        liveCountsTimer = null
+        // A hidden tab skips the refetch and catches up once when it is visible again
+        if (typeof document !== 'undefined' && document.hidden) {
+            liveCountsPendingWhileHidden = true
+            return
+        }
+        refreshCounts()
+    }, LIVE_COUNTS_REFRESH_DELAY_MS)
+}
+
+if (typeof document !== 'undefined') {
+    document.addEventListener('visibilitychange', () => {
+        if (document.hidden || !liveCountsPendingWhileHidden) return
+        liveCountsPendingWhileHidden = false
+        refreshCounts()
+    })
+}
+
+// Result fields only: tags, notInCode, note and attachments stay from the list's catalog overlay.
+function patchRow(row: TestResult, r: LiveTestResult): TestResult {
+    return {
+        ...row,
+        id: r.id,
+        runId: r.runId,
+        status: r.status,
+        duration: r.duration,
+        errorMessage: r.errorMessage,
+        timestamp: r.timestamp ?? row.timestamp,
+        project: r.project || row.project,
+    }
+}
+
+// Status-filtered lists (['filtered-tests-by-status', filter, project]): the row leaves a list
+// whose status filter it no longer matches, joins one it now matches, and is patched in place otherwise.
+function patchFilteredLists(r: LiveTestResult, patched: TestResult | null) {
+    const entries = queryClient.getQueriesData<TestResult[]>({
+        queryKey: ['filtered-tests-by-status'],
+    })
+    for (const [key, data] of entries) {
+        const [, filter, project] = key as [string, string, string | null]
+        if (!data || (project && project !== r.project)) continue
+        const idx = data.findIndex((t) => t.testId === r.testId)
+        const statusFilter = filter !== 'noted'
+        const matches = !statusFilter || filter === r.status
+        if (idx >= 0) {
+            const next = [...data]
+            if (!matches) next.splice(idx, 1)
+            else next[idx] = patchRow(data[idx], r)
+            queryClient.setQueryData(key, next)
+        } else if (statusFilter && matches) {
+            // Not in this list yet: take the full row from the store, else let the list refetch
+            if (patched) queryClient.setQueryData(key, [patched, ...data])
+            else queryClient.invalidateQueries({queryKey: key, exact: true})
+        }
+    }
 }
 
 export const useTestsStore = create<TestsState>()(
@@ -571,6 +650,31 @@ export const useTestsStore = create<TestsState>()(
 
             updateProgress: (progress: TestProgress) => {
                 set({activeProgress: progress})
+            },
+
+            applyLiveResult: (result) => {
+                scheduleCountsRefresh()
+                const {tests, listProject} = get()
+                // Another project's result is not in this tab's list; its counts are refreshed above
+                const inTab = !listProject || listProject === result.project
+                const idx = inTab ? tests.findIndex((t) => t.testId === result.testId) : -1
+                if (inTab && idx < 0) return false
+
+                // Reporter posts are fire-and-forget: a slower, older attempt must not overwrite a newer row
+                const row = idx >= 0 ? tests[idx] : null
+                if (row?.timestamp && result.timestamp && result.timestamp < row.timestamp) {
+                    return true
+                }
+
+                let patched: TestResult | null = null
+                if (idx >= 0) {
+                    patched = patchRow(tests[idx], result)
+                    const next = [...tests]
+                    next[idx] = patched
+                    set({tests: next})
+                }
+                patchFilteredLists(result, patched)
+                return true
             },
 
             clearProgress: () => {

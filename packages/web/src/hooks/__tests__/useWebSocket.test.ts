@@ -118,6 +118,7 @@ describe('useWebSocket', () => {
             setTestRunning: vi.fn(),
             setRunningAllTests: vi.fn(),
             updateProgress: vi.fn(),
+            applyLiveResult: vi.fn().mockReturnValue(true),
             clearProgress: vi.fn(),
             resetRunState: vi.fn(),
         }
@@ -683,6 +684,78 @@ describe('useWebSocket', () => {
                 vi.advanceTimersByTime(PROGRESS_REFRESH_INTERVAL_MS * 3)
             })
             expect(mockStoreActions.fetchTests).toHaveBeenCalledTimes(2)
+        })
+
+        describe('live row patch', () => {
+            const saved = {
+                processId: 'p1',
+                phase: 'saved',
+                result: {testId: 't1', status: 'passed', project: 'WEB'},
+            }
+
+            it('a saved result patches its row and does not reload the list', async () => {
+                await open()
+
+                act(() => {
+                    mockWebSocket.simulateMessage({type: 'test:progress', data: saved})
+                })
+                act(() => {
+                    vi.advanceTimersByTime(PROGRESS_REFRESH_INTERVAL_MS * 2)
+                })
+
+                expect(mockStoreActions.applyLiveResult).toHaveBeenCalledWith(saved.result)
+                expect(mockStoreActions.fetchTests).not.toHaveBeenCalled()
+                // progress state gets the data without the row payload
+                expect(mockStoreActions.updateProgress).toHaveBeenCalledWith({processId: 'p1'})
+            })
+
+            it('a result for another project is handed to the store (it decides) without a reload', async () => {
+                await open()
+                const other = {...saved, result: {...saved.result, project: 'MOBILE'}}
+
+                act(() => {
+                    mockWebSocket.simulateMessage({type: 'test:progress', data: other})
+                })
+
+                expect(mockStoreActions.applyLiveResult).toHaveBeenCalledWith(other.result)
+                expect(mockStoreActions.fetchTests).not.toHaveBeenCalled()
+            })
+
+            it('an unknown row falls back to the throttled reload', async () => {
+                await open()
+                mockStoreActions.applyLiveResult.mockReturnValue(false)
+
+                act(() => {
+                    mockWebSocket.simulateMessage({type: 'test:progress', data: saved})
+                })
+
+                expect(mockStoreActions.fetchTests).toHaveBeenCalledTimes(1)
+            })
+
+            it('an event without a payload from an old server keeps the throttled reload', async () => {
+                await open()
+
+                act(() => {
+                    mockWebSocket.simulateMessage({type: 'test:progress', data: {processId: 'p1'}})
+                })
+
+                expect(mockStoreActions.applyLiveResult).not.toHaveBeenCalled()
+                expect(mockStoreActions.fetchTests).toHaveBeenCalledTimes(1)
+            })
+
+            it('a test-started event updates progress only', async () => {
+                await open()
+
+                act(() => {
+                    mockWebSocket.simulateMessage({
+                        type: 'test:progress',
+                        data: {processId: 'p1', phase: 'started'},
+                    })
+                })
+
+                expect(mockStoreActions.updateProgress).toHaveBeenCalledWith({processId: 'p1'})
+                expect(mockStoreActions.fetchTests).not.toHaveBeenCalled()
+            })
         })
 
         it('uses a window of at least 10s between progress refreshes', () => {

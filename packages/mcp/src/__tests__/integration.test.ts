@@ -33,7 +33,9 @@ describe('MCP against the real server', () => {
     const base = {runId: 'run-1', filePath: 'tests/a.spec.ts', duration: 10, project: 'All_Tests'}
 
     const make = (config = {}) => {
-        const client = new DashboardClient(new Session({root, ...config}, createHttp(root)))
+        const client = new DashboardClient(
+            new Session({root, allowRuns: false, ...config}, createHttp(root))
+        )
         const tools = createTools(client, 'test')
         const tool = (name: string) => {
             const def = tools.find((t) => t.name === name)!

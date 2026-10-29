@@ -1,6 +1,6 @@
 # CLAUDE.md — YShvydak Test Dashboard
 
-Playwright test dashboard. npm workspaces monorepo: `core`, `reporter`, `server` (Express + `sqlite3` with WAL), `web` (React + Vite), `mcp` (read-only stdio MCP server, built from `dist`, not part of the production build).
+Playwright test dashboard. npm workspaces monorepo: `core`, `reporter`, `server` (Express + `sqlite3` with WAL), `web` (React + Vite), `mcp` (stdio MCP server, read-only by default, built from `dist`, not part of the production build).
 
 Frontend is feature-based — `features/{name}/` — over Atomic Design primitives in `shared/components/atoms/` and `shared/components/molecules/`. A new component belongs in its feature, not in `shared/`, unless it is genuinely shared.
 
@@ -19,7 +19,7 @@ Named CI pipelines: `ProjectTabConfig.pipelines` is `('develop' | 'production')[
 
 Jira integration (optional, env-gated: `JIRA_BASE_URL`/`JIRA_EMAIL`/`JIRA_API_TOKEN`, all three or none — `config.jira.enabled`): read-only ticket type/status/summary/assignee for ticket-key tags, cached in `jira_ticket_cache`; last sync attempt (ok / error_reason / attempted_at) in single-row `jira_sync_status`. Fetch via `POST /rest/api/3/issue/bulkfetch` — legacy `GET /rest/api/3/search` was removed from Jira Cloud (2025-08); HTTP mocks won't catch an endpoint removal, check Atlassian docs. `JiraService.refreshAllKnownKeys()` runs every 30 min from `server.ts` + on-demand via `POST /api/jira/refresh`; ticket-key discovery duplicates the `@[A-Z][A-Z0-9]+-\d+` tag regex server-side (`utils/jiraTicketKey.util.ts`) on purpose, same reasoning as invariant 3. Separate from the pre-existing `jira_base_url` app_setting (chip link target, no env needed). A key absent from `GET /api/jira/tickets` (disabled/never synced/Jira error) is not an error — `TicketChips.tsx` falls back to the plain pre-existing chip render for that key.
 
-`packages/mcp` is read-only: every request goes through the allowlist in `packages/mcp/src/http.ts` (GET on fixed paths + the login POST). A new tool that needs a new endpoint adds its exact path there, with strict id patterns. Never allowlist `/api/tests/projects` or `/api/tests/diagnostics` (they spawn `playwright --list`) or any POST/PUT/DELETE. `npm run build:prod` (deploy) skips the package.
+`packages/mcp` is read-only by default: every request goes through the allowlist in `packages/mcp/src/http.ts` (GET on fixed paths + the login POST). Only with run tools on (`DASHBOARD_ALLOW_RUNS=true`, or a localhost `DASHBOARD_URL`) does it also POST to exactly `/api/tests/<uuid>/rerun` and `/api/tests/run-group`, each with a strictly validated body (`isAllowedRunPost`). A new tool that needs a new endpoint adds its exact path there, with strict id patterns. Never allowlist `/api/tests/projects` or `/api/tests/diagnostics` (they spawn `playwright --list`), any DELETE/PUT, run-all, stop, force-reset or `/api/pipeline/*`; the server has no per-run stop, so the MCP has no stop tool. `npm run build:prod` (deploy) skips the package.
 
 ## Flow
 

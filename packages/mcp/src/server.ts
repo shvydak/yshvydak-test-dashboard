@@ -10,7 +10,15 @@ export function createServer(tools: ToolDef[]): McpServer {
                 title: t.title,
                 description: t.description,
                 inputSchema: t.input,
-                annotations: {readOnlyHint: true, idempotentHint: true, openWorldHint: false},
+                annotations:
+                    t.readOnly === false
+                        ? {
+                              readOnlyHint: false,
+                              destructiveHint: false,
+                              idempotentHint: false,
+                              openWorldHint: false,
+                          }
+                        : {readOnlyHint: true, idempotentHint: true, openWorldHint: false},
             },
             // The SDK infers the callback args from the schema; ToolDef erases it
             ((args: never) => t.handler(args)) as never

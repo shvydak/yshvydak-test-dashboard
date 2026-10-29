@@ -4,6 +4,7 @@ import {getTestTool} from './getTest'
 import {historyTool} from './history'
 import {listTestsTool} from './listTests'
 import {overviewTool} from './overview'
+import {rerunTestTool, runStatusTool, runTestFileTool} from './runs'
 import {screenshotsTool} from './screenshots'
 
 export function createTools(client: DashboardClient, host: string): ToolDef[] {
@@ -13,5 +14,8 @@ export function createTools(client: DashboardClient, host: string): ToolDef[] {
         getTestTool(client),
         historyTool(client),
         screenshotsTool(client),
+        rerunTestTool(client),
+        runTestFileTool(client),
+        runStatusTool(client),
     ]
 }

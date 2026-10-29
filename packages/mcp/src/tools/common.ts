@@ -11,6 +11,8 @@ export interface ToolDef {
     title: string
     description: string
     input: ZodObject<ZodRawShape>
+    // false = starts a run (not read-only); default true
+    readOnly?: boolean
     handler: (args: never) => Promise<CallToolResult>
 }
 
@@ -21,6 +23,7 @@ export function defineTool<S extends ZodObject<ZodRawShape>>(def: {
     title: string
     description: string
     input: S
+    readOnly?: boolean
     handler: (args: z.infer<S>) => Promise<CallToolResult>
 }): ToolDef {
     return {...def, handler: safe(def.handler) as ToolDef['handler']}

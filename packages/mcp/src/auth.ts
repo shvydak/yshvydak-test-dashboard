@@ -1,7 +1,7 @@
 import {execFile} from 'node:child_process'
 import type {Config} from './config'
 import {PASSWORD_CMD_TIMEOUT_MS} from './constants'
-import type {GetOptions, Http} from './http'
+import type {GetOptions, Http, HttpResult} from './http'
 
 // Errors here carry only fixed text: never a password, token or response body.
 export class DashboardError extends Error {
@@ -54,25 +54,40 @@ export class Session {
         return this.authEnabled
     }
 
+    get runsEnabled(): boolean {
+        return this.http.runsEnabled
+    }
+
     async get(path: string, opts: GetOptions = {}) {
         const enabled = path === '/api/auth/config' ? false : await this.isAuthEnabled()
         if (!enabled) return this.http.get(path, opts)
+        return this.authed((headers) =>
+            this.http.get(path, {...opts, headers: {...opts.headers, ...headers}})
+        )
+    }
 
+    // A run start is retried only after a 401, which means the server did not start anything
+    async postRun(path: string, body: unknown) {
+        if (!(await this.isAuthEnabled())) return this.http.postRun(path, body)
+        return this.authed((headers) => this.http.postRun(path, body, headers))
+    }
+
+    private async authed(send: (headers: Record<string, string>) => Promise<HttpResult>) {
         if (!this.token) await this.login()
-        let res = await this.http.get(path, this.withAuth(opts))
+        let res = await send(this.authHeader())
         if (res.status === 401) {
             if (this.config.token && !this.canLogin()) {
                 throw new DashboardError('DASHBOARD_TOKEN was rejected (expired?)', 401)
             }
             await this.login()
-            res = await this.http.get(path, this.withAuth(opts))
+            res = await send(this.authHeader())
             if (res.status === 401) throw new DashboardError('Login failed: still 401', 401)
         }
         return res
     }
 
-    private withAuth(opts: GetOptions): GetOptions {
-        return {...opts, headers: {...opts.headers, Authorization: `Bearer ${this.token}`}}
+    private authHeader(): Record<string, string> {
+        return {Authorization: `Bearer ${this.token}`}
     }
 
     private canLogin(): boolean {

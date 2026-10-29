@@ -32,3 +32,10 @@ export const IMAGE_ABSOLUTE_MAX_BYTES = 3_000_000
 export const JIRA_BATCH_SIZE = 200
 export const REQUEST_TIMEOUT_MS = 30_000
 export const PASSWORD_CMD_TIMEOUT_MS = 10_000
+
+export const RUN_DEFAULT_WORKERS = 2
+export const RUN_MAX_WORKERS = 4
+export const RUN_MAX_TEST_NAMES = 50
+export const RUN_MAX_NAME_CHARS = 300
+export const RUN_MAX_PATH_CHARS = 300
+export const RUN_RESULTS_LIMIT = 100

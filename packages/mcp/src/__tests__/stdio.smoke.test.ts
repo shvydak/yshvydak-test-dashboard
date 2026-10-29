@@ -15,7 +15,7 @@ describe('stdio smoke', () => {
         expect(existsSync(entry)).toBe(true)
     }, 120_000)
 
-    it('answers initialize and tools/list with the five tools', async () => {
+    it('answers initialize and tools/list with the eight tools', async () => {
         const child = spawn('node', [entry], {
             env: {PATH: process.env.PATH, DASHBOARD_URL: 'http://127.0.0.1:9'},
             stdio: ['pipe', 'pipe', 'pipe'],
@@ -54,16 +54,23 @@ describe('stdio smoke', () => {
             const list = msgs.find((m) => m.id === 2).result.tools
             expect(list.map((t: {name: string}) => t.name).sort()).toEqual([
                 'dashboard_overview',
+                'get_run_status',
                 'get_screenshots',
                 'get_test',
                 'get_test_history',
                 'list_tests',
+                'rerun_test',
+                'run_test_file',
             ])
+            // only the two run-start tools are not read-only
             expect(
-                list.every(
-                    (t: {annotations: {readOnlyHint: boolean}}) => t.annotations.readOnlyHint
-                )
-            ).toBe(true)
+                list
+                    .filter(
+                        (t: {annotations: {readOnlyHint: boolean}}) => !t.annotations.readOnlyHint
+                    )
+                    .map((t: {name: string}) => t.name)
+                    .sort()
+            ).toEqual(['rerun_test', 'run_test_file'])
         } finally {
             child.kill()
         }

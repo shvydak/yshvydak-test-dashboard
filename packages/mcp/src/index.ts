@@ -16,7 +16,9 @@ function main() {
         console.error(`test-dashboard-mcp: ${err instanceof Error ? err.message : err}`)
         process.exit(1)
     }
-    const client = new DashboardClient(new Session(config, createHttp(config.root)))
+    const client = new DashboardClient(
+        new Session(config, createHttp(config.root, fetch, {allowRuns: config.allowRuns}))
+    )
     const host = new URL(config.root).host
     serveStdio(() => createServer(createTools(client, host)), {
         onerror: (err) => console.error(`test-dashboard-mcp: ${err.message}`),

@@ -443,21 +443,21 @@ packages/core/
 
 ---
 
-## MCP Package (read-only AI access)
+## MCP Package (AI access, read-only by default)
 
 ```
 packages/mcp/src/
 ├── index.ts          # stdio entry (serveStdio); logs to stderr only
-├── server.ts         # McpServer + tool registration (readOnlyHint)
+├── server.ts         # McpServer + tool registration (readOnlyHint false only on the run-start tools)
 ├── constants.ts      # output caps, limits
 ├── types.ts          # local mirrors of server response shapes
-├── config.ts         # DASHBOARD_URL / EMAIL / PASSWORD_CMD / PASSWORD / TOKEN
-├── http.ts           # ONLY fetch caller: GET allowlist + login POST, id patterns
+├── config.ts         # DASHBOARD_URL / EMAIL / PASSWORD_CMD / PASSWORD / TOKEN / ALLOW_RUNS
+├── http.ts           # ONLY fetch caller: GET allowlist + login POST + run-start POSTs (isAllowedRunPost, runs on only), id patterns
 ├── auth.ts           # Session: login once, 401 -> one re-login, password command
-├── client.ts         # typed GET wrappers, Jira degradation, attachment URL rebuild
+├── client.ts         # typed GET wrappers + run starts, Jira degradation, attachment URL rebuild
 ├── trim.ts           # caps, payload fit
-├── tools/            # dashboard_overview, list_tests, get_test, get_test_history, get_screenshots
-└── __tests__/        # unit (fake fetch), read-only sweep, integration (real server harness), stdio smoke
+├── tools/            # dashboard_overview, list_tests, get_test, get_test_history, get_screenshots, get_run_status, rerun_test, run_test_file (runs.ts)
+└── __tests__/        # unit (fake fetch), guard sweep, integration (real server harness), stdio smoke
 ```
 
 ---

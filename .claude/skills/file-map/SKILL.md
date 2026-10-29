@@ -37,6 +37,8 @@ description: Where things live in this repo — testId generation, WebSocket URL
 | GitHub Actions CI workflow                        | **Separate repo** — a separate deployment repo holds `.github/workflows/trigger-tests.yml`                              |
 | Jira ticket type/status sync + cache              | `packages/server/src/services/jira.service.ts` + `repositories/jiraTicket.repository.ts` (table `jira_ticket_cache`)    |
 | Jira-enriched ticket chip (icon + status lozenge) | `packages/web/src/features/tests/components/TicketChips.tsx` (`JiraEnrichedChip`) + `hooks/useJiraTicketInfo.ts`        |
+| MCP server (read-only tools for AI assistants)    | `packages/mcp/src/` — `tools/*.ts` (5 tools), `client.ts` (typed GETs), `auth.ts` (login, 401 retry), `trim.ts` (caps)  |
+| MCP read-only allowlist (the only `fetch`)        | `packages/mcp/src/http.ts` (`ALLOWED_GET`, login POST)                                                                  |
 
 `useDashboardStats` / `GET /api/runs/stats` is dead in the UI — kept only because `scripts/trigger-test-run.js` still calls the endpoint. Do not use it for new tiles.
 

@@ -1,6 +1,6 @@
 # CLAUDE.md — YShvydak Test Dashboard
 
-Playwright test dashboard. npm workspaces monorepo: `core`, `reporter`, `server` (Express + `sqlite3` with WAL), `web` (React + Vite).
+Playwright test dashboard. npm workspaces monorepo: `core`, `reporter`, `server` (Express + `sqlite3` with WAL), `web` (React + Vite), `mcp` (read-only stdio MCP server, built from `dist`, not part of the production build).
 
 Frontend is feature-based — `features/{name}/` — over Atomic Design primitives in `shared/components/atoms/` and `shared/components/molecules/`. A new component belongs in its feature, not in `shared/`, unless it is genuinely shared.
 
@@ -18,6 +18,8 @@ These four are load-bearing. Breaking any one of them corrupts historical tracki
 Named CI pipelines: `ProjectTabConfig.pipelines` is `('develop' | 'production')[]` (a tab can be in zero or more). Tab list order = step order inside each pipeline. Shared helpers: `packages/server/src/utils/ciPipeline.util.ts` and `packages/web/src/constants/ciPipelines.ts`. Legacy `inPipeline: true` → `['develop']` via `normalizeCIPipelines`. `POST /api/pipeline/run` body `{pipeline, maxWorkers, source, notify}` — missing name → `develop`, unknown → 400. Script: `--pipeline <name>`; sends `notify: true` unless `--wait`.
 
 Jira integration (optional, env-gated: `JIRA_BASE_URL`/`JIRA_EMAIL`/`JIRA_API_TOKEN`, all three or none — `config.jira.enabled`): read-only ticket type/status/summary/assignee for ticket-key tags, cached in `jira_ticket_cache`; last sync attempt (ok / error_reason / attempted_at) in single-row `jira_sync_status`. Fetch via `POST /rest/api/3/issue/bulkfetch` — legacy `GET /rest/api/3/search` was removed from Jira Cloud (2025-08); HTTP mocks won't catch an endpoint removal, check Atlassian docs. `JiraService.refreshAllKnownKeys()` runs every 30 min from `server.ts` + on-demand via `POST /api/jira/refresh`; ticket-key discovery duplicates the `@[A-Z][A-Z0-9]+-\d+` tag regex server-side (`utils/jiraTicketKey.util.ts`) on purpose, same reasoning as invariant 3. Separate from the pre-existing `jira_base_url` app_setting (chip link target, no env needed). A key absent from `GET /api/jira/tickets` (disabled/never synced/Jira error) is not an error — `TicketChips.tsx` falls back to the plain pre-existing chip render for that key.
+
+`packages/mcp` is read-only: every request goes through the allowlist in `packages/mcp/src/http.ts` (GET on fixed paths + the login POST). A new tool that needs a new endpoint adds its exact path there, with strict id patterns. Never allowlist `/api/tests/projects` or `/api/tests/diagnostics` (they spawn `playwright --list`) or any POST/PUT/DELETE. `npm run build:prod` (deploy) skips the package.
 
 ## Flow
 

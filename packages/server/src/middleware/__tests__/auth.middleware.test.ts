@@ -122,6 +122,16 @@ describe('Authentication Middleware', () => {
                 expect(res.status).toHaveBeenCalledWith(401)
             })
 
+            it('should require authentication for /api/tests/by-test-id/:testId', async () => {
+                req = createMockRequest({path: '/api/tests/by-test-id/abc123'})
+
+                const middleware = createAuthMiddleware(mockAuthService as any)
+                await middleware(req, res as Response, next)
+
+                expect(next).not.toHaveBeenCalled()
+                expect(res.status).toHaveBeenCalledWith(401)
+            })
+
             it('should match public endpoints on the full URL, not the mount-relative path', async () => {
                 req = createMockRequest({path: '/health', originalUrl: '/api/health?x=1'})
 

@@ -127,4 +127,35 @@ describe('TestRepository - catalog reads and Discover helpers', () => {
         expect(text).toContain('@PB-1')
         expect(text).toContain('@PB-2')
     })
+
+    it('getLatestByTestId picks the latest row across projects, with the catalog overlay', async () => {
+        await save('t-1', 'To_Fix', 'failed', '2026-10-26T09:00:00.000Z')
+        await save('t-1', 'UI', 'passed', '2026-10-26T10:00:00.000Z', {metadata: {tags: ['@old']}})
+        await save('t-1', 'Legacy', 'skipped', '2026-10-26T08:00:00.000Z')
+        await catalog.upsertMany([
+            {
+                project: 'UI',
+                testId: 't-1',
+                name: 't-1',
+                filePath: 'a.spec.ts',
+                metadata: {tags: ['@smoke']},
+                discoveredAt: '2026-10-26T11:00:00.000Z',
+            },
+        ])
+
+        const test = await repo.getLatestByTestId('t-1')
+        expect(test?.project).toBe('UI')
+        expect(test?.status).toBe('passed')
+        expect(test?.metadata).toMatchObject({tags: ['@smoke']})
+    })
+
+    it('getLatestByTestId returns a row with no project, and null for an unknown id', async () => {
+        await save('named', 'UI', 'passed', '2026-10-26T10:00:00.000Z')
+        await save('legacy', '', 'failed', '2026-06-25T10:00:00.000Z')
+
+        // The unscoped list hides the legacy row; the link lookup must still find it
+        expect((await repo.getAllTests({})).map((t) => t.testId)).toEqual(['named'])
+        expect((await repo.getLatestByTestId('legacy'))?.status).toBe('failed')
+        expect(await repo.getLatestByTestId('missing')).toBeNull()
+    })
 })

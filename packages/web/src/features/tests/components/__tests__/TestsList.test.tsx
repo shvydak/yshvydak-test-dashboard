@@ -1,9 +1,15 @@
 import {describe, it, expect, beforeEach, afterEach, vi} from 'vitest'
-import {render, screen, waitFor, cleanup} from '@testing-library/react'
+import {render, screen, waitFor, cleanup, act} from '@testing-library/react'
 import {BrowserRouter, MemoryRouter, useSearchParams} from 'react-router-dom'
 import TestsList from '../TestsList'
 import {useTestsStore} from '../../store/testsStore'
 import {TestResult} from '@yshvydak/core'
+
+// Server lookup behind a shared link; default = unknown test.
+const mockGetLatestByTestId = vi.fn(async (_testId: string): Promise<TestResult | null> => null)
+vi.mock('@/services/testLink.service', () => ({
+    testLinkService: {getLatestByTestId: (testId: string) => mockGetLatestByTestId(testId)},
+}))
 
 // Mock the store
 vi.mock('../../store/testsStore', () => ({
@@ -101,11 +107,239 @@ describe('TestsList - Shareable URLs', () => {
 
     beforeEach(() => {
         vi.clearAllMocks()
+        mockGetLatestByTestId.mockResolvedValue(null)
         vi.mocked(useTestsStore).mockReturnValue({
             tests: mockTests,
             error: null,
         } as any)
         mockUseFilteredTestsByStatus.mockReturnValue({tests: [], isLoading: false})
+    })
+
+    describe('Deep Linking - test outside the loaded list', () => {
+        const remoteTest = {
+            id: 'exec-9',
+            testId: 'test-remote',
+            name: 'Remote test',
+            filePath: '/remote.spec.ts',
+            status: 'passed',
+            duration: 10,
+            createdAt: '2025-01-02T00:00:00Z',
+            runId: 'run-2',
+            project: 'API_Tests',
+        } as TestResult
+
+        const renderWithProbe = (url: string) => {
+            const Probe = () => {
+                const [searchParams] = useSearchParams()
+                return (
+                    <div>
+                        <div data-testid="project-param">
+                            {searchParams.get('project') || 'none'}
+                        </div>
+                        <div data-testid="test-id-param">
+                            {searchParams.get('testId') || 'none'}
+                        </div>
+                        <TestsList
+                            onTestSelect={mockOnTestSelect}
+                            onTestRerun={mockOnTestRerun}
+                            selectedTest={null}
+                            loading={false}
+                            activeProject="UI_Tests"
+                        />
+                    </div>
+                )
+            }
+            return render(
+                <MemoryRouter initialEntries={[url]}>
+                    <Probe />
+                </MemoryRouter>
+            )
+        }
+
+        it('asks the server, switches to the test project tab and opens the modal', async () => {
+            mockGetLatestByTestId.mockResolvedValue(remoteTest)
+
+            renderWithProbe('/?project=UI_Tests&testId=test-remote')
+
+            await waitFor(() => {
+                expect(screen.getByTestId('modal')).toHaveAttribute('data-open', 'true')
+            })
+            expect(mockGetLatestByTestId).toHaveBeenCalledWith('test-remote')
+            expect(screen.getByTestId('modal')).toHaveAttribute('data-test-id', 'test-remote')
+            expect(screen.getByTestId('project-param')).toHaveTextContent('API_Tests')
+            expect(screen.getByTestId('test-id-param')).toHaveTextContent('test-remote')
+            expect(mockOnTestSelect).toHaveBeenCalledWith(
+                expect.objectContaining({testId: 'test-remote'})
+            )
+        })
+
+        it('does not ask the server for a test already in the list', async () => {
+            vi.mocked(useTestsStore).mockReturnValue({
+                tests: [{...mockTests[0], project: 'UI_Tests'}],
+                error: null,
+            } as any)
+
+            renderWithProbe('/?project=UI_Tests&testId=test-abc123')
+
+            await waitFor(() => {
+                expect(screen.getByTestId('modal')).toHaveAttribute('data-open', 'true')
+            })
+            expect(mockGetLatestByTestId).not.toHaveBeenCalled()
+        })
+
+        it('shows a "Test not found" message and drops the testId for an unknown test', async () => {
+            renderWithProbe('/?project=UI_Tests&testId=test-gone')
+
+            expect(await screen.findByText('Test not found')).toBeInTheDocument()
+            expect(screen.getByTestId('modal')).toHaveAttribute('data-open', 'false')
+            expect(screen.getByTestId('test-id-param')).toHaveTextContent('none')
+            expect(screen.getByTestId('project-param')).toHaveTextContent('UI_Tests')
+        })
+
+        it('keeps the testId and shows a message when the server cannot be reached', async () => {
+            mockGetLatestByTestId.mockRejectedValue(new Error('network'))
+
+            renderWithProbe('/?project=UI_Tests&testId=test-remote')
+
+            expect(await screen.findByText('Could not open the test link')).toBeInTheDocument()
+            expect(screen.getByTestId('test-id-param')).toHaveTextContent('test-remote')
+        })
+
+        it('asks the server when the loaded row belongs to another project', async () => {
+            vi.mocked(useTestsStore).mockReturnValue({
+                tests: [{...mockTests[0], project: 'API_Tests'}],
+                error: null,
+            } as any)
+            mockGetLatestByTestId.mockResolvedValue({
+                ...mockTests[0],
+                project: 'UI_Tests',
+            } as TestResult)
+
+            renderWithProbe('/?project=UI_Tests&testId=test-abc123')
+
+            await waitFor(() => expect(mockGetLatestByTestId).toHaveBeenCalledWith('test-abc123'))
+        })
+
+        it('clears an old notice when a later link opens', async () => {
+            mockGetLatestByTestId.mockImplementation(async (id: string) =>
+                id === 'test-gone' ? null : ({...remoteTest, testId: id} as TestResult)
+            )
+            const Probe = () => {
+                const [, setSearchParams] = useSearchParams()
+                return (
+                    <div>
+                        <button onClick={() => setSearchParams({testId: 'test-good'})}>next</button>
+                        <TestsList
+                            onTestSelect={mockOnTestSelect}
+                            onTestRerun={mockOnTestRerun}
+                            selectedTest={null}
+                            loading={false}
+                        />
+                    </div>
+                )
+            }
+            render(
+                <MemoryRouter initialEntries={['/?testId=test-gone']}>
+                    <Probe />
+                </MemoryRouter>
+            )
+            expect(await screen.findByText('Test not found')).toBeInTheDocument()
+
+            screen.getByText('next').click()
+
+            await waitFor(() =>
+                expect(screen.getByTestId('modal')).toHaveAttribute('data-test-id', 'test-good')
+            )
+            expect(screen.queryByText('Test not found')).not.toBeInTheDocument()
+        })
+
+        it('leaves ?project= alone for a test with no project', async () => {
+            mockGetLatestByTestId.mockResolvedValue({...remoteTest, project: ''} as TestResult)
+
+            renderWithProbe('/?project=UI_Tests&testId=test-remote')
+
+            await waitFor(() => {
+                expect(screen.getByTestId('modal')).toHaveAttribute('data-open', 'true')
+            })
+            expect(screen.getByTestId('project-param')).toHaveTextContent('UI_Tests')
+        })
+
+        it('keeps URL changes made while the server lookup was running', async () => {
+            let resolve!: (t: TestResult) => void
+            mockGetLatestByTestId.mockReturnValue(new Promise<TestResult>((r) => (resolve = r)))
+            const Probe = () => {
+                const [searchParams, setSearchParams] = useSearchParams()
+                return (
+                    <div>
+                        <button
+                            onClick={() => {
+                                const p = new URLSearchParams(searchParams)
+                                p.set('q', 'typed')
+                                setSearchParams(p)
+                            }}>
+                            type
+                        </button>
+                        <div data-testid="q-param">{searchParams.get('q') || 'none'}</div>
+                        <TestsList
+                            onTestSelect={mockOnTestSelect}
+                            onTestRerun={mockOnTestRerun}
+                            selectedTest={null}
+                            loading={false}
+                            activeProject="UI_Tests"
+                        />
+                    </div>
+                )
+            }
+            render(
+                <MemoryRouter initialEntries={['/?project=UI_Tests&testId=test-remote']}>
+                    <Probe />
+                </MemoryRouter>
+            )
+
+            await waitFor(() => expect(mockGetLatestByTestId).toHaveBeenCalled())
+            screen.getByText('type').click()
+            await waitFor(() => expect(screen.getByTestId('q-param')).toHaveTextContent('typed'))
+            await act(async () => resolve(remoteTest))
+
+            await waitFor(() => {
+                expect(screen.getByTestId('modal')).toHaveAttribute('data-open', 'true')
+            })
+            expect(screen.getByTestId('q-param')).toHaveTextContent('typed')
+        })
+
+        it('opens the next test when testId changes from one test to another', async () => {
+            mockGetLatestByTestId.mockImplementation(
+                async (id: string) => ({...remoteTest, testId: id}) as TestResult
+            )
+            const Probe = () => {
+                const [, setSearchParams] = useSearchParams()
+                return (
+                    <div>
+                        <button onClick={() => setSearchParams({testId: 'test-second'})}>
+                            next
+                        </button>
+                        <TestsList
+                            onTestSelect={mockOnTestSelect}
+                            onTestRerun={mockOnTestRerun}
+                            selectedTest={null}
+                            loading={false}
+                        />
+                    </div>
+                )
+            }
+            render(
+                <MemoryRouter initialEntries={['/?testId=test-first']}>
+                    <Probe />
+                </MemoryRouter>
+            )
+            await waitFor(() =>
+                expect(screen.getByTestId('modal')).toHaveAttribute('data-test-id', 'test-first')
+            )
+            screen.getByText('next').click()
+            await waitFor(() =>
+                expect(screen.getByTestId('modal')).toHaveAttribute('data-test-id', 'test-second')
+            )
+        })
     })
 
     describe('Deep Linking - Opening modal from URL', () => {
@@ -170,6 +404,24 @@ describe('TestsList - Shareable URLs', () => {
             )
 
             expect(mockOnTestSelect).not.toHaveBeenCalled()
+            expect(mockGetLatestByTestId).not.toHaveBeenCalled()
+        })
+
+        it('looks the test up once loading finishes', async () => {
+            const tree = (loading: boolean) => (
+                <MemoryRouter initialEntries={['/?testId=test-abc123']}>
+                    <TestsList
+                        onTestSelect={mockOnTestSelect}
+                        onTestRerun={mockOnTestRerun}
+                        selectedTest={null}
+                        loading={loading}
+                    />
+                </MemoryRouter>
+            )
+            const {rerender} = render(tree(true))
+            expect(mockGetLatestByTestId).not.toHaveBeenCalled()
+            rerender(tree(false))
+            await waitFor(() => expect(mockOnTestSelect).toHaveBeenCalledTimes(1))
         })
 
         it('should process URL only once to avoid infinite loops', async () => {

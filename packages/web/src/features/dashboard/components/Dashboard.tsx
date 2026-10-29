@@ -1,7 +1,11 @@
-import {useEffect, useState, useCallback, useRef} from 'react'
+import {useEffect, useState, useCallback} from 'react'
 import {AlertTriangle, PartyPopper, BarChart2} from 'lucide-react'
 import {useSearchParams} from 'react-router-dom'
+import {TestResult} from '@yshvydak/core'
 import {useTestsStore} from '@features/tests/store/testsStore'
+import {useTestLink} from '@features/tests/hooks/useTestLink'
+import type {TestLinkFailure} from '@features/tests/hooks/useTestLink'
+import {TestLinkBanner} from '@features/tests/components/TestLinkBanner'
 import {useTestStatusCounts} from '@features/tests/hooks/useTestStatusCounts'
 import {useFlakyTests, useTestTimeline} from '../hooks'
 import {DashboardStats} from './DashboardStats'
@@ -32,7 +36,8 @@ export default function Dashboard() {
     const [webSocketUrl, setWebSocketUrl] = useState<string | null>(null)
     const [detailModalOpen, setDetailModalOpen] = useState(false)
     const [selectedTestId, setSelectedTestId] = useState<string | null>(null)
-    const hasProcessedUrlRef = useRef(false)
+    const [linkedTest, setLinkedTest] = useState<TestResult | null>(null)
+    const [linkFailure, setLinkFailure] = useState<TestLinkFailure | null>(null)
 
     useEffect(() => {
         const url = getWebSocketUrl(true)
@@ -63,31 +68,21 @@ export default function Dashboard() {
         }
     }, [tests.length, fetchTests])
 
-    // Handle deep linking: open modal if testId is in URL
-    useEffect(() => {
-        const testId = searchParams.get('testId')
-
-        // Only process URL parameters once when component mounts and tests are loaded
-        if (testId && tests.length > 0 && !hasProcessedUrlRef.current) {
-            hasProcessedUrlRef.current = true
-
-            // Find the test by testId
-            const test = tests.find((t) => t.testId === testId)
-
-            if (test) {
-                setSelectedTestId(testId)
-                setDetailModalOpen(true)
-            } else {
-                // Test not found, clear URL parameters
-                setSearchParams({}, {replace: true})
-            }
-        }
-
-        // Reset the ref when URL changes (user navigates to different test)
-        if (!testId) {
-            hasProcessedUrlRef.current = false
-        }
-    }, [searchParams, tests, setSearchParams])
+    // Deep link: the server resolves tests outside the 200 loaded rows
+    useTestLink({
+        testId: searchParams.get('testId'),
+        findLocal: (testId) => tests.find((t) => t.testId === testId),
+        onResolved: (test) => {
+            setLinkFailure(null)
+            setLinkedTest(test)
+            setSelectedTestId(test.testId)
+            setDetailModalOpen(true)
+        },
+        onFailed: (reason) => {
+            setLinkFailure(reason)
+            if (reason === 'not-found') setSearchParams({}, {replace: true})
+        },
+    })
 
     const handleFlakyTestClick = (testId: string) => {
         setSelectedTestId(testId)
@@ -102,12 +97,16 @@ export default function Dashboard() {
     const handleCloseModal = () => {
         setDetailModalOpen(false)
         setSelectedTestId(null)
+        setLinkedTest(null)
 
         // Clear URL parameters when closing modal
         setSearchParams({}, {replace: false})
     }
 
-    const selectedTest = selectedTestId ? tests.find((t) => t.testId === selectedTestId) : null
+    const selectedTest = selectedTestId
+        ? (tests.find((t) => t.testId === selectedTestId) ??
+          (linkedTest?.testId === selectedTestId ? linkedTest : null))
+        : null
 
     if (statsError) {
         return (
@@ -131,6 +130,10 @@ export default function Dashboard() {
 
     return (
         <div className="space-y-6 animate-fade-in">
+            {linkFailure && (
+                <TestLinkBanner reason={linkFailure} onDismiss={() => setLinkFailure(null)} />
+            )}
+
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                 <div>
                     <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-gray-900 dark:text-white">

@@ -77,6 +77,7 @@ describe('TestService', () => {
             saveTestResult: vi.fn(),
             getTestResult: vi.fn(),
             getAllTests: vi.fn(),
+            getLatestByTestId: vi.fn(),
             getTestResultsByTestId: vi.fn(),
             deleteByTestId: vi.fn(),
             deleteByExecutionId: vi.fn(),
@@ -658,6 +659,18 @@ describe('TestService', () => {
             expect(history[0].id).toBe('exec-3')
             expect(history[1].id).toBe('exec-2')
             expect(history[2].id).toBe('exec-1')
+        })
+    })
+
+    describe('getLatestTestByTestId', () => {
+        it('returns the repository row for a testId, or null', async () => {
+            const row = {id: 'r-1', testId: 'abc', project: 'UI'}
+            mockTestRepository.getLatestByTestId.mockResolvedValueOnce(row)
+            expect(await testService.getLatestTestByTestId('abc')).toEqual(row)
+            expect(mockTestRepository.getLatestByTestId).toHaveBeenCalledWith('abc')
+
+            mockTestRepository.getLatestByTestId.mockResolvedValueOnce(null)
+            expect(await testService.getLatestTestByTestId('nope')).toBeNull()
         })
     })
 

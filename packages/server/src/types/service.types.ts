@@ -9,6 +9,7 @@ export interface ITestService {
     discoverTests(project?: string, mode?: DiscoveryMode): Promise<TestDiscoveryResult>
     getAllTests(filters: TestFilters): Promise<TestResult[]>
     getTestById(id: string): Promise<TestResult | null>
+    getLatestTestByTestId(testId: string): Promise<TestResult | null>
     getTestHistory(testId: string, limit?: number, before?: string): Promise<TestResult[]>
     getTestExecutionCount(testId: string): Promise<number>
     deleteTest(testId: string): Promise<{deletedExecutions: number}>
@@ -146,6 +147,7 @@ export interface ITestRepository {
     getTestResultsByTestId(testId: string, limit?: number, before?: string): Promise<TestResult[]>
     getTestExecutionCount(testId: string): Promise<number>
     getAllTests(filters: TestFilters): Promise<TestResult[]>
+    getLatestByTestId(testId: string): Promise<TestResult | null>
     deleteByTestId(testId: string): Promise<number>
     deleteByExecutionId(executionId: string): Promise<number>
     clearAllTests(): Promise<void>

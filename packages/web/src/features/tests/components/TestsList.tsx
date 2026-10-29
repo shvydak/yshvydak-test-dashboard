@@ -4,7 +4,7 @@ import {AlertTriangle} from 'lucide-react'
 import {TestResult} from '@yshvydak/core'
 import {LoadingSpinner} from '@shared/components'
 import {useTestsStore} from '../store/testsStore'
-import {useTestFilters} from '../hooks'
+import {useTestFilters, useTestLink} from '../hooks'
 import {useTestStatusCounts} from '../hooks/useTestStatusCounts'
 import {useFilteredTestsByStatus} from '../hooks/useFilteredTestsByStatus'
 import {FilterKey, FILTER_OPTIONS} from '../constants'
@@ -17,6 +17,8 @@ import {useJiraSettings} from '@features/dashboard/hooks/useJiraSettings'
 import {useJiraTicketInfo} from '../hooks/useJiraTicketInfo'
 import {getTestJiraKeys} from '../utils/jiraTags'
 import {TestDetailModal} from './testDetail'
+import {TestLinkBanner} from './TestLinkBanner'
+import type {TestLinkFailure} from '../hooks/useTestLink'
 
 export interface TestsListProps {
     onTestSelect: (test: TestResult) => void
@@ -38,7 +40,7 @@ export default function TestsList({
     const [searchQuery, setSearchQuery] = useState(() => searchParams.get('q') || '')
     const [detailModalOpen, setDetailModalOpen] = useState(false)
     const [detailModalTest, setDetailModalTest] = useState<TestResult | null>(null)
-    const hasProcessedUrlRef = useRef(false)
+    const [linkFailure, setLinkFailure] = useState<TestLinkFailure | null>(null)
     const searchInputRef = useRef<HTMLInputElement>(null)
 
     // Initialize filter from URL or default to 'all'
@@ -120,34 +122,36 @@ export default function TestsList({
         }
     }, [searchParams, setSearchParams])
 
-    // Handle deep linking: open modal if testId is in URL
-    useEffect(() => {
-        const testId = searchParams.get('testId')
-
-        // Only process URL parameters once when component mounts and tests are loaded
-        if (testId && tests.length > 0 && !hasProcessedUrlRef.current) {
-            hasProcessedUrlRef.current = true
-
-            // Find the test by testId
-            const test = tests.find((t) => t.testId === testId)
-
-            if (test) {
-                setDetailModalTest(test)
-                setDetailModalOpen(true)
-                onTestSelect(test)
-            } else {
-                // Test not found, remove testId but preserve filter
+    // Deep link: open the modal for ?testId=. A test in the loaded list opens at once; otherwise
+    // the server resolves it (any project) and the project tab follows the test.
+    useTestLink({
+        testId: searchParams.get('testId'),
+        wait: loading,
+        findLocal: (testId) =>
+            tests.find(
+                (t) => t.testId === testId && (!activeProject || t.project === activeProject)
+            ),
+        onResolved: (test) => {
+            setLinkFailure(null)
+            if (test.project && test.project !== searchParams.get('project')) {
+                const params = new URLSearchParams(searchParams)
+                params.set('project', test.project)
+                setSearchParams(params, {replace: true})
+            }
+            setDetailModalTest(test)
+            setDetailModalOpen(true)
+            onTestSelect(test)
+        },
+        onFailed: (reason) => {
+            setLinkFailure(reason)
+            // Not found: the link is dead. Error: keep it so a reload retries.
+            if (reason === 'not-found') {
                 const params = new URLSearchParams(searchParams)
                 params.delete('testId')
                 setSearchParams(params, {replace: true})
             }
-        }
-
-        // Reset the ref when URL changes (user navigates to different test)
-        if (!testId) {
-            hasProcessedUrlRef.current = false
-        }
-    }, [searchParams, tests, onTestSelect, setSearchParams])
+        },
+    })
 
     const openTestDetail = (test: TestResult) => {
         setDetailModalTest(test)
@@ -240,6 +244,10 @@ export default function TestsList({
 
     return (
         <div className="flex flex-col h-full animate-fade-in">
+            {linkFailure && (
+                <TestLinkBanner reason={linkFailure} onDismiss={() => setLinkFailure(null)} />
+            )}
+
             {/* Filter bar — fixed at top, never scrolls */}
             <div className="py-3 md:py-4 shrink-0">
                 <TestsListFilters

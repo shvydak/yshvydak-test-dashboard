@@ -506,6 +506,31 @@ export class TestController {
         }
     }
 
+    // GET /api/tests/by-test-id/:testId - Latest row of a test across all projects (link resolver)
+    getLatestTestByTestId = async (req: ServiceRequest, res: Response): Promise<Response> => {
+        try {
+            const {testId} = req.params
+            if (!isSafeId(testId)) {
+                return ResponseHelper.badRequest(res, 'Invalid testId')
+            }
+
+            const test = await this.testService.getLatestTestByTestId(testId)
+            if (!test) {
+                return ResponseHelper.notFound(res, 'Test')
+            }
+
+            return ResponseHelper.success(res, test)
+        } catch (error) {
+            Logger.error('Error fetching test by testId', error)
+            return ResponseHelper.error(
+                res,
+                error instanceof Error ? error.message : 'Unknown error',
+                'Failed to fetch test',
+                500
+            )
+        }
+    }
+
     // POST /api/tests/:id/rerun - Rerun a specific test
     rerunTest = async (req: ServiceRequest, res: Response): Promise<void> => {
         try {

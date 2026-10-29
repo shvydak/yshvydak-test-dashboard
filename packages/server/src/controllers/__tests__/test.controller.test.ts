@@ -87,6 +87,7 @@ describe('TestController', () => {
             clearProjectData: vi.fn(),
             saveTestResult: vi.fn(),
             getTestById: vi.fn(),
+            getLatestTestByTestId: vi.fn(),
             rerunTest: vi.fn(),
             getTestHistory: vi.fn(),
             getTestExecutionCount: vi.fn().mockResolvedValue(0),
@@ -942,6 +943,52 @@ describe('TestController', () => {
             await controller.getTestById(mockReq as ServiceRequest, mockRes as Response)
 
             expect(Logger.error).toHaveBeenCalledWith('Error fetching test', error)
+            expect(ResponseHelper.error).toHaveBeenCalledWith(
+                mockRes,
+                'Database error',
+                'Failed to fetch test',
+                500
+            )
+        })
+    })
+
+    describe('getLatestTestByTestId', () => {
+        it('returns the latest row for a testId', async () => {
+            const test = {id: 'r-1', testId: 'abc123', project: 'UI'}
+            mockReq.params = {testId: 'abc123'}
+            mockTestService.getLatestTestByTestId.mockResolvedValue(test)
+
+            await controller.getLatestTestByTestId(mockReq as ServiceRequest, mockRes as Response)
+
+            expect(mockTestService.getLatestTestByTestId).toHaveBeenCalledWith('abc123')
+            expect(ResponseHelper.success).toHaveBeenCalledWith(mockRes, test)
+        })
+
+        it('returns 400 for an unsafe testId without touching the service', async () => {
+            mockReq.params = {testId: '../etc/passwd'}
+
+            await controller.getLatestTestByTestId(mockReq as ServiceRequest, mockRes as Response)
+
+            expect(ResponseHelper.badRequest).toHaveBeenCalledWith(mockRes, 'Invalid testId')
+            expect(mockTestService.getLatestTestByTestId).not.toHaveBeenCalled()
+        })
+
+        it('returns 404 for an unknown testId', async () => {
+            mockReq.params = {testId: 'gone'}
+            mockTestService.getLatestTestByTestId.mockResolvedValue(null)
+
+            await controller.getLatestTestByTestId(mockReq as ServiceRequest, mockRes as Response)
+
+            expect(ResponseHelper.notFound).toHaveBeenCalledWith(mockRes, 'Test')
+        })
+
+        it('returns 500 when the service throws', async () => {
+            mockReq.params = {testId: 'abc123'}
+            const error = new Error('Database error')
+            mockTestService.getLatestTestByTestId.mockRejectedValue(error)
+
+            await controller.getLatestTestByTestId(mockReq as ServiceRequest, mockRes as Response)
+
             expect(ResponseHelper.error).toHaveBeenCalledWith(
                 mockRes,
                 'Database error',

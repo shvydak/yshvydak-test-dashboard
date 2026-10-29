@@ -93,6 +93,10 @@ Hooks called unconditionally in `App.tsx` fire before `checkAuth()` resolves →
 Adding `useSearchParams` breaks existing tests: "may be used only in the context of a Router".  
 Wrap in `<MemoryRouter initialEntries={['/?project=All_Tests']}>` and vary URL per test case.
 
+## Shared test links
+
+A test link is the page URL (`?project=…&testId=…`; `/dashboard?testId=…` for the flaky list). Both pages resolve it through `useTestLink`: the page's loaded list first, otherwise `GET /api/tests/by-test-id/:testId`. On a fresh load the list is usually not loaded yet, so the server answers. `TestsList` then sets `?project=` to the test's project. Not found → `TestLinkBanner` and `testId` removed; server error → banner, `testId` kept so a reload retries. Never resolve `testId` against `testsStore.tests` alone: it holds only the first 200 rows (5000 per tab).
+
 ## Counts and caches
 
 - **Filter-bar counts come from `getTestStatusCounts` (DB-aggregated, unlimited), never from the paginated list.** `testsStore.tests` is capped at 200 without a project tab and 5000 with one. Deriving All/Passed/Failed from it silently caps the badge at page size. Use `useTestStatusCounts`. Symptom: an "All 200" badge that never grows. Rows with no project (`''`/NULL) are left out of the unscoped counts (`getTestStatusCounts`) and the unscoped list (`GET /tests` without `project`/`runId`) only when at least one named project exists; with none, nothing is hidden. Both use one shared predicate (`unscopedProjectFilter` in `test.repository.ts`), applied after picking each test's latest row, so the cards and the list agree. The tab badges (`getProjectStatusSummary`) always skip `project=''` rows.

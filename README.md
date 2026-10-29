@@ -16,6 +16,7 @@ The Playwright side is the npm package [`playwright-dashboard-reporter`](https:/
 - **Tags and tickets**: Playwright tags such as `@ABC-123` become chips; ticket keys link to your tracker. See [Tags and tickets](#tags-and-tickets). With `JIRA_BASE_URL`/`JIRA_EMAIL`/`JIRA_API_TOKEN` set, chips also show the ticket's type and status (read-only), see [Jira ticket type/status](#jira-ticket-typestatus).
 - **Storage**: disk usage with warning and critical thresholds; cleanup by date or by run count, either stripping attachments (history kept) or deleting executions permanently.
 - **Theme**: Auto, Light or Dark.
+- **MCP server**: a read-only stdio server (`packages/mcp`) lets an AI assistant list tests, read errors and history, view screenshots and filter by Jira ticket status. See [packages/mcp/README.md](packages/mcp/README.md).
 
 ## Requirements
 
@@ -170,6 +171,7 @@ packages/
   reporter/  playwright-dashboard-reporter (published to npm)
   server/    Express + SQLite (WAL) + WebSocket
   web/       React + Vite UI
+  mcp/       read-only MCP server for AI assistants (private)
 ```
 
 ```

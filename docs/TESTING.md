@@ -101,14 +101,15 @@ Integration tests verify full HTTP request/response cycles including middleware 
 All integration tests verify the complete middleware chain:
 **CORS → JSON parsing → Auth → Controller → Service → Repository → Database → Response**
 
-| Endpoint                     | Tests | File                                   |
-| ---------------------------- | ----- | -------------------------------------- |
-| `POST /api/tests`            | 15    | `createTestResult.integration.test.ts` |
-| `POST /api/tests/discovery`  | 10    | `discover.integration.test.ts`         |
-| `POST /api/tests/run-all`    | 14    | `runAllTests.integration.test.ts`      |
-| `GET /api/tests/:id/history` | 11    | `testHistory.integration.test.ts`      |
-| `DELETE /api/tests/:testId`  | 10    | `deleteTest.integration.test.ts`       |
-| `POST /api/tests/:id/rerun`  | 11    | `rerunTest.integration.test.ts`        |
+| Endpoint                                            | Tests | File                                      |
+| --------------------------------------------------- | ----- | ----------------------------------------- |
+| `POST /api/tests`                                   | 15    | `createTestResult.integration.test.ts`    |
+| `POST /api/tests/discovery`                         | 10    | `discover.integration.test.ts`            |
+| `POST /api/tests/discovery` (incremental + catalog) | 22    | `discoverIncremental.integration.test.ts` |
+| `POST /api/tests/run-all`                           | 14    | `runAllTests.integration.test.ts`         |
+| `GET /api/tests/:id/history`                        | 11    | `testHistory.integration.test.ts`         |
+| `DELETE /api/tests/:testId`                         | 10    | `deleteTest.integration.test.ts`          |
+| `POST /api/tests/:id/rerun`                         | 11    | `rerunTest.integration.test.ts`           |
 
 ### Integration Test Structure
 

@@ -46,6 +46,7 @@ describe('TestService', () => {
     let mockNoteService: any
     let mockSettingsService: any
     let mockAttachmentCleanupRepository: any
+    let mockTestCatalogRepository: any
     let mockCIRunQueue: any
 
     // The run registry is a process-wide singleton: every fake child is closed after each test.
@@ -71,7 +72,8 @@ describe('TestService', () => {
 
         // Create mock instances
         mockTestRepository = {
-            execute: vi.fn().mockResolvedValue(undefined),
+            deletePendingRows: vi.fn().mockResolvedValue(0),
+            getLatestProjects: vi.fn().mockResolvedValue(new Map()),
             saveTestResult: vi.fn(),
             getTestResult: vi.fn(),
             getAllTests: vi.fn(),
@@ -155,6 +157,14 @@ describe('TestService', () => {
             clearInFlightRun: vi.fn().mockResolvedValue(undefined),
         }
 
+        mockTestCatalogRepository = {
+            upsertMany: vi.fn().mockResolvedValue(undefined),
+            deleteStale: vi.fn().mockResolvedValue(0),
+            deleteByTestId: vi.fn().mockResolvedValue(0),
+            deleteByProject: vi.fn().mockResolvedValue(0),
+            markFullScan: vi.fn().mockResolvedValue(undefined),
+        }
+
         mockAttachmentCleanupRepository = {
             markCleared: vi.fn().mockResolvedValue(undefined),
         }
@@ -178,7 +188,8 @@ describe('TestService', () => {
             mockNoteService,
             mockSettingsService,
             mockAttachmentCleanupRepository,
-            mockCIRunQueue
+            mockCIRunQueue,
+            mockTestCatalogRepository
         )
     })
 
@@ -224,7 +235,6 @@ describe('TestService', () => {
                 },
             ]
 
-            mockTestRepository.execute.mockResolvedValue(undefined)
             mockPlaywrightService.discoverTests.mockResolvedValue(mockDiscoveredTests)
             mockTestRepository.saveTestResult.mockResolvedValue('saved-id')
 
@@ -235,10 +245,7 @@ describe('TestService', () => {
             expect(result.timestamp).toBeDefined()
 
             // Verify pending tests were cleared
-            expect(mockTestRepository.execute).toHaveBeenCalledWith(
-                'DELETE FROM test_results WHERE status = ?',
-                ['pending']
-            )
+            expect(mockTestRepository.deletePendingRows).toHaveBeenCalledWith(undefined)
 
             // Verify Playwright service was called
             expect(mockPlaywrightService.discoverTests).toHaveBeenCalled()
@@ -272,7 +279,6 @@ describe('TestService', () => {
                 },
             ]
 
-            mockTestRepository.execute.mockResolvedValue(undefined)
             mockPlaywrightService.discoverTests.mockResolvedValue(mockDiscoveredTests)
             mockTestRepository.saveTestResult
                 .mockResolvedValueOnce('saved-id-1')
@@ -290,29 +296,28 @@ describe('TestService', () => {
         })
 
         it('should throw error if discovery fails', async () => {
-            mockTestRepository.execute.mockResolvedValue(undefined)
             mockPlaywrightService.discoverTests.mockRejectedValue(new Error('Discovery failed'))
 
             await expect(testService.discoverTests()).rejects.toThrow('Discovery failed')
+            // A failed --list changes nothing: no pending delete, no catalog write
+            expect(mockTestRepository.deletePendingRows).not.toHaveBeenCalled()
+            expect(mockTestCatalogRepository.upsertMany).not.toHaveBeenCalled()
+            expect(mockTestCatalogRepository.deleteStale).not.toHaveBeenCalled()
         })
 
         it('should throw error if clearing pending tests fails', async () => {
-            mockTestRepository.execute.mockRejectedValue(new Error('DB error'))
+            mockTestRepository.deletePendingRows.mockRejectedValue(new Error('DB error'))
 
             await expect(testService.discoverTests()).rejects.toThrow('DB error')
         })
 
         it('should scope pending-cleanup, Playwright discovery, and broadcast to a single project when provided', async () => {
-            mockTestRepository.execute.mockResolvedValue(undefined)
             mockPlaywrightService.discoverTests.mockResolvedValue([])
             mockTestRepository.saveTestResult.mockResolvedValue('saved-id')
 
             await testService.discoverTests('chromium')
 
-            expect(mockTestRepository.execute).toHaveBeenCalledWith(
-                'DELETE FROM test_results WHERE status = ? AND project = ?',
-                ['pending', 'chromium']
-            )
+            expect(mockTestRepository.deletePendingRows).toHaveBeenCalledWith('chromium')
             expect(mockPlaywrightService.discoverTests).toHaveBeenCalledWith('chromium')
             expect(mockWebSocketService.broadcastDiscoveryCompleted).toHaveBeenCalledWith(
                 0,
@@ -1030,10 +1035,7 @@ describe('TestService', () => {
             // Discovery (and its pending-cleanup DELETE) must be scoped to the same
             // project the run itself uses — never a global, cross-project reset.
             expect(mockPlaywrightService.discoverTests).toHaveBeenCalledWith('API_Tests')
-            expect(mockTestRepository.execute).toHaveBeenCalledWith(
-                'DELETE FROM test_results WHERE status = ? AND project = ?',
-                ['pending', 'API_Tests']
-            )
+            expect(mockTestRepository.deletePendingRows).toHaveBeenCalledWith('API_Tests')
             expect(mockPlaywrightService.runAllTests).toHaveBeenCalledWith(undefined, 'API_Tests')
         })
 
@@ -1520,7 +1522,8 @@ describe('TestService', () => {
                 mockNoteService,
                 mockSettingsService,
                 mockAttachmentCleanupRepository,
-                realQueue
+                realQueue,
+                mockTestCatalogRepository
             )
             mockPlaywrightService.runAllTests.mockResolvedValue(startedRun('run-1'))
 

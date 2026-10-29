@@ -3,6 +3,7 @@ import {TestResultData, TestResultRow, DatabaseStats} from '../types/database.ty
 import {TestResult, TestFilters, ITestRepository, TestStatusCounts} from '../types/service.types'
 import {DEFAULT_LIMITS} from '../config/constants'
 import {FileUtil} from '../utils/file.util'
+import {isNotInCode, overlayCatalogMetadata} from '../utils/catalogMetadata.util'
 
 // Shared SELECT projection for queries that JOIN attachments + notes onto test_results.
 // Keeping the column list in one place ensures the row mapper stays in sync with the SQL.
@@ -27,6 +28,23 @@ const TEST_RESULT_RELATIONS_JOINS = `
     LEFT JOIN attachments a ON tr.id = a.test_result_id
     LEFT JOIN test_notes tn ON tr.test_id = tn.test_id
     LEFT JOIN attachment_cleanups ac ON tr.id = ac.test_result_id
+`
+
+// Latest-row list only (getAllTests, not the runId branch): carries the test catalog next to each
+// row so the mapper can overlay fresh tags and flag "not in code". History, run and single reads
+// stay on the historical projection above.
+const CATALOG_COLUMNS = `
+    c.metadata      as catalog_metadata,
+    c.discovered_at as catalog_discovered_at,
+    s.last_scan     as catalog_last_scan,
+    EXISTS (SELECT 1 FROM test_catalog any_c WHERE any_c.test_id = tr.test_id) as in_any_catalog,
+    (SELECT value FROM app_settings WHERE key = 'catalog_last_full_scan') as catalog_last_full_scan
+`
+const CATALOG_JOINS = `
+    LEFT JOIN test_catalog c ON c.project = tr.project AND c.test_id = tr.test_id
+    LEFT JOIN (
+        SELECT project, MAX(discovered_at) AS last_scan FROM test_catalog GROUP BY project
+    ) s ON s.project = tr.project
 `
 
 // Unscoped lists/counts (no project, no runId) leave out tests whose latest row has no project
@@ -172,10 +190,12 @@ export class TestRepository extends BaseRepository implements ITestRepository {
         innerSql += ` ORDER BY created_at DESC LIMIT ?`
         params.push(filters.limit || DEFAULT_LIMITS.TESTS_PER_PAGE)
 
+        const withCatalog = !filters.runId
         const sql = `
-            SELECT ${TEST_RESULT_WITH_RELATIONS_COLUMNS}
+            SELECT ${TEST_RESULT_WITH_RELATIONS_COLUMNS}${withCatalog ? `, ${CATALOG_COLUMNS}` : ''}
             FROM (${innerSql}) tr
             ${TEST_RESULT_RELATIONS_JOINS}
+            ${withCatalog ? CATALOG_JOINS : ''}
             ORDER BY tr.created_at DESC
         `
 
@@ -190,8 +210,40 @@ export class TestRepository extends BaseRepository implements ITestRepository {
                        ROW_NUMBER() OVER (PARTITION BY test_id ORDER BY created_at DESC) AS rn
                 FROM test_results
              )
-             WHERE rn = 1`
+             WHERE rn = 1
+             UNION ALL
+             SELECT metadata FROM test_catalog`
         )
+    }
+
+    // Reset-mode Discover: drops discovery-pending rows (project-scoped when given).
+    async deletePendingRows(project?: string): Promise<number> {
+        const result = project
+            ? await this.dbManager.execute(
+                  'DELETE FROM test_results WHERE status = ? AND project = ?',
+                  ['pending', project]
+              )
+            : await this.dbManager.execute('DELETE FROM test_results WHERE status = ?', ['pending'])
+        return result.changes || 0
+    }
+
+    // test_id -> project of that test's latest row (created_at); absent = the test has no row.
+    async getLatestProjects(testIds: string[]): Promise<Map<string, string>> {
+        const out = new Map<string, string>()
+        for (const batch of this.batches(testIds)) {
+            const rows = await this.queryAll<{test_id: string; project: string | null}>(
+                `SELECT test_id, project FROM (
+                    SELECT test_id, project,
+                           ROW_NUMBER() OVER (PARTITION BY test_id ORDER BY created_at DESC) AS rn
+                    FROM test_results
+                    WHERE test_id IN (${batch.map(() => '?').join(',')})
+                 )
+                 WHERE rn = 1`,
+                batch
+            )
+            for (const r of rows) out.set(r.test_id, r.project || '')
+        }
+        return out
     }
 
     async deleteByTestId(testId: string): Promise<number> {
@@ -606,6 +658,8 @@ export class TestRepository extends BaseRepository implements ITestRepository {
     }
 
     private mapRowToTestResult(row: TestResultRow): TestResult {
+        const hasCatalog = 'catalog_last_scan' in row
+        const parsedMetadata = row.metadata ? JSON.parse(row.metadata) : undefined
         return {
             id: row.id,
             runId: row.run_id,
@@ -618,7 +672,15 @@ export class TestRepository extends BaseRepository implements ITestRepository {
             errorStack: row.error_stack,
             retryCount: row.retry_count,
             project: row.project || '',
-            metadata: row.metadata ? JSON.parse(row.metadata) : undefined,
+            metadata: hasCatalog
+                ? (overlayCatalogMetadata(
+                      parsedMetadata,
+                      row.catalog_metadata,
+                      row.catalog_discovered_at,
+                      row.created_at
+                  ) as any)
+                : parsedMetadata,
+            ...(hasCatalog && isNotInCode(row) && {notInCode: true}),
             timestamp: row.created_at,
             createdAt: row.created_at,
             updatedAt: row.updated_at,

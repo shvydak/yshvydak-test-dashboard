@@ -137,7 +137,30 @@ describe('TestController', () => {
 
             await controller.discoverTests(mockReq as ServiceRequest, mockRes as Response)
 
-            expect(mockTestService.discoverTests).toHaveBeenCalledWith('Frontend')
+            expect(mockTestService.discoverTests).toHaveBeenCalledWith('Frontend', undefined)
+        })
+
+        it('should pass an incremental mode through to the service', async () => {
+            mockTestService.discoverTests.mockResolvedValue({discovered: 1, saved: 0})
+            mockReq.body = {project: 'Frontend', mode: 'incremental'}
+
+            await controller.discoverTests(mockReq as ServiceRequest, mockRes as Response)
+
+            expect(mockTestService.discoverTests).toHaveBeenCalledWith('Frontend', 'incremental')
+        })
+
+        it('should reject an unknown mode with 400 before discovering', async () => {
+            mockReq.body = {mode: 'wipe'}
+
+            await controller.discoverTests(mockReq as ServiceRequest, mockRes as Response)
+
+            expect(mockTestService.discoverTests).not.toHaveBeenCalled()
+            expect(ResponseHelper.error).toHaveBeenCalledWith(
+                mockRes,
+                'Invalid discovery mode: wipe',
+                "mode must be 'reset' or 'incremental'",
+                400
+            )
         })
 
         it('should handle discovery errors', async () => {

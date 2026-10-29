@@ -790,6 +790,20 @@ describe('useWebSocket', () => {
             await testMessageType('discovery:completed', {}, {fetchTests: true, fetchRuns: true})
         })
 
+        it('jira:synced invalidates the Jira ticket cache query', async () => {
+            renderHook(() => useWebSocket('ws://localhost:3001'), {wrapper: createWrapper()})
+            await act(async () => {
+                await Promise.resolve()
+            })
+            const invalidate = vi.spyOn(queryClient, 'invalidateQueries')
+
+            act(() => {
+                mockWebSocket.simulateMessage({type: 'jira:synced', data: {}})
+            })
+
+            expect(invalidate).toHaveBeenCalledWith({queryKey: ['jira-ticket-info']})
+        })
+
         it('should handle run:started message', async () => {
             await testMessageType('run:started', {}, {fetchRuns: true})
         })

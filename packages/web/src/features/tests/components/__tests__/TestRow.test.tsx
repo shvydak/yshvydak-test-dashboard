@@ -378,3 +378,34 @@ describe('TestsTable', () => {
         }
     )
 })
+
+describe('TestRow not in code', () => {
+    const orphan = (): TestResult => ({...makeTest(), project: 'UI_Tests', notInCode: true})
+
+    it('dims the name, keeps the status badge, adds the second line and disables Run', () => {
+        renderRow(orphan())
+
+        expect(screen.getByText(/Not in code anymore - delete from details/)).toBeInTheDocument()
+        expect(screen.getByText(orphan().name).className).toContain('text-gray-400')
+        expect(screen.getByText(/passed/i)).toBeInTheDocument()
+        expect(screen.getByRole('button', {name: /run/i})).toBeDisabled()
+    })
+
+    it('explains itself through a title on the marker, not on the disabled button', () => {
+        renderRow(orphan())
+
+        const marker = screen.getByText(/Not in code anymore/).closest('div')!
+        expect(marker).toHaveAttribute(
+            'title',
+            "Not found in UI_Tests's latest Discover. Run is off: there is nothing to run."
+        )
+        expect(screen.getByRole('button', {name: /run/i})).not.toHaveAttribute('title')
+    })
+
+    it('a normal row has no marker and an enabled Run', () => {
+        renderRow(makeTest())
+
+        expect(screen.queryByText(/Not in code anymore/)).toBeNull()
+        expect(screen.getByRole('button', {name: /run/i})).toBeEnabled()
+    })
+})

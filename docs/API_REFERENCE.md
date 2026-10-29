@@ -122,20 +122,32 @@ Validation: `id`, `testId` and `runId` must match `[A-Za-z0-9_-]{1,128}` (UUID o
 
 ### POST /api/tests/discovery
 
-Discover all available tests in the Playwright project.
+Runs `playwright test --list` and records what it found in `test_catalog` (one row per project + test; it is not execution history and never holds a status).
+
+**Request Body:** `{"project"?: string, "mode"?: "reset" | "incremental"}`. In `reset` mode `project` scopes the `--list` and the pending-row rebuild to one Playwright project (the catalog is still refreshed for what it lists, but nothing is pruned). In `incremental` mode `project` is ignored: manual Discover always scans every project, because a scoped scan cannot see a test that moved to another project (`@to-fix`) and would flag it as not in code in the tab it left; the `discovery:completed` event then carries no `project`. `mode` omitted = `reset`; any other value → 400.
+
+- `reset` (Run All's pre-discovery, server auto-discover, pipeline steps): pending rows are rebuilt, so every listed test starts as `pending`. Makes no Jira call.
+- `incremental` (tests-page Discover button, Settings > Discover Tests; both scan all projects): existing tests keep their last status. A test gets a `pending` row only when it has no row at all, or its latest row is in a project the spec no longer runs in (e.g. `@to-fix` added or removed moves it between projects). Afterwards a full Jira sync runs in the background and `jira:synced` is broadcast when it ends. If a background sync was already running it is joined, so a tag added just now may wait for the next 30-minute sync.
+
+A failed `--list` (non-zero exit, e.g. a spec file that throws on import) answers 500 and changes nothing: no pending delete, no catalog write. Stale catalog rows (tests the scan no longer lists) are pruned only after an all-projects scan (`incremental`, or an unscoped `reset`) and only in projects where it found at least one test; a project-scoped `reset` (tab Run All, pipeline step) never prunes, because it cannot see a test that moved to another project.
 
 **Response:**
 
 ```json
 {
-    "status": "success",
+    "success": true,
     "data": {
         "discovered": 80,
-        "files": 15,
-        "message": "Tests discovered successfully"
+        "saved": 3,
+        "mode": "incremental",
+        "timestamp": "2026-10-26T12:00:00.000Z"
     }
 }
 ```
+
+`saved` = pending rows written. After a Discover, `GET /api/tests` shows the catalog's tags, describe, annotations and line for each test whose scan is newer than its latest result row; a newer run wins.
+
+`notInCode: true` on a `GET /api/tests` row (latest-row lists only, not `?runId=`) means the last all-projects scan no longer lists the test. All must hold: an all-projects scan has run (its time is kept in the `catalog_last_full_scan` app setting; before that nothing is flagged); no catalog row for (project, test); the test's latest row is older than that scan; the test is in no project's catalog; the project has catalog rows. A test first run after the last full scan, a test that moved to another project (`@to-fix`) while its new project is not yet scanned, and a project never scanned are not flagged. A scoped scan (tab Run All, pipeline step) refreshes tags but doesn't move the full-scan time, so a moved test is not flagged. The UI dims such a row, turns Run off, and the details modal says that Delete removes the whole history in every project. Flagged tests still count in status totals. Catalog rows are removed with `DELETE /api/tests/:testId` (all projects), `DELETE /api/tests/all` (also `?project=`).
 
 ### DELETE /api/tests/:testId
 
@@ -1910,6 +1922,10 @@ Broadcast when a test process completes.
 ### Pipeline Events
 
 `pipeline:started` (`pipelineRunId`, `steps`), `pipeline:step-started` (`pipelineRunId`, `project`, `runId`), `pipeline:step-completed` (`pipelineRunId`, `step`), `pipeline:completed` (`pipelineRunId`, `status`, `steps`), `pipeline:queue-changed` (`queue`: the full list of queued CI requests, as in `GET /api/pipeline/status/current`). `pipeline:completed` carries `status: "cancelled"` after a stop.
+
+### Discovery Events
+
+`discovery:completed` (`total`, `saved`, `project?`, `timestamp`) — a Discover finished; clients re-read lists and counts. `jira:synced` (`timestamp`) — the background Jira sync that follows an `incremental` Discover finished; clients refetch ticket info. A stopped run's discovery keeps its catalog writes (they describe the code, not the run).
 
 ### Stop Events
 

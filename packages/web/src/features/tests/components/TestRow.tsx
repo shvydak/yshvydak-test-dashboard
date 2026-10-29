@@ -1,5 +1,5 @@
 import React, {useState, useEffect, useContext} from 'react'
-import {Play, MessageSquare} from 'lucide-react'
+import {Play, MessageSquare, FileX} from 'lucide-react'
 import {TestResult} from '@yshvydak/core'
 import {StatusBadge, ActionButton, LoadingSpinner, Badge} from '@shared/components'
 import {formatDuration, formatLastRun, getTestDisplayTags} from '../utils'
@@ -24,6 +24,9 @@ export interface TestRowProps {
     /** Global tag mode: 'tickets' = ticket keys only, 'all' = every tag as a chip */
     tagMode?: TagMode
 }
+
+// Dimmed text of a test that is no longer in the code (status badge keeps its colour)
+const dimText = 'text-gray-400 dark:text-gray-500'
 
 export function TestRow({
     test,
@@ -56,6 +59,7 @@ export function TestRow({
     const displayTags = getTestDisplayTags(test, tagMode)
     const searchQuery = useContext(TicketSearchContext)
     const hasTicketColumn = chipAlignment !== 'below'
+    const notInCode = !!test.notInCode
 
     return (
         <tr
@@ -79,9 +83,22 @@ export function TestRow({
                 )}
             </td>
             <td className="py-3.5 px-3 md:px-6">
-                <div className="font-medium tracking-tight text-gray-900 dark:text-white text-sm md:text-base">
+                <div
+                    className={`font-medium tracking-tight text-sm md:text-base ${
+                        notInCode ? dimText : 'text-gray-900 dark:text-white'
+                    }`}>
                     {test.name}
                 </div>
+                {notInCode && (
+                    // Native title on a plain span: it is not clipped by sticky headers, and the
+                    // disabled Run button cannot show one.
+                    <div
+                        className="mt-1 flex items-center gap-1 text-xs text-gray-400 dark:text-gray-500"
+                        title={`Not found in ${test.project || 'this project'}'s latest Discover. Run is off: there is nothing to run.`}>
+                        <FileX className="h-3 w-3 flex-shrink-0" />
+                        <span>Not in code anymore - delete from details</span>
+                    </div>
+                )}
                 {/* Under the name: below lg (column hidden), or at every width in 'below' mode */}
                 <TicketChips
                     tags={displayTags}
@@ -133,10 +150,16 @@ export function TestRow({
                     />
                 </td>
             )}
-            <td className="py-3.5 px-6 text-sm font-mono tabular-nums text-gray-500 dark:text-gray-400 w-24 hidden sm:table-cell">
+            <td
+                className={`py-3.5 px-6 text-sm font-mono tabular-nums w-24 hidden sm:table-cell ${
+                    notInCode ? dimText : 'text-gray-500 dark:text-gray-400'
+                }`}>
                 {formatDuration(test.duration)}
             </td>
-            <td className="py-3.5 px-6 text-sm text-gray-500 dark:text-gray-400 w-48 hidden lg:table-cell">
+            <td
+                className={`py-3.5 px-6 text-sm w-48 hidden lg:table-cell ${
+                    notInCode ? dimText : 'text-gray-500 dark:text-gray-400'
+                }`}>
                 {formatLastRun(test)}
             </td>
             <td className="py-3.5 px-3 md:px-6 w-20 md:w-40 hidden sm:table-cell">
@@ -146,7 +169,7 @@ export function TestRow({
                     isRunning={isRunning}
                     runningText="Running..."
                     icon={<Play className="h-3.5 w-3.5" />}
-                    disabled={isAnyTestRunning}
+                    disabled={isAnyTestRunning || notInCode}
                     onClick={(e) => {
                         e.stopPropagation()
                         onRerun(test.id)

@@ -235,6 +235,8 @@ The dashboard uses an **INSERT-only strategy** for test results:
 4. **Smart Filtering**: Pending results automatically excluded from history view
 5. **Execution Switching**: Users can switch between different test runs with one click from sidebar
 
+`test_catalog` is not execution history: one row per (project, testId) from the latest successful `--list`, UPSERT/DELETE allowed, never a status. It supplies fresh tags after a manual Discover and the "not in code" flag; INSERT-only stays for `test_results`.
+
 ### Architecture Flow
 
 ```

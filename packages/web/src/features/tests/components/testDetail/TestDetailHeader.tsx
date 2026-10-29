@@ -1,5 +1,5 @@
 import {useState} from 'react'
-import {Check, X, Play} from 'lucide-react'
+import {Check, X, Play, FileX} from 'lucide-react'
 import {StatusBadge, Button} from '@shared/components'
 import {formatLastRun} from '../../utils/formatters'
 import {TicketChips} from '../TicketChips'
@@ -17,6 +17,9 @@ export interface TestDetailHeaderProps {
     onRerun?: () => void
     isRunning?: boolean
     isAnyTestRunning?: boolean
+    /** Latest Discover no longer lists this test: Run is off and a delete notice shows. */
+    notInCode?: boolean
+    project?: string
 }
 
 export function TestDetailHeader({
@@ -31,6 +34,8 @@ export function TestDetailHeader({
     onRerun,
     isRunning,
     isAnyTestRunning,
+    notInCode = false,
+    project,
 }: TestDetailHeaderProps) {
     const [copied, setCopied] = useState(false)
 
@@ -66,6 +71,16 @@ export function TestDetailHeader({
 
                 <TicketChips tags={tags} className="mb-1.5" />
 
+                {notInCode && (
+                    <div className="mb-1.5 flex items-start gap-1.5 text-xs md:text-sm text-gray-500 dark:text-gray-400">
+                        <FileX className="mt-0.5 h-3.5 w-3.5 flex-shrink-0" />
+                        <span>
+                            Not found in {project || 'this project'}&apos;s latest Discover. Delete
+                            removes this test&apos;s whole history in every project.
+                        </span>
+                    </div>
+                )}
+
                 {!isLatest && executionDate && (
                     <div className="flex flex-col sm:flex-row sm:items-center sm:space-x-2 mt-2 gap-1">
                         <span className="text-xs md:text-sm text-gray-500 dark:text-gray-400">
@@ -93,7 +108,7 @@ export function TestDetailHeader({
                         variant="primary"
                         size="sm"
                         onClick={onRerun}
-                        disabled={isRunning || isAnyTestRunning}
+                        disabled={isRunning || isAnyTestRunning || notInCode}
                         className="md:hidden">
                         {isRunning ? (
                             'Running...'
@@ -105,13 +120,14 @@ export function TestDetailHeader({
                         )}
                     </Button>
                 )}
-                {/* Desktop: Show Delete button */}
+                {/* Delete: desktop only, except for a not-in-code test (also on mobile) */}
                 {onDelete && (
                     <Button
                         variant="danger"
                         size="sm"
                         onClick={onDelete}
-                        className="hidden md:inline-flex">
+                        // Mobile has no Delete except here, where the notice and the row line point to it
+                        className={notInCode ? 'inline-flex' : 'hidden md:inline-flex'}>
                         Delete Test
                     </Button>
                 )}

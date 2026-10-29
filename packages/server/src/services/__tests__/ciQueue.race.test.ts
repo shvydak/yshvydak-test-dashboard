@@ -60,7 +60,7 @@ describe('manual starts racing a CI pipeline start', () => {
         tracked.clear()
 
         testRepository = {
-            execute: vi.fn().mockResolvedValue(undefined),
+            deletePendingRows: vi.fn().mockResolvedValue(0),
             saveTestResult: vi.fn(),
             getProjectByFilePath: vi.fn().mockResolvedValue(''),
             getTestResult: vi.fn().mockResolvedValue({
@@ -105,7 +105,8 @@ describe('manual starts racing a CI pipeline start', () => {
             {} as any,
             settings,
             {} as any,
-            queue
+            queue,
+            {upsertMany: vi.fn(), deleteStale: vi.fn(), markFullScan: vi.fn()} as any
         )
         pipelineService = new PipelineExecutionService(
             testService,

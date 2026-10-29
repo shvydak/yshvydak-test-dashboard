@@ -6,6 +6,22 @@
  */
 
 import {beforeAll, afterAll, afterEach} from 'vitest'
+import * as fs from 'fs'
+import * as os from 'os'
+import * as path from 'path'
+
+// Own database directory per run, set before any config import reads OUTPUT_DIR: parallel runs no
+// longer wipe each other's rows, and a run started inside packages/server can never touch the
+// live dashboard DB at packages/server/test-results.
+const testOutputDir = fs.mkdtempSync(path.join(os.tmpdir(), 'dash-test-'))
+process.env.OUTPUT_DIR = testOutputDir
+
+// A developer's .env may hold real Jira credentials (dotenv never overrides an existing key, even
+// an empty one): blank them so no test can reach the real Jira. A test that needs Jira enabled
+// mocks it (e.g. spies on JiraService.isEnabled).
+process.env.JIRA_BASE_URL = ''
+process.env.JIRA_EMAIL = ''
+process.env.JIRA_API_TOKEN = ''
 
 // Environment setup
 beforeAll(() => {
@@ -33,5 +49,5 @@ afterEach(() => {
 
 // Global cleanup
 afterAll(() => {
-    // Clean up resources
+    fs.rmSync(testOutputDir, {recursive: true, force: true})
 })

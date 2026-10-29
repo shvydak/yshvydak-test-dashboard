@@ -6,15 +6,19 @@ import {
     DatabaseStats,
     TestStatusCounts,
     TestRunProcess,
+    DiscoveryMode,
+    DiscoveredTest,
 } from '../types/service.types'
 import {TestResultData} from '../types/database.types'
 import {TestRepository} from '../repositories/test.repository'
+import {TestCatalogRepository, CatalogEntry} from '../repositories/testCatalog.repository'
 import {RunRepository} from '../repositories/run.repository'
 import {AttachmentCleanupRepository} from '../repositories/attachmentCleanup.repository'
 import {PlaywrightService} from './playwright.service'
 import {WebSocketService} from './websocket.service'
 import {AttachmentService} from './attachment.service'
 import {NoteService} from './note.service'
+import {JiraService} from './jira.service'
 import {SettingsService} from './settings.service'
 import {Logger} from '../utils/logger.util'
 import {FileUtil} from '../utils/file.util'
@@ -25,6 +29,9 @@ import {createRunCancelledError} from '../utils/runStop.util'
 
 // A discovery this close before a run-all (UI: discover, then run) belongs to that run.
 const RECENT_DISCOVERY_MS = 30_000
+
+// A spec's projects; falls back to its single project for a discovered test built without the list.
+const projectsOf = (test: DiscoveredTest): string[] => test.projects ?? [test.project ?? '']
 
 export class TestService implements ITestService {
     private markerWrites: Promise<void> = Promise.resolve()
@@ -40,7 +47,9 @@ export class TestService implements ITestService {
         private noteService: NoteService,
         private settingsService: SettingsService,
         private attachmentCleanupRepository: AttachmentCleanupRepository,
-        private ciRunQueue: CIRunQueueService
+        private ciRunQueue: CIRunQueueService,
+        private testCatalogRepository: TestCatalogRepository,
+        private jiraService?: JiraService
     ) {}
 
     private async getExecutionProject(): Promise<string | undefined> {
@@ -48,29 +57,28 @@ export class TestService implements ITestService {
         return project || undefined
     }
 
-    async discoverTests(project?: string): Promise<TestDiscoveryResult> {
+    async discoverTests(
+        project?: string,
+        mode: DiscoveryMode = 'reset'
+    ): Promise<TestDiscoveryResult> {
         const startedAt = new Date().toISOString()
+        // Manual Discover always scans every project: a scoped scan cannot see a test that moved to
+        // another project (@to-fix) and would flag it "not in code" in the tab it left.
+        const scope = mode === 'incremental' ? undefined : project
         try {
-            // Clear existing pending tests before adding discovered ones.
-            // Scoped to a single project when provided, so discovering/running one
-            // project's tests never resets pending status for other project tabs.
-            if (project) {
-                await this.testRepository['execute'](
-                    'DELETE FROM test_results WHERE status = ? AND project = ?',
-                    ['pending', project]
-                )
-            } else {
-                await this.testRepository['execute']('DELETE FROM test_results WHERE status = ?', [
-                    'pending',
-                ])
-            }
+            // --list first: if it fails (any non-zero exit, incl. a broken spec file) nothing in the DB changes.
+            const discoveredTests = await this.playwrightService.discoverTests(scope)
+            const scanAt = new Date().toISOString()
 
-            // Discover tests using Playwright
-            const discoveredTests = await this.playwrightService.discoverTests(project)
+            await this.refreshCatalog(discoveredTests, scope, scanAt)
 
-            // Save discovered tests to database
+            const toSave =
+                mode === 'reset'
+                    ? await this.rebuildPendingRows(discoveredTests, scope)
+                    : await this.selectNewPendingRows(discoveredTests)
+
             let savedCount = 0
-            for (const test of discoveredTests) {
+            for (const test of toSave) {
                 try {
                     await this.testRepository.saveTestResult(test as any)
                     savedCount++
@@ -79,13 +87,18 @@ export class TestService implements ITestService {
                 }
             }
 
-            this.lastDiscoveries.set(project ?? '*', {startedAt, finishedAtMs: Date.now()})
+            // Only reset pending rows belong to a run's window (Stop / recent-discovery rules).
+            if (mode === 'reset') {
+                this.lastDiscoveries.set(scope ?? '*', {startedAt, finishedAtMs: Date.now()})
+            } else {
+                this.syncJiraAfterDiscovery()
+            }
 
             // Broadcast discovery update via WebSocket
             this.websocketService.broadcastDiscoveryCompleted(
                 discoveredTests.length,
                 savedCount,
-                project
+                scope
             )
 
             Logger.testDiscovery(discoveredTests.length, savedCount)
@@ -93,12 +106,74 @@ export class TestService implements ITestService {
             return {
                 discovered: discoveredTests.length,
                 saved: savedCount,
+                mode,
                 timestamp: new Date().toISOString(),
             }
         } catch (error) {
             Logger.error('Test discovery failed', error)
             throw error
         }
+    }
+
+    // Upsert every (project, test) the list found, then drop catalog rows the scan no longer
+    // contains -- only after a scan of ALL projects (a scoped scan cannot see a test that moved to
+    // another project via @to-fix) and only for projects it found something in.
+    private async refreshCatalog(
+        discovered: DiscoveredTest[],
+        project: string | undefined,
+        scanAt: string
+    ): Promise<void> {
+        const entries: CatalogEntry[] = []
+        const scannedProjects = new Set<string>()
+        for (const test of discovered) {
+            for (const p of projectsOf(test)) {
+                entries.push({
+                    project: p,
+                    testId: test.testId,
+                    name: test.name,
+                    filePath: test.filePath,
+                    metadata: test.metadata,
+                    discoveredAt: scanAt,
+                })
+                scannedProjects.add(p)
+            }
+        }
+        await this.testCatalogRepository.upsertMany(entries)
+
+        const toClean = project ? [] : scannedProjects
+        // Only an all-projects scan can say a test left the code
+        if (!project && discovered.length > 0) await this.testCatalogRepository.markFullScan(scanAt)
+        for (const p of toClean) {
+            await this.testCatalogRepository.deleteStale(p, scanAt)
+        }
+    }
+
+    // Reset: today's behaviour -- every discovered spec gets a fresh pending row.
+    private async rebuildPendingRows(
+        discovered: DiscoveredTest[],
+        project: string | undefined
+    ): Promise<DiscoveredTest[]> {
+        await this.testRepository.deletePendingRows(project)
+        return discovered
+    }
+
+    // Incremental: a pending row only for a test with no row at all, or one whose latest row is in
+    // a project the spec no longer runs in (moved, e.g. @to-fix added/removed). Others keep status.
+    private async selectNewPendingRows(discovered: DiscoveredTest[]): Promise<DiscoveredTest[]> {
+        const latest = await this.testRepository.getLatestProjects(discovered.map((t) => t.testId))
+        return discovered.filter((t) => {
+            const latestProject = latest.get(t.testId)
+            return latestProject === undefined || !projectsOf(t).includes(latestProject)
+        })
+    }
+
+    // Manual Discover only: new tags may name tickets the cache lacks. Fire-and-forget.
+    private syncJiraAfterDiscovery(): void {
+        if (!this.jiraService?.isEnabled()) return
+        this.jiraService
+            .refreshAllKnownKeys()
+            .then(() => this.websocketService.broadcastJiraSynced())
+            .catch((error) => Logger.error('Jira sync after Discover failed', error))
     }
 
     async getAllTests(filters: TestFilters): Promise<TestResult[]> {
@@ -153,6 +228,7 @@ export class TestService implements ITestService {
 
         // Delete all test_results records (CASCADE will delete attachment records)
         const deletedCount = await this.testRepository.deleteByTestId(testId)
+        await this.testCatalogRepository.deleteByTestId(testId)
 
         Logger.info(`Deleted test ${testId}: ${deletedCount} executions`)
         this.websocketService.broadcastTestsDeleted('test', {testId})
@@ -208,6 +284,7 @@ export class TestService implements ITestService {
 
         // Delete all test_results records for this project (CASCADE will delete attachment records)
         const deletedCount = await this.testRepository.deleteByProject(project)
+        await this.testCatalogRepository.deleteByProject(project)
 
         Logger.info(`Cleared project ${project}: ${deletedCount} executions`)
         this.websocketService.broadcastTestsDeleted('project', {project})

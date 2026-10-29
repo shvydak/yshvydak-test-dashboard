@@ -1,9 +1,12 @@
 import {ChildProcess} from 'child_process'
 import {TestResultData, TestRunData, AttachmentData, DiscoveredTestMetadata} from './database.types'
 
+// 'reset' (default): pending rows are rebuilt (Run All, pipelines). 'incremental' (manual Discover): statuses are kept.
+export type DiscoveryMode = 'reset' | 'incremental'
+
 // Service interfaces
 export interface ITestService {
-    discoverTests(project?: string): Promise<TestDiscoveryResult>
+    discoverTests(project?: string, mode?: DiscoveryMode): Promise<TestDiscoveryResult>
     getAllTests(filters: TestFilters): Promise<TestResult[]>
     getTestById(id: string): Promise<TestResult | null>
     getTestHistory(testId: string, limit?: number, before?: string): Promise<TestResult[]>
@@ -75,6 +78,7 @@ export interface IAttachmentService {
 export interface TestDiscoveryResult {
     discovered: number
     saved: number
+    mode: DiscoveryMode
     timestamp: string
 }
 
@@ -86,6 +90,8 @@ export interface TestRunProcess {
 }
 
 export interface TestResult extends TestResultData {
+    /** Latest row's project has a scan that no longer lists this test (see catalogMetadata.util). */
+    notInCode?: boolean
     attachments?: AttachmentData[]
     note?: {
         testId: string
@@ -121,6 +127,8 @@ export interface DiscoveredTest {
     status: 'pending'
     duration: number
     project?: string
+    /** Every project the spec runs in (distinct `tests[].projectName`); `project` is the first. */
+    projects: string[]
     metadata: DiscoveredTestMetadata
     timestamp: string
 }
@@ -158,6 +166,9 @@ export interface ITestRepository {
     getResultIdsByRunIds(runIds: string[]): Promise<string[]>
     deleteByRunIds(runIds: string[]): Promise<number>
     deleteDiscoveryRowsHidingResults(project: string | undefined, since: string): Promise<number>
+    // Discover: reset rebuilds pending rows; incremental asks where each test's latest row lives
+    deletePendingRows(project?: string): Promise<number>
+    getLatestProjects(testIds: string[]): Promise<Map<string, string>>
     getTestStatusCounts(project?: string): Promise<TestStatusCounts>
     // Latest-row metadata (JSON string, possibly double-encoded — same as everywhere else in the
     // codebase) for every test, unscoped by project. Used only to discover which Jira ticket-key

@@ -205,7 +205,7 @@ export default function TestsList({
                             <h3 className="text-sm font-semibold text-danger-700 dark:text-danger-300">
                                 Error loading tests
                             </h3>
-                            <p className="mt-1 text-sm text-danger-600 dark:text-danger-400">
+                            <p className="mt-1 whitespace-pre-wrap break-words text-sm text-danger-600 dark:text-danger-400">
                                 {error}
                             </p>
                         </div>

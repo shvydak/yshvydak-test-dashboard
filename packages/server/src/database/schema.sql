@@ -33,6 +33,18 @@ CREATE TABLE IF NOT EXISTS test_results (
     metadata TEXT -- JSON string for test steps, annotations, etc.
 );
 
+-- What the latest successful `playwright test --list` found, per (project, test). NOT execution
+-- history: UPSERT + DELETE allowed. Status never comes from here. discovered_at = ISO-Z from JS.
+CREATE TABLE IF NOT EXISTS test_catalog (
+    project TEXT NOT NULL DEFAULT '',
+    test_id TEXT NOT NULL,
+    name TEXT NOT NULL,
+    file_path TEXT NOT NULL,
+    metadata TEXT, -- DiscoveredTestMetadata JSON
+    discovered_at TEXT NOT NULL, -- scan time of the last --list that contained it
+    PRIMARY KEY (project, test_id)
+);
+
 -- Test attachments (videos, screenshots, traces)
 CREATE TABLE IF NOT EXISTS attachments (
     id TEXT PRIMARY KEY,
@@ -128,6 +140,8 @@ CREATE INDEX IF NOT EXISTS idx_test_results_file_path ON test_results(file_path)
 CREATE INDEX IF NOT EXISTS idx_test_results_test_id_created_at ON test_results(test_id, created_at DESC);
 -- Speeds up retention queries (cleanupData by date) and the timeline aggregation.
 CREATE INDEX IF NOT EXISTS idx_test_results_created_at ON test_results(created_at);
+
+CREATE INDEX IF NOT EXISTS idx_test_catalog_test_id ON test_catalog(test_id);
 
 CREATE INDEX IF NOT EXISTS idx_attachments_test_result_id ON attachments(test_result_id);
 CREATE INDEX IF NOT EXISTS idx_attachments_type ON attachments(type);

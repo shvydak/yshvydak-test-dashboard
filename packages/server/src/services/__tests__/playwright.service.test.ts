@@ -141,6 +141,38 @@ describe('PlaywrightService', () => {
             )
         })
 
+        it('lists every project a spec runs in, with the first as the pending-row project', async () => {
+            const spec = (title: string, projects: string[]) => ({
+                title,
+                file: 'a.spec.ts',
+                line: 1,
+                tests: projects.map((projectName) => ({projectName})),
+            })
+            mockSpawn.mockReturnValue(
+                createMockProcess(
+                    JSON.stringify({
+                        suites: [
+                            {
+                                specs: [
+                                    spec('shared', ['P', 'Q', 'P']),
+                                    spec('single', ['P']),
+                                    spec('bare', []),
+                                ],
+                            },
+                        ],
+                    })
+                )
+            )
+
+            const tests = await service.discoverTests()
+
+            expect(tests.map((t) => [t.name, t.project, (t as any).projects])).toEqual([
+                ['shared', 'P', ['P', 'Q']],
+                ['single', 'P', ['P']],
+                ['bare', '', ['']],
+            ])
+        })
+
         it('should discover tests from nested suites', async () => {
             // Arrange
             const mockPlaywrightOutput = {

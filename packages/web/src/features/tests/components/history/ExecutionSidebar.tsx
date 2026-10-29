@@ -17,6 +17,8 @@ export interface ExecutionSidebarProps {
     hasMore?: boolean
     onLoadMore?: () => void
     loadingMore?: boolean
+    /** Latest Discover no longer lists this test: nothing to run. */
+    notInCode?: boolean
 }
 
 export function ExecutionSidebar({
@@ -32,6 +34,7 @@ export function ExecutionSidebar({
     hasMore,
     onLoadMore,
     loadingMore,
+    notInCode = false,
 }: ExecutionSidebarProps) {
     const {runningTests, getIsAnyTestRunning, activeProgress} = useTestsStore()
     const isAnyTestRunning = getIsAnyTestRunning()
@@ -69,7 +72,7 @@ export function ExecutionSidebar({
                         isRunning={isRunning}
                         runningText="Running..."
                         icon={<Play className="h-3.5 w-3.5" />}
-                        disabled={isAnyTestRunning}
+                        disabled={isAnyTestRunning || notInCode}
                         onClick={() => onRerun(testId)}>
                         Run
                     </ActionButton>

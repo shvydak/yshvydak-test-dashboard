@@ -1190,6 +1190,67 @@ describe('TestController', () => {
         })
     })
 
+    describe('createTestResult live progress event', () => {
+        it('broadcasts the saved result (status, project, ids) in the progress event', async () => {
+            mockReq.body = {
+                id: 'res-1',
+                testId: 'test-1',
+                runId: 'live-run',
+                name: 'Test',
+                filePath: 'a.spec.ts',
+                status: 'failed',
+                duration: 42,
+                errorMessage: 'boom',
+                project: 'WEB',
+                timestamp: '2026-01-01T00:00:00.000Z',
+            }
+            mockTestService.saveTestResult.mockResolvedValue(undefined)
+            const mockProgress = {processId: 'live-run'} as any
+            vi.mocked(activeProcessesTracker.updateProgress).mockReturnValueOnce(mockProgress)
+            const mockWsManager = {broadcastTestProgress: vi.fn()}
+            vi.mocked(getWebSocketManager).mockReturnValue(mockWsManager as any)
+
+            await controller.createTestResult(mockReq as ServiceRequest, mockRes as Response)
+
+            expect(mockWsManager.broadcastTestProgress).toHaveBeenCalledWith(mockProgress, {
+                phase: 'saved',
+                result: {
+                    id: 'res-1',
+                    testId: 'test-1',
+                    runId: 'live-run',
+                    name: 'Test',
+                    filePath: 'a.spec.ts',
+                    status: 'failed',
+                    duration: 42,
+                    errorMessage: 'boom',
+                    timestamp: '2026-01-01T00:00:00.000Z',
+                    project: 'WEB',
+                },
+            })
+        })
+
+        it('broadcasts the project the service filled in when the reporter sent none', async () => {
+            mockReq.body = {id: 'res-2', testId: 'test-1', runId: 'live-run', name: 'Test'}
+            mockTestService.saveTestResult.mockImplementation(async (d: any) => {
+                d.project = 'WEB'
+                return d.id
+            })
+            vi.mocked(activeProcessesTracker.updateProgress).mockReturnValueOnce({} as any)
+            const mockWsManager = {broadcastTestProgress: vi.fn()}
+            vi.mocked(getWebSocketManager).mockReturnValue(mockWsManager as any)
+
+            await controller.createTestResult(mockReq as ServiceRequest, mockRes as Response)
+
+            expect(mockWsManager.broadcastTestProgress).toHaveBeenCalledWith(
+                expect.anything(),
+                expect.objectContaining({
+                    phase: 'saved',
+                    result: expect.objectContaining({id: 'res-2', project: 'WEB'}),
+                })
+            )
+        })
+    })
+
     describe('reporter posts for a stopped run', () => {
         beforeEach(() => {
             mockTestService.isRunCancelled.mockImplementation((id: string) => id === 'stopped-run')
@@ -1368,7 +1429,9 @@ describe('TestController', () => {
                 name: 'Test 1',
                 filePath: 'test.spec.ts',
             })
-            expect(mockWsManager.broadcastTestProgress).toHaveBeenCalledWith(mockProgress)
+            expect(mockWsManager.broadcastTestProgress).toHaveBeenCalledWith(mockProgress, {
+                phase: 'started',
+            })
             expect(ResponseHelper.success).toHaveBeenCalledWith(
                 mockRes,
                 {testId: 'test-1'},

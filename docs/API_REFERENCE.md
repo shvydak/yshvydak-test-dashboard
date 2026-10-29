@@ -1961,7 +1961,7 @@ Broadcast when:
 - A test starts execution (`POST /api/tests/test-start`)
 - A test completes (`POST /api/tests`)
 
-The web UI also refreshes the test list from this event, throttled to one fetch per 10 s (trailing call included, skipped while the browser tab is hidden, one refresh when it becomes visible again), so row statuses change while a run is in progress.
+`data` also carries `phase`: `started` (test began) or `saved` (result stored). A `saved` event adds `result` (`id`, `testId`, `runId`, `name`, `filePath`, `status`, `duration`, `errorMessage?`, `timestamp`, `project`). The web UI patches that one row in the store and in the status-filtered lists (a row leaves a list whose status filter it no longer matches); tags and `notInCode` stay from the list. Status counts and tab badges refresh via the count queries only, at most once per 1.5 s (deferred while the tab is hidden). A result for a test missing from the list, or an event without `phase` (old server), falls back to a full list reload throttled to one per 10 s (skipped while the tab is hidden, one refresh when it becomes visible again).
 
 See [Progress Tracking](features/PROGRESS_TRACKING.md) for implementation details.
 
@@ -1991,7 +1991,19 @@ See [Progress Tracking](features/PROGRESS_TRACKING.md) for implementation detail
             }
         ],
         "startTime": 1698489000000,
-        "estimatedEndTime": 1698489007000
+        "estimatedEndTime": 1698489007000,
+        "phase": "saved",
+        "result": {
+            "id": "uuid",
+            "testId": "test-hash-1",
+            "runId": "run-abc-123",
+            "name": "API - Add Order Item",
+            "filePath": "api/api.test.ts",
+            "status": "passed",
+            "duration": 1200,
+            "timestamp": "2025-10-28T09:30:05Z",
+            "project": "API"
+        }
     }
 }
 ```

@@ -4,7 +4,7 @@ import {AuthService} from '../services/auth.service'
 import {ResponseHelper} from '../utils/response.helper'
 import {Logger} from '../utils/logger.util'
 import {ServiceRequest} from '../types/api.types'
-import {ProcessStartData, ProcessEndData} from '@yshvydak/core'
+import {ProcessStartData, ProcessEndData, LiveTestResult} from '@yshvydak/core'
 import {activeProcessesTracker} from '../services/activeProcesses.service'
 import {respondIfAlreadyRunning, respondIfCIRunQueued} from '../utils/ciRunQueued.util'
 import {respondIfRunCancelled} from '../utils/runStop.util'
@@ -452,7 +452,22 @@ export class TestController {
             if (progress) {
                 const wsManager = getWebSocketManager()
                 if (wsManager) {
-                    wsManager.broadcastTestProgress(progress)
+                    // testResultData.project is final here: saveTestResult fills a missing one
+                    wsManager.broadcastTestProgress(progress, {
+                        phase: 'saved',
+                        result: {
+                            id: testResultData.id,
+                            testId: testResultData.testId,
+                            runId: testResultData.runId,
+                            name: testResultData.name,
+                            filePath: testResultData.filePath,
+                            status: testResultData.status as LiveTestResult['status'],
+                            duration: testResultData.duration,
+                            errorMessage: testResultData.errorMessage ?? undefined,
+                            timestamp: testResultData.timestamp,
+                            project: testResultData.project,
+                        },
+                    })
                 }
             }
 
@@ -689,7 +704,7 @@ export class TestController {
             if (progress) {
                 const wsManager = getWebSocketManager()
                 if (wsManager) {
-                    wsManager.broadcastTestProgress(progress)
+                    wsManager.broadcastTestProgress(progress, {phase: 'started'})
                 }
             }
 

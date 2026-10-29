@@ -49,6 +49,8 @@ This feature enables developers to monitor long-running test suites without wait
    WebSocket → broadcast test:progress
    ↓
    Frontend → FloatingProgressPanel (updates statistics)
+           → testsStore.applyLiveResult(): patches the test's row + status-filtered lists
+             (event carries phase 'saved' + result); counts refresh at most once per 1.5 s
 ```
 
 ### Component Architecture
@@ -291,6 +293,8 @@ private async notifyTestStart(data: {
     }>
     startTime: number
     estimatedEndTime?: number
+    phase?: 'started' | 'saved'   // absent on old servers
+    result?: LiveTestResult       // only with phase 'saved': the stored row's fields
   },
   timestamp: string
 }
@@ -302,8 +306,13 @@ private async notifyTestStart(data: {
 // packages/web/src/hooks/useWebSocket.ts
 case 'test:progress':
   if (message.data) {
-    updateProgress(message.data)
+    const {result, phase, ...progress} = message.data
+    updateProgress(progress)
+    if (phase === 'started') break
+    // saved result: patch its row, no list reload; unknown row / old server → throttled reload
+    if (phase === 'saved' && result && applyLiveResult(result)) break
   }
+  refreshTestsThrottled(fetchTests)
   break
 ```
 
@@ -400,6 +409,8 @@ export interface TestProgress {
     runningTests: RunningTestInfo[]
     startTime: number
     estimatedEndTime?: number
+    phase?: 'started' | 'saved'
+    result?: LiveTestResult // id, testId, runId, name, filePath, status, duration, errorMessage?, timestamp, project
 }
 
 export interface RunningTestInfo {

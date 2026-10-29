@@ -5,7 +5,7 @@ import {v4 as uuidv4} from 'uuid'
 import {activeProcessesTracker} from '../services/activeProcesses.service'
 import {AuthService} from '../services/auth.service'
 import {config} from '../config/environment.config'
-import {TestProgress} from '@yshvydak/core'
+import {LiveTestResult, TestProgress} from '@yshvydak/core'
 import {Logger} from '../utils/logger.util'
 
 export interface WebSocketMessage {
@@ -234,10 +234,13 @@ export class WebSocketManager {
     }
 
     // Send test progress update
-    public broadcastTestProgress(progress: TestProgress): void {
+    public broadcastTestProgress(
+        progress: TestProgress,
+        event?: {phase: 'started'} | {phase: 'saved'; result: LiveTestResult}
+    ): void {
         this.broadcast({
             type: 'test:progress',
-            data: progress,
+            data: event ? {...progress, ...event} : progress,
             timestamp: new Date().toISOString(),
         })
     }

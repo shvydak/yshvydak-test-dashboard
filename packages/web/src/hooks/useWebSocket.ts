@@ -20,6 +20,7 @@ interface WebSocketOptions {
 // Max one list refresh per window while results stream in. Shared by every socket on the
 // page (App, modal, Dashboard each open one), so a progress event never triggers 2-3 fetches.
 // A refresh is a full list GET + count queries, so the window is long and a hidden tab skips it.
+// Only the fallback now: a saved result patches its own row (store.applyLiveResult).
 export const PROGRESS_REFRESH_INTERVAL_MS = 10000
 // Delete events arrive once per socket (2-3 per page): coalesce them into one refresh.
 export const DELETE_REFRESH_DELAY_MS = 300
@@ -87,6 +88,7 @@ export function useWebSocket(url: string | null, options?: WebSocketOptions) {
         setTestRunning,
         setRunningAllTests,
         updateProgress,
+        applyLiveResult,
         clearProgress,
         resetRunState,
     } = useTestsStore()
@@ -239,11 +241,14 @@ export function useWebSocket(url: string | null, options?: WebSocketOptions) {
                 break
 
             case 'test:progress':
-                // Update progress state with real-time progress data
                 if (message.data) {
-                    updateProgress(message.data)
+                    const {result, phase, ...progress} = message.data
+                    updateProgress(progress)
+                    if (phase === 'started') break
+                    // A saved result carries its row: patch it, no list reload. An unknown row
+                    // (new test) or an old server without `phase` falls back to the throttled reload.
+                    if (phase === 'saved' && result && applyLiveResult(result)) break
                 }
-                // One saved result = one progress event: keep row statuses live during a run
                 refreshTestsThrottled(fetchTests)
                 break
 

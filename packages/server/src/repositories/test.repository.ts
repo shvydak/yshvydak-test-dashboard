@@ -203,6 +203,21 @@ export class TestRepository extends BaseRepository implements ITestRepository {
         return this.mapRowsToTestResults(rows)
     }
 
+    // Latest row (created_at) of one test across ALL projects, same shape as getAllTests
+    // (catalog overlay + notInCode). No project/unscoped filter: a link must resolve from any tab.
+    async getLatestByTestId(testId: string): Promise<TestResult | null> {
+        const rows = await this.queryAll<TestResultRow>(
+            `SELECT ${TEST_RESULT_WITH_RELATIONS_COLUMNS}, ${CATALOG_COLUMNS}
+             FROM (
+                SELECT * FROM test_results WHERE test_id = ? ORDER BY created_at DESC LIMIT 1
+             ) tr
+             ${TEST_RESULT_RELATIONS_JOINS}
+             ${CATALOG_JOINS}`,
+            [testId]
+        )
+        return rows.length === 0 ? null : this.mapRowsToTestResults(rows)[0]
+    }
+
     async getAllLatestMetadata(): Promise<Array<{metadata: string | null}>> {
         return this.queryAll<{metadata: string | null}>(
             `SELECT metadata FROM (

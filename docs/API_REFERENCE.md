@@ -1414,6 +1414,21 @@ Status breakdown over the **latest row per test** (`created_at`), aggregated in 
 
 Without `project`, tests whose latest row has no project (`''` or NULL: legacy rows, results without a project) are left out only when at least one named project exists; if no row has a project (a Playwright config without named projects), all tests are counted. With `project`, only that project's rows are counted. `GET /api/tests` applies the same rule, so the list and these counts agree. The per-project summary behind the tab badges always skips project-less rows.
 
+### GET /api/tests/by-test-id/:testId
+
+Latest row (by `created_at`) of one test across **all projects**, in the same shape as a `GET /api/tests` row (catalog overlay and `notInCode` included). Rows with no project are found too. The web uses it to open a shared `?testId=` link (Tests and Dashboard pages) when the test is not in the loaded list; it is meant for other lookups (MCP server, command palette) as well. Requires a JWT when auth is enabled.
+
+**Path Parameters:**
+
+- `testId` - the stable test id (hash of file path + title); must match `isSafeId`
+
+**Responses:**
+
+- `200` - `{"success": true, "data": <TestResult>, ...}`; `data.project` is the project of the latest row (may be empty for legacy rows)
+- `400` - `testId` fails `isSafeId`
+- `401` - no valid JWT (auth enabled)
+- `404` - no row for this `testId` (never run and never discovered as a pending row, or deleted)
+
 ## Storage Management
 
 ### GET /api/storage/stats

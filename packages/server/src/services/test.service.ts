@@ -180,6 +180,10 @@ export class TestService implements ITestService {
         return this.testRepository.getAllTests(filters)
     }
 
+    async getLatestTestByTestId(testId: string): Promise<TestResult | null> {
+        return this.testRepository.getLatestByTestId(testId)
+    }
+
     async getTestById(id: string): Promise<TestResult | null> {
         const test = await this.testRepository.getTestResult(id)
         if (!test) return null

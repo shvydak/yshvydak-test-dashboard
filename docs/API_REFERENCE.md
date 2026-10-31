@@ -1414,6 +1414,19 @@ Status breakdown over the **latest row per test** (`created_at`), aggregated in 
 
 Without `project`, tests whose latest row has no project (`''` or NULL: legacy rows, results without a project) are left out only when at least one named project exists; if no row has a project (a Playwright config without named projects), all tests are counted. With `project`, only that project's rows are counted. `GET /api/tests` applies the same rule, so the list and these counts agree. The per-project summary behind the tab badges always skips project-less rows.
 
+### GET /api/tests/search
+
+Command-palette search: the latest row (by `created_at`) of every test, across **all projects**, whose title or file path contains `q` (case-insensitive), or one of whose tags starts with `q` (with or without the leading `@`, so `ABC-12` finds a test tagged `@ABC-12`). A digits-only `q` also matches any `@word-<digits>` tag by the digits right after the dash, as a prefix (`192` finds `@ABC-1922` and `@XYZ-1922`; `922` does not). This is not limited to ticket keys. `%`, `_` and `\` in `q` match literally. Tags come from the same catalog overlay as `GET /api/tests`. Rows whose latest row has no project are hidden under the same rule as the unscoped `GET /api/tests` (only when a named project exists). Requires a JWT when auth is enabled.
+
+**Query Parameters:**
+
+- `q` - required, at least 2 characters after trimming
+- `limit` - default 20, clamped to 1-50
+
+Order: title starts with `q`, then title contains `q`, then file path or tag; ties newest first.
+
+**Response (200):** `data` is an array of `{testId, name, filePath, project, status, tickets, notInCode?, createdAt, updatedAt}` (`tickets` = ticket keys such as `ABC-12`, from the tags). No attachments, errors or metadata. `400` - `q` missing or shorter than 2 characters.
+
 ### GET /api/tests/by-test-id/:testId
 
 Latest row (by `created_at`) of one test across **all projects**, in the same shape as a `GET /api/tests` row (catalog overlay and `notInCode` included). Rows with no project are found too. The web uses it to open a shared `?testId=` link (Tests and Dashboard pages) when the test is not in the loaded list; it is meant for other lookups (MCP server, command palette) as well. Requires a JWT when auth is enabled.

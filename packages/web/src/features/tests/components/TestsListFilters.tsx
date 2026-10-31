@@ -1,5 +1,5 @@
 import {Play, ChevronDown, Search, Square} from 'lucide-react'
-import {RefObject, useRef, useState} from 'react'
+import {useRef, useState} from 'react'
 import {FilterButtonGroup, SearchInput, Button, ConfirmationDialog} from '@shared/components'
 import {FilterKey, FILTER_OPTIONS} from '../constants'
 import {useTestsStore} from '../store/testsStore'
@@ -21,7 +21,6 @@ export interface TestsListFiltersProps {
     filteredCount?: number
     onExpandAll?: () => void
     onCollapseAll?: () => void
-    searchInputRef?: RefObject<HTMLInputElement>
     activeProject?: string
 }
 
@@ -32,7 +31,6 @@ export function TestsListFilters({
     searchQuery,
     onSearchChange,
     filteredCount,
-    searchInputRef,
     activeProject,
 }: TestsListFiltersProps) {
     const {
@@ -160,13 +158,11 @@ export function TestsListFilters({
                 />
 
                 <SearchInput
-                    ref={searchInputRef}
                     value={searchQuery}
                     onChange={(e) => onSearchChange(e.target.value)}
                     onClear={() => onSearchChange('')}
                     placeholder="Search tests or ticket keys..."
                     className="flex-1 md:w-96 md:flex-none"
-                    showShortcutHint
                     resultCount={searchQuery ? filteredCount : undefined}
                 />
             </div>

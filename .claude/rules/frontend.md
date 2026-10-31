@@ -35,7 +35,7 @@ Use `grid` not `flex justify-between` — different label lengths break horizont
 ## Search is a feature set
 
 Always implement together: ESC (clear/blur) + X button + result count + URL persistence (`?q=`).  
-`SearchInput` props: `onClear`, `resultCount`, `showShortcutHint`. Without them, search UX is incomplete.
+`SearchInput` props: `onClear`, `resultCount`. Without them, search UX is incomplete. No `showShortcutHint` on in-tab search: Cmd/Ctrl+K opens the palette, not that box.
 
 ## CSS tooltip on disabled buttons
 
@@ -64,16 +64,14 @@ Use `top-full mt-3` (below button) — `bottom-full` goes behind the sticky Head
 
 ## URL param as a one-shot cross-page signal
 
-For "navigate + side effect" (e.g. go to `/tests` and focus search): add `?signal=1`, handle in `useEffect`, then remove immediately with `setSearchParams(params, {replace: true})`.
+For "navigate + side effect": add `?signal=1`, handle in `useEffect`, then remove immediately with `setSearchParams(params, {replace: true})`.
 
 ```tsx
-// App.tsx: navigate(`/tests?focusSearch=1`)
-// TestsList.tsx:
 useEffect(() => {
-    if (searchParams.get('focusSearch') === '1') {
-        searchInputRef.current?.focus()
+    if (searchParams.get('signal') === '1') {
+        doSideEffect()
         const params = new URLSearchParams(searchParams)
-        params.delete('focusSearch')
+        params.delete('signal')
         setSearchParams(params, {replace: true})
     }
 }, [searchParams, setSearchParams])
@@ -96,6 +94,10 @@ Wrap in `<MemoryRouter initialEntries={['/?project=All_Tests']}>` and vary URL p
 ## Shared test links
 
 A test link is the page URL (`?project=…&testId=…`; `/dashboard?testId=…` for the flaky list). Both pages resolve it through `useTestLink`: the page's loaded list first, otherwise `GET /api/tests/by-test-id/:testId`. On a fresh load the list is usually not loaded yet, so the server answers. `TestsList` then sets `?project=` to the test's project. Not found → `TestLinkBanner` and `testId` removed; server error → banner, `testId` kept so a reload retries. Never resolve `testId` against `testsStore.tests` alone: it holds only the first 200 rows (5000 per tab).
+
+## Test search palette
+
+Cmd/Ctrl+K (state in `useCommandPalette`, mounted once in `App.tsx`) and the Header magnifier open `CommandPalette`; it queries `GET /api/tests/search` (all projects, latest row), never the capped store. A hit opens through `buildTestLinkPath` = the shared-link URL `/tests?project=…&testId=…`, so `useTestLink` stays the only resolver. The in-tab `SearchInput` is separate and has no shortcut hint. Esc in the palette stops at the palette (capture listener), so a test detail modal under it stays open.
 
 ## Counts and caches
 

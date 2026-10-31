@@ -5,6 +5,7 @@ import {
     TestFilters,
     DatabaseStats,
     TestStatusCounts,
+    TestSearchHit,
     TestRunProcess,
     DiscoveryMode,
     DiscoveredTest,
@@ -182,6 +183,10 @@ export class TestService implements ITestService {
 
     async getLatestTestByTestId(testId: string): Promise<TestResult | null> {
         return this.testRepository.getLatestByTestId(testId)
+    }
+
+    async searchTests(query: string, limit: number): Promise<TestSearchHit[]> {
+        return this.testRepository.searchLatestTests(query, limit)
     }
 
     async getTestById(id: string): Promise<TestResult | null> {

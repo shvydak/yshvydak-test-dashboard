@@ -1,9 +1,16 @@
 import {BaseRepository} from './base.repository'
 import {TestResultData, TestResultRow, DatabaseStats} from '../types/database.types'
-import {TestResult, TestFilters, ITestRepository, TestStatusCounts} from '../types/service.types'
+import {
+    TestResult,
+    TestFilters,
+    ITestRepository,
+    TestStatusCounts,
+    TestSearchHit,
+} from '../types/service.types'
 import {DEFAULT_LIMITS} from '../config/constants'
 import {FileUtil} from '../utils/file.util'
-import {isNotInCode, overlayCatalogMetadata} from '../utils/catalogMetadata.util'
+import {isNotInCode, overlayCatalogMetadata, parseMetadata} from '../utils/catalogMetadata.util'
+import {extractJiraTicketKeys} from '../utils/jiraTicketKey.util'
 
 // Shared SELECT projection for queries that JOIN attachments + notes onto test_results.
 // Keeping the column list in one place ensures the row mapper stays in sync with the SQL.
@@ -46,6 +53,9 @@ const CATALOG_JOINS = `
         SELECT project, MAX(discovered_at) AS last_scan FROM test_catalog GROUP BY project
     ) s ON s.project = tr.project
 `
+
+// Extra SQL rows so candidates dropped by the post-overlay tag check cannot shorten the page
+const SEARCH_OVERFETCH = 10
 
 // Unscoped lists/counts (no project, no runId) leave out tests whose latest row has no project
 // ('' or NULL: legacy rows, results without a project) -- but only while the database has at
@@ -216,6 +226,102 @@ export class TestRepository extends BaseRepository implements ITestRepository {
             [testId]
         )
         return rows.length === 0 ? null : this.mapRowsToTestResults(rows)[0]
+    }
+
+    // Command-palette search: latest row (created_at) of each test, any project, whose name, file
+    // path or tag matches. Same unscoped hiding rule as the list. Rank: name prefix, name
+    // contains, then path/tag; ties newest first. Tag match = tag starts with the query (with or
+    // without the leading @), checked on the row's and the catalog's tags; a stale-tag candidate
+    // is dropped after the overlay (hence the overfetch). A digits-only query also matches the
+    // number right after a tag's dash.
+    async searchLatestTests(query: string, limit: number): Promise<TestSearchHit[]> {
+        const escaped = query.replace(/[\\%_]/g, '\\$&')
+        const bare = escaped.replace(/^@/, '')
+        const contains = `%${escaped}%`
+        const tagPrefix = `@${bare}%`
+        // Digits only: also the ticket number, right after a dash (`192` -> @ABC-1922, not 922)
+        const digitsOnly = /^\d+$/.test(query)
+        const tagNumber = digitsOnly ? `@%-${query}%` : tagPrefix
+        const tagMatch = (metadataColumn: string): string => `EXISTS (
+            SELECT 1 FROM json_each(CASE WHEN json_valid(${metadataColumn})
+                THEN json_extract(${metadataColumn}, '$.tags') END)
+            WHERE json_each.type = 'text'
+              AND (json_each.value LIKE ? ESCAPE '\\' OR json_each.value LIKE ? ESCAPE '\\'))`
+
+        const sql = `
+            SELECT tr.id, tr.test_id, tr.name, tr.file_path, tr.status, tr.project, tr.metadata,
+                   tr.created_at, tr.updated_at,
+                   c.metadata      as catalog_metadata,
+                   c.discovered_at as catalog_discovered_at,
+                   s.last_scan     as catalog_last_scan,
+                   EXISTS (SELECT 1 FROM test_catalog any_c WHERE any_c.test_id = tr.test_id) as in_any_catalog,
+                   (SELECT value FROM app_settings WHERE key = 'catalog_last_full_scan') as catalog_last_full_scan
+            FROM (
+                SELECT id, test_id, name, file_path, status, project, metadata, created_at, updated_at,
+                       ROW_NUMBER() OVER (PARTITION BY test_id ORDER BY created_at DESC) AS rn
+                FROM test_results
+            ) tr
+            LEFT JOIN test_catalog c ON c.project = tr.project AND c.test_id = tr.test_id
+            LEFT JOIN (
+                SELECT project, MAX(discovered_at) AS last_scan FROM test_catalog GROUP BY project
+            ) s ON s.project = tr.project
+            WHERE tr.rn = 1
+              AND ${unscopedProjectFilter('tr.project')}
+              AND (tr.name LIKE ? ESCAPE '\\' OR tr.file_path LIKE ? ESCAPE '\\'
+                   OR ${tagMatch('tr.metadata')} OR ${tagMatch('c.metadata')})
+            ORDER BY CASE WHEN tr.name LIKE ? ESCAPE '\\' THEN 0
+                          WHEN tr.name LIKE ? ESCAPE '\\' THEN 1 ELSE 2 END,
+                     tr.created_at DESC
+            LIMIT ?`
+        const rows = await this.queryAll<TestResultRow>(sql, [
+            contains,
+            contains,
+            tagPrefix,
+            tagNumber,
+            tagPrefix,
+            tagNumber,
+            `${escaped}%`,
+            contains,
+            limit + SEARCH_OVERFETCH,
+        ])
+
+        const needle = query.toLowerCase()
+        const bareNeedle = needle.replace(/^@/, '')
+        const hits: TestSearchHit[] = []
+        for (const row of rows) {
+            const metadata = parseMetadata(
+                overlayCatalogMetadata(
+                    row.metadata ? JSON.parse(row.metadata) : undefined,
+                    row.catalog_metadata,
+                    row.catalog_discovered_at,
+                    row.created_at
+                )
+            )
+            const tags: string[] = Array.isArray(metadata.tags)
+                ? metadata.tags.filter((t: unknown): t is string => typeof t === 'string')
+                : []
+            const textMatch =
+                row.name.toLowerCase().includes(needle) ||
+                row.file_path.toLowerCase().includes(needle)
+            const tagHit = tags.some(
+                (t) =>
+                    t.toLowerCase().replace(/^@/, '').startsWith(bareNeedle) ||
+                    (digitsOnly && t.startsWith('@') && t.includes(`-${query}`, 1))
+            )
+            if (!textMatch && !tagHit) continue
+            hits.push({
+                testId: row.test_id,
+                name: row.name,
+                filePath: row.file_path,
+                project: row.project || '',
+                status: row.status as TestSearchHit['status'],
+                tickets: extractJiraTicketKeys(tags),
+                ...(isNotInCode(row) && {notInCode: true}),
+                createdAt: row.created_at,
+                updatedAt: row.updated_at,
+            })
+        }
+        return hits.slice(0, limit)
     }
 
     async getAllLatestMetadata(): Promise<Array<{metadata: string | null}>> {

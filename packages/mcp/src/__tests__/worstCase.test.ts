@@ -1,6 +1,6 @@
 import {describe, expect, it} from 'vitest'
 import {MAX_PAYLOAD_CHARS} from '../constants'
-import {EXEC_1, ID_A, makeStack, row, shot, ticket, world} from './helpers/fakeDashboard'
+import {EXEC_1, ID_A, RUN_1, makeStack, row, shot, ticket, world} from './helpers/fakeDashboard'
 
 const big = (c: string, n: number) => c.repeat(n)
 
@@ -60,7 +60,18 @@ describe('worst-case fixture: no tool exceeds the payload cap', () => {
     const stack = () =>
         makeStack(
             world({
-                rows,
+                run: {
+                    id: RUN_1,
+                    status: 'running',
+                    totalTests: 60,
+                    passedTests: 0,
+                    failedTests: 0,
+                    skippedTests: 0,
+                    duration: 0,
+                    metadata: {type: big('t', 5000), project: big('p', 5000)},
+                },
+                runRows: rows,
+                rows: [...rows, row()],
                 byTestId: heavy,
                 byExecution: heavy,
                 history: rows.slice(0, 100),
@@ -81,7 +92,8 @@ describe('worst-case fixture: no tool exceeds the payload cap', () => {
                     lastSyncError: big('j', 60_000),
                 },
                 files: {},
-            })
+            }),
+            {allowRuns: true}
         )
 
     const calls: Array<[string, Record<string, unknown>]> = [
@@ -94,6 +106,9 @@ describe('worst-case fixture: no tool exceeds the payload cap', () => {
         ['get_test', {executionId: EXEC_1}],
         ['get_test_history', {testId: ID_A, limit: 100}],
         ['get_screenshots', {testId: ID_A, max: 3}],
+        ['get_run_status', {runId: RUN_1}],
+        ['rerun_test', {testId: ID_A}],
+        ['run_test_file', {filePath: 'tests/checkout.spec.ts', testNames: ['x']}],
     ]
 
     it.each(calls)('%s %j', async (name, args) => {

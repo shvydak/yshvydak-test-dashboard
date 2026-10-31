@@ -5,6 +5,18 @@ export interface Config {
     password?: string
     passwordCmd?: string
     token?: string
+    // Run tools (start a run): on by default only for a local dashboard, DASHBOARD_ALLOW_RUNS overrides
+    allowRuns: boolean
+}
+
+const LOCAL_HOSTNAMES = new Set(['localhost', '127.0.0.1', '[::1]'])
+
+function parseAllowRuns(raw: string | undefined, hostname: string): boolean {
+    const v = raw?.trim().toLowerCase()
+    if (!v) return LOCAL_HOSTNAMES.has(hostname)
+    if (v === 'true') return true
+    if (v === 'false') return false
+    throw new Error('DASHBOARD_ALLOW_RUNS must be true or false')
 }
 
 export function loadConfig(env: NodeJS.ProcessEnv): Config {
@@ -26,5 +38,6 @@ export function loadConfig(env: NodeJS.ProcessEnv): Config {
         password: env.DASHBOARD_PASSWORD || undefined,
         passwordCmd: env.DASHBOARD_PASSWORD_CMD?.trim() || undefined,
         token: env.DASHBOARD_TOKEN?.trim() || undefined,
+        allowRuns: parseAllowRuns(env.DASHBOARD_ALLOW_RUNS, url.hostname),
     }
 }

@@ -3,11 +3,12 @@ import {DashboardClient} from '../../client'
 import type {Config} from '../../config'
 import {createHttp} from '../../http'
 import {createTools} from '../../tools'
-import type {AttachmentRow, TestRow} from '../../types'
+import type {AttachmentRow, RunRow, TestRow} from '../../types'
 
 export const ID_A = 'test-abc123'
 export const EXEC_1 = '11111111-1111-4111-8111-111111111111'
 export const EXEC_2 = '22222222-2222-4222-8222-222222222222'
+export const RUN_1 = '33333333-3333-4333-8333-333333333333'
 
 export interface FakeReply {
     status?: number
@@ -22,6 +23,7 @@ export interface Recorded {
     path: string
     search: string
     auth: string | null
+    body?: unknown
 }
 
 export function envelope(data: unknown, count?: number): FakeReply {
@@ -40,6 +42,7 @@ export function makeFetch(router: Router) {
             path: url.pathname,
             search: url.search,
             auth: headers.get('authorization'),
+            body: typeof init?.body === 'string' ? JSON.parse(init.body) : undefined,
         })
         const reply = router(method, url, headers)
         if (!reply) throw new Error(`unrouted request: ${method} ${url.pathname}`)
@@ -61,8 +64,12 @@ export function makeStack(
     runPasswordCmd?: (cmd: string) => Promise<string>
 ) {
     const {fetchFn, calls} = makeFetch(router)
-    const cfg: Config = {root: 'https://dashboard.example.com', ...config}
-    const session = new Session(cfg, createHttp(cfg.root, fetchFn), runPasswordCmd)
+    const cfg: Config = {root: 'https://dashboard.example.com', allowRuns: false, ...config}
+    const session = new Session(
+        cfg,
+        createHttp(cfg.root, fetchFn, {allowRuns: cfg.allowRuns}),
+        runPasswordCmd
+    )
     const client = new DashboardClient(session)
     const tools = createTools(client, 'dashboard.example.com')
     const tool = (name: string) => {
@@ -118,12 +125,22 @@ export interface World {
     historyTotal?: number
     jira?: {enabled: boolean; tickets: Array<Record<string, unknown>>; lastSyncError?: string} | 403
     files?: Record<string, Buffer>
+    run?: RunRow
+    runRows?: TestRow[]
+    // Reply to the two run-start POSTs; default: 200 with RUN_1
+    start?: FakeReply
 }
 
 // Router for a whole fake dashboard; the sweep and the tool tests share it.
 export function world(w: World): Router {
-    return (_m, url) => {
+    return (m, url) => {
         const p = url.pathname
+        if (m === 'POST' && (p === '/api/tests/run-group' || /\/rerun$/.test(p))) {
+            return w.start ?? envelope({runId: RUN_1})
+        }
+        if (m === 'GET' && /^\/api\/runs\/[0-9a-f-]{36}$/.test(p)) {
+            return w.run ? envelope(w.run) : {status: 404, json: {success: false}}
+        }
         if (p === '/api/auth/config') return envelope({authEnabled: w.authEnabled ?? false})
         if (p === '/api/settings/project-tabs') {
             return w.tabs === 403 || w.tabs === undefined
@@ -132,6 +149,7 @@ export function world(w: World): Router {
         }
         if (p === '/api/tests/summary-by-project') return envelope(w.summary ?? [])
         if (p === '/api/tests') {
+            if (url.searchParams.get('runId')) return envelope(w.runRows ?? [])
             const project = url.searchParams.get('project')
             const rows = (w.rows ?? []).filter((r) => !project || r.project === project)
             return envelope(rows, rows.length)

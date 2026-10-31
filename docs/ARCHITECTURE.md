@@ -12,7 +12,7 @@ packages/
 ├── reporter/  # @yshvydak/playwright-reporter npm package
 ├── server/    # Express API + SQLite + WebSocket server (LAYERED ARCHITECTURE)
 ├── web/       # React + Vite dashboard UI
-└── mcp/       # Read-only stdio MCP server for AI assistants (private, run from dist)
+└── mcp/       # Stdio MCP server for AI assistants, read-only by default (private, run from dist)
 ```
 
 ## Server Layered Architecture
@@ -409,14 +409,14 @@ export type {FilterKey} from './constants'
 
 ## MCP Server (packages/mcp)
 
-A stdio MCP server that lets an AI assistant read the dashboard through its existing REST API; it has no database access and adds no server endpoint.
+A stdio MCP server that lets an AI assistant read the dashboard (and, behind a flag, start a rerun or a file run) through its existing REST API; it has no database access and adds no server endpoint.
 
 ```
-assistant <-stdio-> McpServer (5 tools) -> DashboardClient -> Session (login, 401 retry) -> http.ts -> REST API
+assistant <-stdio-> McpServer (8 tools) -> DashboardClient -> Session (login, 401 retry) -> http.ts -> REST API
 ```
 
-- `http.ts` is the only caller of `fetch`: `GET` on an allowlist of fixed paths plus `POST /api/auth/login`; ids are validated before any request, redirects are refused. This is the read-only guarantee (a dashboard login always yields an admin token).
-- Tools: `dashboard_overview`, `list_tests` (tab, status, tag, search, Jira ticket status), `get_test`, `get_test_history`, `get_screenshots`. Output is capped at 40,000 characters.
+- `http.ts` is the only caller of `fetch`: `GET` on an allowlist of fixed paths plus `POST /api/auth/login`; ids are validated before any request, redirects are refused. With run tools off (the default for any non-local host; `DASHBOARD_ALLOW_RUNS`) that is the whole surface: read-only by default (a dashboard login always yields an admin token). With them on it also POSTs to exactly `/api/tests/<uuid>/rerun` and `/api/tests/run-group`, each body validated (`isAllowedRunPost`). No stop tool: the server has no per-run stop.
+- Tools: `dashboard_overview`, `list_tests` (tab, status, tag, search, Jira ticket status), `get_test`, `get_test_history`, `get_screenshots`, `get_run_status`, and the run tools `rerun_test`, `run_test_file`. Output is capped at 40,000 characters.
 - Jira data comes from `/api/jira/*` (cache only). With login off the server answers 403 for `/jira` and `/settings`; the tools report "Jira unavailable: login is off".
 - `/api/tests/projects` and `/api/tests/diagnostics` are never called: they run `playwright test --list` on the server.
 - Production builds skip the package (`npm run build:prod`). Install and configuration: [packages/mcp/README.md](../packages/mcp/README.md).

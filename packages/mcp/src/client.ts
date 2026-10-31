@@ -1,12 +1,13 @@
 import {DashboardError, type Session} from './auth'
 import {JIRA_BATCH_SIZE, SERVER_LIST_WINDOW} from './constants'
-import {TEST_ID_RE, UUID_RE} from './http'
+import {RUN_GROUP_PATH, TEST_ID_RE, UUID_RE} from './http'
 import type {
     AttachmentRow,
     Envelope,
     JiraStatus,
     JiraTicket,
     ProjectSummary,
+    RunRow,
     TabConfig,
     TestRow,
 } from './types'
@@ -21,11 +22,26 @@ export function assertExecutionId(id: string): void {
     if (!UUID_RE.test(id)) throw new DashboardError('Invalid executionId (expected a UUID)')
 }
 
+export const RUNS_DISABLED =
+    'Runs are disabled for this dashboard (set DASHBOARD_ALLOW_RUNS=true in this MCP server config to enable them)'
+
+export function assertRunId(id: string): void {
+    if (!UUID_RE.test(id)) throw new DashboardError('Invalid runId (expected a UUID)')
+}
+
 const ATTACHMENT_URL_RE = /^\/attachments\/([^/]+)\/([^/]+)$/
 
 // Typed GET wrappers. Every request goes through Session -> http.ts (the allowlist).
 export class DashboardClient {
     constructor(private readonly session: Session) {}
+
+    get runsEnabled(): boolean {
+        return this.session.runsEnabled
+    }
+
+    assertRunsEnabled(): void {
+        if (!this.runsEnabled) throw new DashboardError(RUNS_DISABLED)
+    }
 
     authEnabled(): Promise<boolean> {
         return this.session.isAuthEnabled()
@@ -116,6 +132,141 @@ export class DashboardClient {
             before,
         })
         return {rows: env.data, total: env.count ?? env.data.length}
+    }
+
+    // Starts a run. Never retried: a busy dashboard answers 409/423 and the caller gets a clear message.
+    // Run ids this process started (memory only, capped), for the run-age line of get_run_status
+    private readonly startedAt = new Map<string, number>()
+
+    runStartedAt(runId: string): number | undefined {
+        return this.startedAt.get(runId)
+    }
+
+    // Every filePath the dashboard lists (unscoped list + each project's); any failed read throws,
+    // so callers fail closed. windowFull: some list hit the server window, files may be missing.
+    async knownFiles(): Promise<{files: Set<string>; windowFull: boolean}> {
+        const files = new Set<string>()
+        let windowFull = false
+        const add = (res: {rows: TestRow[]; windowFull: boolean}) => {
+            windowFull ||= res.windowFull
+            for (const r of res.rows) files.add(r.filePath)
+        }
+        add(await this.listTests())
+        for (const p of await this.summaryByProject()) add(await this.listTests(p.project))
+        return {files, windowFull}
+    }
+
+    // Latest execution of a test within one project
+    async latestInProject(testId: string, project: string): Promise<TestRow | undefined> {
+        assertTestId(testId)
+        const {rows, windowFull} = await this.listTests(project)
+        const found = rows.find((r) => r.testId === testId)
+        if (!found && windowFull) {
+            throw new DashboardError(
+                `Test ${testId} not found in "${project}" (only the newest ${SERVER_LIST_WINDOW} tests are checked)`
+            )
+        }
+        return found
+    }
+
+    private async startRun(path: string, body: unknown): Promise<string> {
+        this.assertRunsEnabled()
+        const res = await this.session.postRun(path, body)
+        if (res.status === 200) {
+            let runId: unknown
+            try {
+                runId = JSON.parse(res.body.toString('utf8')).data?.runId
+            } catch {
+                // handled below
+            }
+            if (typeof runId !== 'string' || !UUID_RE.test(runId)) {
+                throw new DashboardError(
+                    'Dashboard answered 200 but returned no usable runId: a run may have started, check the dashboard UI'
+                )
+            }
+            if (this.startedAt.size >= 100)
+                this.startedAt.delete(this.startedAt.keys().next().value!)
+            this.startedAt.set(runId, Date.now())
+            return runId
+        }
+        let payload: {code?: unknown; currentRunId?: unknown} = {}
+        try {
+            payload = JSON.parse(res.body.toString('utf8'))
+        } catch {
+            // not JSON: fall through to the status text
+        }
+        const current =
+            typeof payload.currentRunId === 'string' && UUID_RE.test(payload.currentRunId)
+                ? ` (run ${payload.currentRunId})`
+                : ''
+        const NOT_STARTED = 'Not started: '
+        switch (payload.code) {
+            case 'TESTS_ALREADY_RUNNING':
+                throw new DashboardError(
+                    `${NOT_STARTED}a run is already active on this dashboard${current}. Try again after it finishes; this tool does not retry.`,
+                    res.status
+                )
+            case 'CI_RUN_QUEUED':
+                throw new DashboardError(
+                    `${NOT_STARTED}a CI run is queued and starts when the current run ends. Try again later; this tool does not retry.`,
+                    res.status
+                )
+            case 'RUN_CANCELLED':
+                throw new DashboardError(
+                    `${NOT_STARTED}a Stop was requested while the run was preparing.`,
+                    res.status
+                )
+            case 'CI_AUTORUN_PAUSED':
+                throw new DashboardError(`${NOT_STARTED}CI auto-run is paused.`, res.status)
+        }
+        if (res.status === 404) throw new DashboardError('Test not found', 404)
+        if (res.status === 400) {
+            throw new DashboardError(
+                `${NOT_STARTED}the dashboard rejected the request (HTTP 400)`,
+                400
+            )
+        }
+        if (res.status >= 500) {
+            throw new DashboardError(
+                `Dashboard answered HTTP ${res.status}: the run may have started. Check get_run_status or the dashboard UI before trying again`,
+                res.status
+            )
+        }
+        throw new DashboardError(`Dashboard answered HTTP ${res.status}`, res.status)
+    }
+
+    rerunExecution(executionId: string, maxWorkers: number) {
+        assertExecutionId(executionId)
+        return this.startRun(`/api/tests/${executionId}/rerun`, {maxWorkers})
+    }
+
+    runFile(filePath: string, maxWorkers: number, testNames?: string[]) {
+        return this.startRun(RUN_GROUP_PATH, {
+            filePath,
+            maxWorkers,
+            ...(testNames ? {testNames} : {}),
+        })
+    }
+
+    async run(runId: string) {
+        assertRunId(runId)
+        try {
+            return (await this.getEnvelope<RunRow>(`/api/runs/${runId}`)).data
+        } catch (err) {
+            if (err instanceof DashboardError && err.status === 404) {
+                throw new DashboardError(
+                    'Run not found (it never existed, or it was stopped and deleted)',
+                    404
+                )
+            }
+            throw err
+        }
+    }
+
+    async runResults(runId: string, limit: number) {
+        assertRunId(runId)
+        const env = await this.getEnvelope<TestRow[]>('/api/tests', {runId, limit})
+        return env.data
     }
 
     // Rebuilds the URL from validated parts: the response's own URL is never fetched as-is.

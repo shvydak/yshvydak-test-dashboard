@@ -75,3 +75,14 @@ export interface JiraStatus {
     lastSyncOk: boolean | null
     lastSyncError: string | null
 }
+
+export interface RunRow {
+    id: string
+    status: string
+    totalTests: number
+    passedTests: number
+    failedTests: number
+    skippedTests: number
+    duration: number
+    metadata?: {type?: string; filePath?: string; project?: string; originalTestId?: string}
+}

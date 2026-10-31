@@ -32,6 +32,7 @@ description: Where things live in this repo — testId generation, WebSocket URL
 | Stop: orchestration (`stop()`, restart cleanup)   | `packages/server/src/services/pipelineExecution.service.ts` (data deletion: `TestService.discardRuns`)                             |
 | Tab status badge/dot (passed/failed)              | `test.repository.ts` (`getProjectStatusSummary`) + `packages/web/src/hooks/useProjectStatusSummary.ts`                             |
 | Filter-bar unlimited counts                       | `test.repository.ts` (`getTestStatusCounts`) + `packages/web/src/features/tests/hooks/useTestStatusCounts.ts`                      |
+| Cmd+K test search (palette)                       | `features/tests/components/CommandPalette.tsx` + `hooks/useTestSearch.ts` → `searchLatestTests`                                    |
 | Dashboard "Total Tests" tile                      | `packages/web/src/features/dashboard/components/Dashboard.tsx` + `DashboardStats.tsx` (`useTestStatusCounts`, unscoped)            |
 | Tab status icons (running/queued)                 | `packages/web/src/shared/components/Header.tsx` (`renderStatusDot` — spinner = running, clock = queued)                            |
 | GitHub Actions CI workflow                        | **Separate repo** — a separate deployment repo holds `.github/workflows/trigger-tests.yml`                                         |

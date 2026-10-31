@@ -49,6 +49,32 @@ describe('Header', () => {
         return render(<MemoryRouter initialEntries={initialEntries}>{ui}</MemoryRouter>)
     }
 
+    describe('Search button', () => {
+        it('opens the palette from the header (rendered for desktop and mobile layouts)', async () => {
+            const user = userEvent.setup()
+            const onOpenSearch = vi.fn()
+            renderWithRouter(
+                <Header
+                    activeProject=""
+                    projectTabs={sampleTabs}
+                    wsConnected={true}
+                    onOpenSearch={onOpenSearch}
+                />
+            )
+            const buttons = screen.getAllByRole('button', {name: 'Search tests'})
+            expect(buttons[0].getAttribute('title')).toMatch(/Search tests \((Cmd|Ctrl)\+K\)/)
+            // One sits in the md:hidden group, so phones get it too
+            expect(buttons.some((b) => b.closest('.md\\:hidden'))).toBe(true)
+            await user.click(buttons[0])
+            expect(onOpenSearch).toHaveBeenCalledTimes(1)
+        })
+
+        it('is absent without a handler', () => {
+            renderWithRouter(<Header activeProject="" projectTabs={sampleTabs} />)
+            expect(screen.queryByRole('button', {name: 'Search tests'})).toBeNull()
+        })
+    })
+
     describe('Navigation - Dashboard icon', () => {
         it('should navigate to /dashboard when Dashboard button is clicked', async () => {
             const user = userEvent.setup()

@@ -9,7 +9,7 @@ import {CIAutoRunPauseBanner} from '@features/dashboard/components/CIAutoRunPaus
 import {PipelineSkippedBanner} from '@features/dashboard/components/PipelineSkippedBanner'
 import {useDiskSpaceWarning, useJiraSettings} from '@features/dashboard/hooks'
 import {useCIAutoRun} from '@/hooks/useCIAutoRun'
-import {TestsList} from '@features/tests'
+import {TestsList, CommandPalette, useCommandPalette} from '@features/tests'
 import {FloatingProgressPanel} from '@features/tests/components/progress/FloatingProgressPanel'
 import {LoginPage, setGlobalLogout} from '@features/authentication'
 import {useTestsStore} from '@features/tests/store/testsStore'
@@ -26,6 +26,11 @@ function App() {
     const location = useLocation()
     const navigate = useNavigate()
     const [isAuthenticated, setIsAuthenticated] = useState(false)
+    const {
+        isOpen: isSearchOpen,
+        open: openSearch,
+        close: closeSearch,
+    } = useCommandPalette(isAuthenticated)
     const [isLoading, setIsLoading] = useState(true)
     const [selectedTest, setSelectedTest] = useState<TestResult | null>(null)
     const [isSettingsOpen, setIsSettingsOpen] = useState(false)
@@ -62,6 +67,7 @@ function App() {
     }, [location.search])
 
     const {
+        tabs,
         visibleTabs,
         defaultProjectTab,
         isLoading: tabsLoading,
@@ -135,20 +141,6 @@ function App() {
 
         setGlobalLogout(handleLogout)
     }, [])
-
-    // Cmd+K / Ctrl+K — focus search on tests page
-    useEffect(() => {
-        const handleKeyDown = (e: KeyboardEvent) => {
-            if (e.key === 'k' && (e.metaKey || e.ctrlKey)) {
-                e.preventDefault()
-                const params = new URLSearchParams(location.search)
-                params.set('focusSearch', '1')
-                navigate(`/tests?${params.toString()}`, {replace: location.pathname === '/tests'})
-            }
-        }
-        document.addEventListener('keydown', handleKeyDown)
-        return () => document.removeEventListener('keydown', handleKeyDown)
-    }, [navigate, location.pathname, location.search])
 
     // Check authentication status and verify token validity
     useEffect(() => {
@@ -350,6 +342,7 @@ function App() {
                 projectStatusSummary={projectStatusSummary}
                 runningProjects={runningProjects}
                 onOpenSettings={() => setIsSettingsOpen(true)}
+                onOpenSearch={openSearch}
                 user={() => {
                     try {
                         const authData = localStorage.getItem('_auth')
@@ -361,6 +354,8 @@ function App() {
                     return null
                 }}
             />
+
+            <CommandPalette isOpen={isSearchOpen} onClose={closeSearch} projectTabs={tabs} />
 
             <SettingsModal
                 isOpen={isSettingsOpen}

@@ -204,6 +204,7 @@ packages/web/src/
 │   │   │   ├── TestsGroupedView.tsx       # Grouped view by file path
 │   │   │   ├── TestRow.tsx                # Individual test row with rerun
 │   │   │   ├── TestGroupHeader.tsx        # Collapsible group header
+│   │   │   ├── CommandPalette.tsx         # Cmd+K test search window (opens a hit via the shared-link URL)
 │   │   │   │
 │   │   │   ├── testDetail/               # Test detail modal sub-components
 │   │   │   │   ├── TestDetailModal.tsx   # Modal orchestrator (95 lines)
@@ -258,6 +259,8 @@ packages/web/src/
 │   │   │   ├── useTestFilters.ts         # Filter state management
 │   │   │   ├── useTestGroups.ts          # Group tests by file
 │   │   │   ├── useTestSort.ts            # Sort tests
+│   │   │   ├── useTestSearch.ts          # Debounced palette search, stale-answer guard
+│   │   │   ├── useCommandPalette.ts      # Palette open state + Cmd/Ctrl+K toggle
 │   │   │   ├── useNoteImages.ts          # Fetch note images (✨ v1.3.0)
 │   │   │   │   └── React Query integration with caching
 │   │   │   └── useJiraTicketInfo.ts (✨ v1.8.0) # Batched GET /api/jira/tickets?keys=...

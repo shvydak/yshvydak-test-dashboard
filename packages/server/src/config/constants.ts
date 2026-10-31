@@ -39,7 +39,11 @@ export const DEFAULT_LIMITS = {
     /** Cap for a single-project list fetch — high enough for real suites, still bounded. */
     TESTS_PER_PROJECT: 5000,
     TEST_HISTORY: 200,
+    SEARCH_DEFAULT: 20,
+    SEARCH_MAX: 50,
 }
+
+export const SEARCH_MIN_QUERY_LENGTH = 2
 
 export const PLAYWRIGHT_CONSTANTS = {
     LIST_REPORTER: 'json',

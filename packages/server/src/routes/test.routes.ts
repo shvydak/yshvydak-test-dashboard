@@ -29,6 +29,7 @@ export function createTestRoutes(container: ServiceContainer): Router {
     router.get('/stats', testController.getTestStats)
     router.get('/summary-by-project', testController.getProjectStatusSummary)
     router.get('/status-counts', testController.getTestStatusCounts)
+    router.get('/search', testController.searchTests)
     router.get('/flaky', testController.getFlakyTests)
     router.get('/timeline', testController.getTestTimeline)
     router.get('/diagnostics', testController.getDiagnostics)

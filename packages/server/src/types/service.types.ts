@@ -140,6 +140,19 @@ export interface WebSocketMessage {
 }
 
 // Repository interfaces
+// One row of GET /api/tests/search: a test's latest row, no attachments/errors.
+export interface TestSearchHit {
+    testId: string
+    name: string
+    filePath: string
+    project: string
+    status: TestResult['status']
+    tickets: string[]
+    notInCode?: boolean
+    createdAt: string
+    updatedAt: string
+}
+
 export interface ITestRepository {
     saveTestResult(testData: TestResultData): Promise<string>
     getTestResult(id: string): Promise<TestResult | null>
@@ -148,6 +161,7 @@ export interface ITestRepository {
     getTestExecutionCount(testId: string): Promise<number>
     getAllTests(filters: TestFilters): Promise<TestResult[]>
     getLatestByTestId(testId: string): Promise<TestResult | null>
+    searchLatestTests(query: string, limit: number): Promise<TestSearchHit[]>
     deleteByTestId(testId: string): Promise<number>
     deleteByExecutionId(executionId: string): Promise<number>
     clearAllTests(): Promise<void>

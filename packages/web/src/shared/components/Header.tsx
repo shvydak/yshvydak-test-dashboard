@@ -10,6 +10,7 @@ import {
     Moon,
     Sun,
     Clock,
+    Search,
 } from 'lucide-react'
 import {useTheme} from '@/hooks/useTheme'
 import {ProjectTabConfig} from '@/hooks/useProjectTabs'
@@ -26,6 +27,7 @@ interface HeaderProps {
     runningProjects?: Set<string>
     user?: (() => {email: string; role?: string}) | {email: string; role?: string}
     onOpenSettings?: () => void
+    onOpenSearch?: () => void
 }
 
 export default function Header({
@@ -38,12 +40,23 @@ export default function Header({
     runningProjects = new Set(),
     user,
     onOpenSettings,
+    onOpenSearch,
 }: HeaderProps) {
     const {isDark} = useTheme()
     const navigate = useNavigate()
     const location = useLocation()
     const [showUserMenu, setShowUserMenu] = useState(false)
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+    const searchShortcut = /Mac|iPhone|iPad/.test(navigator.platform) ? 'Cmd+K' : 'Ctrl+K'
+    const searchButton = onOpenSearch && (
+        <button
+            onClick={onOpenSearch}
+            title={`Search tests (${searchShortcut})`}
+            aria-label="Search tests"
+            className="rounded-xl p-2 text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-700 dark:text-gray-400 dark:hover:bg-white/[0.06] dark:hover:text-gray-200">
+            <Search className="h-4 w-4" />
+        </button>
+    )
 
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
@@ -274,6 +287,7 @@ export default function Header({
 
                         {/* Desktop: status + user menu */}
                         <div className="hidden md:flex items-center gap-3">
+                            {searchButton}
                             <div className="flex items-center gap-2 rounded-full bg-gray-100/70 px-3 py-1.5 dark:bg-white/[0.04]">
                                 <span
                                     className={`relative flex h-2 w-2 ${
@@ -352,6 +366,7 @@ export default function Header({
 
                         {/* Mobile: compact status + hamburger */}
                         <div className="flex md:hidden items-center gap-3">
+                            {searchButton}
                             <span
                                 className={`relative flex h-2.5 w-2.5 ${
                                     wsConnected ? '' : 'opacity-70'

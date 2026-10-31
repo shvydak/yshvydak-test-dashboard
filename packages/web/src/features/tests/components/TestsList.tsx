@@ -1,4 +1,4 @@
-import {useState, useEffect, useRef, useMemo} from 'react'
+import {useState, useEffect, useMemo} from 'react'
 import {useSearchParams} from 'react-router-dom'
 import {AlertTriangle} from 'lucide-react'
 import {TestResult} from '@yshvydak/core'
@@ -41,7 +41,6 @@ export default function TestsList({
     const [detailModalOpen, setDetailModalOpen] = useState(false)
     const [detailModalTest, setDetailModalTest] = useState<TestResult | null>(null)
     const [linkFailure, setLinkFailure] = useState<TestLinkFailure | null>(null)
-    const searchInputRef = useRef<HTMLInputElement>(null)
 
     // Initialize filter from URL or default to 'all'
     const getInitialFilter = (): FilterKey => {
@@ -111,16 +110,6 @@ export default function TestsList({
             setFilter('all')
         }
     }, [searchParams, filter])
-
-    // Focus search input when navigated via Cmd+K
-    useEffect(() => {
-        if (searchParams.get('focusSearch') === '1') {
-            searchInputRef.current?.focus()
-            const params = new URLSearchParams(searchParams)
-            params.delete('focusSearch')
-            setSearchParams(params, {replace: true})
-        }
-    }, [searchParams, setSearchParams])
 
     // Deep link: open the modal for ?testId=. A test in the loaded list opens at once; otherwise
     // the server resolves it (any project) and the project tab follows the test.
@@ -257,7 +246,6 @@ export default function TestsList({
                     searchQuery={searchQuery}
                     onSearchChange={handleSearchChange}
                     filteredCount={filteredTests.length}
-                    searchInputRef={searchInputRef}
                     activeProject={activeProject}
                 />
             </div>

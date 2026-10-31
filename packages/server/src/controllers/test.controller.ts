@@ -11,6 +11,7 @@ import {respondIfRunCancelled} from '../utils/runStop.util'
 import {getWebSocketManager} from '../websocket/server'
 import path from 'path'
 import {config} from '../config/environment.config'
+import {DEFAULT_LIMITS, SEARCH_MIN_QUERY_LENGTH} from '../config/constants'
 import {isSafeCliPath, isSafeId} from '../utils/security.util'
 
 export class TestController {
@@ -183,6 +184,34 @@ export class TestController {
                 res,
                 'Failed to fetch tests',
                 error instanceof Error ? error.message : 'Unknown error',
+                500
+            )
+        }
+    }
+
+    // GET /api/tests/search?q=&limit= - Latest row of tests matching title, file path or tag
+    searchTests = async (req: ServiceRequest, res: Response): Promise<Response> => {
+        try {
+            const q = typeof req.query.q === 'string' ? req.query.q.trim() : ''
+            if (q.length < SEARCH_MIN_QUERY_LENGTH) {
+                return ResponseHelper.badRequest(
+                    res,
+                    `q must be at least ${SEARCH_MIN_QUERY_LENGTH} characters`
+                )
+            }
+            const parsed = parseInt(String(req.query.limit ?? ''), 10)
+            const limit = Number.isFinite(parsed)
+                ? Math.min(Math.max(parsed, 1), DEFAULT_LIMITS.SEARCH_MAX)
+                : DEFAULT_LIMITS.SEARCH_DEFAULT
+
+            const hits = await this.testService.searchTests(q, limit)
+            return ResponseHelper.success(res, hits, undefined, hits.length)
+        } catch (error) {
+            Logger.error('Error searching tests', error)
+            return ResponseHelper.error(
+                res,
+                error instanceof Error ? error.message : 'Unknown error',
+                'Failed to search tests',
                 500
             )
         }

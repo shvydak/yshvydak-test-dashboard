@@ -7,6 +7,7 @@ The Playwright side is the npm package [`playwright-dashboard-reporter`](https:/
 ## Features
 
 - **Test list**: status filter, search by name, file path, error text and displayed tags (URL-persistent `?q=`), counts aggregated in the database (not capped by the page size).
+- **Test search**: `Cmd+K` / `Ctrl+K` (or the magnifier in the header) opens a search window that finds tests by title, file path or ticket tag across all project tabs; Enter opens the chosen test through its shared link.
 - **Runs**: Run All (per project tab), run a file group, rerun one test, live progress over WebSocket, test discovery (`playwright test --list`).
 - **History**: every execution is a new record (same `testId`, new row). Each keeps its own screenshots, videos and traces, stored permanently and independent of Playwright's cleanup. Console output (stdout/stderr) and steps are captured per test.
 - **Dashboard page**: status counts, flaky tests (last 30 days, at least two runs, failing share >= 10% and < 100%), 30-day timeline.

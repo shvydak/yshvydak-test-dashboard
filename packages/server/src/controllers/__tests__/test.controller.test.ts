@@ -1971,10 +1971,7 @@ describe('TestController', () => {
             await controller.deleteExecution(mockReq as ServiceRequest, mockRes as Response)
 
             expect(mockTestService.deleteExecution).not.toHaveBeenCalled()
-            expect(ResponseHelper.badRequest).toHaveBeenCalledWith(
-                mockRes,
-                'Missing executionId parameter'
-            )
+            expect(ResponseHelper.badRequest).toHaveBeenCalledWith(mockRes, 'Invalid executionId')
         })
 
         it('should return 400 when executionId is empty string', async () => {
@@ -1983,10 +1980,7 @@ describe('TestController', () => {
             await controller.deleteExecution(mockReq as ServiceRequest, mockRes as Response)
 
             expect(mockTestService.deleteExecution).not.toHaveBeenCalled()
-            expect(ResponseHelper.badRequest).toHaveBeenCalledWith(
-                mockRes,
-                'Missing executionId parameter'
-            )
+            expect(ResponseHelper.badRequest).toHaveBeenCalledWith(mockRes, 'Invalid executionId')
         })
 
         it('should return 404 when execution not found', async () => {
@@ -2030,17 +2024,20 @@ describe('TestController', () => {
             )
         })
 
-        it('should handle executionId with special characters', async () => {
-            mockReq.params = {testId: 'test-123', executionId: 'exec-with-special-!@#$%'}
-            mockTestService.deleteExecution.mockResolvedValue({success: true})
+        it.each(['exec-with-special-!@#$%', '../../victim', '..', 'a/b', 'a\\b'])(
+            'should reject unsafe executionId %s with 400 before touching the service',
+            async (executionId) => {
+                mockReq.params = {testId: 'test-123', executionId}
 
-            await controller.deleteExecution(mockReq as ServiceRequest, mockRes as Response)
+                await controller.deleteExecution(mockReq as ServiceRequest, mockRes as Response)
 
-            expect(mockTestService.deleteExecution).toHaveBeenCalledWith('exec-with-special-!@#$%')
-            expect(ResponseHelper.success).toHaveBeenCalledWith(mockRes, {
-                message: 'Execution deleted successfully',
-            })
-        })
+                expect(mockTestService.deleteExecution).not.toHaveBeenCalled()
+                expect(ResponseHelper.badRequest).toHaveBeenCalledWith(
+                    mockRes,
+                    'Invalid executionId'
+                )
+            }
+        )
 
         it('should handle executionId with UUID format', async () => {
             mockReq.params = {
@@ -2059,17 +2056,13 @@ describe('TestController', () => {
             })
         })
 
-        it('should handle very long executionId', async () => {
-            const longId = 'a'.repeat(500)
-            mockReq.params = {testId: 'test-123', executionId: longId}
-            mockTestService.deleteExecution.mockResolvedValue({success: true})
+        it('should reject a very long executionId with 400', async () => {
+            mockReq.params = {testId: 'test-123', executionId: 'a'.repeat(500)}
 
             await controller.deleteExecution(mockReq as ServiceRequest, mockRes as Response)
 
-            expect(mockTestService.deleteExecution).toHaveBeenCalledWith(longId)
-            expect(ResponseHelper.success).toHaveBeenCalledWith(mockRes, {
-                message: 'Execution deleted successfully',
-            })
+            expect(mockTestService.deleteExecution).not.toHaveBeenCalled()
+            expect(ResponseHelper.badRequest).toHaveBeenCalledWith(mockRes, 'Invalid executionId')
         })
 
         it('should not use testId parameter in deletion logic', async () => {
@@ -2115,13 +2108,13 @@ describe('TestController', () => {
             )
         })
 
-        it('should handle validation edge cases with whitespace', async () => {
+        it('should reject a whitespace-only executionId', async () => {
             mockReq.params = {testId: 'test-123', executionId: '   '} // Only whitespace
 
             await controller.deleteExecution(mockReq as ServiceRequest, mockRes as Response)
 
-            // Whitespace-only should pass validation (trimming happens in service if needed)
-            expect(mockTestService.deleteExecution).toHaveBeenCalledWith('   ')
+            expect(mockTestService.deleteExecution).not.toHaveBeenCalled()
+            expect(ResponseHelper.badRequest).toHaveBeenCalledWith(mockRes, 'Invalid executionId')
         })
 
         it('should properly format success response', async () => {

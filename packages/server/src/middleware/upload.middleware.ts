@@ -19,7 +19,8 @@ const fileFilter = (
     ) {
         cb(null, true)
     } else {
-        cb(new Error('Only image files are allowed'))
+        // Not an error: the controller answers 400 when no file came through
+        cb(null, false)
     }
 }
 

@@ -2,6 +2,7 @@ import fs from 'fs'
 import path from 'path'
 import {v4 as uuidv4} from 'uuid'
 import {Logger} from '../utils/logger.util'
+import {resolveInside} from '../utils/security.util'
 
 export type AttachmentType = 'video' | 'screenshot' | 'trace' | 'log'
 
@@ -32,7 +33,7 @@ export class AttachmentManager {
     }
 
     private ensureTestDirectory(testResultId: string): string {
-        const testDir = path.join(this.attachmentsDir, testResultId)
+        const testDir = resolveInside(this.attachmentsDir, testResultId)
         if (!fs.existsSync(testDir)) {
             fs.mkdirSync(testDir, {recursive: true})
         }
@@ -96,7 +97,7 @@ export class AttachmentManager {
         const testDir = this.ensureTestDirectory(testResultId)
         const fileName =
             originalFileName || this.generateFileName(type, path.basename(sourceFilePath))
-        const targetFilePath = path.join(testDir, fileName)
+        const targetFilePath = resolveInside(testDir, fileName)
 
         // Copy file to permanent location
         await fs.promises.copyFile(sourceFilePath, targetFilePath)
@@ -129,7 +130,7 @@ export class AttachmentManager {
     ): Promise<AttachmentMetadata> {
         const testDir = this.ensureTestDirectory(testResultId)
         const finalFileName = fileName || this.generateFileName(type)
-        const filePath = path.join(testDir, finalFileName)
+        const filePath = resolveInside(testDir, finalFileName)
 
         // Write buffer to file
         await fs.promises.writeFile(filePath, buffer)
@@ -159,7 +160,7 @@ export class AttachmentManager {
 
     // Get attachment file path
     getAttachmentPath(testResultId: string, fileName: string): string {
-        return path.join(this.attachmentsDir, testResultId, fileName)
+        return resolveInside(resolveInside(this.attachmentsDir, testResultId), fileName)
     }
 
     // Check if attachment file exists
@@ -177,7 +178,7 @@ export class AttachmentManager {
             Logger.debug(`Deleted attachment: ${filePath}`)
 
             // Check if test directory is empty and remove it
-            const testDir = path.join(this.attachmentsDir, testResultId)
+            const testDir = resolveInside(this.attachmentsDir, testResultId)
             try {
                 const files = await fs.promises.readdir(testDir)
                 if (files.length === 0) {
@@ -196,7 +197,7 @@ export class AttachmentManager {
 
     // Delete all attachments for a test result
     async deleteTestAttachments(testResultId: string): Promise<number> {
-        const testDir = path.join(this.attachmentsDir, testResultId)
+        const testDir = resolveInside(this.attachmentsDir, testResultId)
 
         if (!fs.existsSync(testDir)) {
             return 0

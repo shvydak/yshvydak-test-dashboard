@@ -17,6 +17,12 @@ With `ENABLE_AUTH=false` (local use) nothing needs a token. With `ENABLE_AUTH=tr
 
 **Internal reporter listener.** Besides `PORT`, the server listens on `127.0.0.1` on an ephemeral port. Playwright processes it spawns get `DASHBOARD_API_URL=http://127.0.0.1:<port>`. Only the five reporter routes skip the JWT there — `POST /api/tests`, `POST /api/tests/process-start`, `/test-start`, `/process-end`, `PUT /api/runs/:id` — and only when the request arrived on that local port (`req.socket.localPort`; never the remote address, because nginx proxies public traffic from localhost). Every other route on that port still needs a JWT. A reporter started outside the dashboard (not spawned by it) therefore gets 401 when auth is on.
 
+## Path ids
+
+Every id in a URL path (`:id`, `:testId`, `:executionId`, `:imageId`, `:attachmentId` on `/api/tests/*`; `:id` on `/api/runs/*`) must match `^[A-Za-z0-9_-]{1,128}$` (UUIDs, `test-<base36>`). Anything else (`..`, `/`, `.`, spaces, longer than 128) answers `400` before the handler runs, e.g. `{"success": false, "error": "Bad request", "message": "Invalid testId"}`. These ids become file paths under the storage directory; the storage layer also refuses any path that resolves outside it.
+
+Uploaded files are served from `/attachments` and `/note-images` with `X-Content-Type-Options: nosniff` and `Content-Security-Policy: sandbox`. Only passive types display inline (`.png .jpg .jpeg .gif .webp .bmp .webm .mp4 .txt .log .md .json .csv .zip`); every other extension (including no extension) is sent with `Content-Disposition: attachment`, so it downloads and never renders on the API origin.
+
 ## Base URL
 
 - **Development**: `http://localhost:3001/api`
@@ -242,6 +248,8 @@ Delete a specific test execution while preserving other executions of the same t
 - `executionId` (required) - The unique identifier for the specific execution to delete
 
 **Authentication:** Required (JWT token)
+
+**Validation:** both ids must be safe ids (see Path ids), else `400`. The execution row is looked up first; an unknown id answers `404` and no file is touched.
 
 **Request:**
 
@@ -842,9 +850,12 @@ Authorization: Bearer {jwt-token}
 
 **Validation Rules:**
 
-- File must be an image (MIME type starting with `image/`), except `image/svg+xml` (rejected: SVG can carry script)
-- Maximum file size: 5MB
-- Supported formats: PNG, JPEG, GIF, WebP, etc. (any valid image format)
+- File must be an image (MIME type starting with `image/`), except `image/svg+xml` (SVG can carry script). A declared non-image or SVG type answers `400` ("Image file is required")
+- The content is checked by its first bytes, not by the declared type or file name: only PNG, JPEG, GIF, WebP and BMP pass (`400` otherwise, SVG included even when sent as `image/png`)
+- The stored extension comes from the detected format (a `.svg`-named PNG is stored as `.png`); `#`, `?`, `%` and control characters in the client name become `_`
+- `testId` must be a safe id (see Path ids), else `400`
+- Maximum file size: 5MB (`413` above that)
+- Stored as `{OUTPUT_DIR}/note-images/{testId}/{name}-{timestamp}-{random}{ext}` (`name` = client base name, max 64 chars, leading dots dropped); the response `url` points at it
 
 **Example Request:**
 
@@ -873,45 +884,29 @@ Content-Type: multipart/form-data
 }
 ```
 
-**Response (400 - Bad Request):**
+**Response (400 - Bad Request):** `error` is one of `"Image file is required (PNG, JPEG, GIF, WebP or BMP)"` (no file, or a declared non-image/SVG type), `"Only PNG, JPEG, GIF, WebP or BMP images are allowed"` (content check failed). A bad `testId` is rejected by the route guard first: `error: "Bad request"`, `message: "Invalid testId"`.
 
 ```json
 {
     "success": false,
-    "error": "Image file is required"
+    "error": "Only PNG, JPEG, GIF, WebP or BMP images are allowed",
+    "message": "Unsupported image content"
 }
 ```
 
-or
+**Response (413 - Payload Too Large):** upload over 5MB.
 
 ```json
 {
     "success": false,
-    "error": "File must be an image"
-}
-```
-
-or
-
-```json
-{
-    "success": false,
-    "error": "Image size exceeds maximum of 5MB"
-}
-```
-
-**Response (500 - Server Error):**
-
-```json
-{
-    "success": false,
-    "error": "Failed to upload image"
+    "error": "File too large",
+    "message": "Image size exceeds maximum of 5MB"
 }
 ```
 
 **Notes:**
 
-- Image is stored in `{OUTPUT_DIR}/note-images/{testId}/{imageId}.{ext}`
+- Image is stored in `{OUTPUT_DIR}/note-images/{testId}/` (see the file name rule above)
 - A placeholder note is automatically created if no note exists (required for foreign key)
 - Image ID can be embedded in note content using `[IMAGE:image-id]` syntax
 - Images are served statically via `/note-images` endpoint (JWT protected)

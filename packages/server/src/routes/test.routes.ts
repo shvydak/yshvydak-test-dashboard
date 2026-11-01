@@ -3,10 +3,12 @@ import {TestController} from '../controllers/test.controller'
 import {NoteController} from '../controllers/note.controller'
 import {NoteImageController} from '../controllers/noteImage.controller'
 import {uploadSingleImage} from '../middleware/upload.middleware'
+import {requireSafeIdParams} from '../middleware/idParams.middleware'
 import {ServiceContainer} from '../middleware/service-injection.middleware'
 
 export function createTestRoutes(container: ServiceContainer): Router {
     const router = Router()
+    requireSafeIdParams(router, ['id', 'testId', 'executionId', 'imageId', 'attachmentId'])
     const testController = new TestController(container.testService, container.authService)
     const noteController = new NoteController(container.noteService)
     const noteImageController = new NoteImageController(container.noteImageService)

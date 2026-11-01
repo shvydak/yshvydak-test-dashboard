@@ -6,6 +6,12 @@ import type {DatabaseManager} from '../../../database/database.manager'
 import type {TestServerInstance} from '../helpers/testServer'
 import {setupTestServer, teardownTestServer, cleanDatabase} from '../helpers/testServer'
 
+const png = (body: string) =>
+    Buffer.concat([
+        Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
+        Buffer.from(body),
+    ])
+
 describe('Note Images API (Integration)', () => {
     let server: TestServerInstance
     const testId = 'test-note-images-123'
@@ -33,7 +39,7 @@ describe('Note Images API (Integration)', () => {
         const firstUpload = await request(server.app)
             .post(`/api/tests/${testId}/notes/images`)
             .set('Authorization', `Bearer ${server.authToken}`)
-            .attach('image', Buffer.from('first-image-content'), {
+            .attach('image', png('first-image-content'), {
                 filename: 'image.png',
                 contentType: 'image/png',
             })
@@ -43,7 +49,7 @@ describe('Note Images API (Integration)', () => {
         const secondUpload = await request(server.app)
             .post(`/api/tests/${testId}/notes/images`)
             .set('Authorization', `Bearer ${server.authToken}`)
-            .attach('image', Buffer.from('second-image-content'), {
+            .attach('image', png('second-image-content'), {
                 filename: 'image.png',
                 contentType: 'image/png',
             })
@@ -84,7 +90,11 @@ describe('Note Images API (Integration)', () => {
         expect(savedImages).toHaveLength(2)
         expect(savedImages[0].file_name).not.toBe(savedImages[1].file_name)
         expect(savedImages[0].url).not.toBe(savedImages[1].url)
-        expect(fs.readFileSync(savedImages[0].file_path, 'utf-8')).toBe('first-image-content')
-        expect(fs.readFileSync(savedImages[1].file_path, 'utf-8')).toBe('second-image-content')
+        expect(fs.readFileSync(savedImages[0].file_path).equals(png('first-image-content'))).toBe(
+            true
+        )
+        expect(fs.readFileSync(savedImages[1].file_path).equals(png('second-image-content'))).toBe(
+            true
+        )
     })
 })

@@ -1,9 +1,11 @@
 import {Router} from 'express'
 import {RunController} from '../controllers/run.controller'
+import {requireSafeIdParams} from '../middleware/idParams.middleware'
 import {ServiceContainer} from '../middleware/service-injection.middleware'
 
 export function createRunRoutes(container: ServiceContainer): Router {
     const router = Router()
+    requireSafeIdParams(router, ['id'])
     const runController = new RunController(container.runRepository)
 
     router.post('/', runController.createTestRun)

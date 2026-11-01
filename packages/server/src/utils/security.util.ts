@@ -24,6 +24,16 @@ export function isInsideDir(target: string, baseDir: string): boolean {
     return rel !== '' && !rel.startsWith('..') && !path.isAbsolute(rel)
 }
 
+/** Joins `segments` onto `baseDir` and returns the result; throws if it would land outside `baseDir` (or on it). Lexical: the target may not exist yet. */
+export function resolveInside(baseDir: string, ...segments: string[]): string {
+    const base = path.resolve(baseDir)
+    const resolved = path.resolve(base, ...segments)
+    if (!resolved.startsWith(base + path.sep)) {
+        throw new Error('Path escapes storage directory')
+    }
+    return resolved
+}
+
 /**
  * A positional CLI value from a request: not an option, and inside `baseDir` once resolved against it.
  * Lexical on purpose: stored spec paths are reporter-normalized and don't exist on disk, and a

@@ -5,6 +5,13 @@ import path from 'path'
 import {randomUUID} from 'crypto'
 import os from 'os'
 
+const PNG_SIG = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])
+const JPG_SIG = Buffer.from([0xff, 0xd8, 0xff, 0xe0])
+const GIF_SIG = Buffer.from('GIF89a')
+const WEBP_SIG = Buffer.concat([Buffer.from('RIFF'), Buffer.alloc(4), Buffer.from('WEBP')])
+const BMP_SIG = Buffer.from('BM')
+const png = (body = '') => Buffer.concat([PNG_SIG, Buffer.from(body)])
+
 describe('NoteImageManager', () => {
     let tempDir: string
     let manager: NoteImageManager
@@ -42,7 +49,7 @@ describe('NoteImageManager', () => {
 
     describe('saveImage', () => {
         it('should save buffer to file', async () => {
-            const buffer = Buffer.from('fake image data')
+            const buffer = png('fake image data')
 
             const metadata = await manager.saveImage(buffer, testId)
 
@@ -51,11 +58,11 @@ describe('NoteImageManager', () => {
             expect(metadata.testId).toBe(testId)
             expect(fs.existsSync(metadata.filePath)).toBe(true)
             const savedContent = fs.readFileSync(metadata.filePath)
-            expect(savedContent.toString()).toBe('fake image data')
+            expect(savedContent.equals(png('fake image data'))).toBe(true)
         })
 
         it('should create test-specific directory', async () => {
-            const buffer = Buffer.from('test image')
+            const buffer = png('test image')
             await manager.saveImage(buffer, testId)
 
             const testDir = path.join(tempDir, 'note-images', testId)
@@ -63,40 +70,52 @@ describe('NoteImageManager', () => {
         })
 
         it('should detect MIME type correctly for PNG', async () => {
-            const buffer = Buffer.from('png data')
+            const buffer = png('png data')
             const metadata = await manager.saveImage(buffer, testId, 'test.png')
 
             expect(metadata.mimeType).toBe('image/png')
         })
 
-        it('should detect MIME type for all image formats', async () => {
-            const imageFormats = [
-                {ext: '.png', mime: 'image/png'},
-                {ext: '.jpg', mime: 'image/jpeg'},
-                {ext: '.jpeg', mime: 'image/jpeg'},
-                {ext: '.gif', mime: 'image/gif'},
-                {ext: '.webp', mime: 'image/webp'},
-                {ext: '.bmp', mime: 'image/bmp'},
-                {ext: '.svg', mime: 'image/svg+xml'},
+        it('should take MIME type and extension from the content, not the file name', async () => {
+            const formats = [
+                {buf: PNG_SIG, ext: '.png', mime: 'image/png'},
+                {buf: JPG_SIG, ext: '.jpg', mime: 'image/jpeg'},
+                {buf: GIF_SIG, ext: '.gif', mime: 'image/gif'},
+                {buf: WEBP_SIG, ext: '.webp', mime: 'image/webp'},
+                {buf: BMP_SIG, ext: '.bmp', mime: 'image/bmp'},
             ]
 
-            for (const format of imageFormats) {
-                const buffer = Buffer.from('image data')
-                const metadata = await manager.saveImage(buffer, randomUUID(), `test${format.ext}`)
+            for (const format of formats) {
+                const metadata = await manager.saveImage(format.buf, randomUUID(), 'name.png')
 
                 expect(metadata.mimeType).toBe(format.mime)
+                expect(metadata.fileName.endsWith(format.ext)).toBe(true)
             }
         })
 
-        it('should use default PNG MIME type for unknown extensions', async () => {
-            const buffer = Buffer.from('unknown data')
-            const metadata = await manager.saveImage(buffer, testId, 'test.xyz')
+        it('should store a .svg-named PNG with a .png extension', async () => {
+            const metadata = await manager.saveImage(png(), testId, 'evil.svg')
 
+            expect(metadata.fileName).toMatch(/^evil-\d+-[a-z0-9]{6}\.png$/)
             expect(metadata.mimeType).toBe('image/png')
         })
 
+        it('should reject SVG content even when named .png', async () => {
+            const svg = Buffer.from('<svg xmlns="http://www.w3.org/2000/svg"><script/></svg>')
+
+            await expect(manager.saveImage(svg, testId, 'x.png')).rejects.toThrow(
+                /Unsupported image content/
+            )
+            expect(fs.existsSync(path.join(tempDir, 'note-images', testId))).toBe(false)
+        })
+
+        it('should reject unrecognised content', async () => {
+            await expect(manager.saveImage(Buffer.from('plain text'), testId)).rejects.toThrow()
+            await expect(manager.saveImage(Buffer.alloc(0), testId)).rejects.toThrow()
+        })
+
         it('should generate unique file names with timestamp and random suffix', async () => {
-            const buffer = Buffer.from('test')
+            const buffer = png('test')
             const metadata1 = await manager.saveImage(buffer, testId)
             const metadata2 = await manager.saveImage(buffer, testId)
 
@@ -105,22 +124,21 @@ describe('NoteImageManager', () => {
             expect(metadata2.fileName).toMatch(/^image-\d+-[a-z0-9]{6}\.png$/)
         })
 
-        it('should preserve original file extension when provided', async () => {
-            const buffer = Buffer.from('jpg data')
-            const metadata = await manager.saveImage(buffer, testId, 'screenshot.jpg')
+        it('should use the sniffed extension for a JPEG', async () => {
+            const metadata = await manager.saveImage(JPG_SIG, testId, 'screenshot.jpg')
 
             expect(metadata.fileName).toMatch(/\.jpg$/)
         })
 
         it('should generate unique file name when original file name is provided', async () => {
-            const buffer = Buffer.from('test')
+            const buffer = png('test')
             const metadata = await manager.saveImage(buffer, testId, 'my-image.png')
 
             expect(metadata.fileName).toMatch(/^my-image-\d+-[a-z0-9]{6}\.png$/)
         })
 
         it('should normalize invalid extension while keeping original base name', async () => {
-            const buffer = Buffer.from('test')
+            const buffer = png('test')
             const metadata = await manager.saveImage(buffer, testId, 'image.exe')
 
             expect(metadata.fileName).toMatch(/^image-\d+-[a-z0-9]{6}\.png$/)
@@ -128,29 +146,29 @@ describe('NoteImageManager', () => {
         })
 
         it('should calculate file size correctly', async () => {
-            const data = Buffer.from('x'.repeat(1000))
+            const data = png('x'.repeat(1000))
             const metadata = await manager.saveImage(data, testId)
 
-            expect(metadata.fileSize).toBe(1000)
+            expect(metadata.fileSize).toBe(data.length)
         })
 
         it('should generate correct URL path', async () => {
-            const buffer = Buffer.from('test')
+            const buffer = png('test')
             const metadata = await manager.saveImage(buffer, testId, 'test.png')
 
             expect(metadata.url).toBe(`/note-images/${testId}/${metadata.fileName}`)
         })
 
-        it('should handle empty buffer', async () => {
-            const buffer = Buffer.from('')
+        it('should handle a signature-only image', async () => {
+            const buffer = png('')
             const metadata = await manager.saveImage(buffer, testId)
 
-            expect(metadata.fileSize).toBe(0)
+            expect(metadata.fileSize).toBe(PNG_SIG.length)
             expect(fs.existsSync(metadata.filePath)).toBe(true)
         })
 
         it('should handle special characters in file names', async () => {
-            const buffer = Buffer.from('data')
+            const buffer = png('data')
             const metadata = await manager.saveImage(buffer, testId, 'test (copy) [1].png')
 
             expect(fs.existsSync(metadata.filePath)).toBe(true)
@@ -158,13 +176,13 @@ describe('NoteImageManager', () => {
         })
 
         it('should avoid overwriting pasted images with the same original name', async () => {
-            const first = await manager.saveImage(Buffer.from('first'), testId, 'image.png')
-            const second = await manager.saveImage(Buffer.from('second'), testId, 'image.png')
+            const first = await manager.saveImage(png('first'), testId, 'image.png')
+            const second = await manager.saveImage(png('second'), testId, 'image.png')
 
             expect(first.fileName).not.toBe(second.fileName)
             expect(first.url).not.toBe(second.url)
-            expect(fs.readFileSync(first.filePath).toString()).toBe('first')
-            expect(fs.readFileSync(second.filePath).toString()).toBe('second')
+            expect(fs.readFileSync(first.filePath).equals(png('first'))).toBe(true)
+            expect(fs.readFileSync(second.filePath).equals(png('second'))).toBe(true)
         })
 
         it('should handle binary image data correctly', async () => {
@@ -200,7 +218,7 @@ describe('NoteImageManager', () => {
         })
 
         it('should check if image exists', async () => {
-            const buffer = Buffer.from('test')
+            const buffer = png('test')
             const metadata = await manager.saveImage(buffer, testId, 'exists.png')
 
             expect(manager.imageExists(testId, metadata.fileName)).toBe(true)
@@ -210,7 +228,7 @@ describe('NoteImageManager', () => {
 
     describe('Delete Operations', () => {
         it('should delete single image', async () => {
-            const buffer = Buffer.from('test')
+            const buffer = png('test')
             const metadata = await manager.saveImage(buffer, testId, 'delete-me.png')
 
             const deleted = await manager.deleteImage(testId, metadata.fileName)
@@ -226,7 +244,7 @@ describe('NoteImageManager', () => {
         })
 
         it('should remove empty test directory after deleting last file', async () => {
-            const buffer = Buffer.from('test')
+            const buffer = png('test')
             const metadata = await manager.saveImage(buffer, testId, 'only-file.png')
 
             await manager.deleteImage(testId, metadata.fileName)
@@ -236,8 +254,8 @@ describe('NoteImageManager', () => {
         })
 
         it('should not remove directory if other files exist', async () => {
-            const metadata1 = await manager.saveImage(Buffer.from('1'), testId, 'file1.png')
-            await manager.saveImage(Buffer.from('2'), testId, 'file2.png')
+            const metadata1 = await manager.saveImage(png('1'), testId, 'file1.png')
+            await manager.saveImage(png('2'), testId, 'file2.png')
 
             await manager.deleteImage(testId, metadata1.fileName)
 
@@ -246,9 +264,9 @@ describe('NoteImageManager', () => {
         })
 
         it('should delete all images for a test', async () => {
-            await manager.saveImage(Buffer.from('1'), testId, 'file1.png')
-            await manager.saveImage(Buffer.from('2'), testId, 'file2.png')
-            await manager.saveImage(Buffer.from('3'), testId, 'file3.png')
+            await manager.saveImage(png('1'), testId, 'file1.png')
+            await manager.saveImage(png('2'), testId, 'file2.png')
+            await manager.saveImage(png('3'), testId, 'file3.png')
 
             const deletedCount = await manager.deleteImagesByTestId(testId)
 
@@ -275,9 +293,7 @@ describe('NoteImageManager', () => {
         it('should handle concurrent file operations', async () => {
             const promises = Array(10)
                 .fill(null)
-                .map((_, i) =>
-                    manager.saveImage(Buffer.from(`content ${i}`), testId, `file${i}.png`)
-                )
+                .map((_, i) => manager.saveImage(png(`content ${i}`), testId, `file${i}.png`))
 
             const results = await Promise.all(promises)
 
@@ -293,7 +309,7 @@ describe('NoteImageManager', () => {
                 .map(() => randomUUID())
 
             for (const id of testIds) {
-                await manager.saveImage(Buffer.from('test'), id)
+                await manager.saveImage(png('test'), id)
             }
 
             // Verify all directories exist
@@ -303,21 +319,38 @@ describe('NoteImageManager', () => {
             }
         })
 
-        it('should handle path traversal attempts safely', () => {
-            const maliciousFileName = '../../etc/passwd'
-            const filePath = manager.getImagePath(testId, maliciousFileName)
+        it.each(['..', '../victim', '../../victim', 'a/../..', '/abs'])(
+            'should refuse testId %j that escapes the storage dir',
+            async (badId) => {
+                const sentinelDir = path.join(tempDir, 'victim')
+                fs.mkdirSync(sentinelDir)
+                fs.writeFileSync(path.join(sentinelDir, 'keep.txt'), 'keep')
 
-            // path.join() normalizes the path, so traversal will work
-            // The important thing is that the path construction is predictable
-            expect(filePath).toContain(tempDir)
+                await expect(manager.saveImage(png(), badId)).rejects.toThrow(/escapes/)
+                await expect(manager.deleteImagesByTestId(badId)).rejects.toThrow(/escapes/)
+                await expect(manager.deleteImage(badId, 'keep.txt')).rejects.toThrow(/escapes/)
+                expect(() => manager.getImagePath(badId, 'x.png')).toThrow(/escapes/)
+                expect(fs.readFileSync(path.join(sentinelDir, 'keep.txt'), 'utf8')).toBe('keep')
+            }
+        )
 
-            // In production, this would be handled by Express static middleware
-            // which checks that requested paths are within the served directory
+        it('should refuse a file name that escapes the test directory', () => {
+            expect(() => manager.getImagePath(testId, '../../etc/passwd')).toThrow(/escapes/)
+            expect(() => manager.imageExists(testId, '../other/x.png')).toThrow(/escapes/)
+        })
+
+        it('should drop directory parts from the client file name', async () => {
+            const metadata = await manager.saveImage(png(), testId, '../../planted/x.svg')
+
+            expect(metadata.filePath.startsWith(path.join(tempDir, 'note-images', testId))).toBe(
+                true
+            )
+            expect(metadata.fileName).toMatch(/^x-\d+-[a-z0-9]{6}\.png$/)
         })
 
         it('should handle very large image files', async () => {
             // Create a 1MB file
-            const largeData = Buffer.alloc(1024 * 1024, 'a')
+            const largeData = Buffer.concat([PNG_SIG, Buffer.alloc(1024 * 1024 - 8, 'a')])
             const metadata = await manager.saveImage(largeData, testId, 'large.png')
 
             expect(metadata.fileSize).toBe(1024 * 1024)

@@ -246,6 +246,12 @@ export class TestService implements ITestService {
     }
 
     async deleteExecution(executionId: string): Promise<{success: boolean}> {
+        // Row first: files are only touched for an execution that exists
+        if (!(await this.testRepository.getTestResult(executionId))) {
+            Logger.warn(`Execution ${executionId} not found`)
+            return {success: false}
+        }
+
         // Delete physical attachment files for this execution
         try {
             await this.attachmentService.deleteAttachmentsForTestResult(executionId)

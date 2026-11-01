@@ -2091,6 +2091,10 @@ describe('TestService', () => {
     })
 
     describe('deleteExecution', () => {
+        beforeEach(() => {
+            mockTestRepository.getTestResult.mockResolvedValue({id: 'exists'})
+        })
+
         it('should delete a specific execution successfully', async () => {
             const executionId = 'exec-123'
 
@@ -2115,19 +2119,15 @@ describe('TestService', () => {
             })
         })
 
-        it('should return success=false when execution not found', async () => {
+        it('should return success=false and touch no files when the execution row is missing', async () => {
             const executionId = 'non-existent-exec'
-
-            mockAttachmentService.deleteAttachmentsForTestResult.mockResolvedValue(0)
-            mockTestRepository.deleteByExecutionId.mockResolvedValue(0)
+            mockTestRepository.getTestResult.mockResolvedValue(null)
 
             const result = await testService.deleteExecution(executionId)
 
             expect(result).toEqual({success: false})
-            expect(mockAttachmentService.deleteAttachmentsForTestResult).toHaveBeenCalledWith(
-                executionId
-            )
-            expect(mockTestRepository.deleteByExecutionId).toHaveBeenCalledWith(executionId)
+            expect(mockAttachmentService.deleteAttachmentsForTestResult).not.toHaveBeenCalled()
+            expect(mockTestRepository.deleteByExecutionId).not.toHaveBeenCalled()
         })
 
         it('should continue deletion even if attachment deletion fails', async () => {

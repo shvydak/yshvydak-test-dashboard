@@ -2,6 +2,8 @@ import fs from 'fs'
 import path from 'path'
 import {v4 as uuidv4} from 'uuid'
 import {Logger} from '../utils/logger.util'
+import {resolveInside} from '../utils/security.util'
+import {detectRasterImage, type RasterImageType} from '../utils/imageType.util'
 
 export interface NoteImageMetadata {
     id: string
@@ -29,55 +31,44 @@ export class NoteImageManager {
     }
 
     private ensureTestDirectory(testId: string): string {
-        const testDir = path.join(this.noteImagesDir, testId)
+        const testDir = resolveInside(this.noteImagesDir, testId)
         if (!fs.existsSync(testDir)) {
             fs.mkdirSync(testDir, {recursive: true})
         }
         return testDir
     }
 
-    private getMimeType(filePath: string): string {
-        const ext = path.extname(filePath).toLowerCase()
-
-        const mimeTypes: {[key: string]: string} = {
-            '.png': 'image/png',
-            '.jpg': 'image/jpeg',
-            '.jpeg': 'image/jpeg',
-            '.gif': 'image/gif',
-            '.webp': 'image/webp',
-            '.bmp': 'image/bmp',
-            '.svg': 'image/svg+xml',
-        }
-
-        return mimeTypes[ext] || 'image/png'
-    }
-
-    private generateFileName(originalFileName?: string): string {
+    private generateFileName(type: RasterImageType, originalFileName?: string): string {
         const timestamp = Date.now()
         const random = Math.random().toString(36).substring(2, 8)
 
         if (originalFileName) {
-            const ext = path.extname(originalFileName).toLowerCase()
-            // Ensure we have a valid image extension
-            const validExts = ['.png', '.jpg', '.jpeg', '.gif', '.webp', '.bmp', '.svg']
-            const finalExt = validExts.includes(ext) ? ext : '.png'
-            const name = path.basename(originalFileName, path.extname(originalFileName))
-            return `${name}-${timestamp}-${random}${finalExt}`
+            // Base name only (no separators); the extension always comes from the sniffed type
+            const base = path.basename(originalFileName.replace(/\\/g, '/'))
+            const name = path
+                .basename(base, path.extname(base))
+                .replace(/[#?%\x00-\x1f]/g, '_')
+                .replace(/^\.+/, '')
+                .slice(0, 64)
+            if (name) return `${name}-${timestamp}-${random}${type.ext}`
         }
 
-        return `image-${timestamp}-${random}.png`
+        return `image-${timestamp}-${random}${type.ext}`
     }
 
     // Save image from buffer
     async saveImage(buffer: Buffer, testId: string, fileName?: string): Promise<NoteImageMetadata> {
+        const type = detectRasterImage(buffer)
+        if (!type) throw new Error('Unsupported image content (PNG, JPEG, GIF, WebP or BMP only)')
+
         const testDir = this.ensureTestDirectory(testId)
-        const finalFileName = this.generateFileName(fileName)
-        const filePath = path.join(testDir, finalFileName)
+        const finalFileName = this.generateFileName(type, fileName)
+        const filePath = resolveInside(testDir, finalFileName)
 
         // Write buffer to file
         await fs.promises.writeFile(filePath, buffer)
 
-        const mimeType = this.getMimeType(filePath)
+        const mimeType = type.mime
         const imageId = uuidv4()
 
         const metadata: NoteImageMetadata = {
@@ -102,7 +93,7 @@ export class NoteImageManager {
 
     // Get image file path
     getImagePath(testId: string, fileName: string): string {
-        return path.join(this.noteImagesDir, testId, fileName)
+        return resolveInside(resolveInside(this.noteImagesDir, testId), fileName)
     }
 
     // Check if image file exists
@@ -120,7 +111,7 @@ export class NoteImageManager {
             Logger.info(`Deleted note image: ${filePath}`)
 
             // Check if test directory is empty and remove it
-            const testDir = path.join(this.noteImagesDir, testId)
+            const testDir = resolveInside(this.noteImagesDir, testId)
             try {
                 const files = await fs.promises.readdir(testDir)
                 if (files.length === 0) {
@@ -139,7 +130,7 @@ export class NoteImageManager {
 
     // Delete all images for a test
     async deleteImagesByTestId(testId: string): Promise<number> {
-        const testDir = path.join(this.noteImagesDir, testId)
+        const testDir = resolveInside(this.noteImagesDir, testId)
 
         if (!fs.existsSync(testDir)) {
             return 0

@@ -613,16 +613,34 @@ describe('AttachmentManager', () => {
             expect(savedData.equals(binaryData)).toBe(true)
         })
 
-        it('should handle path traversal attempts safely', () => {
-            const maliciousFileName = '../../etc/passwd'
-            const filePath = manager.getAttachmentPath(testResultId, maliciousFileName)
-
-            // path.join() normalizes the path, so traversal will work
-            // The important thing is that the path construction is predictable
-            expect(filePath).toContain(tempDir)
-
-            // In production, this would be handled by Express static middleware
-            // which checks that requested paths are within the served directory
+        it('should refuse a file name that escapes the test directory', () => {
+            expect(() => manager.getAttachmentPath(testResultId, '../../etc/passwd')).toThrow(
+                /escapes/
+            )
+            expect(() => manager.getAttachmentPath(testResultId, '../other/x.png')).toThrow(
+                /escapes/
+            )
         })
+
+        it.each(['..', '../victim', '../../victim', '/abs'])(
+            'should refuse testResultId %j that escapes the storage dir',
+            async (badId) => {
+                const sentinelDir = path.join(tempDir, 'victim')
+                fs.mkdirSync(sentinelDir, {recursive: true})
+                fs.writeFileSync(path.join(sentinelDir, 'keep.txt'), 'keep')
+                const source = path.join(tempDir, 'src.png')
+                fs.writeFileSync(source, 'x')
+
+                await expect(manager.deleteTestAttachments(badId)).rejects.toThrow(/escapes/)
+                await expect(manager.deleteAttachment(badId, 'keep.txt')).rejects.toThrow(/escapes/)
+                await expect(
+                    manager.saveAttachment(Buffer.from('x'), badId, 'log')
+                ).rejects.toThrow(/escapes/)
+                await expect(
+                    manager.copyPlaywrightAttachment(source, badId, 'screenshot')
+                ).rejects.toThrow(/escapes/)
+                expect(fs.readFileSync(path.join(sentinelDir, 'keep.txt'), 'utf8')).toBe('keep')
+            }
+        )
     })
 })

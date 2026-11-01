@@ -3,6 +3,8 @@ import {NoteImageService} from '../services/noteImage.service'
 import {ResponseHelper} from '../utils/response.helper'
 import {Logger} from '../utils/logger.util'
 import {ServiceRequest} from '../types/api.types'
+import {isSafeId} from '../utils/security.util'
+import {detectRasterImage} from '../utils/imageType.util'
 
 export class NoteImageController {
     constructor(private noteImageService: NoteImageService) {}
@@ -13,15 +15,24 @@ export class NoteImageController {
             const {testId} = req.params
             const file = req.file
 
-            if (!testId) {
-                return ResponseHelper.error(res, 'Test ID is required', 'Missing test ID', 400)
+            if (!isSafeId(testId)) {
+                return ResponseHelper.error(res, 'Invalid testId', 'Invalid test ID', 400)
             }
 
             if (!file) {
                 return ResponseHelper.error(
                     res,
-                    'Image file is required',
+                    'Image file is required (PNG, JPEG, GIF, WebP or BMP)',
                     'Missing image file',
+                    400
+                )
+            }
+
+            if (!detectRasterImage(file.buffer)) {
+                return ResponseHelper.error(
+                    res,
+                    'Only PNG, JPEG, GIF, WebP or BMP images are allowed',
+                    'Unsupported image content',
                     400
                 )
             }
@@ -45,8 +56,8 @@ export class NoteImageController {
         try {
             const {testId} = req.params
 
-            if (!testId) {
-                return ResponseHelper.error(res, 'Test ID is required', 'Missing test ID', 400)
+            if (!isSafeId(testId)) {
+                return ResponseHelper.error(res, 'Invalid testId', 'Invalid test ID', 400)
             }
 
             const images = await this.noteImageService.getImages(testId)
@@ -68,12 +79,12 @@ export class NoteImageController {
         try {
             const {testId, imageId} = req.params
 
-            if (!testId) {
-                return ResponseHelper.error(res, 'Test ID is required', 'Missing test ID', 400)
+            if (!isSafeId(testId)) {
+                return ResponseHelper.error(res, 'Invalid testId', 'Invalid test ID', 400)
             }
 
-            if (!imageId) {
-                return ResponseHelper.error(res, 'Image ID is required', 'Missing image ID', 400)
+            if (!isSafeId(imageId)) {
+                return ResponseHelper.error(res, 'Image ID is invalid', 'Invalid image ID', 400)
             }
 
             await this.noteImageService.deleteImage(imageId)

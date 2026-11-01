@@ -340,8 +340,8 @@ export class TestController {
         try {
             const {executionId} = req.params
 
-            if (!executionId) {
-                return ResponseHelper.badRequest(res, 'Missing executionId parameter')
+            if (!isSafeId(executionId)) {
+                return ResponseHelper.badRequest(res, 'Invalid executionId')
             }
 
             const result = await this.testService.deleteExecution(executionId)

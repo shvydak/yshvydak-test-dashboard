@@ -6,6 +6,7 @@ import {Logger} from '../utils/logger.util'
 import {ServiceRequest} from '../types/api.types'
 import {ProcessStartData, ProcessEndData, LiveTestResult} from '@yshvydak/core'
 import {activeProcessesTracker} from '../services/activeProcesses.service'
+import {runProcessRegistry} from '../services/runProcessRegistry.service'
 import {respondIfAlreadyRunning, respondIfCIRunQueued} from '../utils/ciRunQueued.util'
 import {respondIfRunCancelled} from '../utils/runStop.util'
 import {getWebSocketManager} from '../websocket/server'
@@ -13,6 +14,7 @@ import path from 'path'
 import {config} from '../config/environment.config'
 import {DEFAULT_LIMITS, SEARCH_MIN_QUERY_LENGTH} from '../config/constants'
 import {isSafeCliPath, isSafeId} from '../utils/security.util'
+import {MAX_WORKERS_MESSAGE, parseMaxWorkers} from '../utils/maxWorkers.util'
 
 export class TestController {
     constructor(
@@ -32,9 +34,12 @@ export class TestController {
                     400
                 )
             }
+            this.testService.assertResetDiscoveryAllowed(mode)
             const result = await this.testService.discoverTests(project, mode)
             return ResponseHelper.success(res, result)
         } catch (error) {
+            if (respondIfAlreadyRunning(res, error)) return res
+
             Logger.error('Error during test discovery', error)
             return ResponseHelper.error(
                 res,
@@ -64,7 +69,12 @@ export class TestController {
     // POST /api/tests/run-all - Run all tests
     runAllTests = async (req: ServiceRequest, res: Response): Promise<void> => {
         try {
-            const {maxWorkers, skipAutoDiscovery, project, source} = req.body
+            const {skipAutoDiscovery, project, source} = req.body
+            const maxWorkers = parseMaxWorkers(req.body.maxWorkers)
+            if (maxWorkers === null) {
+                ResponseHelper.badRequest(res, MAX_WORKERS_MESSAGE)
+                return
+            }
             const result = await this.testService.runAllTests(
                 maxWorkers,
                 skipAutoDiscovery,
@@ -132,12 +142,22 @@ export class TestController {
     // POST /api/tests/run-group - Run tests from a specific file/group
     runTestGroup = async (req: ServiceRequest, res: Response): Promise<Response> => {
         try {
-            const {filePath, maxWorkers, testNames} = req.body
+            const {filePath, testNames} = req.body
             if (!filePath) {
                 return ResponseHelper.badRequest(res, 'Missing filePath parameter')
             }
             if (!isSafeCliPath(filePath, config.playwright.projectDir)) {
                 return ResponseHelper.badRequest(res, 'Invalid filePath')
+            }
+            const maxWorkers = parseMaxWorkers(req.body.maxWorkers)
+            if (maxWorkers === null) {
+                return ResponseHelper.badRequest(res, MAX_WORKERS_MESSAGE)
+            }
+            if (!(await this.testService.isKnownSpecFile(filePath))) {
+                return ResponseHelper.badRequest(
+                    res,
+                    `Unknown spec file: ${filePath}. Use a path exactly as listed in the dashboard (run Discover Tests if the file is new)`
+                )
             }
 
             const result = await this.testService.runTestGroup(filePath, maxWorkers, testNames)
@@ -564,7 +584,12 @@ export class TestController {
     rerunTest = async (req: ServiceRequest, res: Response): Promise<void> => {
         try {
             const {id} = req.params
-            const {maxWorkers, project} = req.body
+            const {project} = req.body
+            const maxWorkers = parseMaxWorkers(req.body.maxWorkers)
+            if (maxWorkers === null) {
+                ResponseHelper.badRequest(res, MAX_WORKERS_MESSAGE)
+                return
+            }
             const result = await this.testService.rerunTest(id, maxWorkers, project)
 
             ResponseHelper.success(res, result, 'Test rerun started')
@@ -843,6 +868,7 @@ export class TestController {
 
             // Force reset
             activeProcessesTracker.forceReset()
+            const deadRunsCleared = runProcessRegistry.clearDead()
             this.testService.requestQueueDrain()
 
             // Get state after reset
@@ -862,6 +888,7 @@ export class TestController {
                 {
                     before: stateBefore,
                     after: stateAfter,
+                    deadRunsCleared,
                 },
                 'Force reset completed successfully'
             )

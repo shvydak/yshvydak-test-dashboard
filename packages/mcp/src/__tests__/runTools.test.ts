@@ -205,6 +205,22 @@ describe('run_test_file', () => {
         ])
     })
 
+    it('relays the dashboard 400 reason (unknown spec file)', async () => {
+        const stack = stackWith({
+            start: {
+                status: 400,
+                json: {
+                    success: false,
+                    message: 'Unknown spec file: tests/checkout.spec.ts. Run Discover',
+                },
+            },
+        })
+        const res = await stack.tool('run_test_file')({filePath: 'tests/checkout.spec.ts'})
+        expect(res.isError).toBe(true)
+        expect(JSON.stringify(res)).toContain('Not started')
+        expect(JSON.stringify(res)).toContain('Unknown spec file: tests/checkout.spec.ts')
+    })
+
     it('omits testNames when not given', async () => {
         const stack = stackWith({})
         await stack.tool('run_test_file')({filePath: 'tests/checkout.spec.ts'})

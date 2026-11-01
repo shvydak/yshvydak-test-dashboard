@@ -397,6 +397,16 @@ export class TestRepository extends BaseRepository implements ITestRepository {
         return this.dbManager.getDataStats()
     }
 
+    /** Exact (case-sensitive) match against stored results or the discovery catalog. */
+    async isKnownSpecFile(filePath: string): Promise<boolean> {
+        const row = await this.queryOne<{found: number}>(
+            `SELECT 1 AS found WHERE EXISTS (SELECT 1 FROM test_results WHERE file_path = ?)
+                 OR EXISTS (SELECT 1 FROM test_catalog WHERE file_path = ?)`,
+            [filePath, filePath]
+        )
+        return row !== undefined && row !== null
+    }
+
     async getProjectByFilePath(filePath: string): Promise<string> {
         const row = await this.queryOne<{project: string}>(
             `SELECT project FROM test_results WHERE file_path = ? AND project != '' ORDER BY created_at DESC LIMIT 1`,

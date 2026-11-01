@@ -46,6 +46,24 @@ export function isSafeCliPath(value: unknown, baseDir: string): value is string 
     return rel !== '' && !rel.startsWith('..') && !path.isAbsolute(rel)
 }
 
+// Reporter-normalized spec paths lose one of these testDir prefixes (core normalizeTestPath).
+const TEST_DIR_PREFIXES = ['', 'e2e/tests/', 'tests/', 'e2e/']
+
+const escapeRegex = (value: string) => value.replace(/[.*+?^${}()|[\]\\/]/g, '\\$&')
+
+/**
+ * Playwright reads a file arg as a `gi` regex on the absolute path: pin the full real path (the
+ * child's cwd is symlink-resolved) once the file is found on disk, else a path-segment anchor.
+ */
+export function anchoredSpecFilter(filePath: string, projectDir: string): string {
+    const onDisk = TEST_DIR_PREFIXES.map((prefix) => prefix + filePath).filter((candidate) =>
+        fs.existsSync(path.join(projectDir, candidate))
+    )
+    if (onDisk.length === 0) return `/(^|\\/)(${escapeRegex(filePath)})$/`
+    const roots = [...new Set([realpathOrSelf(projectDir), path.resolve(projectDir)])]
+    return `/^(${roots.map(escapeRegex).join('|')})\\/(${onDisk.map(escapeRegex).join('|')})$/`
+}
+
 // Server-only secrets: never inherited by the spawned Playwright process (test code can read its env).
 export const SERVER_SECRET_ENV = [
     'JWT_SECRET',

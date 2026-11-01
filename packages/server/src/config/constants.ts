@@ -53,6 +53,9 @@ export const PLAYWRIGHT_CONSTANTS = {
     REPORTER_PACKAGE_NAME: 'playwright-dashboard-reporter',
 } as const
 
+// Same cap as the per-tab `workers` setting in the web UI.
+export const MAX_WORKERS = 16
+
 export const RUN_STOP = {
     /** SIGINT lets Playwright run its teardown; the group is SIGKILLed if it ignores it this long. */
     KILL_AFTER_MS: 20_000,

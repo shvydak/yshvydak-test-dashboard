@@ -26,10 +26,11 @@ vi.mock('child_process', () => ({
 }))
 
 // Mock fs module for validation tests
-vi.mock('fs', () => ({
-    existsSync: vi.fn(),
-    readFileSync: vi.fn(),
-}))
+vi.mock('fs', () => {
+    const existsSync = vi.fn()
+    // security.util imports fs as a default export
+    return {existsSync, readFileSync: vi.fn(), default: {existsSync}}
+})
 
 // Mock config
 vi.mock('../../config/environment.config', () => ({
@@ -1105,12 +1106,17 @@ describe('PlaywrightService', () => {
             // Assert
             expect(mockSpawn).toHaveBeenCalledWith(
                 'npx',
-                ['playwright', 'test', 'auth.spec.ts', '--reporter=playwright-dashboard-reporter'],
+                [
+                    'playwright',
+                    'test',
+                    '/(^|\\/)(auth\\.spec\\.ts)$/',
+                    '--reporter=playwright-dashboard-reporter',
+                ],
                 expect.anything()
             )
         })
 
-        it('should pass file path unchanged to Playwright', async () => {
+        it('should pass an anchored, escaped file filter to Playwright', async () => {
             // Arrange
             const mockProcess = createMockProcess('')
             mockSpawn.mockReturnValue(mockProcess)
@@ -1118,12 +1124,11 @@ describe('PlaywrightService', () => {
             // Act
             await service.runTestGroup('auth.spec.ts')
 
-            // Assert - path is passed as-is, Playwright handles resolution
             const args = mockSpawn.mock.calls[0][1]
-            expect(args[2]).toBe('auth.spec.ts')
+            expect(args[2]).toBe('/(^|\\/)(auth\\.spec\\.ts)$/')
         })
 
-        it('should pass full paths unchanged to Playwright', async () => {
+        it('should anchor full paths too', async () => {
             // Arrange
             const mockProcess = createMockProcess('')
             mockSpawn.mockReturnValue(mockProcess)
@@ -1131,9 +1136,8 @@ describe('PlaywrightService', () => {
             // Act
             await service.runTestGroup('e2e/tests/auth.spec.ts')
 
-            // Assert - full paths are also passed unchanged
             const args = mockSpawn.mock.calls[0][1]
-            expect(args[2]).toBe('e2e/tests/auth.spec.ts')
+            expect(args[2]).toBe('/(^|\\/)(e2e\\/tests\\/auth\\.spec\\.ts)$/')
         })
 
         it('should include maxWorkers when provided', async () => {
@@ -1189,7 +1193,7 @@ describe('PlaywrightService', () => {
             const grepIndex = args.indexOf('--grep')
             const grepPattern = args[grepIndex + 1]
             expect(grepPattern).toBe(
-                '(?<!\\S)Login Test(?:\\s+@\\S+)*$|(?<!\\S)Logout Test(?:\\s+@\\S+)*$'
+                '/(?<!\\S)Login Test(?:\\s+@\\S+)*$|(?<!\\S)Logout Test(?:\\s+@\\S+)*$/'
             )
         })
 
@@ -1259,7 +1263,7 @@ describe('PlaywrightService', () => {
             const args = mockSpawn.mock.calls[0][1]
             const grepIndex = args.indexOf('--grep')
             const grepPattern = args[grepIndex + 1]
-            expect(grepPattern).toBe('(?<!\\S)Single Test(?:\\s+@\\S+)*$')
+            expect(grepPattern).toBe('/(?<!\\S)Single Test(?:\\s+@\\S+)*$/')
         })
     })
 
@@ -1281,9 +1285,9 @@ describe('PlaywrightService', () => {
                 [
                     'playwright',
                     'test',
-                    'auth.spec.ts',
+                    '/(^|\\/)(auth\\.spec\\.ts)$/',
                     '--grep',
-                    '(?<!\\S)should login successfully(?:\\s+@\\S+)*$', // Title anchored at end so prefix-sharing tests are not selected
+                    '/(?<!\\S)should login successfully(?:\\s+@\\S+)*$/', // Title anchored at end so prefix-sharing tests are not selected
                     '--reporter=json,playwright-dashboard-reporter',
                 ],
                 expect.anything()
@@ -1353,7 +1357,7 @@ describe('PlaywrightService', () => {
             expect(grepIndex).toBeGreaterThan(-1)
             // Special characters should be escaped
             expect(args[grepIndex + 1]).toBe(
-                '(?<!\\S)test with \\(parentheses\\) and \\[brackets\\](?:\\s+@\\S+)*$'
+                '/(?<!\\S)test with \\(parentheses\\) and \\[brackets\\](?:\\s+@\\S+)*$/'
             )
         })
 
@@ -1369,10 +1373,12 @@ describe('PlaywrightService', () => {
             const grepIndex = args.indexOf('--grep')
             expect(grepIndex).toBeGreaterThan(-1)
             // Pattern anchors the title at the end of Playwright's combined title string
-            expect(args[grepIndex + 1]).toBe('(?<!\\S)Successful Login(?:\\s+@\\S+)*$')
+            expect(args[grepIndex + 1]).toBe('/(?<!\\S)Successful Login(?:\\s+@\\S+)*$/')
 
             // Guard the actual matching semantics, not just the pattern shape
-            const regex = new RegExp(args[grepIndex + 1])
+            // Playwright turns /body/ (no flags) into new RegExp(body): case-sensitive
+            const regex = new RegExp(args[grepIndex + 1].slice(1, -1))
+            expect(regex.test('chromium login.spec.ts successful login')).toBe(false)
             expect(regex.test('chromium login.spec.ts Successful Login')).toBe(true)
             expect(regex.test('chromium login.spec.ts Successful Login @smoke')).toBe(true)
             expect(regex.test('chromium login.spec.ts Unsuccessful Login with invalid email')).toBe(

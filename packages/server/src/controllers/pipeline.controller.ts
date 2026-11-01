@@ -5,6 +5,7 @@ import {Logger} from '../utils/logger.util'
 import {ServiceRequest} from '../types/api.types'
 import {parseCIPipelineName} from '../utils/ciPipeline.util'
 import {respondIfCIRunQueued} from '../utils/ciRunQueued.util'
+import {MAX_WORKERS_MESSAGE, parseMaxWorkers} from '../utils/maxWorkers.util'
 
 export class PipelineController {
     constructor(private pipelineExecutionService: PipelineExecutionService) {}
@@ -12,7 +13,12 @@ export class PipelineController {
     // POST /api/pipeline/run - Start the configured CI pipeline (ordered multi-project run)
     runPipeline = async (req: ServiceRequest, res: Response): Promise<void> => {
         try {
-            const {maxWorkers, source, pipeline: pipelineName, notify} = req.body
+            const {source, pipeline: pipelineName, notify} = req.body
+            const maxWorkers = parseMaxWorkers(req.body.maxWorkers)
+            if (maxWorkers === null) {
+                ResponseHelper.badRequest(res, MAX_WORKERS_MESSAGE)
+                return
+            }
             const parsedPipeline = parseCIPipelineName(pipelineName)
             if (!parsedPipeline) {
                 ResponseHelper.badRequest(

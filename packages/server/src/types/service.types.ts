@@ -174,6 +174,7 @@ export interface ITestRepository {
     getAttachmentsSizeForIds(ids: string[]): Promise<{total: number; perId: Record<string, number>}>
     deleteByIds(ids: string[]): Promise<number>
     getProjectByFilePath(filePath: string): Promise<string>
+    isKnownSpecFile(filePath: string): Promise<boolean>
     // Per-project bulk clear ("Clear Project Data")
     getExecutionIdsByProject(project: string): Promise<string[]>
     getDistinctTestIdsByProject(project: string): Promise<string[]>

@@ -20,6 +20,7 @@ interface Entry extends RegisteredRun {
     child: ChildProcess
     closed: Promise<void>
     killTimer?: ReturnType<typeof setTimeout>
+    release: () => void
 }
 
 const CANCELLED_KEPT = 500
@@ -29,6 +30,25 @@ function delay(ms: number): Promise<void> {
         const timer = setTimeout(resolve, ms)
         timer.unref?.()
     })
+}
+
+function pidExists(pid: number): boolean {
+    try {
+        process.kill(pid, 0)
+        return true
+    } catch (error) {
+        // EPERM = exists but not ours
+        return (error as NodeJS.ErrnoException).code === 'EPERM'
+    }
+}
+
+// Gone = the child exited, or its pid and process group no longer exist. No pid and no exit = unknown, kept.
+function isGone({child, pgid}: Entry): boolean {
+    const exited = typeof child.exitCode === 'number' || !!child.signalCode
+    if (pgid === undefined) return exited
+    const groupAlive = pidExists(-pgid)
+    if (exited) return !groupAlive
+    return !pidExists(pgid) && !groupAlive
 }
 
 // runId -> ChildProcess (the busy source), cancel flags for reporter endpoints, and the stop generation.
@@ -54,6 +74,7 @@ export class RunProcessRegistry {
             startedAt: new Date().toISOString(),
             child,
             closed,
+            release: () => done(),
         }
 
         const done = () => {
@@ -88,8 +109,23 @@ export class RunProcessRegistry {
     getRuns(): RegisteredRun[] {
         return Array.from(
             this.runs.values(),
-            ({child: _child, closed: _closed, killTimer: _t, ...run}) => run
+            ({child: _child, closed: _closed, killTimer: _t, release: _r, ...run}) => run
         )
+    }
+
+    /**
+     * Force-reset: drops entries whose process is gone but never sent `close` (they keep the
+     * dashboard busy forever). A live child or group is never touched. Returns the dropped runIds.
+     */
+    clearDead(): string[] {
+        const cleared: string[] = []
+        for (const entry of Array.from(this.runs.values())) {
+            if (!isGone(entry)) continue
+            Logger.warn(`Force reset: dropping dead run ${entry.runId} (process is gone)`)
+            entry.release()
+            cleared.push(entry.runId)
+        }
+        return cleared
     }
 
     getPgids(): number[] {

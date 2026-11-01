@@ -135,6 +135,8 @@ Runs `playwright test --list` and records what it found in `test_catalog` (one r
 - `reset` (Run All's pre-discovery, server auto-discover, pipeline steps): pending rows are rebuilt, so every listed test starts as `pending`. Makes no Jira call.
 - `incremental` (tests-page Discover button, Settings > Discover Tests; both scan all projects): existing tests keep their last status. A test gets a `pending` row only when it has no row at all, or its latest row is in a project the spec no longer runs in (e.g. `@to-fix` added or removed moves it between projects). Afterwards a full Jira sync runs in the background and `jira:synced` is broadcast when it ends. If a background sync was already running it is joined, so a tag added just now may wait for the next 30-minute sync.
 
+`reset` discovery answers 409 `TESTS_ALREADY_RUNNING` (same body as the run routes) while a run is active, starting or being stopped: it deletes and re-inserts pending rows, which would hide the running run's results. `incremental` stays allowed. Run All's own pre-discovery is not affected.
+
 A failed `--list` (non-zero exit, e.g. a spec file that throws on import) answers 500 and changes nothing: no pending delete, no catalog write. Stale catalog rows (tests the scan no longer lists) are pruned only after an all-projects scan (`incremental`, or an unscoped `reset`) and only in projects where it found at least one test; a project-scoped `reset` (tab Run All, pipeline step) never prunes, because it cannot see a test that moved to another project.
 
 **Response:**
@@ -487,7 +489,7 @@ Execute all tests in the project.
 
 **Parameters:**
 
-- `maxWorkers` (optional) - Maximum number of parallel workers
+- `maxWorkers` (optional) - Integer 1-16; anything else → 400. Default: Playwright config
 - `project` (optional) - Playwright project name to run (e.g. `"All_Tests"`, `"Sanity"`). When omitted, all projects are run
 
 **Response (200 - Success):**
@@ -541,8 +543,8 @@ Execute a group of tests by file path, with optional filtering by test names.
 
 **Parameters:**
 
-- `filePath` (required) - Path to the test file relative to Playwright's testDir (e.g., `"api/actions.spec.ts"` or `"auth.spec.ts"`). Paths are determined by your Playwright project structure. Values starting with `-` or resolving outside `PLAYWRIGHT_PROJECT_DIR` are rejected with 400 (they would reach the Playwright CLI as options).
-- `maxWorkers` (optional) - Maximum number of parallel workers (default: Playwright config)
+- `filePath` (required) - A spec path exactly as the dashboard lists it (the `filePath` of a test, e.g. `"api/actions.spec.ts"`; case-sensitive). Playwright would read a file argument as an unanchored regex, so the server accepts only a path found in stored results or the discovery catalog (else 400 `Unknown spec file`; run Discover Tests for a new file) and passes Playwright an escaped pattern that pins the file's full real path (anchored, no flags) so only that file runs when the file is found on disk (under the project dir, with or without `e2e/tests/`, `tests/`, `e2e/`). If it is not found, the pattern falls back to a path-segment anchor and can also select a same-named file in a deeper folder (`orders/a.spec.ts` also selects `x/orders/a.spec.ts`). Known limit: with a custom testDir, a path as stored plus a file with the same relative path at the project root outside testDir pins the wrong file and Playwright finds 0 tests (the run fails); a full fix needs the real testDir. Values starting with `-` or resolving outside `PLAYWRIGHT_PROJECT_DIR` are rejected with 400.
+- `maxWorkers` (optional) - Integer 1-16 (the Settings per-tab cap); anything else → 400. Default: Playwright config
 - `testNames` (optional) - Array of test names to run. When provided, only specified tests are executed using Playwright's `--grep` flag
 
 **Response (200 - Success):**
@@ -613,7 +615,7 @@ Execute a group of tests by file path, with optional filtering by test names.
 
 ### POST /api/tests/:id/rerun
 
-Rerun a specific test by ID.
+Rerun a specific test by ID. Optional body `{"maxWorkers"?: 1-16}` (else 400). The rerun's file is passed to Playwright as an anchored pattern, like `run-group`.
 
 **Response:**
 
@@ -1707,7 +1709,7 @@ Starts a pipeline; the steps run in the background, one tab after another. It ca
 | Field        | Notes                                                                                                              |
 | ------------ | ------------------------------------------------------------------------------------------------------------------ |
 | `pipeline`   | `develop` or `production`; missing → `develop`, unknown → 400                                                      |
-| `maxWorkers` | optional; a tab's own `workers` override wins                                                                      |
+| `maxWorkers` | optional integer 1-16 (else 400); a tab's own `workers` override wins                                              |
 | `source`     | `script` = CI caller: subject to the auto-run pause and eligible for queueing                                      |
 | `notify`     | `true` = post the result to Slack when the pipeline ends (needs `CI_SLACK_WEBHOOK_URL`) and queue instead of a 409 |
 
@@ -1876,17 +1878,20 @@ Mark a test process as completed.
 
 ### POST /api/tests/force-reset
 
-Emergency endpoint to clear all active processes. Also lets a queued CI request start if the cleared entries were what kept the dashboard busy.
+Emergency reset. It clears the progress tracker (`activeProcessesTracker`, what the UI shows) and drops run-registry entries whose process is gone (the child exited and its process group is gone, or both its pid and its process group are gone; an exited leader whose workers still run is kept) but never sent `close`, which would otherwise keep the dashboard busy forever; then it asks the CI queue to drain. A live Playwright process is never killed or dropped: stop it with Stop. A queued CI request starts only when a dead entry was what kept the dashboard busy.
 
 **Response:**
 
 ```json
 {
-    "status": "success",
+    "success": true,
     "data": {
-        "message": "All processes force-reset",
-        "cleared": 3
-    }
+        "before": {"activeRuns": [], "activeGroups": [], "isAnyProcessRunning": false},
+        "after": {"activeRuns": [], "activeGroups": [], "isAnyProcessRunning": false},
+        "deadRunsCleared": ["<runId of each dropped registry entry>"]
+    },
+    "message": "Force reset completed successfully",
+    "timestamp": "2026-11-01T12:00:00.000Z"
 }
 ```
 

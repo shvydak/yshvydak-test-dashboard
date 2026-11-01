@@ -120,7 +120,7 @@ Settings > Project Tabs assigns each tab to the `develop` and/or `production` pi
 node scripts/trigger-test-run.js --pipeline develop --wait
 ```
 
-Options: `--pipeline develop|production` (default `develop`), `--max-workers <n>`, `--wait`, `--timeout <seconds>`, `--silent`. Exit codes: 0 success, 1 stopped on a blocking failure / API error / timeout, 2 CI auto-run paused, 3 configuration error, 4 authentication error. A final `::PIPELINE_RESULT::{...}` JSON line is always printed. The script reads `BASE_URL`, `ADMIN_EMAIL` and `ADMIN_PASSWORD` from the repo-root `.env`, so it has to run where that file exists. `scripts/trigger-test-run.sh` is a wrapper.
+Options: `--pipeline develop|production` (default `develop`), `--max-workers <1-16>`, `--wait`, `--timeout <seconds>`, `--silent`. Exit codes: 0 success, 1 stopped on a blocking failure / API error / timeout, 2 CI auto-run paused, 3 configuration error, 4 authentication error. A final `::PIPELINE_RESULT::{...}` JSON line is always printed. The script reads `BASE_URL`, `ADMIN_EMAIL` and `ADMIN_PASSWORD` from the repo-root `.env`, so it has to run where that file exists. `scripts/trigger-test-run.sh` is a wrapper.
 
 Endpoints: `POST /api/pipeline/run` (`{pipeline, maxWorkers, source, notify}`; an unknown pipeline name is a 400), `GET /api/pipeline/status/current`, `GET /api/pipeline/status/:pipelineRunId` — see [API_REFERENCE.md](docs/API_REFERENCE.md#ci-pipelines).
 

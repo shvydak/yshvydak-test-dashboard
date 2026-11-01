@@ -110,6 +110,23 @@ export async function downloadProtectedFile(url: string): Promise<string> {
     return URL.createObjectURL(blob)
 }
 
+// Like createProtectedFileURL, plus the blob's MIME type (what the server declared)
+export async function createProtectedFileBlob(
+    relativePath: string,
+    baseUrl: string
+): Promise<{url: string; type: string}> {
+    const cleanPath = relativePath.startsWith('/') ? relativePath : `/${relativePath}`
+    const cleanBaseUrl = baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl
+    const response = await authFetch(`${cleanBaseUrl}${cleanPath}`)
+
+    if (!response.ok) {
+        throw new Error(`Failed to download file: ${response.status}`)
+    }
+
+    const blob = await response.blob()
+    return {url: URL.createObjectURL(blob), type: blob.type}
+}
+
 // Create blob URL for protected static file
 export async function createProtectedFileURL(
     relativePath: string,

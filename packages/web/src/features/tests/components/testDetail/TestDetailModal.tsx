@@ -47,6 +47,7 @@ export function TestDetailModal({test, isOpen, onClose, onNoteDirtyChange}: Test
     const selectedExecutionId = useTestsStore((state) => state.selectedExecutionId)
     const selectExecution = useTestsStore((state) => state.selectExecution)
     const rerunTest = useTestsStore((state) => state.rerunTest)
+    const fetchTests = useTestsStore((state) => state.fetchTests)
     const deleteTest = useTestsStore((state) => state.deleteTest)
     const deleteExecution = useTestsStore((state) => state.deleteExecution)
     const runningTests = useTestsStore((state) => state.runningTests)
@@ -136,6 +137,14 @@ export function TestDetailModal({test, isOpen, onClose, onNoteDirtyChange}: Test
           ? executions[0]
           : test
 
+    // The modal can switch to another test while open (palette, back/forward): drop the old pick
+    const shownTestId = useRef(test?.testId)
+    useEffect(() => {
+        if (shownTestId.current === test?.testId) return
+        shownTestId.current = test?.testId
+        selectExecution(null)
+    }, [test?.testId, selectExecution])
+
     const {attachments, loading, error, setError} = useTestAttachments(
         currentExecution?.id || null,
         isOpen
@@ -183,8 +192,8 @@ export function TestDetailModal({test, isOpen, onClose, onNoteDirtyChange}: Test
         onTestsDeleted: handleTestsDeleted,
     })
 
-    const handleRerun = async (testId: string) => {
-        await rerunTest(testId)
+    const handleRerun = async (executionId: string) => {
+        await rerunTest(executionId, test?.project)
     }
 
     const handleClose = () => {
@@ -308,6 +317,8 @@ export function TestDetailModal({test, isOpen, onClose, onNoteDirtyChange}: Test
         // nothing else (websocket, fetchTests) would ever refresh it otherwise
         queryClient.invalidateQueries({queryKey: ['filtered-tests-by-status']})
         queryClient.invalidateQueries({queryKey: ['test-status-counts']})
+        // The store list carries the row's note preview
+        fetchTests()
         refetchHistory()
     }
 
@@ -320,6 +331,7 @@ export function TestDetailModal({test, isOpen, onClose, onNoteDirtyChange}: Test
         // filter-bar count (see handleSaveNote)
         queryClient.invalidateQueries({queryKey: ['filtered-tests-by-status']})
         queryClient.invalidateQueries({queryKey: ['test-status-counts']})
+        fetchTests()
         refetchHistory()
     }
 

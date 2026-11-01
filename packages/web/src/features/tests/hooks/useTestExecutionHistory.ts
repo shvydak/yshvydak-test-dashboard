@@ -29,10 +29,17 @@ export function useTestExecutionHistory(testId: string): UseTestExecutionHistory
     // same test runs in the background (no skeleton) and keeps the loaded pages.
     const loadedTestIdRef = useRef<string | null>(null)
     const loadedCountRef = useRef(0)
+    // Bumped when the test changes: a loadMore started for the old test must not append to the new one
+    const testGenerationRef = useRef(0)
 
     const refetch = useCallback(() => {
         setRefreshTrigger((prev) => prev + 1)
     }, [])
+
+    useEffect(() => {
+        testGenerationRef.current++
+        setLoadingMore(false)
+    }, [testId])
 
     useEffect(() => {
         loadedCountRef.current = executions.length
@@ -97,6 +104,8 @@ export function useTestExecutionHistory(testId: string): UseTestExecutionHistory
         const cursor = last?.createdAt || last?.timestamp
         if (!cursor) return
 
+        const generation = testGenerationRef.current
+        const isCurrent = () => generation === testGenerationRef.current
         const fetchMore = async () => {
             setLoadingMore(true)
             try {
@@ -104,8 +113,10 @@ export function useTestExecutionHistory(testId: string): UseTestExecutionHistory
                     `${config.api.serverUrl}/api/tests/${testId}/history?limit=${PAGE_SIZE}&byTestId=true&before=${encodeURIComponent(cursor)}`
                 )
 
+                if (!isCurrent()) return
                 if (response.ok) {
                     const data = await response.json()
+                    if (!isCurrent()) return
                     const next: TestResult[] = data.data || []
                     // Guard against duplicate ids if executions arrive concurrently.
                     setExecutions((prev) => {
@@ -117,9 +128,9 @@ export function useTestExecutionHistory(testId: string): UseTestExecutionHistory
                     setError('Failed to load more history')
                 }
             } catch (err) {
-                setError(err instanceof Error ? err.message : 'Unknown error')
+                if (isCurrent()) setError(err instanceof Error ? err.message : 'Unknown error')
             } finally {
-                setLoadingMore(false)
+                if (isCurrent()) setLoadingMore(false)
             }
         }
 

@@ -29,6 +29,13 @@ export function buildAuthenticatedAttachmentUrl(
     return buildAttachmentUrl(baseUrl, attachmentPath)
 }
 
+// A blob URL opened in a tab runs on the app origin (no nosniff/CSP): only raster images, never SVG.
+const SAFE_TAB_IMAGE_TYPES = new Set(['image/png', 'image/jpeg', 'image/gif', 'image/webp'])
+
+export function canOpenBlobInTab(blobType: string | undefined): boolean {
+    return !!blobType && SAFE_TAB_IMAGE_TYPES.has(blobType)
+}
+
 export function getAttachmentIcon(type: string): string {
     switch (type) {
         case 'video':

@@ -87,6 +87,7 @@ export function useWebSocket(url: string | null, options?: WebSocketOptions) {
         setGroupRunning,
         setTestRunning,
         setRunningAllTests,
+        applyRunSnapshot,
         updateProgress,
         applyLiveResult,
         clearProgress,
@@ -98,36 +99,28 @@ export function useWebSocket(url: string | null, options?: WebSocketOptions) {
     // Set by disconnect(): a close we caused (unmount, URL null) must never reconnect, whatever
     // its close code (a socket closed while CONNECTING reports 1006, not 1000).
     const closedByUs = useRef(false)
+    // The socket outlives renders: dispatch through refs so callbacks are never from connect time.
+    const optionsRef = useRef(options)
+    optionsRef.current = options
+    const handleMessageRef = useRef<(message: WebSocketMessage) => void>(() => {})
 
     const handleConnectionStatus = (statusData: any) => {
-        const {activeRuns, activeGroups: _activeGroups, isAnyProcessRunning} = statusData
+        const {activeRuns, isAnyProcessRunning} = statusData
+        const runs: any[] = isAnyProcessRunning && Array.isArray(activeRuns) ? activeRuns : []
 
-        // Clear all current running states first
-        setRunningAllTests(false)
+        // The snapshot is the truth: a missed run:completed must not leave a stuck spinner.
+        applyRunSnapshot({
+            isRunningAll: runs.some((run) => run.type === 'run-all'),
+            testIds: runs
+                .filter((run) => run.type === 'rerun' && run.details?.originalTestId)
+                .map((run) => run.details.originalTestId),
+            filePaths: runs
+                .filter((run) => run.type === 'run-group' && run.details?.filePath)
+                .map((run) => run.details.filePath),
+        })
 
-        // Clear any existing running test/group states
-        // Note: In a real implementation, we might want to track and clear these individually
-        // For now, we rely on the store to handle this properly
-
-        // Restore states based on active processes
-        if (isAnyProcessRunning && activeRuns.length > 0) {
-            activeRuns.forEach((run: any) => {
-                switch (run.type) {
-                    case 'run-all':
-                        setRunningAllTests(true)
-                        break
-                    case 'run-group':
-                        if (run.details.filePath) {
-                            setGroupRunning(run.details.filePath, true)
-                        }
-                        break
-                    case 'rerun':
-                        if (run.details.originalTestId) {
-                            setTestRunning(run.details.originalTestId, true)
-                        }
-                        break
-                }
-
+        if (runs.length > 0) {
+            runs.forEach((run) => {
                 // Restore progress if available
                 if (run.progress) {
                     updateProgress(run.progress)
@@ -168,7 +161,7 @@ export function useWebSocket(url: string | null, options?: WebSocketOptions) {
                 try {
                     const message: WebSocketMessage = JSON.parse(event.data)
                     setLastMessage(message)
-                    handleMessage(message)
+                    handleMessageRef.current(message)
                 } catch (error) {
                     console.error('Error parsing WebSocket message:', error)
                 }
@@ -206,8 +199,8 @@ export function useWebSocket(url: string | null, options?: WebSocketOptions) {
                 fetchRuns()
 
                 // Notify about run completion if it's a rerun
-                if (message.data?.isRerun && options?.onRunCompleted) {
-                    options.onRunCompleted(message.data)
+                if (message.data?.isRerun && optionsRef.current?.onRunCompleted) {
+                    optionsRef.current.onRunCompleted(message.data)
                 }
                 break
 
@@ -222,8 +215,8 @@ export function useWebSocket(url: string | null, options?: WebSocketOptions) {
                 fetchRuns()
 
                 // Notify about run completion
-                if (options?.onRunCompleted) {
-                    options.onRunCompleted(message.data)
+                if (optionsRef.current?.onRunCompleted) {
+                    optionsRef.current.onRunCompleted(message.data)
                 }
                 break
 
@@ -260,7 +253,7 @@ export function useWebSocket(url: string | null, options?: WebSocketOptions) {
                     fetchTests()
                     fetchRuns()
                 })
-                options?.onTestsDeleted?.(message.data)
+                optionsRef.current?.onTestsDeleted?.(message.data)
                 break
 
             case 'stats:update':
@@ -317,13 +310,13 @@ export function useWebSocket(url: string | null, options?: WebSocketOptions) {
                 }
 
                 // Notify about run completion
-                if (options?.onRunCompleted) {
-                    options.onRunCompleted(message.data)
+                if (optionsRef.current?.onRunCompleted) {
+                    optionsRef.current.onRunCompleted(message.data)
                 }
                 break
 
             case 'run:stopping':
-                options?.onPipelineEvent?.(message.type, message.data)
+                optionsRef.current?.onPipelineEvent?.(message.type, message.data)
                 break
 
             case 'run:cancelled':
@@ -334,8 +327,8 @@ export function useWebSocket(url: string | null, options?: WebSocketOptions) {
                 resetRunState()
                 fetchTests()
                 fetchRuns()
-                options?.onPipelineEvent?.(message.type, message.data)
-                options?.onRunStatusEvent?.(message.type, message.data)
+                optionsRef.current?.onPipelineEvent?.(message.type, message.data)
+                optionsRef.current?.onRunStatusEvent?.(message.type, message.data)
                 break
 
             case 'connection':
@@ -343,14 +336,14 @@ export function useWebSocket(url: string | null, options?: WebSocketOptions) {
 
             case 'connection:status':
                 handleConnectionStatus(message.data)
-                options?.onRunStatusEvent?.('connection:status', message.data)
+                optionsRef.current?.onRunStatusEvent?.('connection:status', message.data)
                 break
 
             case 'process:started':
                 // Refresh data when process starts
                 fetchTests()
                 fetchRuns()
-                options?.onRunStatusEvent?.('process:started', message.data)
+                optionsRef.current?.onRunStatusEvent?.('process:started', message.data)
                 break
 
             case 'process:ended':
@@ -368,13 +361,15 @@ export function useWebSocket(url: string | null, options?: WebSocketOptions) {
             case 'pipeline:step-completed':
             case 'pipeline:completed':
             case 'pipeline:queue-changed':
-                options?.onPipelineEvent?.(message.type, message.data)
+                optionsRef.current?.onPipelineEvent?.(message.type, message.data)
                 break
 
             default:
             // Unknown message type - ignore
         }
     }
+
+    handleMessageRef.current = handleMessage
 
     const sendMessage = (message: WebSocketMessage) => {
         if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {

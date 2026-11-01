@@ -86,4 +86,52 @@ describe('useTestExecutionHistory — refetch', () => {
 
         await waitFor(() => expect(result.current.loading).toBe(true))
     })
+
+    it('a "load more" started for the previous test is not appended to the new one', async () => {
+        mockAuthGet.mockResolvedValueOnce(respond(rows(50, 't1-'), 120))
+        const {result, rerender} = renderHook(({id}) => useTestExecutionHistory(id), {
+            initialProps: {id: 't1'},
+        })
+        await waitFor(() => expect(result.current.executions).toHaveLength(50))
+
+        let resolveMore: (r: Response) => void = () => {}
+        mockAuthGet.mockReturnValueOnce(new Promise<Response>((r) => (resolveMore = r)))
+        act(() => result.current.loadMore())
+
+        mockAuthGet.mockResolvedValueOnce(respond(rows(2, 't2-'), 2))
+        rerender({id: 't2'})
+        await waitFor(() =>
+            expect(result.current.executions.map((e) => e.id)).toEqual(['t2-0', 't2-1'])
+        )
+
+        await act(async () => resolveMore(respond(rows(50, 't1-old-'), 120)))
+
+        expect(result.current.executions.map((e) => e.id)).toEqual(['t2-0', 't2-1'])
+        expect(result.current.total).toBe(2)
+        expect(result.current.loadingMore).toBe(false)
+    })
+
+    it("a stale load-more settling does not end the new test's own load-more spinner", async () => {
+        mockAuthGet.mockResolvedValueOnce(respond(rows(50, 't1-'), 120))
+        const {result, rerender} = renderHook(({id}) => useTestExecutionHistory(id), {
+            initialProps: {id: 't1'},
+        })
+        await waitFor(() => expect(result.current.executions).toHaveLength(50))
+
+        let resolveOld: (r: Response) => void = () => {}
+        mockAuthGet.mockReturnValueOnce(new Promise<Response>((r) => (resolveOld = r)))
+        act(() => result.current.loadMore())
+
+        mockAuthGet.mockResolvedValueOnce(respond(rows(50, 't2-'), 120))
+        rerender({id: 't2'})
+        await waitFor(() => expect(result.current.executions).toHaveLength(50))
+
+        mockAuthGet.mockReturnValueOnce(new Promise(() => {})) // t2's own load-more stays pending
+        act(() => result.current.loadMore())
+        await waitFor(() => expect(result.current.loadingMore).toBe(true))
+
+        await act(async () => resolveOld(respond(rows(50, 't1-old-'), 120)))
+
+        expect(result.current.loadingMore).toBe(true)
+    })
 })

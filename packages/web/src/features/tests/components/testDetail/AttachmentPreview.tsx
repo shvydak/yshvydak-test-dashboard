@@ -1,6 +1,8 @@
 import {config} from '@config/environment.config'
 import {
     buildAuthenticatedAttachmentUrl,
+    canOpenBlobInTab,
+    downloadAttachment,
     openAttachmentInNewWindow,
 } from '../../utils/attachmentHelpers'
 import {AttachmentWithBlobURL} from '../../types/attachment.types'
@@ -22,9 +24,15 @@ export function AttachmentPreview({attachment}: AttachmentPreviewProps) {
                     alt="Test Screenshot"
                     className="max-w-full h-auto rounded-xl border border-gray-200/80 dark:border-white/[0.08] cursor-pointer hover:opacity-90 transition-opacity"
                     onClick={() => {
-                        // Use blob URL for inline preview if available, otherwise open with token
+                        // A blob is opened only when it is a real raster image; else it downloads
                         if (attachment.blobURL) {
-                            window.open(attachment.blobURL, '_blank')
+                            if (canOpenBlobInTab(attachment.blobType)) {
+                                window.open(attachment.blobURL, '_blank')
+                            } else {
+                                downloadAttachment(attachment, (error) => {
+                                    console.error('Failed to download screenshot:', error)
+                                })
+                            }
                         } else {
                             openAttachmentInNewWindow(attachment, (error) => {
                                 console.error('Failed to open screenshot:', error)

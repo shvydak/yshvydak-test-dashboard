@@ -75,6 +75,8 @@ describe('TestController', () => {
             isRunCancelled: vi.fn().mockReturnValue(false),
             requestQueueDrain: vi.fn(),
             discoverTests: vi.fn(),
+            assertResetDiscoveryAllowed: vi.fn(),
+            isKnownSpecFile: vi.fn().mockResolvedValue(true),
             runAllTests: vi.fn(),
             runTestGroup: vi.fn(),
             getAllTests: vi.fn(),
@@ -1658,7 +1660,7 @@ describe('TestController', () => {
             expect(mockWsManager.broadcastConnectionStatus).toHaveBeenCalled()
             expect(ResponseHelper.success).toHaveBeenCalledWith(
                 mockRes,
-                {before: stateBefore, after: stateAfter},
+                {before: stateBefore, after: stateAfter, deadRunsCleared: []},
                 'Force reset completed successfully'
             )
         })

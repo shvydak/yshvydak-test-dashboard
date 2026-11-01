@@ -189,7 +189,7 @@ export class DashboardClient {
             this.startedAt.set(runId, Date.now())
             return runId
         }
-        let payload: {code?: unknown; currentRunId?: unknown} = {}
+        let payload: {code?: unknown; currentRunId?: unknown; message?: unknown} = {}
         try {
             payload = JSON.parse(res.body.toString('utf8'))
         } catch {
@@ -221,8 +221,12 @@ export class DashboardClient {
         }
         if (res.status === 404) throw new DashboardError('Test not found', 404)
         if (res.status === 400) {
+            const reason =
+                typeof payload.message === 'string' && payload.message.length > 0
+                    ? `: ${payload.message.slice(0, 200).replace(/[\x00-\x1f\x7f]/g, ' ')}`
+                    : ''
             throw new DashboardError(
-                `${NOT_STARTED}the dashboard rejected the request (HTTP 400)`,
+                `${NOT_STARTED}the dashboard rejected the request (HTTP 400)${reason}`,
                 400
             )
         }

@@ -21,7 +21,7 @@
  *   node scripts/trigger-test-run.js [options]
  *
  * Options:
- *   --max-workers <number>  Maximum number of parallel workers (default: from config)
+ *   --max-workers <1-16>  Maximum number of parallel workers (default: from config)
  *   --pipeline <name>       CI pipeline to run: develop | production (default: develop)
  *   --wait                  Wait for pipeline completion and return results (no dashboard Slack message, no queueing)
  *   --timeout <seconds>     Maximum wait time in seconds, with --wait (default: 1200)
@@ -433,7 +433,7 @@ YShvydak Test Dashboard - CI Pipeline Trigger
 Usage: node scripts/trigger-test-run.js [options]
 
 Options:
-  --max-workers <number>  Maximum number of parallel workers
+  --max-workers <1-16>  Maximum number of parallel workers (default: from config)
   --pipeline <name>       Pipeline to run: develop | production (default: develop)
   --wait                  Wait for pipeline completion and return results
                           (the dashboard then sends no Slack message and does not queue)

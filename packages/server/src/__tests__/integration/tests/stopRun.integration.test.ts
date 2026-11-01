@@ -512,6 +512,10 @@ describe('Stop a run (Integration)', () => {
                 timestamp: new Date().toISOString(),
                 process: child,
             })
+            await db().execute(
+                `INSERT INTO test_catalog (project, test_id, name, file_path, discovered_at) VALUES ('API', 'test-t1', 't1', 'API/t1.spec.ts', ?)`,
+                [new Date().toISOString()]
+            )
             await api().post('/api/tests/run-group').send({filePath: 'API/t1.spec.ts'}).expect(200)
             await reporter.result('group-run', 'grp-t1', 'test-t1', 'API', 'failed').expect(200)
 

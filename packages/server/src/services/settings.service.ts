@@ -12,6 +12,7 @@ import {TagMode} from '../utils/tagMode.util'
 import {CIPipelineName, DEFAULT_CI_PIPELINE, normalizeCIPipelines} from '../utils/ciPipeline.util'
 import {PlaywrightService} from './playwright.service'
 import {Logger} from '../utils/logger.util'
+import {MAX_WORKERS} from '../config/constants'
 
 export interface TestExecutionSettings {
     project: string
@@ -92,7 +93,7 @@ export class SettingsService {
                 pipelines: normalizeCIPipelines(c.pipelines, c.inPipeline),
                 stopPipelineOnFailure: Boolean(c.stopPipelineOnFailure),
                 workers:
-                    Number.isInteger(workers) && workers >= 1 && workers <= 16
+                    Number.isInteger(workers) && workers >= 1 && workers <= MAX_WORKERS
                         ? workers
                         : undefined,
             }

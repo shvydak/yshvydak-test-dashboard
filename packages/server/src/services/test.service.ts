@@ -965,6 +965,15 @@ export class TestService implements ITestService {
         )
     }
 
+    /** A reset discovery deletes and re-inserts pending rows, so it must not overlap a run. */
+    assertResetDiscoveryAllowed(mode: DiscoveryMode | undefined): void {
+        if (mode !== 'incremental') this.assertNotBusy()
+    }
+
+    isKnownSpecFile(filePath: string): Promise<boolean> {
+        return this.testRepository.isKnownSpecFile(filePath)
+    }
+
     /** After a manual tracker reset: a queued CI request may be waiting on an entry that will never close. */
     requestQueueDrain(): void {
         this.ciRunQueue.requestDrain()

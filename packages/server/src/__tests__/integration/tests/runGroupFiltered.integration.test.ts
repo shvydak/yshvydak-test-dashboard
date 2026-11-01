@@ -29,6 +29,11 @@ describe('POST /api/tests/run-group - Filtered Group Run (Integration)', () => {
 
     beforeEach(async () => {
         await cleanDatabase(server.testRepository)
+        // run-group only accepts spec files the dashboard knows
+        await server.testRepository.dbManager.execute(
+            `INSERT INTO test_catalog (project, test_id, name, file_path, discovered_at) VALUES ('', 'test-auth', 'auth', 'e2e/tests/auth.spec.ts', ?)`,
+            [new Date().toISOString()]
+        )
         vi.restoreAllMocks()
         activeProcessesTracker.forceReset()
     })

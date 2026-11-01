@@ -141,7 +141,7 @@ The dashboard implements a **WebSocket-based process tracking** system that ensu
 
 ### Emergency Controls
 
-- **Force Reset API**: `POST /api/tests/force-reset` - Emergency clear all processes
+- **Force Reset API**: `POST /api/tests/force-reset` - Emergency clear of the progress tracker plus dead run-registry entries (live processes are never touched)
 - **Debug Buttons**: UI provides manual reset options when processes appear stuck
 
 ## Test Display Consistency Architecture

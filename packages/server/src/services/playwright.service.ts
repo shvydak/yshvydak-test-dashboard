@@ -16,7 +16,7 @@ import {Logger} from '../utils/logger.util'
 import {normalizeAnnotations, finiteNumber} from '../utils/playwrightMetadata.util'
 import {DiscoveredTestMetadata} from '../types/database.types'
 import {getInternalApiUrl} from '../utils/internalListener.util'
-import {isSafeCliPath, stripServerSecrets} from '../utils/security.util'
+import {anchoredSpecFilter, isSafeCliPath, stripServerSecrets} from '../utils/security.util'
 
 // A spec path becomes a Playwright positional: no leading '-', and under the project dir.
 function assertSafeSpecPath(filePath: string): void {
@@ -125,8 +125,11 @@ export class PlaywrightService implements IPlaywrightService {
         Logger.testRun('run-group', runId)
 
         assertSafeSpecPath(filePath)
-        // Use file path directly - Playwright handles path resolution
-        const args = ['playwright', 'test', filePath]
+        const args = [
+            'playwright',
+            'test',
+            anchoredSpecFilter(filePath, config.playwright.projectDir),
+        ]
 
         // Add grep pattern if specific test names are provided
         if (testNames && testNames.length > 0) {
@@ -178,7 +181,13 @@ export class PlaywrightService implements IPlaywrightService {
         assertSafeSpecPath(testFile)
         const grepPattern = this.buildGrepPattern([testName])
 
-        const args = ['playwright', 'test', testFile, '--grep', grepPattern]
+        const args = [
+            'playwright',
+            'test',
+            anchoredSpecFilter(testFile, config.playwright.projectDir),
+            '--grep',
+            grepPattern,
+        ]
         if (maxWorkers) {
             args.push(`--workers=${maxWorkers}`)
         }
@@ -512,15 +521,17 @@ export class PlaywrightService implements IPlaywrightService {
      * joined by single spaces, so the title must be anchored as the trailing segment —
      * otherwise "Create invoice" also selects "Create invoice with delay release".
      * Optional `@tag` suffixes (from the `tag` test option) are allowed after the title.
-     * Multiple test names are combined with OR operator (|)
+     * Multiple test names are combined with OR operator (|).
+     * Known limit: a title that ends with another title in the same file (`Admin Create invoice` vs
+     * `Create invoice`) and `Create invoice @inline` are still selected; the stored describe chain is not reliable enough to anchor on. Follow-up: `--test-list`.
      */
     private buildGrepPattern(testNames: string[]): string {
         const patterns = testNames.map((name) => {
             const escapedName = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
             return `(?<!\\S)${escapedName}(?:\\s+@\\S+)*$`
         })
-        // Combine all patterns with OR operator
-        return patterns.join('|')
+        // /…/ without flags: a bare string gets Playwright's case-insensitive `gi`
+        return `/${patterns.join('|')}/`
     }
 
     // ============================================================================

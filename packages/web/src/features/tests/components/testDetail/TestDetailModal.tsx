@@ -22,9 +22,11 @@ export interface TestDetailModalProps {
     test: TestResult | null
     isOpen: boolean
     onClose: () => void
+    /** Tells the parent whether an unsaved note draft is open (it guards a switch to another test). */
+    onNoteDirtyChange?: (dirty: boolean) => void
 }
 
-export function TestDetailModal({test, isOpen, onClose}: TestDetailModalProps) {
+export function TestDetailModal({test, isOpen, onClose, onNoteDirtyChange}: TestDetailModalProps) {
     const {settings: jiraSettings} = useJiraSettings(false)
     const [activeTab, setActiveTab] = useState<TabKey>('overview')
     const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false)
@@ -33,11 +35,15 @@ export function TestDetailModal({test, isOpen, onClose}: TestDetailModalProps) {
     const [isDeleting, setIsDeleting] = useState(false)
     const [isDeletingExecution, setIsDeletingExecution] = useState(false)
     const [swipeOffset, setSwipeOffset] = useState(0)
+    const [noteDirty, setNoteDirty] = useState(false)
+    const [showDiscardConfirmation, setShowDiscardConfirmation] = useState(false)
 
     const swipeStartY = useRef<number | null>(null)
     const headerRef = useRef<HTMLDivElement>(null)
 
     const queryClient = useQueryClient()
+    // Listeners are bound once per open; the ref keeps them on the latest draft state
+    const requestCloseRef = useRef<() => void>(() => {})
     const selectedExecutionId = useTestsStore((state) => state.selectedExecutionId)
     const selectExecution = useTestsStore((state) => state.selectExecution)
     const rerunTest = useTestsStore((state) => state.rerunTest)
@@ -58,7 +64,7 @@ export function TestDetailModal({test, isOpen, onClose}: TestDetailModalProps) {
             document.body.style.overflow = 'hidden'
 
             const handleKeyDown = (e: KeyboardEvent) => {
-                if (e.key === 'Escape') handleClose()
+                if (e.key === 'Escape') requestCloseRef.current()
             }
             document.addEventListener('keydown', handleKeyDown)
 
@@ -94,7 +100,7 @@ export function TestDetailModal({test, isOpen, onClose}: TestDetailModalProps) {
 
         const handleTouchEnd = () => {
             if (swipeOffset > 80) {
-                handleClose()
+                requestCloseRef.current()
             }
             setSwipeOffset(0)
             swipeStartY.current = null
@@ -184,8 +190,33 @@ export function TestDetailModal({test, isOpen, onClose}: TestDetailModalProps) {
     const handleClose = () => {
         selectExecution(null)
         setActiveTab('overview')
+        setShowDiscardConfirmation(false)
+        setNoteDirty(false)
         onClose()
     }
+
+    // Every user close path (Esc, backdrop, X, swipe) asks first when a note draft would be lost
+    const requestClose = () => {
+        if (noteDirty) setShowDiscardConfirmation(true)
+        else handleClose()
+    }
+    requestCloseRef.current = requestClose
+
+    // Reload / tab close with an unsaved draft: the browser's own "leave page?" prompt
+    useEffect(() => {
+        if (!noteDirty) return
+        const warn = (e: BeforeUnloadEvent) => {
+            e.preventDefault()
+            e.returnValue = ''
+        }
+        window.addEventListener('beforeunload', warn)
+        return () => window.removeEventListener('beforeunload', warn)
+    }, [noteDirty])
+
+    useEffect(() => {
+        onNoteDirtyChange?.(noteDirty)
+        return () => onNoteDirtyChange?.(false)
+    }, [noteDirty])
 
     const handleSelectExecution = (executionId: string) => {
         selectExecution(executionId)
@@ -300,8 +331,8 @@ export function TestDetailModal({test, isOpen, onClose}: TestDetailModalProps) {
         <div className="fixed inset-0 z-[60] overflow-hidden">
             <div
                 className="flex min-h-screen items-center justify-center p-0 md:p-4"
-                onClick={handleClose}>
-                <ModalBackdrop onClick={handleClose} blur="sm" />
+                onClick={requestClose}>
+                <ModalBackdrop onClick={requestClose} blur="sm" />
 
                 <div
                     className="relative bg-white dark:bg-gray-800 dark:backdrop-blur-xl md:rounded-2xl border-0 md:border md:border-gray-200/80 md:dark:border-white/10 shadow-pop animate-scale-in max-w-5xl w-full h-screen md:h-[82vh] flex flex-col overflow-hidden"
@@ -337,7 +368,7 @@ export function TestDetailModal({test, isOpen, onClose}: TestDetailModalProps) {
                             tags={getTestDisplayTags(test, jiraSettings.tagMode)}
                             executionDate={currentExecution?.createdAt}
                             isLatest={!selectedExecutionId}
-                            onClose={handleClose}
+                            onClose={requestClose}
                             onBackToLatest={() => selectExecution(null)}
                             onDelete={handleDeleteClick}
                             onRerun={() => handleRerun(currentExecution?.id || test.id)}
@@ -360,7 +391,8 @@ export function TestDetailModal({test, isOpen, onClose}: TestDetailModalProps) {
                     <div className="flex flex-1 overflow-hidden relative">
                         {/* Tab Content Area */}
                         <div className="flex-1 p-3 md:p-6 overflow-y-auto overscroll-contain">
-                            {activeTab === 'overview' && (
+                            {/* Stays mounted behind the Steps tab so an open note draft survives */}
+                            <div hidden={activeTab !== 'overview'}>
                                 <TestOverviewTab
                                     test={currentExecution!}
                                     attachments={attachments}
@@ -369,8 +401,9 @@ export function TestDetailModal({test, isOpen, onClose}: TestDetailModalProps) {
                                     onAttachmentsError={setError}
                                     onSaveNote={handleSaveNote}
                                     onDeleteNote={handleDeleteNote}
+                                    onNoteDirtyChange={setNoteDirty}
                                 />
-                            )}
+                            </div>
 
                             {activeTab === 'steps' && <TestStepsTab test={currentExecution!} />}
                         </div>
@@ -395,6 +428,20 @@ export function TestDetailModal({test, isOpen, onClose}: TestDetailModalProps) {
                         </div>
                     </div>
                 </div>
+
+                <ConfirmationDialog
+                    isOpen={showDiscardConfirmation}
+                    title="Discard unsaved note?"
+                    description="This test has a note you have not saved. Closing the details will lose it."
+                    confirmText="Discard"
+                    cancelText="Keep editing"
+                    variant="danger"
+                    onConfirm={handleClose}
+                    onCancel={() => {
+                        setShowDiscardConfirmation(false)
+                        setActiveTab('overview')
+                    }}
+                />
 
                 {/* Delete Test Confirmation Dialog */}
                 <ConfirmationDialog

@@ -11,6 +11,8 @@ export type DiscoveryMode = 'reset' | 'incremental'
 
 interface TestsState {
     tests: TestResult[]
+    /** The project (null = all) the loaded `tests` belong to; differs from `listProject` right after a tab switch. */
+    testsProject: string | null
     runs: TestRun[]
     isLoading: boolean
     isDiscovering: boolean
@@ -18,7 +20,10 @@ interface TestsState {
     currentRunAllId: string | null
     runningTests: Set<string>
     runningGroups: Set<string>
+    /** Why the last LIST LOAD failed; the only error that replaces the list with the full-page card. */
     error: string | null
+    /** Why the last action (rerun, run, discover, delete) failed; shown as a banner, never replaces the list or closes the modal. */
+    actionError: string | null
     lastUpdated: Date | null
     selectedExecutionId: string | null
     activeProgress: TestProgress | null
@@ -52,6 +57,7 @@ interface TestsState {
     runAllTests: (project?: string) => Promise<void>
     runTestsGroup: (filePath: string, testNames?: string[], project?: string) => Promise<void>
     clearError: () => void
+    clearActionError: () => void
     setTestRunning: (testId: string, isRunning: boolean) => void
     setGroupRunning: (filePath: string, isRunning: boolean) => void
     setRunningAllTests: (isRunning: boolean) => void
@@ -179,6 +185,7 @@ export const useTestsStore = create<TestsState>()(
     devtools(
         (set, get) => ({
             tests: [],
+            testsProject: null,
             runs: [],
             isLoading: false,
             isDiscovering: false,
@@ -187,6 +194,7 @@ export const useTestsStore = create<TestsState>()(
             runningTests: new Set(),
             runningGroups: new Set(),
             error: null,
+            actionError: null,
             lastUpdated: null,
             selectedExecutionId: null,
             activeProgress: null,
@@ -227,9 +235,16 @@ export const useTestsStore = create<TestsState>()(
                 return null
             },
 
-            setListProject: (project) => set({listProject: project}),
+            // A new view starts without the previous view's error text; its own fetch decides
+            setListProject: (project) =>
+                set((state) =>
+                    state.listProject === project ? {} : {listProject: project, error: null}
+                ),
 
             fetchTests: async () => {
+                const requestProject = get().listProject
+                // A reply for a view the user already left must not touch the current one
+                const isStale = () => get().listProject !== requestProject
                 try {
                     const currentState = get()
                     // Только устанавливаем isLoading если никакие другие операции не выполняются
@@ -239,11 +254,8 @@ export const useTestsStore = create<TestsState>()(
                         currentState.runningTests.size === 0 &&
                         currentState.runningGroups.size === 0
 
-                    if (shouldSetLoading) {
-                        set({isLoading: true, error: null})
-                    } else {
-                        set({error: null})
-                    }
+                    // `error` is cleared on success only, so a retry does not flicker the banner off
+                    if (shouldSetLoading) set({isLoading: true})
 
                     // With a project: ask the server for that project only (limit applies
                     // after project filter). Without: keep the previous global slice.
@@ -260,10 +272,13 @@ export const useTestsStore = create<TestsState>()(
                     }
 
                     const data = await response.json()
+                    if (isStale()) return
 
                     if (data.success && Array.isArray(data.data)) {
                         set({
                             tests: data.data,
+                            testsProject: requestProject,
+                            error: null,
                             isLoading: shouldSetLoading ? false : currentState.isLoading,
                             lastUpdated: new Date(),
                         })
@@ -282,6 +297,7 @@ export const useTestsStore = create<TestsState>()(
                     }
                 } catch (error) {
                     console.error('Error fetching tests:', error)
+                    if (isStale()) return
                     const currentState = get()
                     set({
                         error: error instanceof Error ? error.message : 'Failed to fetch tests',
@@ -312,10 +328,8 @@ export const useTestsStore = create<TestsState>()(
                         throw new Error('Invalid response format')
                     }
                 } catch (error) {
+                    // Nothing renders `runs`: a failure must not raise the list's error banner
                     console.error('Error fetching runs:', error)
-                    set({
-                        error: error instanceof Error ? error.message : 'Failed to fetch runs',
-                    })
                 }
             },
 
@@ -323,7 +337,7 @@ export const useTestsStore = create<TestsState>()(
                 try {
                     // Set this specific test as running
                     get().setTestRunning(testId, true)
-                    set({error: null})
+                    set({actionError: null})
 
                     const testProject = get().tests.find((t) => t.testId === testId)?.project
                     const maxWorkers =
@@ -349,7 +363,8 @@ export const useTestsStore = create<TestsState>()(
                 } catch (error) {
                     console.error('Error rerunning test:', error)
                     set({
-                        error: error instanceof Error ? error.message : 'Failed to rerun test',
+                        actionError:
+                            error instanceof Error ? error.message : 'Failed to rerun test',
                     })
                     // Clear the running state for this test on error
                     get().setTestRunning(testId, false)
@@ -358,7 +373,7 @@ export const useTestsStore = create<TestsState>()(
 
             deleteTest: async (testId: string) => {
                 try {
-                    set({error: null})
+                    set({actionError: null})
 
                     const response = await authDelete(`${API_BASE_URL}/tests/${testId}`)
 
@@ -377,7 +392,8 @@ export const useTestsStore = create<TestsState>()(
                 } catch (error) {
                     console.error('Error deleting test:', error)
                     set({
-                        error: error instanceof Error ? error.message : 'Failed to delete test',
+                        actionError:
+                            error instanceof Error ? error.message : 'Failed to delete test',
                     })
                     throw error
                 }
@@ -385,7 +401,7 @@ export const useTestsStore = create<TestsState>()(
 
             deleteExecution: async (testId: string, executionId: string) => {
                 try {
-                    set({error: null})
+                    set({actionError: null})
 
                     const response = await authDelete(
                         `${API_BASE_URL}/tests/${testId}/executions/${executionId}`
@@ -406,7 +422,7 @@ export const useTestsStore = create<TestsState>()(
                 } catch (error) {
                     console.error('Error deleting execution:', error)
                     set({
-                        error:
+                        actionError:
                             error instanceof Error ? error.message : 'Failed to delete execution',
                     })
                     throw error
@@ -415,7 +431,7 @@ export const useTestsStore = create<TestsState>()(
 
             discoverTests: async (project?: string, mode: DiscoveryMode = 'reset') => {
                 try {
-                    set({isDiscovering: true, error: null})
+                    set({isDiscovering: true, actionError: null})
 
                     const response = await authPost(`${API_BASE_URL}/tests/discovery`, {
                         project: project || undefined,
@@ -437,7 +453,8 @@ export const useTestsStore = create<TestsState>()(
                 } catch (error) {
                     console.error('Error discovering tests:', error)
                     set({
-                        error: error instanceof Error ? error.message : 'Failed to discover tests',
+                        actionError:
+                            error instanceof Error ? error.message : 'Failed to discover tests',
                     })
                 } finally {
                     set({isDiscovering: false})
@@ -450,7 +467,7 @@ export const useTestsStore = create<TestsState>()(
 
                     // Auto-discover tests before running if setting is enabled
                     if (autoDiscover) {
-                        set({isDiscovering: true, error: null})
+                        set({isDiscovering: true, actionError: null})
                         try {
                             const discoveryResponse = await authPost(
                                 `${API_BASE_URL}/tests/discovery`,
@@ -469,7 +486,7 @@ export const useTestsStore = create<TestsState>()(
                             // Q1: abort run if discovery failed
                             set({
                                 isDiscovering: false,
-                                error:
+                                actionError:
                                     error instanceof Error
                                         ? error.message
                                         : 'Failed to discover tests',
@@ -479,7 +496,7 @@ export const useTestsStore = create<TestsState>()(
                         set({isDiscovering: false})
                     }
 
-                    set({isRunningAllTests: true, error: null})
+                    set({isRunningAllTests: true, actionError: null})
 
                     const maxWorkers =
                         getProjectWorkersOverride(project) ?? getMaxWorkersFromStorage()
@@ -512,7 +529,8 @@ export const useTestsStore = create<TestsState>()(
                 } catch (error) {
                     console.error('Error running all tests:', error)
                     set({
-                        error: error instanceof Error ? error.message : 'Failed to run all tests',
+                        actionError:
+                            error instanceof Error ? error.message : 'Failed to run all tests',
                         isRunningAllTests: false,
                         currentRunAllId: null,
                     })
@@ -523,7 +541,7 @@ export const useTestsStore = create<TestsState>()(
                 try {
                     // Set this specific group as running
                     get().setGroupRunning(filePath, true)
-                    set({error: null})
+                    set({actionError: null})
 
                     const maxWorkers =
                         getProjectWorkersOverride(project) ?? getMaxWorkersFromStorage()
@@ -552,7 +570,8 @@ export const useTestsStore = create<TestsState>()(
                 } catch (error) {
                     console.error('Error running tests group:', error)
                     set({
-                        error: error instanceof Error ? error.message : 'Failed to run tests group',
+                        actionError:
+                            error instanceof Error ? error.message : 'Failed to run tests group',
                     })
                     // Clear the running state for this group on error
                     get().setGroupRunning(filePath, false)
@@ -560,6 +579,7 @@ export const useTestsStore = create<TestsState>()(
             },
 
             clearError: () => set({error: null}),
+            clearActionError: () => set({actionError: null}),
 
             setTestRunning: (testId: string, isRunning: boolean) => {
                 set((state) => {

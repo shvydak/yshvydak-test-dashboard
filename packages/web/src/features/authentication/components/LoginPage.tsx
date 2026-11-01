@@ -3,6 +3,7 @@ import {PasswordInput} from '@/shared/components/molecules'
 import {applyThemeMode, type ThemeMode} from '@/hooks/useTheme'
 import {useState, useEffect, type ChangeEvent, type FormEvent} from 'react'
 import {ShieldCheck} from 'lucide-react'
+import {getPostLoginPath} from '../utils/postLoginPath'
 
 interface LoginFormData {
     email: string
@@ -88,8 +89,8 @@ export default function LoginPage() {
                     })
                 )
 
-                // Simple navigation to dashboard
-                window.location.href = '/'
+                // Back to the page the user opened (e.g. a shared test link), not always the dashboard
+                window.location.href = getPostLoginPath(window.location)
             } else {
                 setError(data.message || 'Login failed. Please check your credentials.')
             }

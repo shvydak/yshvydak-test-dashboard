@@ -174,7 +174,8 @@ function App() {
 
                 const result = await verifyToken()
 
-                if (result.valid) {
+                if (result.valid || result.unknown) {
+                    // Server unreachable / 5xx: keep the session, the periodic check retries.
                     setIsAuthenticated(true)
                 } else {
                     localStorage.removeItem('_auth')
@@ -217,7 +218,7 @@ function App() {
 
             const result = await verifyToken()
 
-            if (!result.valid) {
+            if (!result.valid && !result.unknown) {
                 setIsAuthenticated(false)
                 localStorage.removeItem('_auth')
                 sessionStorage.removeItem('_auth')

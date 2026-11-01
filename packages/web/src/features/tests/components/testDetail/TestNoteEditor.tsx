@@ -10,6 +10,8 @@ interface TestNoteEditorProps {
     initialNote?: string
     onSave: (note: string) => Promise<void>
     onDelete: () => Promise<void>
+    /** True while the editor holds a draft that differs from the saved note. */
+    onDirtyChange?: (dirty: boolean) => void
 }
 
 const MAX_LENGTH = 1000
@@ -19,6 +21,7 @@ export const TestNoteEditor: React.FC<TestNoteEditorProps> = ({
     initialNote = '',
     onSave,
     onDelete,
+    onDirtyChange,
 }) => {
     const [isEditing, setIsEditing] = useState(false)
     const [note, setNote] = useState(initialNote)
@@ -32,6 +35,14 @@ export const TestNoteEditor: React.FC<TestNoteEditorProps> = ({
     useEffect(() => {
         setNote(initialNote)
     }, [initialNote])
+
+    const isDirty = isEditing && note !== initialNote
+    const onDirtyChangeRef = useRef(onDirtyChange)
+    onDirtyChangeRef.current = onDirtyChange
+    useEffect(() => {
+        onDirtyChangeRef.current?.(isDirty)
+        return () => onDirtyChangeRef.current?.(false)
+    }, [isDirty])
 
     const handleSave = async () => {
         if (!note.trim()) {
@@ -80,6 +91,14 @@ export const TestNoteEditor: React.FC<TestNoteEditorProps> = ({
         setNote(initialNote)
         setIsEditing(false)
         setError(null)
+    }
+
+    // Stop Esc before the modal's document listener: a draft only blurs, a clean editor cancels
+    const handleEscape = (e: React.KeyboardEvent) => {
+        if (e.key !== 'Escape') return
+        e.stopPropagation()
+        if (note === initialNote) handleCancel()
+        else textareaRef.current?.blur()
     }
 
     const handleImageUpload = async (file: File) => {
@@ -200,6 +219,7 @@ export const TestNoteEditor: React.FC<TestNoteEditorProps> = ({
                             value={note}
                             onChange={(e) => setNote(e.target.value)}
                             onPaste={handlePaste}
+                            onKeyDown={handleEscape}
                             placeholder="Add notes about this test... (e.g., 'This test is flaky, known issue #123', 'Bug report: https://example.com/issue/456'). You can drag & drop images or paste screenshots here."
                             className={`input resize-none ${
                                 isDragging ? 'border-primary-500' : ''

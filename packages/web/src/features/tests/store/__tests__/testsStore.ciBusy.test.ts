@@ -21,6 +21,7 @@ describe('testsStore CI busy state', () => {
             runningTests: new Set(),
             runningGroups: new Set(),
             error: null,
+            actionError: null,
         })
     })
 
@@ -60,7 +61,9 @@ describe('testsStore CI busy state', () => {
 
         await useTestsStore.getState().rerunTest('test-1')
 
-        expect(useTestsStore.getState().error).toBe('A CI pipeline is running')
+        expect(useTestsStore.getState().actionError).toBe('A CI pipeline is running')
+        // a refused action must not turn into the full-page list error
+        expect(useTestsStore.getState().error).toBeNull()
     })
 
     it('a non-409 failure keeps the status message', async () => {
@@ -72,6 +75,6 @@ describe('testsStore CI busy state', () => {
 
         await useTestsStore.getState().rerunTest('test-1')
 
-        expect(useTestsStore.getState().error).toContain('HTTP error! status: 500')
+        expect(useTestsStore.getState().actionError).toContain('HTTP error! status: 500')
     })
 })

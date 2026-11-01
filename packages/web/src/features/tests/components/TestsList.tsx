@@ -1,8 +1,11 @@
-import {useState, useEffect, useMemo} from 'react'
+import {useState, useEffect, useMemo, useRef} from 'react'
+import {createPortal} from 'react-dom'
 import {useSearchParams} from 'react-router-dom'
-import {AlertTriangle} from 'lucide-react'
+import {AlertTriangle, CircleAlert} from 'lucide-react'
 import {TestResult} from '@yshvydak/core'
 import {LoadingSpinner} from '@shared/components'
+import {AlertBanner} from '@shared/components/molecules/AlertBanner'
+import {ConfirmationDialog} from '@shared/components/molecules/ConfirmationDialog'
 import {useTestsStore} from '../store/testsStore'
 import {useTestFilters, useTestLink} from '../hooks'
 import {useTestStatusCounts} from '../hooks/useTestStatusCounts'
@@ -35,12 +38,22 @@ export default function TestsList({
     loading,
     activeProject,
 }: TestsListProps) {
-    const {tests, error} = useTestsStore()
+    const {
+        tests,
+        error: storeError,
+        actionError,
+        clearActionError,
+        testsProject,
+        listProject,
+    } = useTestsStore()
     const [searchParams, setSearchParams] = useSearchParams()
     const [searchQuery, setSearchQuery] = useState(() => searchParams.get('q') || '')
     const [detailModalOpen, setDetailModalOpen] = useState(false)
     const [detailModalTest, setDetailModalTest] = useState<TestResult | null>(null)
     const [linkFailure, setLinkFailure] = useState<TestLinkFailure | null>(null)
+    // An unsaved note draft in the open modal; a link to another test asks before replacing it
+    const noteDirtyRef = useRef(false)
+    const [pendingLinkTest, setPendingLinkTest] = useState<TestResult | null>(null)
 
     // Initialize filter from URL or default to 'all'
     const getInitialFilter = (): FilterKey => {
@@ -61,8 +74,24 @@ export default function TestsList({
     // without a project selected (5000 with one), ordered by recency, so a match
     // outside that window would show 0 results here even though the status-counts
     // badge below (an unlimited aggregate) reports the true count.
-    const {tests: filteredByStatusTests, isLoading: filteredByStatusLoading} =
-        useFilteredTestsByStatus(filter, activeProject || undefined)
+    const {
+        tests: filteredByStatusTests,
+        isLoading: filteredByStatusLoading,
+        error: filteredByStatusError,
+    } = useFilteredTestsByStatus(filter, activeProject || undefined)
+
+    // The load that feeds the visible list: the store for 'all', the status query otherwise
+    const error = filter === 'all' ? storeError : (filteredByStatusError?.message ?? null)
+    const hasRowsForView =
+        filter === 'all'
+            ? tests.length > 0 && testsProject === listProject
+            : filteredByStatusTests.length > 0
+
+    // A refresh error dismissed by the user stays hidden until a load succeeds (error back to null)
+    const [dismissedError, setDismissedError] = useState<string | null>(null)
+    useEffect(() => {
+        if (!error) setDismissedError(null)
+    }, [error])
 
     const {settings: jiraSettings} = useJiraSettings(false)
 
@@ -111,6 +140,33 @@ export default function TestsList({
         }
     }, [searchParams, filter])
 
+    const showLinkedTest = (test: TestResult) => {
+        if (test.project && test.project !== searchParams.get('project')) {
+            const params = new URLSearchParams(searchParams)
+            params.set('project', test.project)
+            setSearchParams(params, {replace: true})
+        }
+        setDetailModalTest(test)
+        setDetailModalOpen(true)
+        onTestSelect(test)
+    }
+
+    // Keep editing: put the URL back on the test whose draft is open (it resolves to the same test)
+    const keepCurrentTest = () => {
+        setPendingLinkTest(null)
+        if (!detailModalTest) return
+        const params = new URLSearchParams(searchParams)
+        params.set('testId', detailModalTest.testId)
+        if (detailModalTest.project) params.set('project', detailModalTest.project)
+        setSearchParams(params, {replace: true})
+    }
+
+    const discardAndShowLinkedTest = () => {
+        const test = pendingLinkTest
+        setPendingLinkTest(null)
+        if (test) showLinkedTest(test)
+    }
+
     // Deep link: open the modal for ?testId=. A test in the loaded list opens at once; otherwise
     // the server resolves it (any project) and the project tab follows the test.
     useTestLink({
@@ -122,14 +178,16 @@ export default function TestsList({
             ),
         onResolved: (test) => {
             setLinkFailure(null)
-            if (test.project && test.project !== searchParams.get('project')) {
-                const params = new URLSearchParams(searchParams)
-                params.set('project', test.project)
-                setSearchParams(params, {replace: true})
+            if (
+                noteDirtyRef.current &&
+                detailModalOpen &&
+                detailModalTest &&
+                detailModalTest.testId !== test.testId
+            ) {
+                setPendingLinkTest(test)
+                return
             }
-            setDetailModalTest(test)
-            setDetailModalOpen(true)
-            onTestSelect(test)
+            showLinkedTest(test)
         },
         onFailed: (reason) => {
             setLinkFailure(reason)
@@ -182,7 +240,9 @@ export default function TestsList({
         )
     }
 
-    if (error) {
+    // No rows of this view to show (none yet, or still the previous tab's): the full-page card.
+    // Rows of this view + a failed refresh only get a banner (below)
+    if (error && !hasRowsForView) {
         return (
             <div className="space-y-6 animate-fade-in">
                 <h1 className="text-3xl font-bold tracking-tight text-gray-900 dark:text-white">
@@ -233,6 +293,29 @@ export default function TestsList({
 
     return (
         <div className="flex flex-col h-full animate-fade-in">
+            {actionError &&
+                // Portal above the detail modal's backdrop so the message stays readable while it is open
+                createPortal(
+                    <div className="fixed inset-x-3 top-3 z-[250] md:inset-x-auto md:right-4 md:w-[28rem]">
+                        <AlertBanner
+                            severity="danger"
+                            icon={<CircleAlert className="h-4 w-4" />}
+                            title="Action failed"
+                            message={actionError}
+                            onDismiss={clearActionError}
+                        />
+                    </div>,
+                    document.body
+                )}
+            {error && error !== dismissedError && (
+                <AlertBanner
+                    severity="warning"
+                    icon={<CircleAlert className="h-4 w-4" />}
+                    title="Couldn't refresh the list"
+                    message={`${error}. Retrying automatically`}
+                    onDismiss={() => setDismissedError(error)}
+                />
+            )}
             {linkFailure && (
                 <TestLinkBanner reason={linkFailure} onDismiss={() => setLinkFailure(null)} />
             )}
@@ -278,6 +361,20 @@ export default function TestsList({
                 test={detailModalTest}
                 isOpen={detailModalOpen}
                 onClose={closeTestDetail}
+                onNoteDirtyChange={(dirty) => {
+                    noteDirtyRef.current = dirty
+                }}
+            />
+
+            <ConfirmationDialog
+                isOpen={pendingLinkTest !== null}
+                title="Discard unsaved note?"
+                description="The test you have open has a note you have not saved. Opening another test will lose it."
+                confirmText="Discard"
+                cancelText="Keep editing"
+                variant="danger"
+                onConfirm={discardAndShowLinkedTest}
+                onCancel={keepCurrentTest}
             />
         </div>
     )

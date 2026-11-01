@@ -204,7 +204,7 @@ describe('tokenValidator', () => {
         })
 
         describe('API Response Validation', () => {
-            it('should return invalid when response is not ok but not 401', async () => {
+            it('should treat a non-ok, non-401 response as unknown (keeps the session)', async () => {
                 vi.mocked(authFetch.getAuthToken).mockReturnValue(mockToken)
                 mockFetch.mockResolvedValue({
                     ok: false,
@@ -215,6 +215,7 @@ describe('tokenValidator', () => {
 
                 expect(result).toEqual({
                     valid: false,
+                    unknown: true,
                     message: 'Token verification failed',
                 })
             })
@@ -298,6 +299,29 @@ describe('tokenValidator', () => {
             })
         })
 
+        describe('Timeout', () => {
+            it('aborts a server that never answers after 10 s and counts it as unknown', async () => {
+                vi.useFakeTimers()
+                vi.mocked(authFetch.getAuthToken).mockReturnValue(mockToken)
+                mockFetch.mockImplementation(
+                    (_url: string, init: RequestInit) =>
+                        new Promise((_resolve, reject) => {
+                            init.signal?.addEventListener('abort', () =>
+                                reject(new DOMException('aborted', 'AbortError'))
+                            )
+                        })
+                )
+
+                const pending = verifyToken()
+                await vi.advanceTimersByTimeAsync(10_000)
+                const result = await pending
+                vi.useRealTimers()
+
+                expect(result.valid).toBe(false)
+                expect(result.unknown).toBe(true)
+            })
+        })
+
         describe('Network Error Scenarios', () => {
             it('should handle network errors gracefully', async () => {
                 vi.mocked(authFetch.getAuthToken).mockReturnValue(mockToken)
@@ -307,6 +331,7 @@ describe('tokenValidator', () => {
 
                 expect(result).toEqual({
                     valid: false,
+                    unknown: true,
                     message: 'Network error',
                 })
             })
@@ -339,6 +364,7 @@ describe('tokenValidator', () => {
 
                 expect(result).toEqual({
                     valid: false,
+                    unknown: true,
                     message: 'Verification error',
                 })
             })
@@ -372,6 +398,7 @@ describe('tokenValidator', () => {
 
                 expect(result).toEqual({
                     valid: false,
+                    unknown: true,
                     message: 'Token verification failed',
                 })
             })
@@ -402,6 +429,7 @@ describe('tokenValidator', () => {
 
                 expect(result).toEqual({
                     valid: false,
+                    unknown: true,
                     message: 'Token verification failed',
                 })
             })
@@ -417,6 +445,7 @@ describe('tokenValidator', () => {
 
                 expect(result).toEqual({
                     valid: false,
+                    unknown: true,
                     message: 'Token verification failed',
                 })
             })
@@ -432,6 +461,7 @@ describe('tokenValidator', () => {
 
                 expect(result).toEqual({
                     valid: false,
+                    unknown: true,
                     message: 'Token verification failed',
                 })
             })

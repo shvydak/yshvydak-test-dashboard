@@ -20,7 +20,7 @@ describe('testsStore discoverTests mode', () => {
         vi.clearAllMocks()
         vi.mocked(authGet).mockResolvedValue(ok() as any)
         vi.mocked(authPost).mockResolvedValue(ok() as any)
-        useTestsStore.setState({isDiscovering: false, error: null})
+        useTestsStore.setState({isDiscovering: false, error: null, actionError: null})
     })
 
     it('sends the incremental mode it is given', async () => {
@@ -46,7 +46,12 @@ describe('testsStore discovery requests', () => {
     beforeEach(() => {
         vi.clearAllMocks()
         vi.mocked(authGet).mockResolvedValue(ok() as any)
-        useTestsStore.setState({isDiscovering: false, error: null, isRunningAllTests: false})
+        useTestsStore.setState({
+            isDiscovering: false,
+            error: null,
+            actionError: null,
+            isRunningAllTests: false,
+        })
     })
 
     it("Run All's pre-discovery sends no mode (server default = reset) and keeps the project", async () => {
@@ -79,7 +84,7 @@ describe('testsStore discovery requests', () => {
 
         await useTestsStore.getState().discoverTests(undefined, 'incremental')
 
-        expect(useTestsStore.getState().error).toContain('boom')
+        expect(useTestsStore.getState().actionError).toContain('boom')
     })
 
     it("shows the server reason when Run All's pre-discovery fails, and does not start the run", async () => {
@@ -97,7 +102,7 @@ describe('testsStore discovery requests', () => {
 
         await useTestsStore.getState().runAllTests('UI_Tests')
 
-        expect(useTestsStore.getState().error).toContain('kaboom')
+        expect(useTestsStore.getState().actionError).toContain('kaboom')
         expect(
             vi.mocked(authPost).mock.calls.some(([url]) => String(url).endsWith('/tests/run-all'))
         ).toBe(false)
@@ -112,6 +117,6 @@ describe('testsStore discovery requests', () => {
 
         await useTestsStore.getState().discoverTests(undefined, 'incremental')
 
-        expect(useTestsStore.getState().error).toBe('HTTP error! status: 502')
+        expect(useTestsStore.getState().actionError).toBe('HTTP error! status: 502')
     })
 })

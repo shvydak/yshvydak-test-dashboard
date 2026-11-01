@@ -285,7 +285,7 @@ All URLs open in a new tab with `rel="noopener noreferrer"` for security.
 
 - Images display as small clickable thumbnails inline with text
 - Click any thumbnail to open full-size image in lightbox modal
-- Press ESC or click outside to close lightbox
+- Press ESC or click outside to close lightbox (ESC closes only the lightbox, not the test detail modal under it)
 - Images are stored permanently and persist across test runs
 
 **Example note with image:**

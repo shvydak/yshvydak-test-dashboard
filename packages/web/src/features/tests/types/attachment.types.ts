@@ -9,6 +9,8 @@ export interface Attachment {
 
 export interface AttachmentWithBlobURL extends Attachment {
     blobURL?: string
+    /** MIME type the server declared for the blob; decides whether it may open in a tab. */
+    blobType?: string
 }
 
 export type TabKey = 'overview' | 'steps'

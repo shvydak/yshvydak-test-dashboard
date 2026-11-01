@@ -1,5 +1,5 @@
 import {describe, it, expect, beforeEach, afterEach, vi} from 'vitest'
-import {render, screen, waitFor, cleanup, act} from '@testing-library/react'
+import {render, screen, waitFor, cleanup, act, fireEvent} from '@testing-library/react'
 import {BrowserRouter, MemoryRouter, useSearchParams} from 'react-router-dom'
 import TestsList from '../TestsList'
 import {useTestsStore} from '../../store/testsStore'
@@ -71,9 +71,18 @@ vi.mock('../TestsContent', () => ({
 }))
 
 vi.mock('../testDetail', () => ({
-    TestDetailModal: ({isOpen, test}: {isOpen: boolean; test: TestResult | null}) => (
+    TestDetailModal: ({
+        isOpen,
+        test,
+        onNoteDirtyChange,
+    }: {
+        isOpen: boolean
+        test: TestResult | null
+        onNoteDirtyChange?: (dirty: boolean) => void
+    }) => (
         <div data-testid="modal" data-open={isOpen} data-test-id={test?.testId}>
             {isOpen && test ? `Modal: ${test.name}` : 'Modal closed'}
+            <button onClick={() => onNoteDirtyChange?.(true)}>draft-open</button>
         </div>
     ),
 }))
@@ -980,5 +989,272 @@ describe('TestsList - search by displayed tags', () => {
         expect(screen.getAllByTestId('content-test').map((el) => el.textContent)).toEqual([
             'Login works',
         ])
+    })
+})
+
+describe('TestsList - action errors keep the page', () => {
+    const renderList = (url: string) =>
+        render(
+            <MemoryRouter initialEntries={[url]}>
+                <TestsList
+                    onTestSelect={vi.fn()}
+                    onTestRerun={vi.fn()}
+                    selectedTest={null}
+                    loading={false}
+                />
+            </MemoryRouter>
+        )
+
+    beforeEach(() => {
+        vi.clearAllMocks()
+        mockUseFilteredTestsByStatus.mockReturnValue({tests: [], isLoading: false})
+    })
+
+    it('shows a refused action as a banner and keeps the rows and the open modal', async () => {
+        vi.mocked(useTestsStore).mockReturnValue({
+            tests: mockTests,
+            error: null,
+            actionError: 'Tests are already running',
+            clearActionError: vi.fn(),
+        } as any)
+
+        renderList('/?testId=test-abc123')
+
+        expect(screen.getByText('Tests are already running')).toBeInTheDocument()
+        expect(screen.queryByText('Error loading tests')).not.toBeInTheDocument()
+        expect(screen.getAllByTestId('content-test')).toHaveLength(2)
+        await waitFor(() =>
+            expect(screen.getByTestId('modal')).toHaveAttribute('data-open', 'true')
+        )
+    })
+
+    it('the banner can be dismissed', async () => {
+        const clearActionError = vi.fn()
+        vi.mocked(useTestsStore).mockReturnValue({
+            tests: mockTests,
+            error: null,
+            actionError: 'Tests are already running',
+            clearActionError,
+        } as any)
+
+        renderList('/')
+        screen.getByRole('button', {name: /dismiss/i}).click()
+
+        expect(clearActionError).toHaveBeenCalled()
+    })
+
+    it('a failed first load (no rows yet) shows the full-page error', () => {
+        vi.mocked(useTestsStore).mockReturnValue({
+            tests: [],
+            error: 'HTTP error! status: 500',
+            actionError: null,
+            clearActionError: vi.fn(),
+        } as any)
+
+        renderList('/')
+
+        expect(screen.getByText('Error loading tests')).toBeInTheDocument()
+        expect(screen.queryByTestId('content')).not.toBeInTheDocument()
+    })
+
+    it("a failed load after a tab switch (rows are the previous tab's) shows the full-page error", () => {
+        vi.mocked(useTestsStore).mockReturnValue({
+            tests: mockTests,
+            error: 'HTTP error! status: 500',
+            actionError: null,
+            clearActionError: vi.fn(),
+            testsProject: 'OldProj',
+            listProject: 'NewProj',
+        } as any)
+
+        renderList('/?project=NewProj')
+
+        expect(screen.getByText('Error loading tests')).toBeInTheDocument()
+        expect(screen.queryByTestId('content')).not.toBeInTheDocument()
+    })
+
+    const refreshState = (error: string | null) =>
+        ({
+            tests: mockTests,
+            error,
+            actionError: null,
+            clearActionError: vi.fn(),
+            testsProject: 'A',
+            listProject: 'A',
+        }) as any
+
+    // a fresh element each time, so a rerender really re-reads the mocked store
+    const listElement = () => (
+        <MemoryRouter initialEntries={['/']}>
+            <TestsList
+                onTestSelect={vi.fn()}
+                onTestRerun={vi.fn()}
+                selectedTest={null}
+                loading={false}
+            />
+        </MemoryRouter>
+    )
+
+    it('the refresh banner can be dismissed and stays dismissed while the error persists', () => {
+        vi.mocked(useTestsStore).mockReturnValue(refreshState('HTTP error! status: 503'))
+        const view = render(listElement())
+
+        fireEvent.click(screen.getByRole('button', {name: /dismiss/i}))
+        expect(screen.queryByText("Couldn't refresh the list")).not.toBeInTheDocument()
+
+        view.rerender(listElement())
+        expect(screen.queryByText("Couldn't refresh the list")).not.toBeInTheDocument()
+    })
+
+    it('the refresh banner clears after a good refresh and a later failure shows it again', () => {
+        vi.mocked(useTestsStore).mockReturnValue(refreshState('HTTP error! status: 503'))
+        const view = render(listElement())
+        fireEvent.click(screen.getByRole('button', {name: /dismiss/i}))
+
+        vi.mocked(useTestsStore).mockReturnValue(refreshState(null))
+        view.rerender(listElement())
+        expect(screen.queryByText("Couldn't refresh the list")).not.toBeInTheDocument()
+
+        vi.mocked(useTestsStore).mockReturnValue(refreshState('HTTP error! status: 503'))
+        view.rerender(listElement())
+        expect(screen.getByText("Couldn't refresh the list")).toBeInTheDocument()
+    })
+
+    it('a failed status-filter load shows the error card, not an empty list', () => {
+        vi.mocked(useTestsStore).mockReturnValue(refreshState(null))
+        mockUseFilteredTestsByStatus.mockReturnValue({
+            tests: [],
+            isLoading: false,
+            error: new Error('Failed to load filtered tests'),
+        } as any)
+
+        renderList('/?filter=failed')
+
+        expect(screen.getByText('Error loading tests')).toBeInTheDocument()
+        expect(screen.getByText('Failed to load filtered tests')).toBeInTheDocument()
+        expect(screen.queryByTestId('content')).not.toBeInTheDocument()
+    })
+
+    it('a failed status-filter refresh with rows of that filter keeps them and shows the banner', () => {
+        vi.mocked(useTestsStore).mockReturnValue(refreshState(null))
+        mockUseFilteredTestsByStatus.mockReturnValue({
+            tests: [mockTests[1]],
+            isLoading: false,
+            error: new Error('Failed to load filtered tests'),
+        } as any)
+
+        renderList('/?filter=failed')
+
+        expect(screen.queryByText('Error loading tests')).not.toBeInTheDocument()
+        expect(screen.getAllByTestId('content-test')).toHaveLength(1)
+        expect(screen.getByText("Couldn't refresh the list")).toBeInTheDocument()
+    })
+
+    it('a store list error does not hide a healthy status-filter list', () => {
+        vi.mocked(useTestsStore).mockReturnValue(refreshState('HTTP error! status: 500'))
+        mockUseFilteredTestsByStatus.mockReturnValue({
+            tests: [mockTests[1]],
+            isLoading: false,
+            error: null,
+        } as any)
+
+        renderList('/?filter=failed')
+
+        expect(screen.queryByText('Error loading tests')).not.toBeInTheDocument()
+        expect(screen.getAllByTestId('content-test')).toHaveLength(1)
+    })
+
+    it('a failed refresh keeps the rows and the open modal and shows a banner', async () => {
+        vi.mocked(useTestsStore).mockReturnValue({
+            tests: mockTests,
+            error: 'HTTP error! status: 503',
+            actionError: null,
+            clearActionError: vi.fn(),
+            testsProject: 'A',
+            listProject: 'A',
+        } as any)
+
+        renderList('/?testId=test-abc123')
+
+        expect(screen.queryByText('Error loading tests')).not.toBeInTheDocument()
+        expect(screen.getByText("Couldn't refresh the list")).toBeInTheDocument()
+        expect(screen.getAllByTestId('content-test')).toHaveLength(2)
+        await waitFor(() =>
+            expect(screen.getByTestId('modal')).toHaveAttribute('data-open', 'true')
+        )
+    })
+})
+
+describe('TestsList - a link to another test does not drop an unsaved note draft', () => {
+    const other = (id: string) => ({...mockTests[0], id: `exec-${id}`, testId: id}) as TestResult
+
+    const renderSwitcher = () => {
+        mockGetLatestByTestId.mockImplementation(async (id: string) => other(id))
+        const Probe = () => {
+            const [params, setSearchParams] = useSearchParams()
+            return (
+                <div>
+                    <button onClick={() => setSearchParams({testId: 'test-second'})}>next</button>
+                    <div data-testid="url-test-id">{params.get('testId')}</div>
+                    <TestsList
+                        onTestSelect={vi.fn()}
+                        onTestRerun={vi.fn()}
+                        selectedTest={null}
+                        loading={false}
+                    />
+                </div>
+            )
+        }
+        render(
+            <MemoryRouter initialEntries={['/?testId=test-first']}>
+                <Probe />
+            </MemoryRouter>
+        )
+    }
+
+    beforeEach(() => {
+        vi.clearAllMocks()
+        vi.mocked(useTestsStore).mockReturnValue({
+            tests: [],
+            error: null,
+            actionError: null,
+            clearActionError: vi.fn(),
+        } as any)
+        mockUseFilteredTestsByStatus.mockReturnValue({tests: [], isLoading: false})
+    })
+
+    it('asks first; Keep editing stays on the open test and puts the URL back', async () => {
+        renderSwitcher()
+        await waitFor(() =>
+            expect(screen.getByTestId('modal')).toHaveAttribute('data-test-id', 'test-first')
+        )
+        screen.getByText('draft-open').click()
+        screen.getByText('next').click()
+
+        expect(await screen.findByText('Discard unsaved note?')).toBeInTheDocument()
+        expect(screen.getByTestId('modal')).toHaveAttribute('data-test-id', 'test-first')
+
+        screen.getByText('Keep editing').click()
+
+        await waitFor(() =>
+            expect(screen.getByTestId('url-test-id')).toHaveTextContent('test-first')
+        )
+        expect(screen.getByTestId('modal')).toHaveAttribute('data-test-id', 'test-first')
+    })
+
+    it('Discard opens the other test', async () => {
+        renderSwitcher()
+        await waitFor(() =>
+            expect(screen.getByTestId('modal')).toHaveAttribute('data-test-id', 'test-first')
+        )
+        screen.getByText('draft-open').click()
+        screen.getByText('next').click()
+        await screen.findByText('Discard unsaved note?')
+
+        screen.getByText('Discard').click()
+
+        await waitFor(() =>
+            expect(screen.getByTestId('modal')).toHaveAttribute('data-test-id', 'test-second')
+        )
     })
 })

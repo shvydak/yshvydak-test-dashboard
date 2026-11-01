@@ -56,7 +56,8 @@ The system implements **automatic logout on token expiry** to ensure security an
 
 2. **Token Validator** ([packages/web/src/features/authentication/utils/tokenValidator.ts](../../packages/web/src/features/authentication/utils/tokenValidator.ts))
     - `verifyToken()`: Validates token via `/api/auth/verify` endpoint
-    - Returns `{valid: boolean, user?: {...}, message?: string}`
+    - Returns `{valid: boolean, unknown?: boolean, user?: {...}, message?: string}`
+    - `unknown: true` = the server could not answer (network error, 5xx): `App.tsx` keeps the session and the next check retries; only a rejected token (401/403, or a 200 saying invalid) logs out
     - Used for periodic checks and initial authentication
 
 3. **Enhanced authFetch** ([packages/web/src/features/authentication/utils/authFetch.ts](../../packages/web/src/features/authentication/utils/authFetch.ts))
@@ -116,7 +117,7 @@ Scenario 3: WebSocket Disconnect
 │         ↓                               │
 │ Next periodic check (≤ 5 minutes)      │
 │         ↓                               │
-│ verifyToken() detects invalid token    │
+│ verifyToken() detects rejected token   │
 │         ↓                               │
 │ Automatic logout → Redirect to /login   │
 └─────────────────────────────────────────┘
@@ -393,8 +394,8 @@ const LoginPage = () => {
                     user: data.data.user,
                 })
             )
-            // Simple navigation to dashboard
-            window.location.href = '/'
+            // Back to the page the user opened (same-origin path only), else '/'
+            window.location.href = getPostLoginPath(window.location)
         }
     }
 }

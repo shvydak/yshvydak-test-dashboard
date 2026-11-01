@@ -338,6 +338,41 @@ describe('TestsTable', () => {
         )
     }
 
+    it('keeps the selected-row highlight when a live result gives the test a new execution id', () => {
+        const queryClient = new QueryClient()
+        queryClient.setQueryData(JIRA_SETTINGS_QUERY_KEY, settings)
+        const patched = {...makeTest(), id: 'r2'} // same test, new execution
+        const {container} = render(
+            <QueryClientProvider client={queryClient}>
+                <TestsTable
+                    tests={[patched]}
+                    selectedTest={makeTest()}
+                    onTestSelect={vi.fn()}
+                    onTestRerun={vi.fn()}
+                />
+            </QueryClientProvider>
+        )
+
+        expect(container.querySelector('tbody tr')?.className).toContain('inset_3px')
+    })
+
+    it('does not highlight a row of another test', () => {
+        const queryClient = new QueryClient()
+        queryClient.setQueryData(JIRA_SETTINGS_QUERY_KEY, settings)
+        const {container} = render(
+            <QueryClientProvider client={queryClient}>
+                <TestsTable
+                    tests={[{...makeTest(), id: 'r2', testId: 'test-2'}]}
+                    selectedTest={makeTest()}
+                    onTestSelect={vi.fn()}
+                    onTestRerun={vi.fn()}
+                />
+            </QueryClientProvider>
+        )
+
+        expect(container.querySelector('tbody tr')?.className).not.toContain('inset_3px')
+    })
+
     it("has a 'Tickets' column header visible from lg in 'tickets' mode", () => {
         renderTable(settings)
 

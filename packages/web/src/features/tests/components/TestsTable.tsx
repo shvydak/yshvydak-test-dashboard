@@ -58,7 +58,7 @@ export function TestsTable({
                         <TestRow
                             key={test.id}
                             test={test}
-                            selected={selectedTest?.id === test.id}
+                            selected={selectedTest?.testId === test.testId}
                             onSelect={onTestSelect}
                             onRerun={onTestRerun}
                             chipAlignment={settings.chipAlignment}

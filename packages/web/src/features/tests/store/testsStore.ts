@@ -9,8 +9,16 @@ import {getAutoDiscoverFromStorage} from '@/hooks/useAutoDiscoverSetting'
 
 export type DiscoveryMode = 'reset' | 'incremental'
 
+interface RunSnapshot {
+    isRunningAll: boolean
+    testIds: string[]
+    filePaths: string[]
+}
+
 interface TestsState {
     tests: TestResult[]
+    /** The project (null = all) the loaded `tests` belong to; differs from `listProject` right after a tab switch. */
+    testsProject: string | null
     runs: TestRun[]
     isLoading: boolean
     isDiscovering: boolean
@@ -18,7 +26,10 @@ interface TestsState {
     currentRunAllId: string | null
     runningTests: Set<string>
     runningGroups: Set<string>
+    /** Why the last LIST LOAD failed; the only error that replaces the list with the full-page card. */
     error: string | null
+    /** Why the last action (rerun, run, discover, delete) failed; shown as a banner, never replaces the list or closes the modal. */
+    actionError: string | null
     lastUpdated: Date | null
     selectedExecutionId: string | null
     activeProgress: TestProgress | null
@@ -44,7 +55,8 @@ interface TestsState {
     setListProject: (project: string | null) => void
     fetchTests: () => Promise<void>
     fetchRuns: () => Promise<void>
-    rerunTest: (testId: string) => Promise<void>
+    /** `project` of the test when the caller knows it: an older execution picked in the history is not in the list. */
+    rerunTest: (executionId: string, project?: string) => Promise<void>
     deleteTest: (testId: string) => Promise<void>
     deleteExecution: (testId: string, executionId: string) => Promise<void>
     // 'incremental' (manual Discover): keep statuses; 'reset' (default): rebuild pending rows
@@ -52,6 +64,7 @@ interface TestsState {
     runAllTests: (project?: string) => Promise<void>
     runTestsGroup: (filePath: string, testNames?: string[], project?: string) => Promise<void>
     clearError: () => void
+    clearActionError: () => void
     setTestRunning: (testId: string, isRunning: boolean) => void
     setGroupRunning: (filePath: string, isRunning: boolean) => void
     setRunningAllTests: (isRunning: boolean) => void
@@ -62,6 +75,8 @@ interface TestsState {
     stopRun: () => Promise<void>
     /** After run:cancelled: nothing is running any more, whatever the local flags still say. */
     resetRunState: () => void
+    /** Server snapshot replaces the running flags; a flag set by a click in the last 5 s stays, then the latest snapshot is re-applied. */
+    applyRunSnapshot: (snapshot: RunSnapshot) => void
     checkAndRestoreActiveStates: () => Promise<void>
     selectExecution: (executionId: string | null) => void
     updateProgress: (progress: TestProgress) => void
@@ -96,6 +111,23 @@ async function discoveryError(response: Response): Promise<Error> {
         // fall through to the generic message
     }
     return new Error(`HTTP error! status: ${response.status}`)
+}
+
+// A Run click marks its flag before the server registers the process; a snapshot sent in that gap must not clear it.
+export const RUN_START_GRACE_MS = 5000
+const optimisticMarks = new Map<string, number>()
+const markRunning = (key: string, on: boolean) =>
+    on ? optimisticMarks.set(key, Date.now()) : optimisticMarks.delete(key)
+const isFreshMark = (key: string) =>
+    Date.now() - (optimisticMarks.get(key) ?? 0) < RUN_START_GRACE_MS
+const graceLeft = (key: string) =>
+    RUN_START_GRACE_MS - (Date.now() - (optimisticMarks.get(key) ?? 0))
+// A flag kept only by the grace is re-checked against the latest snapshot once the grace ends
+let lastSnapshot: RunSnapshot | null = null
+let graceTimer: ReturnType<typeof setTimeout> | null = null
+const clearGraceTimer = () => {
+    if (graceTimer) clearTimeout(graceTimer)
+    graceTimer = null
 }
 
 // Count queries only (no list GET); at most one refresh per window, shared by every socket.
@@ -179,6 +211,7 @@ export const useTestsStore = create<TestsState>()(
     devtools(
         (set, get) => ({
             tests: [],
+            testsProject: null,
             runs: [],
             isLoading: false,
             isDiscovering: false,
@@ -187,6 +220,7 @@ export const useTestsStore = create<TestsState>()(
             runningTests: new Set(),
             runningGroups: new Set(),
             error: null,
+            actionError: null,
             lastUpdated: null,
             selectedExecutionId: null,
             activeProgress: null,
@@ -227,9 +261,16 @@ export const useTestsStore = create<TestsState>()(
                 return null
             },
 
-            setListProject: (project) => set({listProject: project}),
+            // A new view starts without the previous view's error text; its own fetch decides
+            setListProject: (project) =>
+                set((state) =>
+                    state.listProject === project ? {} : {listProject: project, error: null}
+                ),
 
             fetchTests: async () => {
+                const requestProject = get().listProject
+                // A reply for a view the user already left must not touch the current one
+                const isStale = () => get().listProject !== requestProject
                 try {
                     const currentState = get()
                     // Только устанавливаем isLoading если никакие другие операции не выполняются
@@ -239,11 +280,8 @@ export const useTestsStore = create<TestsState>()(
                         currentState.runningTests.size === 0 &&
                         currentState.runningGroups.size === 0
 
-                    if (shouldSetLoading) {
-                        set({isLoading: true, error: null})
-                    } else {
-                        set({error: null})
-                    }
+                    // `error` is cleared on success only, so a retry does not flicker the banner off
+                    if (shouldSetLoading) set({isLoading: true})
 
                     // With a project: ask the server for that project only (limit applies
                     // after project filter). Without: keep the previous global slice.
@@ -260,11 +298,15 @@ export const useTestsStore = create<TestsState>()(
                     }
 
                     const data = await response.json()
+                    if (isStale()) return
 
                     if (data.success && Array.isArray(data.data)) {
                         set({
                             tests: data.data,
-                            isLoading: shouldSetLoading ? false : currentState.isLoading,
+                            testsProject: requestProject,
+                            error: null,
+                            // Not the captured value: it can be a dropped stale fetch's `true`
+                            isLoading: false,
                             lastUpdated: new Date(),
                         })
 
@@ -282,17 +324,10 @@ export const useTestsStore = create<TestsState>()(
                     }
                 } catch (error) {
                     console.error('Error fetching tests:', error)
-                    const currentState = get()
+                    if (isStale()) return
                     set({
                         error: error instanceof Error ? error.message : 'Failed to fetch tests',
-                        // Только сбрасываем isLoading если мы его устанавливали
-                        isLoading:
-                            !currentState.isDiscovering &&
-                            !currentState.isRunningAllTests &&
-                            currentState.runningTests.size === 0 &&
-                            currentState.runningGroups.size === 0
-                                ? false
-                                : currentState.isLoading,
+                        isLoading: false,
                     })
                 }
             },
@@ -312,23 +347,23 @@ export const useTestsStore = create<TestsState>()(
                         throw new Error('Invalid response format')
                     }
                 } catch (error) {
+                    // Nothing renders `runs`: a failure must not raise the list's error banner
                     console.error('Error fetching runs:', error)
-                    set({
-                        error: error instanceof Error ? error.message : 'Failed to fetch runs',
-                    })
                 }
             },
 
-            rerunTest: async (testId: string) => {
+            rerunTest: async (executionId: string, project?: string) => {
                 try {
                     // Set this specific test as running
-                    get().setTestRunning(testId, true)
-                    set({error: null})
+                    get().setTestRunning(executionId, true)
+                    set({actionError: null})
 
-                    const testProject = get().tests.find((t) => t.testId === testId)?.project
+                    // Callers pass an execution id (the row's / sidebar's), not the stable testId
+                    const testProject =
+                        project || get().tests.find((t) => t.id === executionId)?.project
                     const maxWorkers =
                         getProjectWorkersOverride(testProject) ?? getMaxWorkersFromStorage()
-                    const response = await authPost(`${API_BASE_URL}/tests/${testId}/rerun`, {
+                    const response = await authPost(`${API_BASE_URL}/tests/${executionId}/rerun`, {
                         maxWorkers,
                     })
 
@@ -349,16 +384,17 @@ export const useTestsStore = create<TestsState>()(
                 } catch (error) {
                     console.error('Error rerunning test:', error)
                     set({
-                        error: error instanceof Error ? error.message : 'Failed to rerun test',
+                        actionError:
+                            error instanceof Error ? error.message : 'Failed to rerun test',
                     })
                     // Clear the running state for this test on error
-                    get().setTestRunning(testId, false)
+                    get().setTestRunning(executionId, false)
                 }
             },
 
             deleteTest: async (testId: string) => {
                 try {
-                    set({error: null})
+                    set({actionError: null})
 
                     const response = await authDelete(`${API_BASE_URL}/tests/${testId}`)
 
@@ -377,7 +413,8 @@ export const useTestsStore = create<TestsState>()(
                 } catch (error) {
                     console.error('Error deleting test:', error)
                     set({
-                        error: error instanceof Error ? error.message : 'Failed to delete test',
+                        actionError:
+                            error instanceof Error ? error.message : 'Failed to delete test',
                     })
                     throw error
                 }
@@ -385,7 +422,7 @@ export const useTestsStore = create<TestsState>()(
 
             deleteExecution: async (testId: string, executionId: string) => {
                 try {
-                    set({error: null})
+                    set({actionError: null})
 
                     const response = await authDelete(
                         `${API_BASE_URL}/tests/${testId}/executions/${executionId}`
@@ -406,7 +443,7 @@ export const useTestsStore = create<TestsState>()(
                 } catch (error) {
                     console.error('Error deleting execution:', error)
                     set({
-                        error:
+                        actionError:
                             error instanceof Error ? error.message : 'Failed to delete execution',
                     })
                     throw error
@@ -415,7 +452,7 @@ export const useTestsStore = create<TestsState>()(
 
             discoverTests: async (project?: string, mode: DiscoveryMode = 'reset') => {
                 try {
-                    set({isDiscovering: true, error: null})
+                    set({isDiscovering: true, actionError: null})
 
                     const response = await authPost(`${API_BASE_URL}/tests/discovery`, {
                         project: project || undefined,
@@ -437,7 +474,8 @@ export const useTestsStore = create<TestsState>()(
                 } catch (error) {
                     console.error('Error discovering tests:', error)
                     set({
-                        error: error instanceof Error ? error.message : 'Failed to discover tests',
+                        actionError:
+                            error instanceof Error ? error.message : 'Failed to discover tests',
                     })
                 } finally {
                     set({isDiscovering: false})
@@ -450,7 +488,7 @@ export const useTestsStore = create<TestsState>()(
 
                     // Auto-discover tests before running if setting is enabled
                     if (autoDiscover) {
-                        set({isDiscovering: true, error: null})
+                        set({isDiscovering: true, actionError: null})
                         try {
                             const discoveryResponse = await authPost(
                                 `${API_BASE_URL}/tests/discovery`,
@@ -469,7 +507,7 @@ export const useTestsStore = create<TestsState>()(
                             // Q1: abort run if discovery failed
                             set({
                                 isDiscovering: false,
-                                error:
+                                actionError:
                                     error instanceof Error
                                         ? error.message
                                         : 'Failed to discover tests',
@@ -479,7 +517,8 @@ export const useTestsStore = create<TestsState>()(
                         set({isDiscovering: false})
                     }
 
-                    set({isRunningAllTests: true, error: null})
+                    markRunning('all', true)
+                    set({isRunningAllTests: true, actionError: null})
 
                     const maxWorkers =
                         getProjectWorkersOverride(project) ?? getMaxWorkersFromStorage()
@@ -512,7 +551,8 @@ export const useTestsStore = create<TestsState>()(
                 } catch (error) {
                     console.error('Error running all tests:', error)
                     set({
-                        error: error instanceof Error ? error.message : 'Failed to run all tests',
+                        actionError:
+                            error instanceof Error ? error.message : 'Failed to run all tests',
                         isRunningAllTests: false,
                         currentRunAllId: null,
                     })
@@ -523,7 +563,7 @@ export const useTestsStore = create<TestsState>()(
                 try {
                     // Set this specific group as running
                     get().setGroupRunning(filePath, true)
-                    set({error: null})
+                    set({actionError: null})
 
                     const maxWorkers =
                         getProjectWorkersOverride(project) ?? getMaxWorkersFromStorage()
@@ -552,7 +592,8 @@ export const useTestsStore = create<TestsState>()(
                 } catch (error) {
                     console.error('Error running tests group:', error)
                     set({
-                        error: error instanceof Error ? error.message : 'Failed to run tests group',
+                        actionError:
+                            error instanceof Error ? error.message : 'Failed to run tests group',
                     })
                     // Clear the running state for this group on error
                     get().setGroupRunning(filePath, false)
@@ -560,8 +601,10 @@ export const useTestsStore = create<TestsState>()(
             },
 
             clearError: () => set({error: null}),
+            clearActionError: () => set({actionError: null}),
 
             setTestRunning: (testId: string, isRunning: boolean) => {
+                markRunning(`t:${testId}`, isRunning)
                 set((state) => {
                     const newRunningTests = new Set(state.runningTests)
                     if (isRunning) {
@@ -574,6 +617,7 @@ export const useTestsStore = create<TestsState>()(
             },
 
             setGroupRunning: (filePath: string, isRunning: boolean) => {
+                markRunning(`g:${filePath}`, isRunning)
                 set((state) => {
                     const newRunningGroups = new Set(state.runningGroups)
                     if (isRunning) {
@@ -621,7 +665,10 @@ export const useTestsStore = create<TestsState>()(
                 }
             },
 
-            resetRunState: () =>
+            resetRunState: () => {
+                clearGraceTimer()
+                lastSnapshot = null
+                optimisticMarks.clear()
                 set({
                     ciStopping: false,
                     stopError: null,
@@ -630,9 +677,42 @@ export const useTestsStore = create<TestsState>()(
                     runningTests: new Set(),
                     runningGroups: new Set(),
                     activeProgress: null,
-                }),
+                })
+            },
+
+            applyRunSnapshot: (snapshot) => {
+                lastSnapshot = snapshot
+                clearGraceTimer()
+                const {isRunningAll, testIds, filePaths} = snapshot
+                const state = get()
+                const keep = (current: Set<string>, prefix: string) =>
+                    [...current].filter((id) => isFreshMark(`${prefix}${id}`))
+                const keptTests = keep(state.runningTests, 't:')
+                const keptGroups = keep(state.runningGroups, 'g:')
+                const keptAll = !isRunningAll && state.isRunningAllTests && isFreshMark('all')
+                const runAll = isRunningAll || keptAll
+                set({
+                    isRunningAllTests: runAll,
+                    currentRunAllId: runAll ? state.currentRunAllId : null,
+                    runningTests: new Set([...testIds, ...keptTests]),
+                    runningGroups: new Set([...filePaths, ...keptGroups]),
+                })
+                const keptKeys = [
+                    ...keptTests.map((id) => `t:${id}`),
+                    ...keptGroups.map((id) => `g:${id}`),
+                    ...(keptAll ? ['all'] : []),
+                ]
+                if (keptKeys.length) {
+                    const wait = Math.min(...keptKeys.map(graceLeft)) + 1
+                    graceTimer = setTimeout(() => {
+                        graceTimer = null
+                        if (lastSnapshot) get().applyRunSnapshot(lastSnapshot)
+                    }, wait)
+                }
+            },
 
             setRunningAllTests: (isRunning: boolean) => {
+                markRunning('all', isRunning)
                 set({isRunningAllTests: isRunning})
                 if (!isRunning) {
                     set({currentRunAllId: null})

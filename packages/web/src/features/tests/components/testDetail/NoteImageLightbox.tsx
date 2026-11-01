@@ -54,12 +54,14 @@ export function NoteImageLightbox({image, isOpen, onClose}: NoteImageLightboxPro
 
         const handleEscape = (e: KeyboardEvent) => {
             if (e.key === 'Escape') {
+                // Capture + stop: the modal under the lightbox must stay open.
+                e.stopImmediatePropagation()
                 onClose()
             }
         }
 
-        document.addEventListener('keydown', handleEscape)
-        return () => document.removeEventListener('keydown', handleEscape)
+        document.addEventListener('keydown', handleEscape, true)
+        return () => document.removeEventListener('keydown', handleEscape, true)
     }, [isOpen, onClose])
 
     if (!isOpen || !image) return null

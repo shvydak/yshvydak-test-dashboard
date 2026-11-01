@@ -117,6 +117,7 @@ describe('useWebSocket', () => {
             setGroupRunning: vi.fn(),
             setTestRunning: vi.fn(),
             setRunningAllTests: vi.fn(),
+            applyRunSnapshot: vi.fn(),
             updateProgress: vi.fn(),
             applyLiveResult: vi.fn().mockReturnValue(true),
             clearProgress: vi.fn(),
@@ -1082,7 +1083,11 @@ describe('useWebSocket', () => {
                 mockWebSocket.simulateMessage(message)
             })
 
-            expect(mockStoreActions.setRunningAllTests).toHaveBeenCalledWith(true)
+            expect(mockStoreActions.applyRunSnapshot).toHaveBeenCalledWith({
+                isRunningAll: true,
+                testIds: [],
+                filePaths: [],
+            })
             expect(mockStoreActions.fetchTests).toHaveBeenCalled()
             expect(mockStoreActions.fetchRuns).toHaveBeenCalled()
         })
@@ -1110,10 +1115,11 @@ describe('useWebSocket', () => {
                 mockWebSocket.simulateMessage(message)
             })
 
-            expect(mockStoreActions.setGroupRunning).toHaveBeenCalledWith(
-                'tests/example.spec.ts',
-                true
-            )
+            expect(mockStoreActions.applyRunSnapshot).toHaveBeenCalledWith({
+                isRunningAll: false,
+                testIds: [],
+                filePaths: ['tests/example.spec.ts'],
+            })
         })
 
         it('should restore rerun state from connection status', async () => {
@@ -1139,7 +1145,11 @@ describe('useWebSocket', () => {
                 mockWebSocket.simulateMessage(message)
             })
 
-            expect(mockStoreActions.setTestRunning).toHaveBeenCalledWith('123', true)
+            expect(mockStoreActions.applyRunSnapshot).toHaveBeenCalledWith({
+                isRunningAll: false,
+                testIds: ['123'],
+                filePaths: [],
+            })
         })
 
         it('should clear all states when no processes are running', async () => {
@@ -1165,7 +1175,11 @@ describe('useWebSocket', () => {
                 mockWebSocket.simulateMessage(message)
             })
 
-            expect(mockStoreActions.setRunningAllTests).toHaveBeenCalledWith(false)
+            expect(mockStoreActions.applyRunSnapshot).toHaveBeenCalledWith({
+                isRunningAll: false,
+                testIds: [],
+                filePaths: [],
+            })
             expect(mockStoreActions.fetchTests).toHaveBeenCalled()
             expect(mockStoreActions.fetchRuns).toHaveBeenCalled()
         })
@@ -1197,15 +1211,11 @@ describe('useWebSocket', () => {
                 mockWebSocket.simulateMessage(message)
             })
 
-            expect(mockStoreActions.setGroupRunning).toHaveBeenCalledWith(
-                'tests/test1.spec.ts',
-                true
-            )
-            expect(mockStoreActions.setGroupRunning).toHaveBeenCalledWith(
-                'tests/test2.spec.ts',
-                true
-            )
-            expect(mockStoreActions.setTestRunning).toHaveBeenCalledWith('123', true)
+            expect(mockStoreActions.applyRunSnapshot).toHaveBeenCalledWith({
+                isRunningAll: false,
+                testIds: ['123'],
+                filePaths: ['tests/test1.spec.ts', 'tests/test2.spec.ts'],
+            })
         })
     })
 

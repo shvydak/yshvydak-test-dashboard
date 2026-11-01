@@ -15,6 +15,7 @@ export interface TestOverviewTabProps {
     onAttachmentsError: (error: string) => void
     onSaveNote: (note: string) => Promise<void>
     onDeleteNote: () => Promise<void>
+    onNoteDirtyChange?: (dirty: boolean) => void
 }
 
 export function TestOverviewTab({
@@ -25,6 +26,7 @@ export function TestOverviewTab({
     onAttachmentsError,
     onSaveNote,
     onDeleteNote,
+    onNoteDirtyChange,
 }: TestOverviewTabProps) {
     const hasConsoleOutput = (test.metadata?.console?.entries?.length ?? 0) > 0
     // Attachments were purged to free disk space (the execution itself is kept).
@@ -49,10 +51,12 @@ export function TestOverviewTab({
                     {/* Test Notes Section - Next to Attachments heading */}
                     <div className="flex-1 max-w-2xl">
                         <TestNoteEditor
+                            key={test.testId}
                             testId={test.testId}
                             initialNote={test.note?.content}
                             onSave={onSaveNote}
                             onDelete={onDeleteNote}
+                            onDirtyChange={onNoteDirtyChange}
                         />
                     </div>
                 </div>

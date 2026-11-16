@@ -116,7 +116,10 @@ export const FloatingProgressPanel = () => {
                         <span className="text-sm font-medium tabular-nums text-gray-900 dark:text-gray-100">
                             {ciStopping
                                 ? 'Stopping...'
-                                : `${activeProgress.completedTests}/${activeProgress.totalTests} tests`}
+                                : activeProgress.totalTests === 0 &&
+                                    activeProgress.completedTests === 0
+                                  ? 'Starting…'
+                                  : `${activeProgress.completedTests}/${activeProgress.totalTests} tests`}
                         </span>
                         <span className="text-xs font-semibold tabular-nums text-primary-600 dark:text-primary-400">
                             {percentage.toFixed(0)}%
@@ -165,7 +168,9 @@ export const FloatingProgressPanel = () => {
                     <ProgressBar percentage={percentage} variant="primary" showLabel={false} />
                     <div className="flex justify-between items-center mt-2.5">
                         <span className="text-sm font-medium tabular-nums text-gray-600 dark:text-gray-300">
-                            {activeProgress.completedTests} of {activeProgress.totalTests} tests
+                            {activeProgress.totalTests === 0 && activeProgress.completedTests === 0
+                                ? 'Starting…'
+                                : `${activeProgress.completedTests} of ${activeProgress.totalTests} tests`}
                         </span>
                         <span className="text-sm font-bold tabular-nums text-primary-600 dark:text-primary-400">
                             {percentage.toFixed(0)}%

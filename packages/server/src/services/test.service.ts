@@ -631,6 +631,9 @@ export class TestService implements ITestService {
             releaseStarting()
         }
 
+        // Spawn-time snapshot: any snapshot after the click lists the run, not only the reporter's later one.
+        this.websocketService.broadcastConnectionStatus()
+
         // Create test run record
         await this.runRepository.createTestRun({
             id: result.runId,
@@ -715,6 +718,9 @@ export class TestService implements ITestService {
         } finally {
             releaseStarting()
         }
+
+        // Spawn-time snapshot: any snapshot after the click lists the run, not only the reporter's later one.
+        this.websocketService.broadcastConnectionStatus()
 
         // Create test run record
         await this.runRepository.createTestRun({
@@ -807,6 +813,9 @@ export class TestService implements ITestService {
         } finally {
             releaseStarting()
         }
+
+        // Spawn-time snapshot: any snapshot after the click lists the run, not only the reporter's later one.
+        this.websocketService.broadcastConnectionStatus()
 
         // Create a new run for this rerun
         await this.runRepository.createTestRun({

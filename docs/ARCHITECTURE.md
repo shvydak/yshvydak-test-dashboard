@@ -128,9 +128,9 @@ The dashboard implements a **WebSocket-based process tracking** system that ensu
 1. **Process Registration**: When tests start, the reporter notifies the server via `POST /api/tests/process-start`
 2. **Memory Tracking**: Server maintains active processes in `ActiveProcessesTracker` (in-memory store)
 3. **RunId Synchronization**: Dashboard generates runId and passes it to reporter via RUN_ID environment variable
-4. **WebSocket Synchronization**: On connection, server sends `connection:status` with current active processes (also on each process start/end, force-reset and each new socket); the web store replaces its running flags from it, except flags set by a click in the last 5 s (re-checked once that grace ends)
+4. **WebSocket Synchronization**: On connection, server sends `connection:status` with current active processes (also at spawn time — right after the server registers the run, so any snapshot after a Run click lists it — and on each process start/end, force-reset and each new socket); the web store replaces its running flags from it, except flags set by a click in the last 5 s (re-checked once that grace ends)
 5. **Process Cleanup**: When tests complete, reporter notifies via `POST /api/tests/process-end`
-6. **Automatic Failsafe**: Old processes (>30 minutes) are automatically cleaned up
+6. **Automatic Failsafe**: Tracker entries older than 30 minutes are dropped unless the dashboard spawned the run and its process is alive (`RunProcessRegistry.isAlive`); such a run stays in snapshots and keeps live progress, while reporter-only entries (started outside the dashboard) still age out
 
 ### Key Benefits
 

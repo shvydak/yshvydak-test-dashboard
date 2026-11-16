@@ -131,6 +131,7 @@ describe('TestService', () => {
             broadcast: vi.fn(),
             broadcastDiscoveryCompleted: vi.fn(),
             broadcastRunStarted: vi.fn(),
+            broadcastConnectionStatus: vi.fn(),
             broadcastRunCompleted: vi.fn(),
             broadcastDashboardRefresh: vi.fn(),
             broadcastTestsDeleted: vi.fn(),

@@ -1,5 +1,6 @@
 import {ActiveProcessInfo, ProcessStartData, TestProgress} from '@yshvydak/core'
 import {Logger} from '../utils/logger.util'
+import {runProcessRegistry} from './runProcessRegistry.service'
 
 export class ActiveProcessesTracker {
     private activeProcesses = new Map<string, ActiveProcessInfo>()
@@ -22,7 +23,8 @@ export class ActiveProcessesTracker {
 
         const processInfo: ActiveProcessInfo = {
             id: data.runId,
-            type: data.type,
+            // The server's spawn-time type wins: the reporter's /process-start cannot tell a group run from run-all.
+            type: existing?.type ?? data.type,
             startedAt: existing?.startedAt ?? new Date().toISOString(),
             details: {
                 runId: data.runId,
@@ -55,7 +57,7 @@ export class ActiveProcessesTracker {
         }
 
         this.activeProcesses.set(data.runId, processInfo)
-        Logger.info(`Added active process: ${data.runId} (${data.type})`)
+        Logger.info(`Added active process: ${data.runId} (${processInfo.type})`)
         this.logCurrentState()
     }
 
@@ -250,7 +252,8 @@ export class ActiveProcessesTracker {
 
         for (const [runId, process] of this.activeProcesses.entries()) {
             const processStartTime = new Date(process.startedAt)
-            if (processStartTime < cutoffTime) {
+            // A run whose process is still alive stays for as long as it runs; only dead entries age out.
+            if (processStartTime < cutoffTime && !runProcessRegistry.isAlive(runId)) {
                 this.activeProcesses.delete(runId)
                 cleanedCount++
                 Logger.warn(`Cleaned up old process: ${runId} (started at ${process.startedAt})`)

@@ -103,6 +103,36 @@ describe('FloatingProgressPanel', () => {
     })
 
     describe('Progress Statistics', () => {
+        it('keeps the counts once tests complete even if the total is still 0', () => {
+            vi.mocked(useTestsStore).mockReturnValue({
+                activeProgress: {...mockActiveProgress, totalTests: 0, completedTests: 2},
+                clearProgress: mockClearProgress,
+                tests: [],
+            } as any)
+
+            render(<FloatingProgressPanel />)
+
+            expect(screen.getByText(/2 of 0 tests/)).toBeInTheDocument()
+            expect(screen.queryByText('Starting…')).not.toBeInTheDocument()
+        })
+
+        it('shows "Starting…" instead of 0 of 0 while the total is unknown', () => {
+            vi.mocked(useTestsStore).mockReturnValue({
+                activeProgress: {...mockActiveProgress, totalTests: 0, completedTests: 0},
+                clearProgress: mockClearProgress,
+                tests: [],
+            } as any)
+
+            render(<FloatingProgressPanel />)
+
+            expect(screen.getByText('Starting…')).toBeInTheDocument()
+            expect(screen.queryByText(/0 of 0/)).not.toBeInTheDocument()
+
+            fireEvent.click(screen.getByRole('button', {name: /minimize/i}))
+            expect(screen.getByText('Starting…')).toBeInTheDocument()
+            expect(screen.queryByText('0/0 tests')).not.toBeInTheDocument()
+        })
+
         it('should display total and completed tests', () => {
             render(<FloatingProgressPanel />)
 

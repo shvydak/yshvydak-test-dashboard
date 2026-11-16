@@ -1905,6 +1905,8 @@ Connect to WebSocket at: `ws://localhost:3001/ws` (development) or `wss://api-da
 
 Sent immediately upon WebSocket connection to sync current state.
 
+Also broadcast when the server spawns a run (before the start request answers), on each process start/end and on force-reset. The snapshot lists every active run; a run the dashboard spawned stays listed while its process is alive, however long it runs; reporter-only entries still drop after 30 minutes.
+
 ```json
 {
     "type": "connection:status",

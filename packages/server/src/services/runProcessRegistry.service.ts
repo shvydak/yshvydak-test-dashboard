@@ -106,6 +106,12 @@ export class RunProcessRegistry {
         return this.runs.has(runId)
     }
 
+    /** Registered and its process (or group) still exists; a dead entry that never sent `close` is not alive. */
+    isAlive(runId: string): boolean {
+        const entry = this.runs.get(runId)
+        return !!entry && !isGone(entry)
+    }
+
     getRuns(): RegisteredRun[] {
         return Array.from(
             this.runs.values(),

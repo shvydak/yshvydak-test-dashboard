@@ -154,13 +154,14 @@ describe('ActiveProcessesTracker', () => {
             expect(processes).toHaveLength(3)
         })
 
-        it('should handle duplicate runId by overwriting', () => {
-            tracker.addProcess({runId: 'run-1', type: 'run-all'})
+        it('should merge a duplicate runId and keep the first registered type', () => {
             tracker.addProcess({runId: 'run-1', type: 'run-group', filePath: 'test.spec.ts'})
+            tracker.addProcess({runId: 'run-1', type: 'run-all'})
 
             const processes = tracker.getActiveProcesses()
             expect(processes).toHaveLength(1)
             expect(processes[0].type).toBe('run-group')
+            expect(processes[0].details.filePath).toBe('test.spec.ts')
         })
 
         it('should preserve project from the first call when the second call (e.g. from the reporter) omits it', () => {
@@ -745,13 +746,13 @@ describe('ActiveProcessesTracker', () => {
             expect(tracker.isGroupRunning('tests/тест.spec.ts')).toBe(true)
         })
 
-        it('should maintain isolation between different process types', () => {
+        it('should keep one entry per runId, with the first type', () => {
             tracker.addProcess({runId: 'same-id', type: 'run-all'})
-            // This will overwrite the previous one
+            // Merges into the previous one; the type does not change
             tracker.addProcess({runId: 'same-id', type: 'run-group', filePath: 'test.spec.ts'})
 
             expect(tracker.getActiveProcesses()).toHaveLength(1)
-            expect(tracker.getActiveProcesses()[0].type).toBe('run-group')
+            expect(tracker.getActiveProcesses()[0].type).toBe('run-all')
         })
     })
 

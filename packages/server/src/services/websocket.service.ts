@@ -19,6 +19,13 @@ export class WebSocketService implements IWebSocketService {
         return wsManager ? (wsManager as any).clients.size : 0
     }
 
+    /** Pushes the current active-run snapshot to every client. */
+    broadcastConnectionStatus(): void {
+        const wsManager = getWebSocketManager()
+        if (wsManager) wsManager.broadcastConnectionStatus()
+        else Logger.warn('WebSocket manager not available for broadcasting')
+    }
+
     broadcastRunStarted(runId: string, type: string, filePath?: string): void {
         this.broadcast({
             type: 'run:started',

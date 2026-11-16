@@ -39,9 +39,15 @@ The reporter takes no constructor options (`constructor()` reads only the enviro
 | `onEnd`                 | `PUT /api/runs/:id` (status, totals, duration), then `POST /api/tests/process-end` |
 | `onStdOut` / `onStdErr` | collected per test into `metadata.console`                                         |
 
-Requests are fire-and-forget: a failed request logs a warning and never fails the Playwright run.
+Requests never fail the Playwright run: a failed request logs a warning and the run goes on.
 
-Result fields: `id` (UUID per execution), `testId`, `runId`, `name`, `filePath`, `status` (`passed | failed | skipped | timedOut`; other Playwright statuses map to `failed`), `duration`, `timestamp`, `errorMessage` (for failures: the stack with a few source lines around the failing line, read from the test file), `errorStack`, `attachments` (`name`, `path`, `contentType`; the server copies files to permanent storage) and `metadata`.
+**Delivery.** A result POST is cut after 25 s (the server copies attachments before it answers); every other request after 5 s. Result POSTs, the run PUT and `process-end` are retried twice (pauses of 250 ms and 750 ms) on a 5xx or a network/timeout error; a 4xx is not retried. `process-start` and `test-start` are single tries. At the end of the run (`onEnd`) the reporter waits until every result POST has finished (at most 8 s) before it sends the run PUT and `process-end`. All sending after the end of the run or after a stop signal ends 15 s after it starts, whatever the dashboard does: a stop gives Playwright 20 s before the dashboard kills it, and a hung dashboard must not hold Playwright. After a stop (signal, or Playwright status `interrupted`) the run PUT and `process-end` are sent once, without retries. A result still in flight after the limit may be lost.
+
+**Interrupted tests.** When a run is stopped (SIGINT), the test that is running ends with Playwright status `interrupted`, often with an error such as `page.click: Test ended.`. The reporter does not send it: no `POST /api/tests`, one log line, and it is counted as `Interrupted` in the console summary (not as failed, and not in the run totals). `timedOut` results count as failed in the summary, the run PUT and `process-end`. Tests that never started produce no event. The run PUT still says `status: 'failed'` for any Playwright status other than `passed`, because the run status has no `interrupted` value.
+
+**Process signals.** The reporter adds `SIGINT` and `SIGTERM` handlers (they send `process-end` with `interrupted`). It adds no `uncaughtException` or `unhandledRejection` handlers.
+
+Result fields: `id` (UUID per execution), `testId`, `runId`, `name`, `filePath`, `status` (`passed | failed | skipped | timedOut`; other Playwright statuses map to `failed`; `interrupted` is not sent), `duration`, `timestamp`, `errorMessage` (for failures: the stack with a few source lines around the failing line, read from the test file), `errorStack`, `attachments` (`name`, `path`, `contentType`; the server copies files to permanent storage) and `metadata`.
 
 ### Test ID
 
@@ -53,6 +59,7 @@ All keys are optional and additive; rows written before a field existed simply l
 
 | Key                            | Type                                               | Source                                    | Notes                                                                                                                                                                                       |
 | ------------------------------ | -------------------------------------------------- | ----------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `rawStatus`                    | `string`                                           | `result.status`                           | Always sent: Playwright's own status of the attempt (`passed`, `failed`, `timedOut`, `skipped`), before the mapping to `status`.                                                            |
 | `steps`                        | `{title, category, duration, startTime, error?}[]` | `result.steps`                            | Omitted when there are no steps.                                                                                                                                                            |
 | `console`                      | `{entries: {type, text, timestamp}[], truncated?}` | `onStdOut`/`onStdErr` with a `TestResult` | Last 500 entries and at most 200,000 characters; `truncated: true` when cut. Global output is ignored.                                                                                      |
 | `tags`                         | `string[]`                                         | `test.tags`                               | Keeps the leading `@`. Includes `@` tokens from test and suite titles. Playwright's `tag` option and `TestCase.tags` are from 1.42; on older versions the field is `[]`.                    |

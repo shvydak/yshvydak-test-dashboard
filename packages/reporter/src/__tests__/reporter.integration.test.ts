@@ -42,7 +42,11 @@ describe('YShvydakReporter - Integration Tests', () => {
 
         consoleLogSpy.mockRestore()
         consoleWarnSpy.mockRestore()
+        vi.useRealTimers()
     })
+
+    // Retries back off with timers; fake timers let a failing request finish at once
+    const flushRetries = () => vi.advanceTimersByTimeAsync(5000)
 
     // Helper to create mock Suite
     const createMockSuite = (testCount: number = 3): Suite => {
@@ -153,8 +157,8 @@ describe('YShvydakReporter - Integration Tests', () => {
 
             expect(processOnSpy).toHaveBeenCalledWith('SIGINT', expect.any(Function))
             expect(processOnSpy).toHaveBeenCalledWith('SIGTERM', expect.any(Function))
-            expect(processOnSpy).toHaveBeenCalledWith('uncaughtException', expect.any(Function))
-            expect(processOnSpy).toHaveBeenCalledWith('unhandledRejection', expect.any(Function))
+            expect(processOnSpy).not.toHaveBeenCalledWith('uncaughtException', expect.anything())
+            expect(processOnSpy).not.toHaveBeenCalledWith('unhandledRejection', expect.anything())
         })
     })
 
@@ -478,6 +482,7 @@ describe('YShvydakReporter - Integration Tests', () => {
         })
 
         it('should handle network error when sending test result', async () => {
+            vi.useFakeTimers()
             mockFetch.mockRejectedValue(new Error('Connection refused'))
 
             const testCase = createMockTestCase('test', 'passed')
@@ -485,7 +490,7 @@ describe('YShvydakReporter - Integration Tests', () => {
 
             reporter.onTestEnd(testCase, result)
 
-            await new Promise((resolve) => setTimeout(resolve, 10))
+            await flushRetries()
 
             expect(consoleWarnSpy).toHaveBeenCalledWith(
                 expect.stringContaining('Dashboard API not available')
@@ -632,17 +637,14 @@ describe('YShvydakReporter - Integration Tests', () => {
             reporter.onTestEnd(createMockTestCase('test', 'passed'), createMockTestResult('passed'))
 
             const result: FullResult = {status: 'passed'} as FullResult
-            const setTimeoutSpy = vi.spyOn(global, 'setTimeout')
             await reporter.onEnd(result)
 
-            expect(setTimeoutSpy).toHaveBeenCalledWith(expect.any(Function), 1000)
             expect(consoleLogSpy).toHaveBeenCalledWith(
                 expect.stringContaining('Waiting for all test results')
             )
             expect(consoleLogSpy).toHaveBeenCalledWith(
-                expect.stringContaining('All test results should be processed')
+                expect.stringContaining('All test results sent')
             )
-            setTimeoutSpy.mockRestore()
         })
 
         it('should handle API error when updating run', async () => {
@@ -651,6 +653,7 @@ describe('YShvydakReporter - Integration Tests', () => {
             reporter.onTestEnd(createMockTestCase('test', 'passed'), createMockTestResult('passed'))
 
             mockFetch.mockClear()
+            vi.useFakeTimers()
             mockFetch.mockResolvedValue({
                 ok: false,
                 status: 500,
@@ -658,7 +661,9 @@ describe('YShvydakReporter - Integration Tests', () => {
             })
 
             const result: FullResult = {status: 'passed'} as FullResult
-            await reporter.onEnd(result)
+            const ended = reporter.onEnd(result)
+            await flushRetries()
+            await ended
 
             expect(consoleWarnSpy).toHaveBeenCalledWith(
                 expect.stringContaining('Failed to update test run')
@@ -674,10 +679,13 @@ describe('YShvydakReporter - Integration Tests', () => {
             reporter.onTestEnd(createMockTestCase('test', 'passed'), createMockTestResult('passed'))
 
             mockFetch.mockClear()
+            vi.useFakeTimers()
             mockFetch.mockRejectedValue(new Error('Network error'))
 
             const result: FullResult = {status: 'passed'} as FullResult
-            await reporter.onEnd(result)
+            const ended = reporter.onEnd(result)
+            await flushRetries()
+            await ended
 
             expect(consoleWarnSpy).toHaveBeenCalledWith(
                 expect.stringContaining('Dashboard API not available')
@@ -779,13 +787,14 @@ test('example test', async () => {
         })
 
         it('should handle cleanup errors gracefully', async () => {
+            vi.useFakeTimers()
             mockFetch.mockRejectedValue(new Error('Network error'))
             reporter = new YShvydakReporter()
 
             const sigintHandler = process.listeners('SIGINT').pop() as () => void
             sigintHandler()
 
-            await new Promise((resolve) => setTimeout(resolve, 10))
+            await flushRetries()
 
             expect(consoleWarnSpy).toHaveBeenCalledWith(
                 expect.stringContaining('Process end notification failed')
@@ -867,6 +876,7 @@ test('example test', async () => {
         })
 
         it('should handle API being unavailable throughout entire run', async () => {
+            vi.useFakeTimers()
             mockFetch.mockRejectedValue(new Error('API not available'))
 
             reporter = new YShvydakReporter()
@@ -886,7 +896,9 @@ test('example test', async () => {
             )
 
             // Complete run
-            await reporter.onEnd({status: 'passed'} as FullResult)
+            const ended = reporter.onEnd({status: 'passed'} as FullResult)
+            await flushRetries()
+            await ended
 
             // Should have warnings but not crash
             expect(consoleWarnSpy.mock.calls.length).toBeGreaterThan(0)
@@ -900,7 +912,7 @@ test('example test', async () => {
             mockFetch.mockImplementation(() => {
                 callCount++
                 if (callCount % 2 === 0) {
-                    return Promise.resolve({ok: false, status: 500, text: async () => 'Error'})
+                    return Promise.resolve({ok: false, status: 400, text: async () => 'Error'})
                 }
                 return Promise.resolve({ok: true, json: async () => ({})})
             })

@@ -113,7 +113,7 @@ describe('YShvydakReporter - lifecycle details', () => {
 
         it.each([
             ['timedOut', 'timedOut'],
-            ['interrupted', 'failed'],
+            ['unknown-future-status', 'failed'],
             ['skipped', 'skipped'],
         ])('maps Playwright status %s to %s', (playwrightStatus, expected) => {
             reporter.onTestEnd(testAt('a.spec.ts'), resultOf({status: playwrightStatus}))

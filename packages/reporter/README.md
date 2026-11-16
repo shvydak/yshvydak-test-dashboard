@@ -46,12 +46,21 @@ The reporter has no options. It reads these environment variables (and a `.env` 
 
 Requests never fail the Playwright run: on an error the reporter logs a warning and continues.
 
+### Delivery and stops
+
+- A result request has a 25 s timeout, every other request 5 s. Result, run and process-end requests are retried twice on a 5xx or a network error (not on a 4xx).
+- At the end of the run the reporter waits for all result requests to finish (at most 8 s) before it sends the run totals. Sending after the end of the run or a stop signal stops 15 s after it starts, and after a stop the run totals and process-end are sent once, without retries.
+- `timedOut` tests count as failed in the totals.
+- A test cut short by a stop (Playwright status `interrupted`) is not sent. It is logged and counted as `Interrupted` in the summary, not as failed.
+- The reporter handles `SIGINT` and `SIGTERM` only; it does not add `uncaughtException` or `unhandledRejection` handlers.
+
 ## Metadata
 
 Each result carries extra keys in `metadata`. All are optional and missing values are omitted.
 
 | Key                            | Content                                                                                                                                                                |
 | ------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `rawStatus`                    | Playwright's own status of the attempt (`passed`, `failed`, `timedOut`, `skipped`).                                                                                    |
 | `tags`                         | Playwright tags with the leading `@` (`[]` on Playwright < 1.42).                                                                                                      |
 | `describe`                     | Describe titles only, outermost first.                                                                                                                                 |
 | `annotations`                  | `{type, description?}`, de-duplicated; max 10, type <= 100 chars, description <= 300 chars.                                                                            |

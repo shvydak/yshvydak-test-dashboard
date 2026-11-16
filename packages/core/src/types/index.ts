@@ -35,6 +35,8 @@ export interface ConsoleEntry {
 }
 
 export interface TestMetadata {
+    // Playwright's own status of the attempt (reporter); the dashboard status is a mapped value
+    rawStatus?: string
     steps?: TestStep[]
     console?: {
         entries: ConsoleEntry[]

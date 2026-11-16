@@ -38,6 +38,16 @@ const MAX_ERROR_MESSAGE_CHARS = 2000
 const MAX_ERROR_STACK_CHARS = 4000
 const OUTCOMES = ['skipped', 'expected', 'unexpected', 'flaky'] as const
 
+// 5xx/network errors are retried with a growing pause; a try is cut after its timeout.
+const REQUEST_TIMEOUT_MS = 5000
+// A result POST may carry attachments the server copies before it answers
+const RESULT_TIMEOUT_MS = 25_000
+const RETRY_DELAYS_MS = [250, 750]
+// All sending after the end of the run or a stop signal ends by here: the dashboard SIGKILLs at 20 s
+const END_DEADLINE_MS = 15_000
+// Leaves the rest of the deadline to the run PUT and process-end
+const IN_FLIGHT_WAIT_CAP_MS = 8000
+
 function safely<T>(read: () => T): T | undefined {
     try {
         return read()
@@ -196,6 +206,8 @@ interface YShvydakTestResult {
         contentType: string
     }>
     metadata?: {
+        // Playwright's own status of this attempt (before mapping to the dashboard status)
+        rawStatus?: string
         steps?: TestStep[]
         console?: {
             entries: ConsoleEntry[]
@@ -275,6 +287,10 @@ class YShvydakReporter implements Reporter {
     private results: YShvydakTestResult[] = []
     private startTime: number = 0
     private apiBaseUrl: string
+    private interruptedCount = 0
+    private stopSignalled = false
+    private deadline = Infinity
+    private readonly inFlight = new Set<Promise<unknown>>()
     private readonly consoleEntriesByResult = new WeakMap<TestResult, ConsoleEntry[]>()
     private readonly consoleWasTruncatedByResult = new WeakMap<TestResult, boolean>()
     private static readonly MAX_CONSOLE_LINES = 500
@@ -346,6 +362,13 @@ class YShvydakReporter implements Reporter {
     }
 
     onTestEnd(test: TestCase, result: TestResult) {
+        // A test cut by a stop is not a real result; it often carries a "Test ended" error
+        if (result.status === 'interrupted') {
+            this.interruptedCount++
+            console.log(`⏹️  Interrupted: ${test.title} (not sent to dashboard)`)
+            return
+        }
+
         const testId = this.generateStableTestId(test)
         // Normalize path for consistent file path display
         const filePath = normalizeTestPath(path.relative(process.cwd(), test.location.file))
@@ -383,6 +406,7 @@ class YShvydakReporter implements Reporter {
             errorStack: result.error?.stack,
             attachments: this.processAttachments(result.attachments),
             metadata: {
+                rawStatus: result.status,
                 steps: steps.length > 0 ? steps : undefined,
                 console:
                     consoleEntries.length > 0
@@ -396,8 +420,8 @@ class YShvydakReporter implements Reporter {
 
         this.results.push(testResult)
 
-        // Send result to dashboard API
-        this.sendTestResult(testResult)
+        // Send result to dashboard API; onEnd waits for it
+        this.track(this.sendTestResult(testResult))
 
         console.log(
             `${this.getStatusIcon(testResult.status)} ${testResult.name} (${testResult.duration}ms)`
@@ -453,16 +477,26 @@ class YShvydakReporter implements Reporter {
     }
 
     async onEnd(result: FullResult) {
+        this.deadline = Math.min(this.deadline, Date.now() + END_DEADLINE_MS)
+        if (result.status === 'interrupted') this.stopSignalled = true
+
         const duration = Date.now() - this.startTime
         const passed = this.results.filter((r) => r.status === 'passed').length
-        const failed = this.results.filter((r) => r.status === 'failed').length
+        // timedOut counts as failed: pipeline steps read failedTests > 0
+        const failed = this.results.filter(
+            (r) => r.status === 'failed' || r.status === 'timedOut'
+        ).length
         const skipped = this.results.filter((r) => r.status === 'skipped').length
 
         console.log(`\n⏳ Waiting for all test results to be sent to dashboard...`)
 
-        await new Promise((resolve) => setTimeout(resolve, 1000))
-
-        console.log(`✅ All test results should be processed by dashboard now`)
+        if (await this.waitForInFlight()) {
+            console.log(`✅ All test results sent to dashboard`)
+        } else {
+            console.warn(
+                `⚠️  Some test results were still being sent after ${IN_FLIGHT_WAIT_CAP_MS / 1000}s; continuing`
+            )
+        }
 
         // Update test run
         await this.updateTestRun({
@@ -493,6 +527,9 @@ class YShvydakReporter implements Reporter {
         console.log(`   ✅ Passed: ${passed}`)
         console.log(`   ❌ Failed: ${failed}`)
         console.log(`   ⏭️  Skipped: ${skipped}`)
+        if (this.interruptedCount > 0) {
+            console.log(`   ⏹️  Interrupted: ${this.interruptedCount} (not sent)`)
+        }
         console.log(`   ⏱️  Duration: ${(duration / 1000).toFixed(1)}s`)
         console.log(`\n🌐 View results: http://localhost:3000`)
     }
@@ -641,15 +678,78 @@ class YShvydakReporter implements Reporter {
         }
     }
 
+    private track(promise: Promise<unknown>) {
+        this.inFlight.add(promise)
+        promise.finally(() => this.inFlight.delete(promise))
+    }
+
+    // Resolves true when nothing is left in flight, false when the cap cut the wait.
+    private async waitForInFlight(): Promise<boolean> {
+        let timer: NodeJS.Timeout | undefined
+        const capped = new Promise<false>((resolve) => {
+            timer = setTimeout(
+                () => resolve(false),
+                Math.min(IN_FLIGHT_WAIT_CAP_MS, Math.max(0, this.deadline - Date.now()))
+            )
+        })
+        const drained = (async (): Promise<true> => {
+            while (this.inFlight.size > 0) await Promise.allSettled([...this.inFlight])
+            return true
+        })()
+        try {
+            return await Promise.race([drained, capped])
+        } finally {
+            clearTimeout(timer)
+        }
+    }
+
+    // Retries 5xx and network/timeout errors, never past this.deadline (end of run / stop signal)
+    private async request(
+        url: string,
+        method: 'POST' | 'PUT',
+        body: unknown,
+        {retries = 0, timeoutMs = REQUEST_TIMEOUT_MS} = {}
+    ): Promise<Response> {
+        let lastResponse: Response | undefined
+        for (let attempt = 0; ; attempt++) {
+            const left = this.deadline - Date.now()
+            if (left <= 0) {
+                if (lastResponse) return lastResponse
+                throw new Error('time limit after the end of the run reached')
+            }
+            const controller = new AbortController()
+            const timer = setTimeout(() => controller.abort(), Math.min(timeoutMs, left))
+            try {
+                const response = await fetch(url, {
+                    method,
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(body),
+                    signal: controller.signal,
+                })
+                if (!(response.status >= 500) || attempt >= retries) return response
+                lastResponse = response
+            } catch (error) {
+                if (attempt >= retries) throw error
+            } finally {
+                clearTimeout(timer)
+            }
+            const pause = RETRY_DELAYS_MS[Math.min(attempt, RETRY_DELAYS_MS.length - 1)]
+            const wait = Math.min(pause, this.deadline - Date.now())
+            if (wait > 0) await new Promise((resolve) => setTimeout(resolve, wait))
+        }
+    }
+
+    // No retries once a stop is signalled: Playwright is about to be killed
+    private controlRetries() {
+        return this.stopSignalled ? 0 : RETRY_DELAYS_MS.length
+    }
+
     private async sendTestResult(result: YShvydakTestResult) {
         const startTime = Date.now()
         try {
-            const response = await fetch(`${this.apiBaseUrl}/api/tests`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(result),
+            const response = await this.request(`${this.apiBaseUrl}/api/tests`, 'POST', result, {
+                retries: RETRY_DELAYS_MS.length,
+                timeoutMs: RESULT_TIMEOUT_MS,
             })
 
             const duration = Date.now() - startTime
@@ -667,13 +767,12 @@ class YShvydakReporter implements Reporter {
 
     private async updateTestRun(run: YShvydakTestRun) {
         try {
-            const response = await fetch(`${this.apiBaseUrl}/api/runs/${run.id}`, {
-                method: 'PUT',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(run),
-            })
+            const response = await this.request(
+                `${this.apiBaseUrl}/api/runs/${run.id}`,
+                'PUT',
+                run,
+                {retries: this.controlRetries()}
+            )
 
             if (!response.ok) {
                 console.warn(`⚠️  Failed to update test run: ${response.status}`)
@@ -688,13 +787,11 @@ class YShvydakReporter implements Reporter {
     private async notifyProcessStart(data: ProcessStartData) {
         try {
             console.log(`📤 Sending process start notification for: ${data.runId}`)
-            const response = await fetch(`${this.apiBaseUrl}/api/tests/process-start`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(data),
-            })
+            const response = await this.request(
+                `${this.apiBaseUrl}/api/tests/process-start`,
+                'POST',
+                data
+            )
 
             if (!response.ok) {
                 console.warn(`⚠️  Failed to notify process start: ${response.status}`)
@@ -710,15 +807,9 @@ class YShvydakReporter implements Reporter {
 
     private async notifyTestStart(data: {testId: string; name: string; filePath: string}) {
         try {
-            const response = await fetch(`${this.apiBaseUrl}/api/tests/test-start`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    runId: this.runId,
-                    ...data,
-                }),
+            const response = await this.request(`${this.apiBaseUrl}/api/tests/test-start`, 'POST', {
+                runId: this.runId,
+                ...data,
             })
 
             if (!response.ok) {
@@ -733,13 +824,12 @@ class YShvydakReporter implements Reporter {
     private async notifyProcessEnd(data: ProcessEndData) {
         try {
             console.log(`📤 Sending process end notification for: ${data.runId} (${data.status})`)
-            const response = await fetch(`${this.apiBaseUrl}/api/tests/process-end`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(data),
-            })
+            const response = await this.request(
+                `${this.apiBaseUrl}/api/tests/process-end`,
+                'POST',
+                data,
+                {retries: this.controlRetries()}
+            )
 
             if (!response.ok) {
                 console.warn(`⚠️  Failed to notify process end: ${response.status}`)
@@ -757,10 +847,13 @@ class YShvydakReporter implements Reporter {
 
     private setupCleanupHandlers() {
         // Handle process termination signals
-        process.on('SIGINT', () => this.cleanup('interrupted'))
-        process.on('SIGTERM', () => this.cleanup('interrupted'))
-        process.on('uncaughtException', () => this.cleanup('interrupted'))
-        process.on('unhandledRejection', () => this.cleanup('interrupted'))
+        const onSignal = () => {
+            this.stopSignalled = true
+            this.deadline = Math.min(this.deadline, Date.now() + END_DEADLINE_MS)
+            return this.cleanup('interrupted')
+        }
+        process.on('SIGINT', onSignal)
+        process.on('SIGTERM', onSignal)
     }
 
     private async cleanup(status: 'interrupted' = 'interrupted') {

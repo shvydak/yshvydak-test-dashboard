@@ -24,3 +24,7 @@ export const FILTER_OPTIONS = [
 ] as const
 
 export type FilterKey = (typeof FILTER_OPTIONS)[number]['key']
+
+// Rows one list load asks for: no tab = the 200 newest, a project tab = up to 5000.
+export const UNSCOPED_LIST_LIMIT = 200
+export const PROJECT_LIST_LIMIT = 5000

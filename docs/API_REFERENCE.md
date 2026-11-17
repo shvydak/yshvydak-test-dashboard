@@ -2001,21 +2001,6 @@ Broadcast when a test process completes.
 
 ### Test Events
 
-#### test:status
-
-Real-time test status updates during execution.
-
-```json
-{
-    "type": "test:status",
-    "data": {
-        "testId": "test-66jqtq",
-        "status": "running",
-        "timestamp": "2024-09-25T12:01:00.000Z"
-    }
-}
-```
-
 #### test:progress
 
 **✨ Enhanced in v1.0.1** - Real-time test execution progress with currently running tests.
@@ -2068,22 +2053,6 @@ See [Progress Tracking](features/PROGRESS_TRACKING.md) for implementation detail
             "timestamp": "2025-10-28T09:30:05Z",
             "project": "API"
         }
-    }
-}
-```
-
-#### test:completed
-
-Individual test completion notification.
-
-```json
-{
-    "type": "test:completed",
-    "data": {
-        "testId": "test-66jqtq",
-        "status": "passed",
-        "duration": 1500,
-        "timestamp": "2024-09-25T12:01:30.000Z"
     }
 }
 ```

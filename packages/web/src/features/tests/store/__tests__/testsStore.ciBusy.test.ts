@@ -66,11 +66,11 @@ describe('testsStore CI busy state', () => {
         expect(useTestsStore.getState().error).toBeNull()
     })
 
-    it('a non-409 failure keeps the status message', async () => {
+    it('a failure whose body has no reason keeps the status message', async () => {
         mockAuthPost.mockResolvedValue({
             ok: false,
             status: 500,
-            json: () => Promise.resolve({message: 'ignored'}),
+            json: () => Promise.resolve({}),
         })
 
         await useTestsStore.getState().rerunTest('test-1')

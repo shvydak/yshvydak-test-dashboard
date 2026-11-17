@@ -1,19 +1,19 @@
 import {useState, useEffect, useMemo, useRef} from 'react'
 import {createPortal} from 'react-dom'
 import {useSearchParams} from 'react-router-dom'
-import {AlertTriangle, CircleAlert} from 'lucide-react'
+import {AlertTriangle, CircleAlert, Info} from 'lucide-react'
 import {TestResult} from '@yshvydak/core'
 import {LoadingSpinner} from '@shared/components'
 import {AlertBanner} from '@shared/components/molecules/AlertBanner'
 import {ConfirmationDialog} from '@shared/components/molecules/ConfirmationDialog'
 import {useShallow} from 'zustand/react/shallow'
 import {useTestsStore} from '../store/testsStore'
+import {getSearchShortcutLabel} from '@/utils/searchShortcut.util'
 import {useStableCallback} from '@/hooks/useStableCallback'
 import {useTestFilters, useTestLink} from '../hooks'
 import {useTestStatusCounts} from '../hooks/useTestStatusCounts'
 import {useFilteredTestsByStatus} from '../hooks/useFilteredTestsByStatus'
-import {FilterKey, FILTER_OPTIONS} from '../constants'
-// import {TestsListHeader} from './TestsListHeader'
+import {FilterKey, FILTER_OPTIONS, UNSCOPED_LIST_LIMIT} from '../constants'
 import {TestsListFilters} from './TestsListFilters'
 import {TestsContent} from './TestsContent'
 import {TicketSearchContext} from './TicketSearchContext'
@@ -92,11 +92,13 @@ export default function TestsList({
     } = useFilteredTestsByStatus(filter, activeProject || undefined)
 
     // The load that feeds the visible list: the store for 'all', the status query otherwise
-    const error = filter === 'all' ? storeError : (filteredByStatusError?.message ?? null)
+    const viewError = filter === 'all' ? storeError : (filteredByStatusError?.message ?? null)
     const hasRowsForView =
         filter === 'all'
             ? tests.length > 0 && testsProject === listProject
             : filteredByStatusTests.length > 0
+    // A status view refetches only after a good list load: the store's error is its banner too, never the card
+    const error = viewError ?? (filter === 'all' ? null : storeError)
 
     // A refresh error dismissed by the user stays hidden until a load succeeds (error back to null)
     const [dismissedError, setDismissedError] = useState<string | null>(null)
@@ -130,6 +132,13 @@ export default function TestsList({
         return Array.from(keys)
     }, [filteredTests])
     const {ticketInfo} = useJiraTicketInfo(ticketKeys)
+    // No tab = only the newest rows are loaded while the "All" badge counts every test
+    const loadedCapped =
+        filter === 'all' &&
+        !activeProject &&
+        testsProject === listProject &&
+        tests.length >= UNSCOPED_LIST_LIMIT &&
+        statusCounts.total > tests.length
     const counts = {
         all: statusCounts.total,
         passed: statusCounts.passed,
@@ -254,7 +263,7 @@ export default function TestsList({
 
     // No rows of this view to show (none yet, or still the previous tab's): the full-page card.
     // Rows of this view + a failed refresh only get a banner (below)
-    if (error && !hasRowsForView) {
+    if (viewError && !hasRowsForView) {
         return (
             <div className="space-y-6 animate-fade-in">
                 <h1 className="text-3xl font-bold tracking-tight text-gray-900 dark:text-white">
@@ -271,7 +280,7 @@ export default function TestsList({
                                 Error loading tests
                             </h3>
                             <p className="mt-1 whitespace-pre-wrap break-words text-sm text-danger-600 dark:text-danger-400">
-                                {error}
+                                {viewError}
                             </p>
                         </div>
                     </div>
@@ -328,6 +337,18 @@ export default function TestsList({
                     onDismiss={() => setDismissedError(error)}
                 />
             )}
+            {loadedCapped && (
+                <AlertBanner
+                    severity="neutral"
+                    icon={<Info className="h-4 w-4" />}
+                    title={`Showing the first ${tests.length} of ${statusCounts.total} tests`}
+                    message={
+                        searchQuery
+                            ? `This search covers only the ${tests.length} loaded tests. Use Search (${getSearchShortcutLabel()}) to search all, or open a project tab.`
+                            : `Open a project tab or use Search (${getSearchShortcutLabel()}) to see all.`
+                    }
+                />
+            )}
             {linkFailure && (
                 <TestLinkBanner reason={linkFailure} onDismiss={() => setLinkFailure(null)} />
             )}
@@ -342,6 +363,9 @@ export default function TestsList({
                     onSearchChange={handleSearchChange}
                     filteredCount={filteredTests.length}
                     activeProject={activeProject}
+                    searchPlaceholder={
+                        loadedCapped ? `Search the ${tests.length} loaded tests...` : undefined
+                    }
                 />
             </div>
 

@@ -67,6 +67,41 @@ describe('DatabaseManager', () => {
             }
         })
 
+        it('checkpointAndClose folds the WAL into the db file even while another connection is open', async () => {
+            const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'wal-close-'))
+            try {
+                const writer = new DatabaseManager(dir)
+                await writer.initialize()
+                // A second connection to the same file: a plain close() would then leave the WAL as it is
+                const other = new DatabaseManager(dir)
+                await other.initialize()
+                await writer.execute(
+                    `INSERT INTO test_results (id, test_id, name, file_path, status, created_at, updated_at)
+                     VALUES ('r1', 't1', 'T', 'a.ts', 'passed', '2026-01-01T00:00:00.000Z', '2026-01-01T00:00:00.000Z')`
+                )
+                const wal = path.join(dir, 'test-results.db-wal')
+                expect(fs.statSync(wal).size).toBeGreaterThan(0)
+
+                await writer.checkpointAndClose()
+
+                expect(fs.statSync(wal).size).toBe(0)
+                const row = await other.queryOne<{id: string}>(
+                    `SELECT id FROM test_results WHERE id = 'r1'`
+                )
+                expect(row?.id).toBe('r1')
+                await other.close()
+            } finally {
+                fs.rmSync(dir, {recursive: true, force: true})
+            }
+        })
+
+        it('checkpointAndClose on an in-memory db just closes', async () => {
+            const mem = new DatabaseManager(':memory:')
+            await mem.initialize()
+
+            await expect(mem.checkpointAndClose()).resolves.toBeUndefined()
+        })
+
         it('should enable foreign keys constraint', async () => {
             // Try to insert test result without corresponding run (should fail due to FK)
             const testResult: TestResultData = {

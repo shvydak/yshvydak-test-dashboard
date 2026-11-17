@@ -111,12 +111,11 @@ describe('testsStore.applyRunSnapshot', () => {
             expect(useTestsStore.getState().runningTests.size).toBe(0)
         })
 
-        it('a real Run-all click keeps its flag through an idle snapshot, then clears it with its run id', async () => {
+        it('a real Run-all click keeps its flag through an idle snapshot, then clears it', async () => {
             mockAuthPost.mockResolvedValue(json({success: true, data: {runId: 'r1'}}))
             mockAuthGet.mockResolvedValue(json({success: true, data: []}))
             await useTestsStore.getState().runAllTests()
             expect(useTestsStore.getState().isRunningAllTests).toBe(true)
-            expect(useTestsStore.getState().currentRunAllId).toBe('r1')
 
             useTestsStore.getState().applyRunSnapshot(idle)
             expect(useTestsStore.getState().isRunningAllTests).toBe(true)
@@ -124,7 +123,6 @@ describe('testsStore.applyRunSnapshot', () => {
             vi.advanceTimersByTime(RUN_START_GRACE_MS + 1)
             useTestsStore.getState().applyRunSnapshot(idle)
             expect(useTestsStore.getState().isRunningAllTests).toBe(false)
-            expect(useTestsStore.getState().currentRunAllId).toBeNull()
         })
 
         it('an idle snapshot inside the grace is re-applied once the grace ends (run:completed lost)', () => {

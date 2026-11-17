@@ -28,7 +28,6 @@ describe('testsStore Stop', () => {
             ciStopping: false,
             isRunningAllTests: false,
             isDiscovering: false,
-            currentRunAllId: null,
             runningTests: new Set(),
             runningGroups: new Set(),
             activeProgress: null,
@@ -139,7 +138,6 @@ describe('testsStore Stop', () => {
             useTestsStore.setState({
                 ciStopping: true,
                 isRunningAllTests: true,
-                currentRunAllId: 'r1',
                 runningTests: new Set(['t1']),
                 runningGroups: new Set(['a.spec.ts']),
                 activeProgress: {processId: 'r1'} as any,
@@ -150,7 +148,6 @@ describe('testsStore Stop', () => {
             const state = useTestsStore.getState()
             expect(state.ciStopping).toBe(false)
             expect(state.isRunningAllTests).toBe(false)
-            expect(state.currentRunAllId).toBeNull()
             expect(state.runningTests.size).toBe(0)
             expect(state.runningGroups.size).toBe(0)
             expect(state.activeProgress).toBeNull()

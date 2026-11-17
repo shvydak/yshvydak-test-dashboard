@@ -24,6 +24,8 @@ export interface TestsListFiltersProps {
     onExpandAll?: () => void
     onCollapseAll?: () => void
     activeProject?: string
+    /** Replaces the default placeholder, e.g. when the search only covers the loaded rows. */
+    searchPlaceholder?: string
 }
 
 export function TestsListFilters({
@@ -34,6 +36,7 @@ export function TestsListFilters({
     onSearchChange,
     filteredCount,
     activeProject,
+    searchPlaceholder,
 }: TestsListFiltersProps) {
     const {
         runAllTests,
@@ -175,7 +178,7 @@ export function TestsListFilters({
                     value={searchQuery}
                     onChange={(e) => onSearchChange(e.target.value)}
                     onClear={() => onSearchChange('')}
-                    placeholder="Search tests or ticket keys..."
+                    placeholder={searchPlaceholder ?? 'Search tests or ticket keys...'}
                     className="flex-1 md:w-96 md:flex-none"
                     resultCount={searchQuery ? filteredCount : undefined}
                 />

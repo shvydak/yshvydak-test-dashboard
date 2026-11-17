@@ -57,7 +57,7 @@ export const TestsTable = memo(function TestsTable({
                 <tbody>
                     {tests.map((test) => (
                         <TestRow
-                            key={test.id}
+                            key={test.testId}
                             test={test}
                             selected={selectedTest?.testId === test.testId}
                             onSelect={onTestSelect}

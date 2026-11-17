@@ -597,6 +597,22 @@ export class DatabaseManager {
         await this.run(sql, [testId])
     }
 
+    // Shutdown path: fold the WAL into the main file, then close (plain close() leaves the WAL to the next start)
+    async checkpointAndClose(): Promise<void> {
+        try {
+            await this.run('PRAGMA wal_checkpoint(TRUNCATE)')
+        } catch (error) {
+            Logger.error('WAL checkpoint before close failed:', error)
+        }
+        await new Promise<void>((resolve) => {
+            this.db.close((error) => {
+                if (error) Logger.error('Error closing database:', error)
+                else Logger.critical('Database connection closed')
+                resolve()
+            })
+        })
+    }
+
     close(): void {
         this.db.close((error) => {
             if (error) {

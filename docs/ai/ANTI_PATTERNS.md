@@ -555,7 +555,7 @@ export function TestDetailModal({test, isOpen, onClose}) {
 
 **Benefits:**
 
-- Each component under 200 lines
+- Aim for components under ~200 lines (a guideline: `testsStore`, `Header`, `App`, `TestDetailModal` and others are larger)
 - Single responsibility per component
 - Easier to test individually
 - Reusable sub-components

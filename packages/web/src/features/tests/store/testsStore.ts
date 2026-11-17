@@ -7,6 +7,8 @@ import {getMaxWorkersFromStorage} from '@/hooks/usePlaywrightWorkers'
 import {getProjectWorkersOverride} from '@/hooks/useProjectTabs'
 import {getAutoDiscoverFromStorage} from '@/hooks/useAutoDiscoverSetting'
 import {specFileName, type ActiveRunRef, type StopTarget} from '../utils/stopTarget'
+import {responseError} from '../utils/responseError'
+import {UNSCOPED_LIST_LIMIT, PROJECT_LIST_LIMIT} from '../constants'
 
 export type DiscoveryMode = 'reset' | 'incremental'
 
@@ -25,7 +27,6 @@ interface TestsState {
     isLoading: boolean
     isDiscovering: boolean
     isRunningAllTests: boolean
-    currentRunAllId: string | null
     runningTests: Set<string>
     runningGroups: Set<string>
     /** Why the last LIST LOAD failed; the only error that replaces the list with the full-page card. */
@@ -87,7 +88,6 @@ interface TestsState {
     resetRunState: () => void
     /** Server snapshot replaces the running flags; a flag set by a click in the last 5 s stays, then the latest snapshot is re-applied. */
     applyRunSnapshot: (snapshot: RunSnapshot) => void
-    checkAndRestoreActiveStates: () => Promise<void>
     selectExecution: (executionId: string | null) => void
     updateProgress: (progress: TestProgress) => void
     /** Patch one row from a saved result (store + filtered lists); false = row unknown, caller reloads. */
@@ -98,30 +98,6 @@ interface TestsState {
 import {config} from '@config/environment.config'
 
 const API_BASE_URL = config.api.baseUrl
-
-// A 409 carries the server's reason (a CI run is queued/running); show it instead of the bare status.
-async function httpError(response: Response): Promise<Error> {
-    if (response.status === 409) {
-        try {
-            const body = await response.json()
-            if (typeof body?.message === 'string' && body.message) return new Error(body.message)
-        } catch {
-            // fall through to the generic message
-        }
-    }
-    return new Error(`HTTP error! status: ${response.status}`)
-}
-
-// A failed discovery answers 500 with the real reason in `error` (e.g. a spec file that throws on import).
-async function discoveryError(response: Response): Promise<Error> {
-    try {
-        const body = await response.json()
-        if (typeof body?.error === 'string' && body.error) return new Error(body.error)
-    } catch {
-        // fall through to the generic message
-    }
-    return new Error(`HTTP error! status: ${response.status}`)
-}
 
 // A Run click marks its flag before the server registers the process; a snapshot sent in that gap must not clear it.
 export const RUN_START_GRACE_MS = 5000
@@ -225,7 +201,6 @@ export const useTestsStore = create<TestsState>()(
             isLoading: false,
             isDiscovering: false,
             isRunningAllTests: false,
-            currentRunAllId: null,
             runningTests: new Set(),
             runningGroups: new Set(),
             error: null,
@@ -331,9 +306,9 @@ export const useTestsStore = create<TestsState>()(
                     const params = new URLSearchParams()
                     if (currentState.listProject) {
                         params.set('project', currentState.listProject)
-                        params.set('limit', '5000')
+                        params.set('limit', String(PROJECT_LIST_LIMIT))
                     } else {
-                        params.set('limit', '200')
+                        params.set('limit', String(UNSCOPED_LIST_LIMIT))
                     }
                     const response = await authGet(`${API_BASE_URL}/tests?${params.toString()}`)
                     if (!response.ok) {
@@ -391,7 +366,7 @@ export const useTestsStore = create<TestsState>()(
                     })
 
                     if (!response.ok) {
-                        throw await httpError(response)
+                        throw await responseError(response)
                     }
 
                     const data = await response.json()
@@ -422,7 +397,7 @@ export const useTestsStore = create<TestsState>()(
                     const response = await authDelete(`${API_BASE_URL}/tests/${testId}`)
 
                     if (!response.ok) {
-                        throw new Error(`HTTP error! status: ${response.status}`)
+                        throw await responseError(response)
                     }
 
                     const data = await response.json()
@@ -452,7 +427,7 @@ export const useTestsStore = create<TestsState>()(
                     )
 
                     if (!response.ok) {
-                        throw new Error(`HTTP error! status: ${response.status}`)
+                        throw await responseError(response)
                     }
 
                     const data = await response.json()
@@ -483,7 +458,7 @@ export const useTestsStore = create<TestsState>()(
                     })
 
                     if (!response.ok) {
-                        throw await discoveryError(response)
+                        throw await responseError(response)
                     }
 
                     const data = await response.json()
@@ -518,7 +493,7 @@ export const useTestsStore = create<TestsState>()(
                                 {project: project || undefined}
                             )
                             if (!discoveryResponse.ok) {
-                                throw await discoveryError(discoveryResponse)
+                                throw await responseError(discoveryResponse)
                             }
                             const discoveryData = await discoveryResponse.json()
                             if (!discoveryData.success) {
@@ -552,17 +527,12 @@ export const useTestsStore = create<TestsState>()(
                     })
 
                     if (!response.ok) {
-                        throw await httpError(response)
+                        throw await responseError(response)
                     }
 
                     const data = await response.json()
 
                     if (data.success) {
-                        const runId = data.data.runId
-
-                        // Сохраняем ID run для отслеживания (используется WebSocket для завершения)
-                        set({currentRunAllId: runId})
-
                         setTimeout(() => {
                             get().fetchTests()
                         }, 1000)
@@ -575,7 +545,6 @@ export const useTestsStore = create<TestsState>()(
                         actionError:
                             error instanceof Error ? error.message : 'Failed to run all tests',
                         isRunningAllTests: false,
-                        currentRunAllId: null,
                     })
                 }
             },
@@ -596,7 +565,7 @@ export const useTestsStore = create<TestsState>()(
                     })
 
                     if (!response.ok) {
-                        throw await httpError(response)
+                        throw await responseError(response)
                     }
 
                     const data = await response.json()
@@ -680,7 +649,7 @@ export const useTestsStore = create<TestsState>()(
                     // The run ended (or was replaced) before the click landed; the next snapshot shows what runs now.
                     if (response.status === 409) throw new Error('That run already ended.')
                     if (!response.ok) {
-                        throw new Error(`HTTP error! status: ${response.status}`)
+                        throw await responseError(response)
                     }
                     await get().fetchTests()
                 } catch (error) {
@@ -702,7 +671,6 @@ export const useTestsStore = create<TestsState>()(
                     ciStopping: false,
                     stopError: null,
                     isRunningAllTests: false,
-                    currentRunAllId: null,
                     runningTests: new Set(),
                     runningGroups: new Set(),
                     activeRuns: [],
@@ -724,7 +692,6 @@ export const useTestsStore = create<TestsState>()(
                 set({
                     activeRuns: runs,
                     isRunningAllTests: runAll,
-                    currentRunAllId: runAll ? state.currentRunAllId : null,
                     runningTests: new Set([...testIds, ...keptTests]),
                     runningGroups: new Set([...filePaths, ...keptGroups]),
                 })
@@ -745,14 +712,6 @@ export const useTestsStore = create<TestsState>()(
             setRunningAllTests: (isRunning: boolean) => {
                 markRunning('all', isRunning)
                 set({isRunningAllTests: isRunning})
-                if (!isRunning) {
-                    set({currentRunAllId: null})
-                }
-            },
-
-            checkAndRestoreActiveStates: async () => {
-                // This function is now simplified since state restoration
-                // is handled by WebSocket connection:status event
             },
 
             selectExecution: (executionId: string | null) => {

@@ -202,6 +202,22 @@ describe('POST /api/tests - Create Test Result (Integration)', () => {
         })
     })
 
+    describe('Run row required (documented limit: reporter used without the dashboard)', () => {
+        it('refuses a result whose runId has no run row with 500 (FK), and stores nothing', async () => {
+            const response = await request(server.url)
+                .post('/api/tests')
+                .set('Authorization', `Bearer ${server.authToken}`)
+                .send({
+                    ...fixtures.validTestResult,
+                    id: 'orphan-1',
+                    runId: 'a-random-reporter-uuid',
+                })
+
+            expect(response.status).toBe(500)
+            expect(await getTestResultCount(server.testRepository.dbManager)).toBe(0)
+        })
+    })
+
     describe('INSERT-only strategy (Historical Tracking)', () => {
         it('should create new record for same testId (not update)', async () => {
             const baseData = {

@@ -1,9 +1,8 @@
-import React, {useEffect, useState} from 'react'
+import React, {useEffect} from 'react'
 import {createPortal} from 'react-dom'
 import {X} from 'lucide-react'
 import {NoteImage} from '@yshvydak/core'
-import {createProtectedFileURL} from '@features/authentication/utils/authFetch'
-import {config} from '@config/environment.config'
+import {useProtectedImageUrl} from '../../hooks/useProtectedImageUrl'
 
 interface NoteImageLightboxProps {
     image: NoteImage | null
@@ -12,42 +11,7 @@ interface NoteImageLightboxProps {
 }
 
 export function NoteImageLightbox({image, isOpen, onClose}: NoteImageLightboxProps) {
-    const [imageUrl, setImageUrl] = useState<string | null>(null)
-    const [loading, setLoading] = useState(true)
-
-    useEffect(() => {
-        if (!isOpen || !image) {
-            setImageUrl(null)
-            setLoading(true)
-            return
-        }
-
-        let isMounted = true
-
-        const loadImage = async () => {
-            try {
-                const url = await createProtectedFileURL(image.url, config.api.serverUrl)
-                if (isMounted) {
-                    setImageUrl(url)
-                    setLoading(false)
-                }
-            } catch (err) {
-                console.error('Failed to load note image:', err)
-                if (isMounted) {
-                    setLoading(false)
-                }
-            }
-        }
-
-        loadImage()
-
-        return () => {
-            isMounted = false
-            if (imageUrl) {
-                URL.revokeObjectURL(imageUrl)
-            }
-        }
-    }, [image, isOpen])
+    const {url: imageUrl, loading} = useProtectedImageUrl(image?.url ?? null, isOpen)
 
     useEffect(() => {
         if (!isOpen) return

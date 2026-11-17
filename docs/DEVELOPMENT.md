@@ -353,7 +353,7 @@ Logger.testRun('run-all', 'run-123') // "Starting run-all with run ID: run-123"
 Logger.testRerun('Test Name', 'run-456') // "Rerunning test "Test Name" with run ID: run-456"
 
 // WebSocket
-Logger.websocketBroadcast('test:status', 5) // "Broadcasting test:status to 5 clients"
+Logger.websocketBroadcast('test:progress', 5) // "Broadcasting test:progress to 5 clients"
 ```
 
 ### Production Logging Behavior

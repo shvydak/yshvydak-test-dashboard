@@ -422,11 +422,11 @@ vi.setSystemTime(new Date('2024-01-01T12:00:00Z'))
 // ... test code
 vi.useRealTimers()
 
-// React Context with wrapper
+// Provider with wrapper
 const wrapper = ({children}: {children: React.ReactNode}) => (
-    <AuthProvider onLogout={vi.fn()}>{children}</AuthProvider>
+    <QueryClientProvider client={new QueryClient()}>{children}</QueryClientProvider>
 )
-const {result} = renderHook(() => useAuth(), {wrapper})
+const {result} = renderHook(() => useSomeQueryHook(), {wrapper})
 
 // Type assertions for complex mocks
 const mockResponse = {ok: true, status: 200} as unknown as Response

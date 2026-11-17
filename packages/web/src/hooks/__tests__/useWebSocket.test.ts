@@ -10,7 +10,6 @@
  * - State synchronization (tests, running states)
  * - handleConnectionStatus() - restore active processes
  * - Query invalidation on updates
- * - Keep-alive ping mechanism
  *
  * Target Coverage: 75%+
  */
@@ -238,68 +237,6 @@ describe('useWebSocket', () => {
     })
 
     describe('Reconnection Logic', () => {
-        it.skip('should attempt to reconnect on connection close', async () => {
-            const url = 'ws://localhost:3001'
-            renderHook(() => useWebSocket(url), {
-                wrapper: createWrapper(),
-            })
-
-            await act(async () => {
-                await Promise.resolve()
-            })
-
-            const callsBeforeClose = (global.WebSocket as any).mock.calls.length
-
-            // Simulate connection close
-            act(() => {
-                mockWebSocket.close()
-                vi.advanceTimersByTime(0) // Process close event
-            })
-
-            // Fast-forward to trigger reconnection
-            await act(async () => {
-                vi.advanceTimersByTime(1000) // First retry delay
-                await Promise.resolve()
-            })
-
-            // Should have attempted reconnection (one more call)
-            expect((global.WebSocket as any).mock.calls.length).toBe(callsBeforeClose + 1)
-        })
-
-        it.skip('should use exponential backoff for reconnection delays', async () => {
-            const url = 'ws://localhost:3001'
-            renderHook(() => useWebSocket(url), {
-                wrapper: createWrapper(),
-            })
-
-            await act(async () => {
-                await Promise.resolve()
-            })
-
-            // Test exponential backoff: 1000ms, 2000ms, 4000ms
-            const expectedDelays = [1000, 2000, 4000]
-
-            for (let i = 0; i < expectedDelays.length; i++) {
-                const callsBefore = (global.WebSocket as any).mock.calls.length
-
-                // Close connection
-                act(() => {
-                    mockWebSocket.close()
-                    vi.advanceTimersByTime(0)
-                })
-
-                // Advance by expected delay
-                await act(async () => {
-                    vi.advanceTimersByTime(expectedDelays[i])
-                    await Promise.resolve()
-                })
-
-                // Should have attempted reconnection
-                const callsAfter = (global.WebSocket as any).mock.calls.length
-                expect(callsAfter).toBe(callsBefore + 1)
-            }
-        })
-
         it('should reset reconnection counter on successful connection', async () => {
             const url = 'ws://localhost:3001'
             renderHook(() => useWebSocket(url), {
@@ -348,55 +285,6 @@ describe('useWebSocket', () => {
 
             const callsAfterFull = (global.WebSocket as any).mock.calls.length
             expect(callsAfterFull).toBe(callsBefore + 1) // Reconnection happened at 1000ms
-        })
-
-        it.skip('should cap reconnection delay at 30 seconds', async () => {
-            const url = 'ws://localhost:3001'
-            renderHook(() => useWebSocket(url), {
-                wrapper: createWrapper(),
-            })
-
-            await act(async () => {
-                await Promise.resolve()
-            })
-
-            // Close connection multiple times to exceed cap
-            // Delays: 1000, 2000, 4000, 8000, 16000 (next would be 32000 but capped at 30000)
-            // Only do 4 attempts to avoid hitting max reconnection limit
-            for (let i = 0; i < 4; i++) {
-                act(() => {
-                    mockWebSocket.close()
-                    vi.advanceTimersByTime(0)
-                })
-
-                await act(async () => {
-                    vi.advanceTimersByTime(30000)
-                    await Promise.resolve()
-                })
-            }
-
-            const callsBefore = (global.WebSocket as any).mock.calls.length
-
-            // Close one more time - delay should be capped at 30000
-            act(() => {
-                mockWebSocket.close()
-                vi.advanceTimersByTime(0)
-            })
-
-            // Advance by 29 seconds (should NOT reconnect)
-            await act(async () => {
-                vi.advanceTimersByTime(29000)
-            })
-
-            expect((global.WebSocket as any).mock.calls.length).toBe(callsBefore)
-
-            // Advance by 1 more second (should reconnect at 30s cap)
-            await act(async () => {
-                vi.advanceTimersByTime(1000)
-                await Promise.resolve()
-            })
-
-            expect((global.WebSocket as any).mock.calls.length).toBe(callsBefore + 1)
         })
     })
 
@@ -583,6 +471,25 @@ describe('useWebSocket', () => {
             expect(DownServerSocket.instances).toHaveLength(before + 1)
         })
 
+        it('waits 1s, 2s, 4s between attempts (exponential backoff)', async () => {
+            installDownServer()
+            renderHook(() => useWebSocket('ws://localhost:3001'), {wrapper: createWrapper()})
+
+            for (const [i, delay] of [1000, 2000, 4000].entries()) {
+                act(() => {
+                    DownServerSocket.instances[i].drop()
+                })
+                await act(async () => {
+                    vi.advanceTimersByTime(delay - 1)
+                })
+                expect(DownServerSocket.instances).toHaveLength(i + 1)
+                await act(async () => {
+                    vi.advanceTimersByTime(1)
+                })
+                expect(DownServerSocket.instances).toHaveLength(i + 2)
+            }
+        })
+
         it('unmount while still CONNECTING (close code 1006) never reconnects or leaks a socket', async () => {
             installDownServer()
             const {unmount} = renderHook(() => useWebSocket('ws://localhost:3001'), {
@@ -699,7 +606,6 @@ describe('useWebSocket', () => {
 
             it.each([
                 ['a saved test result', {type: 'test:progress', data: saved}],
-                ['test:completed', {type: 'test:completed', data: {}}],
                 ['run:completed', {type: 'run:completed', data: {}}],
                 ['tests:deleted', {type: 'tests:deleted', data: {scope: 'test', testId: 't1'}}],
             ])('fires on %s', async (_name, message) => {
@@ -880,22 +786,6 @@ describe('useWebSocket', () => {
                 expect(mockStoreActions.fetchTests).toHaveBeenCalled()
             }
         }
-
-        it('should handle run:status message', async () => {
-            await testMessageType('run:status', {}, {fetchTests: true})
-        })
-
-        it('should handle test:completed message', async () => {
-            await testMessageType('test:completed', {}, {fetchTests: true})
-        })
-
-        it('should handle test:status message', async () => {
-            await testMessageType('test:status', {}, {fetchTests: true})
-        })
-
-        it('should handle stats:update message', async () => {
-            await testMessageType('stats:update', {}, {fetchTests: true})
-        })
 
         it('should handle discovery:completed message', async () => {
             await testMessageType('discovery:completed', {}, {fetchTests: true})
@@ -1391,85 +1281,6 @@ describe('useWebSocket', () => {
         })
     })
 
-    describe('Keep-Alive Ping', () => {
-        it.skip('should send periodic ping messages when connected', async () => {
-            const url = 'ws://localhost:3001'
-            const {result} = renderHook(() => useWebSocket(url), {
-                wrapper: createWrapper(),
-            })
-
-            await act(async () => {
-                await Promise.resolve()
-            })
-
-            expect(result.current.isConnected).toBe(true)
-
-            // Fast-forward 30 seconds to trigger ping
-            await act(async () => {
-                vi.advanceTimersByTime(30000)
-            })
-
-            const messageQueue = mockWebSocket.getMessageQueue()
-            expect(messageQueue.length).toBeGreaterThan(0)
-
-            const lastMessage = JSON.parse(messageQueue[messageQueue.length - 1])
-            expect(lastMessage).toEqual({type: 'ping'})
-        })
-
-        it('should not send ping when disconnected', async () => {
-            const url = 'ws://localhost:3001'
-            renderHook(() => useWebSocket(url), {
-                wrapper: createWrapper(),
-            })
-
-            await act(async () => {
-                await Promise.resolve()
-            })
-
-            // Disconnect
-            act(() => {
-                mockWebSocket.close()
-                vi.advanceTimersByTime(0)
-            })
-
-            const queueLengthBefore = mockWebSocket.getMessageQueue().length
-
-            // Fast-forward 30 seconds
-            act(() => {
-                vi.advanceTimersByTime(30000)
-            })
-
-            const queueLengthAfter = mockWebSocket.getMessageQueue().length
-            expect(queueLengthAfter).toBe(queueLengthBefore) // No new messages
-        })
-
-        it.skip('should send multiple pings over time', async () => {
-            const url = 'ws://localhost:3001'
-            const {result} = renderHook(() => useWebSocket(url), {
-                wrapper: createWrapper(),
-            })
-
-            await act(async () => {
-                await Promise.resolve()
-            })
-
-            expect(result.current.isConnected).toBe(true)
-
-            // Fast-forward 90 seconds (should send 3 pings)
-            await act(async () => {
-                vi.advanceTimersByTime(90000)
-            })
-
-            const messageQueue = mockWebSocket.getMessageQueue()
-            const pingMessages = messageQueue.filter((msg) => {
-                const parsed = JSON.parse(msg)
-                return parsed.type === 'ping'
-            })
-
-            expect(pingMessages.length).toBeGreaterThanOrEqual(3)
-        })
-    })
-
     describe('Error Handling', () => {
         it('should handle WebSocket errors gracefully', async () => {
             const url = 'ws://localhost:3001'
@@ -1560,30 +1371,6 @@ describe('useWebSocket', () => {
             const message = {
                 type: 'run:completed',
                 data: {type: 'run-all', runId: '123'},
-            }
-
-            act(() => {
-                mockWebSocket.simulateMessage(message)
-            })
-
-            expect(onRunCompleted).toHaveBeenCalledWith(message.data)
-        })
-
-        it('should call onRunCompleted on run:status', async () => {
-            const url = 'ws://localhost:3001'
-            const onRunCompleted = vi.fn()
-
-            renderHook(() => useWebSocket(url, {onRunCompleted}), {
-                wrapper: createWrapper(),
-            })
-
-            await act(async () => {
-                await Promise.resolve()
-            })
-
-            const message = {
-                type: 'run:status',
-                data: {status: 'completed', runId: '123'},
             }
 
             act(() => {

@@ -2,7 +2,6 @@ import React from 'react'
 import ReactDOM from 'react-dom/client'
 import {BrowserRouter} from 'react-router-dom'
 import {QueryClientProvider} from '@tanstack/react-query'
-import {AuthProviderWrapper} from '@features/authentication'
 import {queryClient} from '@config/queryClient'
 import App from './App'
 import './index.css'
@@ -14,9 +13,7 @@ try {
         <React.StrictMode>
             <BrowserRouter>
                 <QueryClientProvider client={queryClient}>
-                    <AuthProviderWrapper>
-                        <App />
-                    </AuthProviderWrapper>
+                    <App />
                 </QueryClientProvider>
             </BrowserRouter>
         </React.StrictMode>

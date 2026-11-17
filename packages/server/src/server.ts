@@ -3,7 +3,6 @@ import {createWebSocketServer, setWebSocketManager} from './websocket/server'
 import {config} from './config/environment.config'
 import {RUN_STOP} from './config/constants'
 import {Logger} from './utils/logger.util'
-import {DatabaseManager} from './database/database.manager'
 import {startInternalListener, closeInternalListener} from './utils/internalListener.util'
 import {runProcessRegistry} from './services/runProcessRegistry.service'
 
@@ -14,9 +13,6 @@ const JIRA_SYNC_INTERVAL_MS = 30 * 60 * 1000
 async function startServer() {
     try {
         const {app, serviceContainer} = await createApp()
-
-        // Create database manager instance for cleanup
-        const dbManager = new DatabaseManager(config.storage.outputDir)
 
         // Before listen: kills leftover Playwright groups and deletes what an interrupted run wrote.
         await serviceContainer.pipelineExecutionService.handleInterruptedOnStartup()
@@ -80,12 +76,13 @@ async function startServer() {
                 wsServer.close(() => {
                     Logger.info('✅ WebSocket server closed - all connections terminated')
 
-                    // Close database connection
-                    dbManager.close()
-                    Logger.info('✅ Database connection closed')
+                    // Final WAL checkpoint, then close the container's connection
+                    void serviceContainer.dbManager.checkpointAndClose().then(() => {
+                        Logger.info('✅ Database connection closed')
 
-                    Logger.info('🎉 Graceful shutdown completed')
-                    process.exit(0)
+                        Logger.info('🎉 Graceful shutdown completed')
+                        process.exit(0)
+                    })
                 })
             })
         }

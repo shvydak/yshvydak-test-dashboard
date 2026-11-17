@@ -47,6 +47,7 @@ describe('PipelineController', () => {
             getCurrentPipelineLive: vi.fn(),
             getQueue: vi.fn().mockReturnValue([]),
             isStopping: vi.fn().mockReturnValue(false),
+            getLastStop: vi.fn().mockReturnValue(null),
             stop: vi.fn(),
         }
 
@@ -313,6 +314,27 @@ describe('PipelineController', () => {
             expect(ResponseHelper.notFound).not.toHaveBeenCalled()
             expect(mockRes.json).toHaveBeenCalledWith(
                 expect.objectContaining({success: true, data: null, queue})
+            )
+        })
+
+        it('carries the last stop next to the state, and answers (not 404) for it alone', async () => {
+            const lastStop = {
+                stoppedAt: '2026-11-17T10:00:00.000Z',
+                reason: 'manual',
+                kind: 'run-all',
+                name: 'API',
+            }
+            mockPipelineExecutionService.getCurrentPipelineLive.mockResolvedValue(null)
+            mockPipelineExecutionService.getLastStop.mockReturnValue(lastStop)
+
+            await controller.getCurrentPipelineStatus(
+                mockReq as ServiceRequest,
+                mockRes as Response
+            )
+
+            expect(ResponseHelper.notFound).not.toHaveBeenCalled()
+            expect(mockRes.json).toHaveBeenCalledWith(
+                expect.objectContaining({success: true, data: null, lastStop})
             )
         })
 

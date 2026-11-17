@@ -78,10 +78,14 @@ export class WebSocketService implements IWebSocketService {
         })
     }
 
-    broadcastPipelineStarted(pipelineRunId: string, steps: PipelineStepSummary[]): void {
+    broadcastPipelineStarted(
+        pipelineRunId: string,
+        steps: PipelineStepSummary[],
+        pipeline?: string
+    ): void {
         this.broadcast({
             type: 'pipeline:started',
-            data: {pipelineRunId, steps},
+            data: {pipelineRunId, pipeline, steps},
         })
     }
 
@@ -109,11 +113,12 @@ export class WebSocketService implements IWebSocketService {
         runIds: string[],
         reason: string,
         pipelineRunId: string | undefined,
-        resultsKept: boolean
+        resultsKept: boolean,
+        stoppedAt?: string
     ): void {
         this.broadcast({
             type: 'run:cancelled',
-            data: {runIds, reason, pipelineRunId, resultsKept},
+            data: {runIds, reason, pipelineRunId, resultsKept, stoppedAt},
         })
     }
 

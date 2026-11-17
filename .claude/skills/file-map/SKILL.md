@@ -30,6 +30,8 @@ description: Where things live in this repo — testId generation, WebSocket URL
 | CI result Slack (messages, link rules)            | `packages/server/src/utils/ciSlackMessage.util.ts` + `services/ciNotifier.service.ts`                                              |
 | Stop: live child processes, cancel flags, groups  | `packages/server/src/services/runProcessRegistry.service.ts` + `utils/processGroup.util.ts` + `utils/runStop.util.ts`              |
 | Stop: orchestration (`stop()`, restart cleanup)   | `packages/server/src/services/pipelineExecution.service.ts` (state: `TestService.finalizeStoppedRuns`)                             |
+| Stop: per-run route (`stopTarget()`)              | `routes/run.routes.ts` → `RunController.stopRun` → `PipelineExecutionService.stopTarget`                                           |
+| Stop: web target, dialog title, stopped banner    | `features/tests/utils/stopTarget.ts` + `testsStore.ts` (`stopRun`) + `features/dashboard/components/StoppedRunBanner.tsx`          |
 | Tab status badge/dot (passed/failed)              | `test.repository.ts` (`getProjectStatusSummary`) + `packages/web/src/hooks/useProjectStatusSummary.ts`                             |
 | Filter-bar unlimited counts                       | `test.repository.ts` (`getTestStatusCounts`) + `packages/web/src/features/tests/hooks/useTestStatusCounts.ts`                      |
 | Cmd+K test search (palette)                       | `features/tests/components/CommandPalette.tsx` + `hooks/useTestSearch.ts` → `searchLatestTests`                                    |

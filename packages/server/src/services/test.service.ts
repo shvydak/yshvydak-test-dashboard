@@ -749,7 +749,7 @@ export class TestService implements ITestService {
                 project
             )
             runProcessRegistry.register(
-                {runId: result.runId, type: 'run-group', project},
+                {runId: result.runId, type: 'run-group', project, filePath},
                 result.process
             )
 
@@ -842,7 +842,7 @@ export class TestService implements ITestService {
                 project
             )
             runProcessRegistry.register(
-                {runId: result.runId, type: 'rerun', project},
+                {runId: result.runId, type: 'rerun', project, testName: test.name},
                 result.process
             )
 

@@ -3,7 +3,7 @@ import {authGet} from '@features/authentication/utils/authFetch'
 import {LIVE_COUNTS_REFRESH_DELAY_MS} from '@features/tests/store/testsStore'
 import {config} from '@config/environment.config'
 
-export type PipelineStepStatus = 'queued' | 'running' | 'success' | 'failed' | 'skipped'
+export type PipelineStepStatus = 'queued' | 'running' | 'success' | 'failed' | 'skipped' | 'stopped'
 
 export interface PipelineStep {
     project: string
@@ -30,6 +30,19 @@ export interface PipelineState {
     notify?: boolean
 }
 
+/** The server's last Stop that kept its results, of any kind (pipeline or a single run); absent once a newer run has finished. */
+export interface LastStop {
+    stoppedAt: string
+    reason: 'manual' | 'timeout'
+    kind: 'pipeline' | 'run-all' | 'run-group' | 'rerun' | 'run'
+    /** Pipeline name, project (Run All), spec file name (group run), test name (rerun). */
+    name?: string
+    pipelineRunId?: string
+    timeLimitMinutes?: number
+    /** Pipeline stops only: the steps as they ended. */
+    steps?: PipelineStep[]
+}
+
 /** A CI request waiting for the dashboard to become idle (one slot per pipeline name). */
 export interface QueuedPipeline {
     pipeline: string
@@ -40,6 +53,8 @@ export interface QueuedPipeline {
 export interface UsePipelineStatusReturn {
     pipeline: PipelineState | null
     queue: QueuedPipeline[]
+    /** What the stopped banner shows: read from the server, so every tab agrees. */
+    lastStop: LastStop | null
     /** A Stop is cleaning up; the Stop button shows "Stopping...". */
     stopping: boolean
     applyPipelineEvent: (type: string, data: any) => void
@@ -65,6 +80,7 @@ const PIPELINE_STATE_EVENTS = new Set([
 export function usePipelineStatus(isAuthenticated = true): UsePipelineStatusReturn {
     const [pipeline, setPipeline] = useState<PipelineState | null>(null)
     const [queue, setQueue] = useState<QueuedPipeline[]>([])
+    const [lastStop, setLastStop] = useState<LastStop | null>(null)
     const [stopping, setStopping] = useState(false)
     // A slower, older reply must not overwrite a newer one.
     const requestSeq = useRef(0)
@@ -92,6 +108,7 @@ export function usePipelineStatus(isAuthenticated = true): UsePipelineStatusRetu
                     // Nothing running, nothing queued (also after a server restart).
                     setPipeline(null)
                     setQueue([])
+                    setLastStop(null)
                     setStopping(false)
                     return
                 }
@@ -100,6 +117,7 @@ export function usePipelineStatus(isAuthenticated = true): UsePipelineStatusRetu
                 if (outdated()) return
                 setPipeline(data?.data ?? null)
                 setQueue(Array.isArray(data?.queue) ? data.queue : [])
+                setLastStop(data?.lastStop ?? null)
                 setStopping(data?.stopping === true)
             })
             .catch(() => {
@@ -115,6 +133,8 @@ export function usePipelineStatus(isAuthenticated = true): UsePipelineStatusRetu
     // Only a stopped pipeline with a failed step has counts to keep fresh.
     const pipelineRef = useRef(pipeline)
     pipelineRef.current = pipeline
+    const lastStopRef = useRef(lastStop)
+    lastStopRef.current = lastStop
     const refreshTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
     const refreshPendingWhileHidden = useRef(false)
 
@@ -156,8 +176,11 @@ export function usePipelineStatus(isAuthenticated = true): UsePipelineStatusRetu
             if (PIPELINE_STATE_EVENTS.has(type)) eventSeq.current++
             switch (type) {
                 case 'pipeline:started':
+                    // The next CI pipeline starting retires an older stop notice.
+                    setLastStop(null)
                     setPipeline({
                         pipelineRunId: data.pipelineRunId,
+                        pipeline: data.pipeline,
                         status: 'running',
                         steps: data.steps,
                         startedAt: new Date().toISOString(),
@@ -199,6 +222,11 @@ export function usePipelineStatus(isAuthenticated = true): UsePipelineStatusRetu
                     if (data.status === 'stopped_early') resync()
                     break
 
+                case 'run:completed':
+                    // A newer run finished: the server may now call the stop notice over.
+                    if (lastStopRef.current) resync()
+                    break
+
                 case 'pipeline:queue-changed':
                     setQueue(Array.isArray(data?.queue) ? data.queue : [])
                     break
@@ -209,6 +237,8 @@ export function usePipelineStatus(isAuthenticated = true): UsePipelineStatusRetu
 
                 case 'run:cancelled':
                     setStopping(false)
+                    // A stop that kept its results: the server now holds its notice (it replaces an older one).
+                    if (data?.resultsKept) resync()
                     break
 
                 default:
@@ -218,5 +248,5 @@ export function usePipelineStatus(isAuthenticated = true): UsePipelineStatusRetu
         [resync]
     )
 
-    return {pipeline, queue, stopping, applyPipelineEvent, resync, refreshFailures}
+    return {pipeline, queue, lastStop, stopping, applyPipelineEvent, resync, refreshFailures}
 }

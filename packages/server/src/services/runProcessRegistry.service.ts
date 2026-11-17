@@ -13,6 +13,9 @@ export interface RegisteredRun {
     pgid?: number
     // Run-all only: discovery rows newer than this belong to the run and are removed if it is stopped (results too, only on discard).
     pendingSince?: string
+    // Group run: the spec file; rerun: the test's name. Only for naming the run in the stop notice.
+    filePath?: string
+    testName?: string
     startedAt: string
 }
 
@@ -60,6 +63,8 @@ export class RunProcessRegistry {
     private stopping = new Map<string, number>()
     private stopGeneration = 0
     private shuttingDown = false
+    // Epoch ms the newest ended run was started at: "did a run that began after X finish?" in O(1).
+    private lastEndedStartedAtMs = 0
 
     register(
         run: Omit<RegisteredRun, 'pgid' | 'startedAt'>,
@@ -83,7 +88,13 @@ export class RunProcessRegistry {
         const done = () => {
             if (entry.killTimer) clearTimeout(entry.killTimer)
             // Only drop the entry that is still ours (a rerun of the same id would be a new spawn).
-            if (this.runs.get(run.runId) === entry) this.runs.delete(run.runId)
+            if (this.runs.get(run.runId) === entry) {
+                this.runs.delete(run.runId)
+                this.lastEndedStartedAtMs = Math.max(
+                    this.lastEndedStartedAtMs,
+                    Date.parse(entry.startedAt)
+                )
+            }
             markClosed()
         }
 
@@ -103,6 +114,11 @@ export class RunProcessRegistry {
 
     isAnyRunning(): boolean {
         return this.runs.size > 0
+    }
+
+    /** True once a run that was registered after `sinceMs` has ended (any way: finished, crashed, stopped). */
+    hasRunEndedSince(sinceMs: number): boolean {
+        return this.lastEndedStartedAtMs > sinceMs
     }
 
     has(runId: string): boolean {

@@ -1,7 +1,7 @@
 import {ReactNode} from 'react'
 import {X} from 'lucide-react'
 
-export type AlertBannerSeverity = 'warning' | 'danger'
+export type AlertBannerSeverity = 'warning' | 'danger' | 'neutral'
 
 export interface AlertBannerAction {
     label: string
@@ -13,8 +13,48 @@ export interface AlertBannerProps {
     icon: ReactNode
     title: string
     message: string
+    /** Extra content after the message (e.g. small status chips). */
+    extra?: ReactNode
     primaryAction?: AlertBannerAction
     onDismiss?: () => void
+}
+
+const SEVERITY_STYLES: Record<
+    AlertBannerSeverity,
+    Record<
+        'bannerClass' | 'iconClass' | 'titleClass' | 'textClass' | 'actionClass' | 'dismissClass',
+        string
+    >
+> = {
+    danger: {
+        bannerClass:
+            'bg-danger-50 border-danger-200 dark:bg-danger-500/10 dark:border-danger-400/20',
+        iconClass: 'text-danger-600 dark:text-danger-400',
+        titleClass: 'text-danger-800 dark:text-danger-200',
+        textClass: 'text-danger-700 dark:text-danger-300',
+        actionClass:
+            'bg-danger-100 text-danger-700 hover:bg-danger-200 dark:bg-danger-500/20 dark:text-danger-300 dark:hover:bg-danger-500/30',
+        dismissClass: 'text-danger-500 hover:bg-danger-100 dark:hover:bg-danger-500/20',
+    },
+    warning: {
+        bannerClass:
+            'bg-warning-50 border-warning-200 dark:bg-warning-500/10 dark:border-warning-400/20',
+        iconClass: 'text-warning-600 dark:text-warning-400',
+        titleClass: 'text-warning-800 dark:text-warning-200',
+        textClass: 'text-warning-700 dark:text-warning-300',
+        actionClass:
+            'bg-warning-100 text-warning-700 hover:bg-warning-200 dark:bg-warning-500/20 dark:text-warning-300 dark:hover:bg-warning-500/30',
+        dismissClass: 'text-warning-500 hover:bg-warning-100 dark:hover:bg-warning-500/20',
+    },
+    neutral: {
+        bannerClass: 'bg-gray-100 border-gray-200 dark:bg-white/[0.06] dark:border-white/10',
+        iconClass: 'text-gray-500 dark:text-gray-400',
+        titleClass: 'text-gray-800 dark:text-gray-100',
+        textClass: 'text-gray-600 dark:text-gray-300',
+        actionClass:
+            'bg-gray-200 text-gray-700 hover:bg-gray-300 dark:bg-white/10 dark:text-gray-200 dark:hover:bg-white/20',
+        dismissClass: 'text-gray-500 hover:bg-gray-200 dark:text-gray-400 dark:hover:bg-white/10',
+    },
 }
 
 /**
@@ -27,34 +67,12 @@ export function AlertBanner({
     icon,
     title,
     message,
+    extra,
     primaryAction,
     onDismiss,
 }: AlertBannerProps) {
-    const isDanger = severity === 'danger'
-
-    const bannerClass = isDanger
-        ? 'bg-danger-50 border-danger-200 dark:bg-danger-500/10 dark:border-danger-400/20'
-        : 'bg-warning-50 border-warning-200 dark:bg-warning-500/10 dark:border-warning-400/20'
-
-    const iconClass = isDanger
-        ? 'text-danger-600 dark:text-danger-400'
-        : 'text-warning-600 dark:text-warning-400'
-
-    const titleClass = isDanger
-        ? 'text-danger-800 dark:text-danger-200'
-        : 'text-warning-800 dark:text-warning-200'
-
-    const textClass = isDanger
-        ? 'text-danger-700 dark:text-danger-300'
-        : 'text-warning-700 dark:text-warning-300'
-
-    const actionClass = isDanger
-        ? 'bg-danger-100 text-danger-700 hover:bg-danger-200 dark:bg-danger-500/20 dark:text-danger-300 dark:hover:bg-danger-500/30'
-        : 'bg-warning-100 text-warning-700 hover:bg-warning-200 dark:bg-warning-500/20 dark:text-warning-300 dark:hover:bg-warning-500/30'
-
-    const dismissClass = isDanger
-        ? 'text-danger-500 hover:bg-danger-100 dark:hover:bg-danger-500/20'
-        : 'text-warning-500 hover:bg-warning-100 dark:hover:bg-warning-500/20'
+    const styles = SEVERITY_STYLES[severity]
+    const {bannerClass, iconClass, titleClass, textClass, actionClass, dismissClass} = styles
 
     return (
         <div
@@ -66,6 +84,7 @@ export function AlertBanner({
                 <div className="flex flex-1 flex-wrap items-center gap-x-3 gap-y-1 min-w-0">
                     <span className={`text-sm font-semibold ${titleClass}`}>{title}</span>
                     <span className={`text-sm ${textClass}`}>{message}</span>
+                    {extra}
                 </div>
 
                 <div className="flex flex-shrink-0 items-center gap-2">

@@ -1,13 +1,15 @@
 import {Request, Response} from 'express'
 import {RunRepository} from '../repositories/run.repository'
 import {TestService} from '../services/test.service'
+import {PipelineExecutionService} from '../services/pipelineExecution.service'
 import {ResponseHelper} from '../utils/response.helper'
 import {Logger} from '../utils/logger.util'
 
 export class RunController {
     constructor(
         private runRepository: RunRepository,
-        private testService: TestService
+        private testService: TestService,
+        private pipelineExecutionService: PipelineExecutionService
     ) {}
 
     // POST /api/runs - Create a new test run (compatible with yshvydakReporter.ts)
@@ -70,6 +72,35 @@ export class RunController {
                 res,
                 error instanceof Error ? error.message : 'Unknown error',
                 'Failed to update test run',
+                500
+            )
+        }
+    }
+
+    // POST /api/runs/:id/stop - Stop what runs; :id is a runId or a pipelineRunId (a pipeline step stops the whole pipeline)
+    stopRun = async (req: Request, res: Response): Promise<Response> => {
+        try {
+            const result = await this.pipelineExecutionService.stopTarget(req.params.id)
+            if (result.kind === 'stopped') {
+                return ResponseHelper.success(res, result.outcome)
+            }
+
+            const notActive = result.kind === 'not_active'
+            const message = notActive ? 'That run is not running' : 'Run not found'
+            return res.status(notActive ? 409 : 404).json({
+                success: false,
+                error: message,
+                message,
+                code: notActive ? 'RUN_NOT_ACTIVE' : 'RUN_NOT_FOUND',
+                ...(notActive ? {activeRunId: result.activeRunId} : {}),
+                timestamp: new Date().toISOString(),
+            })
+        } catch (error) {
+            Logger.error('Error stopping the run', error)
+            return ResponseHelper.error(
+                res,
+                error instanceof Error ? error.message : 'Unknown error',
+                'Failed to stop the run',
                 500
             )
         }

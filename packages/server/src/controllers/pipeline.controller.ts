@@ -169,9 +169,10 @@ export class PipelineController {
             const pipeline = await this.pipelineExecutionService.getCurrentPipelineLive()
             const queue = this.pipelineExecutionService.getQueue()
             const stopping = this.pipelineExecutionService.isStopping()
+            const lastStop = this.pipelineExecutionService.getLastStop()
 
-            // Queue and stopping are siblings of `data` so the pipeline-state contract stays unchanged.
-            if (!pipeline && queue.length === 0 && !stopping) {
+            // Queue, stopping and lastStop are siblings of `data` so the pipeline-state contract stays unchanged.
+            if (!pipeline && queue.length === 0 && !stopping && !lastStop) {
                 return ResponseHelper.notFound(res, 'Pipeline run')
             }
 
@@ -180,6 +181,7 @@ export class PipelineController {
                 data: pipeline,
                 queue,
                 stopping,
+                lastStop,
                 timestamp: new Date().toISOString(),
             })
         } catch (error) {

@@ -659,3 +659,161 @@ describe('usePipelineStatus', () => {
         })
     })
 })
+
+describe('usePipelineStatus — the stopped banner (lastStop, from the server)', () => {
+    const steps = [
+        {
+            project: 'API',
+            displayName: 'API',
+            stopOnFailure: false,
+            status: 'running' as const,
+            runId: 'r1',
+        },
+        {project: 'WEB', displayName: 'WEB', stopOnFailure: false, status: 'queued' as const},
+    ]
+    const stop = {
+        stoppedAt: '2026-11-17T10:00:00.000Z',
+        reason: 'manual' as const,
+        kind: 'run-all' as const,
+        name: 'API',
+    }
+
+    beforeEach(() => {
+        vi.clearAllMocks()
+        mockAuthGet.mockResolvedValue(makeResponse({}, false))
+    })
+
+    it('pipeline:started keeps the pipeline name (the Stop dialog names it)', () => {
+        const {result} = renderHook(() => usePipelineStatus())
+
+        act(() => {
+            result.current.applyPipelineEvent('pipeline:started', {
+                pipelineRunId: 'p1',
+                pipeline: 'develop',
+                steps,
+            })
+        })
+
+        expect(result.current.pipeline?.pipeline).toBe('develop')
+    })
+
+    it('a tab that opens later reads the last stop from the server', async () => {
+        mockAuthGet.mockResolvedValue(makeResponse({data: null, queue: [], lastStop: stop}))
+
+        const {result} = renderHook(() => usePipelineStatus())
+
+        await waitFor(() => expect(result.current.lastStop).toEqual(stop))
+    })
+
+    it('run:cancelled of a stop that kept its results re-reads the server (a standalone Run All too)', async () => {
+        const {result} = renderHook(() => usePipelineStatus())
+        await waitFor(() => expect(mockAuthGet).toHaveBeenCalledTimes(1))
+        mockAuthGet.mockResolvedValue(makeResponse({data: null, queue: [], lastStop: stop}))
+
+        act(() => {
+            result.current.applyPipelineEvent('run:cancelled', {
+                runIds: ['r9'],
+                reason: 'manual',
+                resultsKept: true,
+            })
+        })
+
+        await waitFor(() => expect(result.current.lastStop).toEqual(stop))
+        expect(mockAuthGet).toHaveBeenCalledTimes(2)
+    })
+
+    it('the flow from the review: an older stop is shown, a Run All is stopped in the same tab, and the new stop replaces it', async () => {
+        const older = {
+            ...stop,
+            kind: 'pipeline' as const,
+            name: 'develop',
+            stoppedAt: '2026-11-17T08:00:00.000Z',
+        }
+        mockAuthGet.mockResolvedValue(makeResponse({data: null, queue: [], lastStop: older}))
+        const {result} = renderHook(() => usePipelineStatus())
+        await waitFor(() => expect(result.current.lastStop).toEqual(older))
+        mockAuthGet.mockResolvedValue(makeResponse({data: null, queue: [], lastStop: stop}))
+
+        act(() => {
+            result.current.applyPipelineEvent('run:cancelled', {
+                runIds: ['r9'],
+                reason: 'manual',
+                resultsKept: true,
+            })
+        })
+
+        await waitFor(() => expect(result.current.lastStop).toEqual(stop))
+    })
+
+    it('run:cancelled of a discarded run (replaced) does not re-read', async () => {
+        const {result} = renderHook(() => usePipelineStatus())
+        await waitFor(() => expect(mockAuthGet).toHaveBeenCalledTimes(1))
+
+        act(() => {
+            result.current.applyPipelineEvent('run:cancelled', {
+                runIds: ['r9'],
+                reason: 'replaced',
+                resultsKept: false,
+            })
+        })
+
+        expect(mockAuthGet).toHaveBeenCalledTimes(1)
+    })
+
+    it('a finished run re-reads while a stop notice is shown; the server then ends it for everyone', async () => {
+        mockAuthGet.mockResolvedValue(makeResponse({data: null, queue: [], lastStop: stop}))
+        const {result} = renderHook(() => usePipelineStatus())
+        await waitFor(() => expect(result.current.lastStop).toEqual(stop))
+        mockAuthGet.mockClear()
+        mockAuthGet.mockResolvedValue(makeResponse({data: null, queue: [], lastStop: null}))
+
+        act(() => {
+            result.current.applyPipelineEvent('run:completed', {runId: 'r10', type: 'rerun'})
+        })
+
+        await waitFor(() => expect(result.current.lastStop).toBeNull())
+        expect(mockAuthGet).toHaveBeenCalledTimes(1)
+    })
+
+    it('a finished run does not re-read when no stop notice is shown', async () => {
+        const {result} = renderHook(() => usePipelineStatus())
+        await waitFor(() => expect(mockAuthGet).toHaveBeenCalledTimes(1))
+
+        act(() => {
+            result.current.applyPipelineEvent('run:completed', {runId: 'r10'})
+        })
+
+        expect(mockAuthGet).toHaveBeenCalledTimes(1)
+    })
+
+    it('the next CI pipeline starting clears the notice at once', async () => {
+        mockAuthGet.mockResolvedValue(makeResponse({data: null, queue: [], lastStop: stop}))
+        const {result} = renderHook(() => usePipelineStatus())
+        await waitFor(() => expect(result.current.lastStop).toEqual(stop))
+
+        act(() => {
+            result.current.applyPipelineEvent('pipeline:started', {
+                pipelineRunId: 'p2',
+                pipeline: 'develop',
+                steps,
+            })
+        })
+
+        expect(result.current.lastStop).toBeNull()
+    })
+
+    it('a 404 (nothing to report) clears it', async () => {
+        mockAuthGet.mockResolvedValue(makeResponse({data: null, queue: [], lastStop: stop}))
+        const {result} = renderHook(() => usePipelineStatus())
+        await waitFor(() => expect(result.current.lastStop).toEqual(stop))
+        mockAuthGet.mockResolvedValue({
+            ok: false,
+            status: 404,
+            json: () => Promise.resolve({}),
+        } as Response)
+
+        act(() => result.current.resync())
+
+        await waitFor(() => expect(result.current.lastStop).toBeNull())
+    })
+})

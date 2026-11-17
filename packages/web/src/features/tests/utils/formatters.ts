@@ -19,6 +19,17 @@ export function formatDuration(duration: number): string {
     return `${(duration / 1000).toFixed(1)}s`
 }
 
+/** "just now", "5 min ago", "2 h ago", "3 d ago" for an ISO time. */
+export function formatTimeAgo(iso: string, now: number = Date.now()): string {
+    const seconds = Math.max(0, Math.round((now - Date.parse(iso)) / 1000))
+    if (Number.isNaN(seconds) || seconds < 45) return 'just now'
+    const minutes = Math.round(seconds / 60)
+    if (minutes < 60) return `${minutes} min ago`
+    const hours = Math.round(minutes / 60)
+    if (hours < 24) return `${hours} h ago`
+    return `${Math.round(hours / 24)} d ago`
+}
+
 export function formatBytes(bytes: number, decimals = 2): string {
     if (bytes === 0) return '0 Bytes'
 

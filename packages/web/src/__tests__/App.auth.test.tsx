@@ -47,6 +47,7 @@ vi.mock('@features/tests/store/testsStore', () => ({
         checkAndRestoreActiveStates: vi.fn(async () => {}),
         setCIRunQueued: vi.fn(),
         setCIPipelineRunning: vi.fn(),
+        setCIPipelineRun: vi.fn(),
         setCIStopping: vi.fn(),
     }),
 }))

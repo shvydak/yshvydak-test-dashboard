@@ -174,6 +174,7 @@ describe('API auth hardening (Integration)', () => {
             ['POST', '/api/tests/force-reset'],
             ['GET', '/api/runs'],
             ['POST', '/api/runs'],
+            ['POST', '/api/runs/run-1/stop'],
             ['GET', '/api/storage/stats'],
             ['GET', '/api/pipeline/status/current'],
         ])('%s %s still needs a JWT', async (method, url) => {

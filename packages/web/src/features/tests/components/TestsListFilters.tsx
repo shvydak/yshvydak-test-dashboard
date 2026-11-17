@@ -5,6 +5,7 @@ import {FilterKey, FILTER_OPTIONS} from '../constants'
 import {useShallow} from 'zustand/react/shallow'
 import {useTestsStore} from '../store/testsStore'
 import {useClickOutside} from '@/hooks/useClickOutside'
+import {stopDialogTitle, type StopTarget} from '../utils/stopTarget'
 
 export interface TestsListFiltersProps {
     filter: FilterKey
@@ -38,6 +39,7 @@ export function TestsListFilters({
         runAllTests,
         discoverTests,
         stopRun,
+        getStopTarget,
         clearStopError,
         stopError,
         isRunningAllTests,
@@ -48,6 +50,7 @@ export function TestsListFilters({
             runAllTests: s.runAllTests,
             discoverTests: s.discoverTests,
             stopRun: s.stopRun,
+            getStopTarget: s.getStopTarget,
             clearStopError: s.clearStopError,
             stopError: s.stopError,
             isRunningAllTests: s.isRunningAllTests,
@@ -59,7 +62,8 @@ export function TestsListFilters({
     const isAnyTestRunning = useTestsStore((s) => s.getIsAnyTestRunning())
     const isStoppable = useTestsStore((s) => s.getIsStoppable())
     const [showDiscoverMenu, setShowDiscoverMenu] = useState(false)
-    const [showStopConfirm, setShowStopConfirm] = useState(false)
+    // What the dialog named when it opened: Stop sends exactly that id, even if something else runs by the time of the click.
+    const [stopConfirmTarget, setStopConfirmTarget] = useState<StopTarget | null>(null)
     const splitButtonRef = useRef<HTMLDivElement>(null)
     useClickOutside(splitButtonRef, showDiscoverMenu, () => setShowDiscoverMenu(false))
 
@@ -82,7 +86,7 @@ export function TestsListFilters({
                         <Button
                             variant="danger"
                             disabled={ciStopping}
-                            onClick={() => setShowStopConfirm(true)}>
+                            onClick={() => setStopConfirmTarget(getStopTarget())}>
                             <span className="flex items-center gap-1.5">
                                 <Square className="h-3.5 w-3.5 fill-current" />
                                 <span>{ciStopping ? 'Stopping...' : 'Stop'}</span>
@@ -153,17 +157,18 @@ export function TestsListFilters({
                     )}
                 </div>
                 <ConfirmationDialog
-                    isOpen={showStopConfirm}
-                    title="Stop the run?"
+                    isOpen={stopConfirmTarget !== null}
+                    title={stopConfirmTarget ? stopDialogTitle(stopConfirmTarget) : ''}
                     description="Tests that already finished keep their results. Unfinished tests keep their previous result."
                     confirmText="Stop"
                     cancelText="Keep running"
                     variant="danger"
                     onConfirm={() => {
-                        setShowStopConfirm(false)
-                        stopRun()
+                        const target = stopConfirmTarget
+                        setStopConfirmTarget(null)
+                        stopRun(target?.id ?? null)
                     }}
-                    onCancel={() => setShowStopConfirm(false)}
+                    onCancel={() => setStopConfirmTarget(null)}
                 />
 
                 <SearchInput

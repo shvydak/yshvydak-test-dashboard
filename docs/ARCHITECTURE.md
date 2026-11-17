@@ -344,7 +344,7 @@ import {config} from '@config/environment.config'
 
 #### 4. Component Size Best Practice
 
-- **Maximum 200 lines per file**: Large components split into smaller, focused components
+- **Aim for ~200 lines per component** (a guideline, several files are larger): split large components into smaller, focused ones
 - **Example**: TestDetailModal (577 lines) split into 8 modular components (40-100 lines each)
 
 #### 5. DRY Principle (Don't Repeat Yourself)
@@ -364,7 +364,7 @@ import {config} from '@config/environment.config'
 #### Tests Feature (Main)
 
 - **Components**: TestsList, TestDetailModal (8 sub-components with rerun functionality), TestsGroupedView (grouped by file path), TestRow, TestGroupHeader, ExecutionSidebar (always-visible history panel with Run button)
-- **Hooks**: useTestAttachments, useTestFilters, useTestGroups, useTestSort, useTestExecutionHistory (with refetch support)
+- **Hooks**: useTestAttachments, useTestFilters, useTestGroups, useTestExecutionHistory (with refetch support)
 - **Store**: testsStore.ts (Zustand) - tests state, actions, API calls, selectedExecutionId state, rerunTest method
 - **Types**: attachment.types.ts - Attachment, AttachmentWithBlobURL, TabKey
 - **Utils**: formatters (duration, dates, status), attachmentHelpers (icons, download, trace viewer)

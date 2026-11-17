@@ -18,9 +18,10 @@ vi.mock('../../store/testsStore', () => ({
 
 // Mock the server-side status-counts hook (react-query) — these tests focus on
 // URL/modal/filter wiring and don't need a QueryClientProvider wrapper.
+let mockStatusTotal = 0
 vi.mock('../../hooks/useTestStatusCounts', () => ({
     useTestStatusCounts: () => ({
-        counts: {total: 0, passed: 0, failed: 0, skipped: 0, pending: 0, noted: 0},
+        counts: {total: mockStatusTotal, passed: 0, failed: 0, skipped: 0, pending: 0, noted: 0},
         isLoading: false,
     }),
 }))
@@ -55,7 +56,11 @@ vi.mock('../../hooks/useJiraTicketInfo', () => ({
 
 // Mock child components to simplify testing
 vi.mock('../TestsListFilters', () => ({
-    TestsListFilters: () => <div data-testid="filters">Filters</div>,
+    TestsListFilters: ({searchPlaceholder}: {searchPlaceholder?: string}) => (
+        <div data-testid="filters" data-search-placeholder={searchPlaceholder}>
+            Filters
+        </div>
+    ),
 }))
 
 vi.mock('../TestsContent', () => ({
@@ -1164,6 +1169,42 @@ describe('TestsList - action errors keep the page', () => {
         expect(screen.getAllByTestId('content-test')).toHaveLength(1)
     })
 
+    it('a store list outage shows the refresh banner on a status-filter view too (its list goes stale)', () => {
+        vi.mocked(useTestsStore).mockReturnValue(refreshState('HTTP error! status: 500'))
+        mockUseFilteredTestsByStatus.mockReturnValue({
+            tests: [mockTests[1]],
+            isLoading: false,
+            error: null,
+        } as any)
+
+        renderList('/?filter=failed')
+
+        expect(screen.getByText("Couldn't refresh the list")).toBeInTheDocument()
+        expect(screen.getAllByTestId('content-test')).toHaveLength(1)
+    })
+
+    it('a store list outage with an empty status-filter result shows the banner, not the error card', () => {
+        vi.mocked(useTestsStore).mockReturnValue(refreshState('HTTP error! status: 500'))
+        mockUseFilteredTestsByStatus.mockReturnValue({
+            tests: [],
+            isLoading: false,
+            error: null,
+        } as any)
+
+        renderList('/?filter=failed')
+
+        expect(screen.queryByText('Error loading tests')).not.toBeInTheDocument()
+        expect(screen.getByText("Couldn't refresh the list")).toBeInTheDocument()
+    })
+
+    it('the "All" view shows no refresh banner while the store is healthy', () => {
+        vi.mocked(useTestsStore).mockReturnValue(refreshState(null))
+
+        renderList('/')
+
+        expect(screen.queryByText("Couldn't refresh the list")).not.toBeInTheDocument()
+    })
+
     it('a failed refresh keeps the rows and the open modal and shows a banner', async () => {
         vi.mocked(useTestsStore).mockReturnValue({
             tests: mockTests,
@@ -1256,5 +1297,99 @@ describe('TestsList - a link to another test does not drop an unsaved note draft
         await waitFor(() =>
             expect(screen.getByTestId('modal')).toHaveAttribute('data-test-id', 'test-second')
         )
+    })
+})
+
+describe('TestsList - a capped list says so', () => {
+    const rows = (n: number) =>
+        Array.from(
+            {length: n},
+            (_, i) => ({...mockTests[0], id: `exec-${i}`, testId: `tid-${i}`}) as TestResult
+        )
+
+    const renderList = (url: string, activeProject?: string) =>
+        render(
+            <MemoryRouter initialEntries={[url]}>
+                <TestsList
+                    onTestSelect={vi.fn()}
+                    onTestRerun={vi.fn()}
+                    selectedTest={null}
+                    loading={false}
+                    activeProject={activeProject}
+                />
+            </MemoryRouter>
+        )
+
+    const state = (tests: TestResult[], project: string | null = null) =>
+        ({
+            tests,
+            error: null,
+            actionError: null,
+            clearActionError: vi.fn(),
+            testsProject: project,
+            listProject: project,
+        }) as any
+
+    beforeEach(() => {
+        vi.clearAllMocks()
+        mockUseFilteredTestsByStatus.mockReturnValue({tests: [], isLoading: false})
+        mockStatusTotal = 0
+    })
+
+    afterEach(() => {
+        mockStatusTotal = 0
+    })
+
+    it('no tab, 200 rows loaded of 320: says how many are shown and where to find the rest', () => {
+        mockStatusTotal = 320
+        vi.mocked(useTestsStore).mockReturnValue(state(rows(200)))
+
+        renderList('/tests')
+
+        expect(screen.getByText('Showing the first 200 of 320 tests')).toBeInTheDocument()
+        expect(
+            screen.getByText(/open a project tab or use Search \((Cmd|Ctrl)\+K\)/i)
+        ).toBeInTheDocument()
+    })
+
+    it('the in-list search says it covers only the loaded rows', () => {
+        mockStatusTotal = 320
+        vi.mocked(useTestsStore).mockReturnValue(state(rows(200)))
+
+        renderList('/tests?q=abc')
+
+        expect(screen.getByText(/search covers only the 200 loaded tests/i)).toBeInTheDocument()
+        expect(screen.getByTestId('filters')).toHaveAttribute(
+            'data-search-placeholder',
+            'Search the 200 loaded tests...'
+        )
+    })
+
+    it('no hint when everything is loaded', () => {
+        mockStatusTotal = 200
+        vi.mocked(useTestsStore).mockReturnValue(state(rows(200)))
+
+        renderList('/tests')
+
+        expect(screen.queryByText(/Showing the first/)).not.toBeInTheDocument()
+        expect(screen.getByTestId('filters')).not.toHaveAttribute('data-search-placeholder')
+    })
+
+    it('no hint on a project tab', () => {
+        mockStatusTotal = 320
+        vi.mocked(useTestsStore).mockReturnValue(state(rows(200), 'P'))
+
+        renderList('/tests?project=P', 'P')
+
+        expect(screen.queryByText(/Showing the first/)).not.toBeInTheDocument()
+    })
+
+    it('no hint on a status-filter view (its list is not capped by the store)', () => {
+        mockStatusTotal = 320
+        vi.mocked(useTestsStore).mockReturnValue(state(rows(200)))
+
+        renderList('/tests?filter=failed')
+
+        expect(screen.queryByText(/Showing the first/)).not.toBeInTheDocument()
     })
 })

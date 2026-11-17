@@ -17,17 +17,17 @@ npx playwright test [--project=<name>] [--workers=<n>] --reporter=playwright-das
 
 with `DASHBOARD_API_URL` (`http://127.0.0.1:<internal port>`, the loopback listener) and `RUN_ID` in the environment. Discovery uses `npx playwright test --list --reporter=json`. The reporter is resolved from the test project's `node_modules`; if it is missing, `GET /api/tests/diagnostics` lists `Reporter npm package not found: ...` under `playwright.validation.issues`.
 
-Manual use is possible too: `npx playwright test --reporter=playwright-dashboard-reporter` with `DASHBOARD_API_URL` set.
+Running `npx playwright test --reporter=playwright-dashboard-reporter` by hand with `DASHBOARD_API_URL` set stores nothing: the dashboard creates the run record before it spawns Playwright, and a result for an unknown `RUN_ID` is refused (HTTP 500, foreign key). Start runs from the dashboard.
 
 ## Environment variables
 
 The reporter takes no constructor options (`constructor()` reads only the environment). It also loads a `.env` from the current working directory (dotenv).
 
-| Variable            | Default                 | Meaning                                                                                                |
-| ------------------- | ----------------------- | ------------------------------------------------------------------------------------------------------ |
-| `DASHBOARD_API_URL` | `http://localhost:3001` | Dashboard base URL; a trailing `/api` is stripped.                                                     |
-| `RUN_ID`            | random UUID             | Run id. Falls back to `RERUN_ID`, then a new UUID. The dashboard sets it so results attach to its run. |
-| `RERUN_MODE`        | unset                   | `true` announces the process as `rerun` instead of `run-all` in `process-start`.                       |
+| Variable            | Default                 | Meaning                                                                                                                                                                                                      |
+| ------------------- | ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `DASHBOARD_API_URL` | `http://localhost:3001` | Dashboard base URL; a trailing `/api` is stripped.                                                                                                                                                           |
+| `RUN_ID`            | random UUID             | Run id. Falls back to `RERUN_ID`, then a new UUID. The dashboard sets it and has created the run record; a result for an unknown run id is refused (HTTP 500, foreign key), so a random UUID stores nothing. |
+| `RERUN_MODE`        | unset                   | `true` announces the process as `rerun` instead of `run-all` in `process-start`.                                                                                                                             |
 
 ## What it sends
 
@@ -52,6 +52,11 @@ Result fields: `id` (UUID per execution), `testId`, `runId`, `name`, `filePath`,
 ### Test ID
 
 `testId` = `test-` + base-36 hash of `<normalized file path>:<test title>`, where the path is relative to the working directory with a leading `e2e/tests/`, `tests/` or `e2e/` removed. `generateStableTestId()` exists in both `packages/reporter/src/index.ts` and `packages/server/src/services/playwright.service.ts` on purpose and must stay byte-identical: Discover and reporter rows share ids, and history depends on it. The `project` is not part of the id.
+
+Known limits:
+
+- **No describe chain in the id.** Two tests with the same title in one file (different `describe` blocks) share one `testId`, so one dashboard row (the latest result wins, history is mixed), and a rerun of either runs both.
+- **`testDir` must normalize to the same path on both sides.** Discover's JSON paths are relative to Playwright's `testDir`; the reporter's are relative to the working directory. Only the three prefixes above are stripped, so they match for a `testDir` of `tests`, `e2e/tests`, `e2e` or the project root. With another name (`./specs`, `./src/tests`) the ids differ and every test appears twice: a never-run `pending` row from Discover and its real result. Use one of the supported directories.
 
 ## Metadata fields
 

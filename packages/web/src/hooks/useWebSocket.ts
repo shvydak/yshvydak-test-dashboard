@@ -11,7 +11,6 @@ interface WebSocketMessage {
 }
 
 interface WebSocketOptions {
-    onTestCompleted?: (data: any) => void
     onRunCompleted?: (data: any) => void
     onPipelineEvent?: (type: string, data: any) => void
     onRunStatusEvent?: (type: string, data: any) => void
@@ -285,33 +284,6 @@ class SharedSocket {
                 if (message.data?.isRerun) this.notify('onRunCompleted', message.data)
                 break
 
-            case 'run:status':
-                // Refresh both stores
-                queryClient.invalidateQueries({
-                    queryKey: ['dashboard-stats'],
-                })
-                queryClient.invalidateQueries({queryKey: ['project-status-summary']})
-                queryClient.invalidateQueries({queryKey: ['test-status-counts']})
-                fetchTests()
-
-                // Notify about run completion
-                this.notify('onRunCompleted', message.data)
-                break
-
-            case 'test:completed':
-                this.notify('onResultsChanged')
-                queryClient.invalidateQueries({
-                    queryKey: ['dashboard-stats'],
-                })
-                queryClient.invalidateQueries({queryKey: ['project-status-summary']})
-                queryClient.invalidateQueries({queryKey: ['test-status-counts']})
-                fetchTests()
-                break
-
-            case 'test:status':
-                fetchTests()
-                break
-
             case 'test:progress':
                 if (message.data) {
                     const {result, phase, ...progress} = message.data
@@ -334,13 +306,6 @@ class SharedSocket {
                 })
                 this.notify('onTestsDeleted', message.data)
                 this.notify('onResultsChanged')
-                break
-
-            case 'stats:update':
-                queryClient.invalidateQueries({
-                    queryKey: ['dashboard-stats'],
-                })
-                fetchTests()
                 break
 
             case 'discovery:completed':

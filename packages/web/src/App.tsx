@@ -117,7 +117,6 @@ function App() {
         setListProject,
         isLoading: testsLoading,
         rerunTest,
-        checkAndRestoreActiveStates,
         setCIRunQueued,
         setCIPipelineRunning,
         setCIPipelineRun,
@@ -128,7 +127,6 @@ function App() {
             setListProject: s.setListProject,
             isLoading: s.isLoading,
             rerunTest: s.rerunTest,
-            checkAndRestoreActiveStates: s.checkAndRestoreActiveStates,
             setCIRunQueued: s.setCIRunQueued,
             setCIPipelineRunning: s.setCIPipelineRunning,
             setCIPipelineRun: s.setCIPipelineRun,
@@ -285,19 +283,14 @@ function App() {
 
         if (!isAuthenticated) return
 
-        const initializeApp = async () => {
-            await checkAndRestoreActiveStates()
-            fetchTests()
-        }
-
-        initializeApp()
+        fetchTests()
 
         const interval = setInterval(() => {
             fetchTests()
         }, 30000)
 
         return () => clearInterval(interval)
-    }, [fetchTests, checkAndRestoreActiveStates, isAuthenticated, activeProject, setListProject])
+    }, [fetchTests, isAuthenticated, activeProject, setListProject])
 
     // Stable identities: they reach every memoized test row
     const handleTestSelect = useCallback((test: TestResult) => {

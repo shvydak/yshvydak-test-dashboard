@@ -13,6 +13,7 @@ import {
     Search,
 } from 'lucide-react'
 import {useTheme} from '@/hooks/useTheme'
+import {getSearchShortcutLabel} from '@/utils/searchShortcut.util'
 import {ProjectTabConfig} from '@/hooks/useProjectTabs'
 import {PipelineState} from '@/hooks/usePipelineStatus'
 import {ProjectStatusSummary} from '@/hooks/useProjectStatusSummary'
@@ -47,7 +48,7 @@ export default function Header({
     const location = useLocation()
     const [showUserMenu, setShowUserMenu] = useState(false)
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
-    const searchShortcut = /Mac|iPhone|iPad/.test(navigator.platform) ? 'Cmd+K' : 'Ctrl+K'
+    const searchShortcut = getSearchShortcutLabel()
     const searchButton = onOpenSearch && (
         <button
             onClick={onOpenSearch}

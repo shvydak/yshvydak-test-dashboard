@@ -28,15 +28,17 @@ Nothing to configure. The dashboard runs Playwright in your project with `--repo
 DASHBOARD_API_URL=http://localhost:3001 npx playwright test --reporter=playwright-dashboard-reporter
 ```
 
+The dashboard has to know the run first: it creates the run record before it starts Playwright. A manual run has none (see `RUN_ID` below), so the dashboard refuses its results. Start runs from the dashboard.
+
 ## Configuration
 
 The reporter has no options. It reads these environment variables (and a `.env` file in the working directory):
 
-| Variable            | Default                 | Meaning                                             |
-| ------------------- | ----------------------- | --------------------------------------------------- |
-| `DASHBOARD_API_URL` | `http://localhost:3001` | Dashboard base URL (a trailing `/api` is stripped). |
-| `RUN_ID`            | random UUID             | Run id; falls back to `RERUN_ID`, then a new UUID.  |
-| `RERUN_MODE`        | unset                   | `true` marks the process as a single-test rerun.    |
+| Variable            | Default                 | Meaning                                                                                                                                                                                                                           |
+| ------------------- | ----------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `DASHBOARD_API_URL` | `http://localhost:3001` | Dashboard base URL (a trailing `/api` is stripped).                                                                                                                                                                               |
+| `RUN_ID`            | random UUID             | Run id; falls back to `RERUN_ID`, then a new UUID. The dashboard sets it and creates the run record first. A result for a run id the dashboard does not know is refused (HTTP 500, foreign key), so a random UUID stores nothing. |
+| `RERUN_MODE`        | unset                   | `true` marks the process as a single-test rerun.                                                                                                                                                                                  |
 
 ## What is sent
 
@@ -53,6 +55,11 @@ Requests never fail the Playwright run: on an error the reporter logs a warning 
 - `timedOut` tests count as failed in the totals.
 - A test cut short by a stop (Playwright status `interrupted`) is not sent. It is logged and counted as `Interrupted` in the summary, not as failed.
 - The reporter handles `SIGINT` and `SIGTERM` only; it does not add `uncaughtException` or `unhandledRejection` handlers.
+
+### Known limits
+
+- **`testId` has no describe chain.** It is a hash of the file path and the test title only. Two tests with the same title in one file (for example in different `describe` blocks) share one id and one row in the dashboard, and a rerun of either runs both.
+- **`testDir` path.** Discover reports paths relative to Playwright's `testDir`, the reporter relative to the working directory. They match only when `testDir` is `tests`, `e2e/tests`, `e2e` or the project root (the dashboard strips those prefixes). With another directory, such as `./specs`, the two paths differ: each test shows up twice, a never-run `pending` row from Discover plus its real result.
 
 ## Metadata
 

@@ -1,4 +1,4 @@
-import React, {memo, useState, useEffect, useContext} from 'react'
+import React, {memo, useContext} from 'react'
 import {Play, MessageSquare, FileX} from 'lucide-react'
 import {TestResult} from '@yshvydak/core'
 import {StatusBadge, ActionButton, LoadingSpinner, Badge} from '@shared/components'
@@ -10,8 +10,7 @@ import {useTestsStore} from '../store/testsStore'
 import {LinkifiedText} from '@/components/atoms/LinkifiedText'
 import {useNoteImages} from '../hooks/useNoteImages'
 import {parseNoteContent} from '@/utils/noteContent.util'
-import {createProtectedFileURL} from '@features/authentication/utils/authFetch'
-import {config} from '@config/environment.config'
+import {useProtectedImageUrl} from '../hooks/useProtectedImageUrl'
 import {NoteImage} from '@yshvydak/core'
 
 export interface TestRowProps {
@@ -182,35 +181,7 @@ export const TestRow = memo(function TestRow({
 
 // Small thumbnail component for table rows (16x16px)
 function NoteImageMiniThumbnail({image}: {image: NoteImage}) {
-    const [imageUrl, setImageUrl] = useState<string | null>(null)
-    const [loading, setLoading] = useState(true)
-
-    useEffect(() => {
-        let isMounted = true
-
-        const loadImage = async () => {
-            try {
-                const url = await createProtectedFileURL(image.url, config.api.serverUrl)
-                if (isMounted) {
-                    setImageUrl(url)
-                    setLoading(false)
-                }
-            } catch {
-                if (isMounted) {
-                    setLoading(false)
-                }
-            }
-        }
-
-        loadImage()
-
-        return () => {
-            isMounted = false
-            if (imageUrl) {
-                URL.revokeObjectURL(imageUrl)
-            }
-        }
-    }, [image.url])
+    const {url: imageUrl, loading} = useProtectedImageUrl(image.url)
 
     if (loading || !imageUrl) {
         return (

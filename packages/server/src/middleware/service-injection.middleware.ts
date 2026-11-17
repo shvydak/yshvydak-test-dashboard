@@ -28,6 +28,8 @@ import {config} from '../config/environment.config'
 
 // Dependency container
 export interface ServiceContainer {
+    // The one connection to the database file; server.ts closes it on shutdown
+    dbManager: DatabaseManager
     // Core services and repositories for Layered Architecture
     testRepository: TestRepository
     runRepository: RunRepository
@@ -106,6 +108,7 @@ export async function createServiceContainer(): Promise<ServiceContainer> {
     )
 
     return {
+        dbManager,
         testRepository,
         runRepository,
         attachmentRepository,

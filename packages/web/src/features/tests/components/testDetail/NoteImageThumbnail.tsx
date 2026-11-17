@@ -1,7 +1,6 @@
-import React, {useState, useEffect} from 'react'
+import React from 'react'
 import {NoteImage} from '@yshvydak/core'
-import {createProtectedFileURL} from '@features/authentication/utils/authFetch'
-import {config} from '@config/environment.config'
+import {useProtectedImageUrl} from '../../hooks/useProtectedImageUrl'
 
 interface NoteImageThumbnailProps {
     image: NoteImage
@@ -10,38 +9,7 @@ interface NoteImageThumbnailProps {
 }
 
 export function NoteImageThumbnail({image, onClick, className = ''}: NoteImageThumbnailProps) {
-    const [imageUrl, setImageUrl] = useState<string | null>(null)
-    const [loading, setLoading] = useState(true)
-    const [error, setError] = useState(false)
-
-    useEffect(() => {
-        let isMounted = true
-
-        const loadImage = async () => {
-            try {
-                const url = await createProtectedFileURL(image.url, config.api.serverUrl)
-                if (isMounted) {
-                    setImageUrl(url)
-                    setLoading(false)
-                }
-            } catch (err) {
-                console.error('Failed to load note image:', err)
-                if (isMounted) {
-                    setError(true)
-                    setLoading(false)
-                }
-            }
-        }
-
-        loadImage()
-
-        return () => {
-            isMounted = false
-            if (imageUrl) {
-                URL.revokeObjectURL(imageUrl)
-            }
-        }
-    }, [image.url])
+    const {url: imageUrl, loading, error} = useProtectedImageUrl(image.url)
 
     if (loading) {
         return (

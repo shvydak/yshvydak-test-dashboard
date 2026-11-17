@@ -258,8 +258,8 @@ packages/web/src/
 │   │   │   │   └── refetch() for manual refresh
 │   │   │   ├── useTestFilters.ts         # Filter state management
 │   │   │   ├── useTestGroups.ts          # Group tests by file
-│   │   │   ├── useTestSort.ts            # Sort tests
 │   │   │   ├── useTestSearch.ts          # Debounced palette search, stale-answer guard
+│   │   │   ├── useProtectedImageUrl.ts   # Blob URL of a protected image; revoked on change/unmount
 │   │   │   ├── useCommandPalette.ts      # Palette open state + Cmd/Ctrl+K toggle
 │   │   │   ├── useNoteImages.ts          # Fetch note images (✨ v1.3.0)
 │   │   │   │   └── React Query integration with caching
@@ -287,11 +287,12 @@ packages/web/src/
 │   │   ├── utils/                        # Helper functions
 │   │   │   ├── formatters.ts            # formatDuration, formatDate, formatBytes (✨ v1.0.4), getStatusIcon
 │   │   │   ├── attachmentHelpers.ts     # getAttachmentIcon, openTraceViewer
-│   │   │   ├── linkify.util.ts          # URL detection and text truncation (✨ v1.2.0)
+│   │   │   ├── responseError.ts         # Server reason (`message`/`error`) of a failed action response
+│   │   │   ├── linkify.util.ts          # (actually packages/web/src/utils/) URL detection and text truncation (✨ v1.2.0)
 │   │   │   │   ├── parseLinksInText()    # Parse text and identify URLs
 │   │   │   │   ├── containsLinks()       # Check if text contains URLs
 │   │   │   │   └── truncateText()        # Truncate with word boundaries
-│   │   │   └── noteContent.util.ts      # Note content parsing (✨ v1.3.0)
+│   │   │   └── noteContent.util.ts      # (actually packages/web/src/utils/) Note content parsing (✨ v1.3.0)
 │   │   │       ├── parseNoteContent()    # Parse text and [IMAGE:image-id] markers
 │   │   │       ├── insertImageMarker()   # Insert image marker at cursor position
 │   │   │       ├── extractImageIds()     # Extract all image IDs from content
@@ -360,7 +361,7 @@ packages/web/src/
 │       │       └── verifyToken() via /api/auth/verify
 │       │
 │       └── context/
-│           ├── AuthContext.tsx         # Global logout function
+│           ├── AuthContext.tsx         # setGlobalLogout/getGlobalLogout (authFetch calls it on a 401)
 │           └── __tests__/              # Auth context tests
 │
 ├── hooks/                               # Global hooks
@@ -735,7 +736,7 @@ packages/web/src/utils/linkify.util.ts
   → truncateText()        # Truncate with word boundaries
   → containsLinks()       # Check if text contains URLs
 
-packages/web/src/features/tests/utils/noteContent.util.ts (✨ v1.3.0)
+packages/web/src/utils/noteContent.util.ts (✨ v1.3.0)
   → parseNoteContent()    # Parse text and [IMAGE:image-id] markers
   → insertImageMarker()   # Insert image marker at cursor position
   → extractImageIds()     # Extract all image IDs from content

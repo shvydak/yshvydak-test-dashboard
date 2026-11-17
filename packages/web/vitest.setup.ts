@@ -26,6 +26,9 @@ beforeAll(() => {
         }),
     })
 
+    // jsdom has no URL.revokeObjectURL (blob URLs are revoked on unmount)
+    if (!URL.revokeObjectURL) URL.revokeObjectURL = () => {}
+
     // Mock IntersectionObserver (if needed for lazy loading, etc.)
     global.IntersectionObserver = class IntersectionObserver {
         constructor() {}

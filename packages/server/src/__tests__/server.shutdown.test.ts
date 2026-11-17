@@ -12,11 +12,12 @@ vi.mock('../websocket/server', () => ({
 }))
 vi.mock('../database/database.manager', () => ({
     DatabaseManager: vi.fn(function () {
-        return {close: vi.fn()}
+        return {close: vi.fn(), checkpointAndClose: vi.fn()}
     }),
 }))
 
 import {createApp} from '../app'
+import {DatabaseManager} from '../database/database.manager'
 import {createWebSocketServer} from '../websocket/server'
 import {startServer} from '../server'
 import {runProcessRegistry} from '../services/runProcessRegistry.service'
@@ -38,7 +39,9 @@ describe('server startup and graceful shutdown', () => {
             return process
         }) as any)
         kill = vi.spyOn(process, 'kill').mockImplementation(() => true)
-        exit = vi.spyOn(process, 'exit').mockImplementation((() => undefined) as any)
+        exit = vi.spyOn(process, 'exit').mockImplementation((() => {
+            events.push('exit')
+        }) as any)
 
         const httpServer = {
             close: vi.fn((cb: () => void) => {
@@ -55,6 +58,13 @@ describe('server startup and graceful shutdown', () => {
                 }),
             },
             serviceContainer: {
+                dbManager: {
+                    // Resolves a few ticks later: a shutdown that does not await it exits first
+                    checkpointAndClose: vi.fn(async () => {
+                        for (let i = 0; i < 5; i++) await Promise.resolve()
+                        events.push('db-close')
+                    }),
+                },
                 pipelineExecutionService: {
                     handleInterruptedOnStartup: vi.fn(async () => {
                         events.push('startup-cleanup')
@@ -99,10 +109,27 @@ describe('server startup and graceful shutdown', () => {
 
         child.emit('close', 130)
         await shutdown
+        await vi.advanceTimersByTimeAsync(0) // the DB close resolves a few ticks after the callback chain
 
-        expect(events.slice(-2)).toEqual(['http-close', 'ws-close'])
+        expect(events.slice(-4)).toEqual(['http-close', 'ws-close', 'db-close', 'exit'])
         expect(exit).toHaveBeenCalledWith(0)
         expect(kill).not.toHaveBeenCalledWith(-4242, 'SIGKILL')
+    })
+
+    it("uses the container's one DatabaseManager: opens no second connection, closes it (WAL checkpoint) before exit", async () => {
+        vi.mocked(DatabaseManager).mockClear()
+        await startServer()
+
+        expect(DatabaseManager).not.toHaveBeenCalled()
+
+        const shutdown = handlers['SIGTERM']('SIGTERM') as Promise<void>
+        await shutdown
+        await vi.advanceTimersByTimeAsync(0)
+
+        expect(events).toContain('db-close')
+        expect(events.indexOf('db-close')).toBeGreaterThan(events.indexOf('ws-close'))
+        expect(exit).toHaveBeenCalledWith(0)
+        expect(events.at(-1)).toBe('exit')
     })
 
     it('SIGKILLs a group that ignores SIGINT inside pm2 kill_timeout (5 s), then still exits cleanly', async () => {

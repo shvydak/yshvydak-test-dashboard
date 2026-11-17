@@ -15,13 +15,6 @@ export interface WebSocketMessage {
     clientId?: string
 }
 
-export interface TestStatusUpdate {
-    testId: string
-    status: 'running' | 'passed' | 'failed' | 'skipped' | 'timeout'
-    progress?: number
-    message?: string
-}
-
 export class WebSocketManager {
     private wss: WebSocket.Server
     private clients: Map<string, WebSocket> = new Map()
@@ -225,14 +218,6 @@ export class WebSocketManager {
         })
     }
 
-    // Send test status update
-    public broadcastTestStatus(update: TestStatusUpdate): void {
-        this.broadcast({
-            type: 'test:status',
-            data: update,
-        })
-    }
-
     // Send test progress update
     public broadcastTestProgress(
         progress: TestProgress,
@@ -242,30 +227,6 @@ export class WebSocketManager {
             type: 'test:progress',
             data: event ? {...progress, ...event} : progress,
             timestamp: new Date().toISOString(),
-        })
-    }
-
-    // Send test completion
-    public broadcastTestCompleted(testId: string, result: any): void {
-        this.broadcast({
-            type: 'test:completed',
-            data: {testId, result},
-        })
-    }
-
-    // Send run status update
-    public broadcastRunStatus(runId: string, status: string, data?: any): void {
-        this.broadcast({
-            type: 'run:status',
-            data: {runId, status, ...data},
-        })
-    }
-
-    // Send dashboard stats update
-    public broadcastStatsUpdate(stats: any): void {
-        this.broadcast({
-            type: 'stats:update',
-            data: stats,
         })
     }
 

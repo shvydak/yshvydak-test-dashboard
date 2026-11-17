@@ -41,13 +41,23 @@ describe('Stop a run (Integration)', () => {
 
     const api = () => ({
         post: (url: string) =>
-            request(server.app).post(url).set('Authorization', `Bearer ${server.authToken}`),
+            request(server.url).post(url).set('Authorization', `Bearer ${server.authToken}`),
         get: (url: string) =>
-            request(server.app).get(url).set('Authorization', `Bearer ${server.authToken}`),
+            request(server.url).get(url).set('Authorization', `Bearer ${server.authToken}`),
         put: (url: string) =>
-            request(server.app).put(url).set('Authorization', `Bearer ${server.authToken}`),
+            request(server.url).put(url).set('Authorization', `Bearer ${server.authToken}`),
     })
     const db = () => server.testRepository.dbManager
+
+    // The spawn mock runs before TestService writes the run row; reporter calls must wait for it.
+    const spawnedRun = async (n: number) => {
+        await waitFor(() => spawned.length === n)
+        const runId = spawned[n - 1]
+        await waitFor(
+            async () => !!(await db().queryOne('SELECT id FROM test_runs WHERE id = ?', [runId]))
+        )
+        return runId
+    }
 
     const discovered = (project: string, names: string[]) =>
         names.map((name) => ({
@@ -224,8 +234,7 @@ describe('Stop a run (Integration)', () => {
                 .post('/api/pipeline/run')
                 .send({pipeline: 'develop', source: 'script', notify: true})
                 .expect(200)
-            await waitFor(() => spawned.length === 1)
-            const apiRun = spawned[0]
+            const apiRun = await spawnedRun(1)
 
             // Step 1 (API) reports and finishes.
             await reporter.processStart(apiRun).expect(200)
@@ -240,8 +249,7 @@ describe('Stop a run (Integration)', () => {
             children[apiRun].emit('close', 0)
 
             // Step 2 (WEB) starts and writes a result.
-            await waitFor(() => spawned.length === 2)
-            const webRun = spawned[1]
+            const webRun = await spawnedRun(2)
             await reporter.result(webRun, 'new-t3', 'test-t3', 'WEB', 'failed').expect(200)
 
             const attachment = await db().queryOne(
@@ -310,8 +318,7 @@ describe('Stop a run (Integration)', () => {
                 .post('/api/pipeline/run')
                 .send({pipeline: 'develop', source: 'script'})
                 .expect(200)
-            await waitFor(() => spawned.length === 1)
-            const apiRun = spawned[0]
+            const apiRun = await spawnedRun(1)
             await api().post('/api/pipeline/stop').send({}).expect(200)
 
             // Playwright's SIGINT teardown still reports.
@@ -388,8 +395,7 @@ describe('Stop a run (Integration)', () => {
                 .post('/api/pipeline/run')
                 .send({pipeline: 'develop', source: 'script'})
                 .expect(200)
-            await waitFor(() => spawned.length === 1)
-            const apiRun = spawned[0]
+            const apiRun = await spawnedRun(1)
             await reporter.result(apiRun, 'new-t1', 'test-t1', 'API', 'failed').expect(200)
             await reporter.runDone(apiRun, 0, 1).expect(200)
             children[apiRun].emit('close', 0)
@@ -544,13 +550,13 @@ describe('Stop a run (Integration)', () => {
         })
 
         it('requires a JWT: 401 without a token and with a bad one', async () => {
-            await request(server.app).post('/api/pipeline/stop').send({}).expect(401)
-            await request(server.app)
+            await request(server.url).post('/api/pipeline/stop').send({}).expect(401)
+            await request(server.url)
                 .post('/api/pipeline/stop')
                 .set('Authorization', 'Bearer not-a-token')
                 .send({})
                 .expect(401)
-            await request(server.app)
+            await request(server.url)
                 .post('/api/pipeline/stop')
                 .set('Authorization', `Bearer ${server.authToken}`)
                 .send({})
@@ -561,7 +567,7 @@ describe('Stop a run (Integration)', () => {
             process.env.ENABLE_AUTH = 'false'
             expect(config.auth.enableAuth).toBe(false)
 
-            await request(server.app).post('/api/pipeline/stop').send({}).expect(403)
+            await request(server.url).post('/api/pipeline/stop').send({}).expect(403)
         })
 
         it('does not stop anything when the request is rejected', async () => {
@@ -571,7 +577,7 @@ describe('Stop a run (Integration)', () => {
                 .send({project: 'API', skipAutoDiscovery: true})
                 .expect(200)
 
-            await request(server.app).post('/api/pipeline/stop').send({}).expect(401)
+            await request(server.url).post('/api/pipeline/stop').send({}).expect(401)
 
             expect(Object.values(children)[0].kill).not.toHaveBeenCalled()
         })
@@ -593,8 +599,11 @@ describe('Stop a run (Integration)', () => {
             process.env.ENABLE_AUTH = 'true'
             // A queued request starts when the run ends: close children until the dashboard is idle again.
             const pipelines = server.serviceContainer.pipelineExecutionService
+            // A drain that already took its slot may still be starting (not yet "busy"): drop slots first.
+            const queue = (pipelines as any).ciRunQueue
+            while (queue.takeNext()) {}
             const settled = () =>
-                pipelines.getQueue().length === 0 &&
+                !queue.isBusy() &&
                 pipelines.getCurrentPipeline()?.status !== 'running' &&
                 !pipelines.isStopping()
             for (let i = 0; i < 20 && !settled(); i++) {
@@ -609,8 +618,7 @@ describe('Stop a run (Integration)', () => {
                 .post('/api/pipeline/run')
                 .send({pipeline: 'develop', source: 'script', notify: true})
                 .expect(200)
-            await waitFor(() => spawned.length === 1)
-            const oldRun = spawned[0]
+            const oldRun = await spawnedRun(1)
             await reporter.processStart(oldRun).expect(200)
             await reporter.testStart(oldRun, 'test-t1').expect(200)
             await reporter.result(oldRun, 'new-t1', 'test-t1', 'API', 'failed').expect(200)
@@ -666,8 +674,8 @@ describe('Stop a run (Integration)', () => {
             await waitFor(() => spawned.length === 1)
             const body = {pipeline: 'develop', source: 'script', notify: true}
 
-            await request(server.app).post('/api/pipeline/run').send(body).expect(401)
-            await request(server.app)
+            await request(server.url).post('/api/pipeline/run').send(body).expect(401)
+            await request(server.url)
                 .post('/api/pipeline/run')
                 .set('Authorization', 'Bearer not-a-token')
                 .send(body)
@@ -683,7 +691,7 @@ describe('Stop a run (Integration)', () => {
             expect(config.auth.enableAuth).toBe(false)
             fakePlaywright({API: ['t1'], WEB: ['t3']})
 
-            await request(server.app)
+            await request(server.url)
                 .post('/api/pipeline/run')
                 .send({pipeline: 'develop', source: 'script'})
                 .expect(200)

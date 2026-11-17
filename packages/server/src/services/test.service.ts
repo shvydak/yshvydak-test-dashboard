@@ -465,6 +465,10 @@ export class TestService implements ITestService {
         return runProcessRegistry.isCancelled(runId)
     }
 
+    async getStillFailingByRun(runIds: string[]) {
+        return this.testRepository.getStillFailingByRun(runIds)
+    }
+
     // Stop: deletes what the runs wrote (files, results, run rows) and the discovery rows hiding older results; notes stay.
     async discardRuns(
         runIds: string[],

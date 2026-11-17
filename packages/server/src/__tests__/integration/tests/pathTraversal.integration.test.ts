@@ -61,7 +61,7 @@ describe('Path traversal hardening (Integration)', () => {
 
     describe('DELETE /api/tests/:testId/executions/:executionId', () => {
         it.each(encoded)('rejects executionId %s with 400 and keeps outside files', async (id) => {
-            const res = await request(server.app)
+            const res = await request(server.url)
                 .delete(`/api/tests/test-abc/executions/${id}`)
                 .set(auth())
 
@@ -74,7 +74,7 @@ describe('Path traversal hardening (Integration)', () => {
             fs.mkdirSync(ghostDir, {recursive: true})
             fs.writeFileSync(path.join(ghostDir, 'a.png'), 'x')
 
-            await request(server.app)
+            await request(server.url)
                 .delete('/api/tests/test-abc/executions/ghost-exec')
                 .set(auth())
                 .expect(404)
@@ -95,7 +95,7 @@ describe('Path traversal hardening (Integration)', () => {
             fs.mkdirSync(dir, {recursive: true})
             fs.writeFileSync(path.join(dir, 'a.png'), 'x')
 
-            await request(server.app)
+            await request(server.url)
                 .delete('/api/tests/test-abc/executions/exec-real')
                 .set(auth())
                 .expect(200)
@@ -107,36 +107,36 @@ describe('Path traversal hardening (Integration)', () => {
 
     describe('note routes', () => {
         it.each(encoded)('DELETE /:testId/notes rejects testId %s with 400', async (id) => {
-            await request(server.app).delete(`/api/tests/${id}/notes`).set(auth()).expect(400)
+            await request(server.url).delete(`/api/tests/${id}/notes`).set(auth()).expect(400)
             expectSentinelsIntact()
         })
 
         it.each(encoded)('every other :testId route rejects %s with 400', async (id) => {
-            await request(server.app).get(`/api/tests/${id}/notes`).set(auth()).expect(400)
-            await request(server.app)
+            await request(server.url).get(`/api/tests/${id}/notes`).set(auth()).expect(400)
+            await request(server.url)
                 .post(`/api/tests/${id}/notes`)
                 .set(auth())
                 .send({content: 'x'})
                 .expect(400)
-            await request(server.app).get(`/api/tests/${id}/notes/images`).set(auth()).expect(400)
-            await request(server.app)
+            await request(server.url).get(`/api/tests/${id}/notes/images`).set(auth()).expect(400)
+            await request(server.url)
                 .delete(`/api/tests/${id}/notes/images/some-image`)
                 .set(auth())
                 .expect(400)
-            await request(server.app).delete(`/api/tests/${id}`).set(auth()).expect(400)
-            await request(server.app).get(`/api/tests/by-test-id/${id}`).set(auth()).expect(400)
+            await request(server.url).delete(`/api/tests/${id}`).set(auth()).expect(400)
+            await request(server.url).get(`/api/tests/by-test-id/${id}`).set(auth()).expect(400)
             expectSentinelsIntact()
         })
 
         it('rejects an unsafe imageId with 400', async () => {
-            await request(server.app)
+            await request(server.url)
                 .delete('/api/tests/test-abc/notes/images/..%2F..%2Fx')
                 .set(auth())
                 .expect(400)
         })
 
         it('still deletes a real note and its images', async () => {
-            await request(server.app)
+            await request(server.url)
                 .post('/api/tests/test-abc/notes/images')
                 .set(auth())
                 .attach('image', PNG, {filename: 'a.png', contentType: 'image/png'})
@@ -144,7 +144,7 @@ describe('Path traversal hardening (Integration)', () => {
             const dir = path.join(storageDir, 'note-images', 'test-abc')
             expect(fs.readdirSync(dir)).toHaveLength(1)
 
-            await request(server.app).delete('/api/tests/test-abc/notes').set(auth()).expect(200)
+            await request(server.url).delete('/api/tests/test-abc/notes').set(auth()).expect(200)
 
             expect(fs.existsSync(dir)).toBe(false)
         })
@@ -154,18 +154,18 @@ describe('Path traversal hardening (Integration)', () => {
         it.each(['/api/tests/..%2Fx', '/api/tests/..%2Fx/history', '/api/tests/traces/..%2Fx'])(
             'GET %s answers 400',
             async (url) => {
-                await request(server.app).get(url).set(auth()).expect(400)
+                await request(server.url).get(url).set(auth()).expect(400)
             }
         )
 
         it('GET /api/runs/:id rejects an unsafe id with 400', async () => {
-            await request(server.app).get('/api/runs/..%2Fx').set(auth()).expect(400)
+            await request(server.url).get('/api/runs/..%2Fx').set(auth()).expect(400)
         })
     })
 
     describe('note image upload', () => {
         it.each(encoded)('refuses testId %s and writes nothing outside', async (id) => {
-            const res = await request(server.app)
+            const res = await request(server.url)
                 .post(`/api/tests/${id}/notes/images`)
                 .set(auth())
                 .attach('image', PNG, {filename: 'x.png', contentType: 'image/png'})
@@ -175,7 +175,7 @@ describe('Path traversal hardening (Integration)', () => {
         })
 
         it('does not create a directory outside note-images', async () => {
-            await request(server.app)
+            await request(server.url)
                 .post(`/api/tests/..%2F..%2F${planted}/notes/images`)
                 .set(auth())
                 .attach('image', PNG, {filename: 'x.png', contentType: 'image/png'})
@@ -186,7 +186,7 @@ describe('Path traversal hardening (Integration)', () => {
         })
 
         it('rejects SVG content declared as image/png', async () => {
-            const res = await request(server.app)
+            const res = await request(server.url)
                 .post('/api/tests/test-abc/notes/images')
                 .set(auth())
                 .attach('image', SVG, {filename: 'x.svg', contentType: 'image/png'})
@@ -198,7 +198,7 @@ describe('Path traversal hardening (Integration)', () => {
         it.each(['image/svg+xml', 'text/html'])(
             'answers 400 (not 500) for declared %s',
             async (ct) => {
-                const res = await request(server.app)
+                const res = await request(server.url)
                     .post('/api/tests/test-abc/notes/images')
                     .set(auth())
                     .attach('image', SVG, {filename: 'x.svg', contentType: ct})
@@ -208,7 +208,7 @@ describe('Path traversal hardening (Integration)', () => {
         )
 
         it('keeps URL-breaking characters out of the stored file name', async () => {
-            const res = await request(server.app)
+            const res = await request(server.url)
                 .post('/api/tests/test-abc/notes/images')
                 .set(auth())
                 .attach('image', PNG, {filename: 'a#b?c%d e.png', contentType: 'image/png'})
@@ -220,7 +220,7 @@ describe('Path traversal hardening (Integration)', () => {
         it('answers 413 (not 500) for an upload over 5 MB', async () => {
             const big = Buffer.concat([PNG, Buffer.alloc(5 * 1024 * 1024 + 1)])
 
-            const res = await request(server.app)
+            const res = await request(server.url)
                 .post('/api/tests/test-big/notes/images')
                 .set(auth())
                 .attach('image', big, {filename: 'big.png', contentType: 'image/png'})
@@ -230,18 +230,18 @@ describe('Path traversal hardening (Integration)', () => {
         })
 
         it('stores a dotfile client name under a real base name that the URL can serve', async () => {
-            const up = await request(server.app)
+            const up = await request(server.url)
                 .post('/api/tests/test-abc/notes/images')
                 .set(auth())
                 .attach('image', PNG, {filename: '.png', contentType: 'image/png'})
                 .expect(200)
 
             expect(up.body.data.fileName).toMatch(/^png-\d+-[a-z0-9]{6}\.png$/)
-            await request(server.app).get(up.body.data.url).set(auth()).expect(200)
+            await request(server.url).get(up.body.data.url).set(auth()).expect(200)
         })
 
         it('rejects non-image bytes declared as image/png', async () => {
-            await request(server.app)
+            await request(server.url)
                 .post('/api/tests/test-abc/notes/images')
                 .set(auth())
                 .attach('image', Buffer.from('hello'), {
@@ -252,7 +252,7 @@ describe('Path traversal hardening (Integration)', () => {
         })
 
         it('stores a .svg-named PNG with a .png extension', async () => {
-            const res = await request(server.app)
+            const res = await request(server.url)
                 .post('/api/tests/test-abc/notes/images')
                 .set(auth())
                 .attach('image', PNG, {filename: 'sneaky.svg', contentType: 'image/png'})
@@ -266,13 +266,13 @@ describe('Path traversal hardening (Integration)', () => {
 
     describe('static upload routes', () => {
         it('serves uploads with nosniff, images inline', async () => {
-            const up = await request(server.app)
+            const up = await request(server.url)
                 .post('/api/tests/test-abc/notes/images')
                 .set(auth())
                 .attach('image', PNG, {filename: 'a.png', contentType: 'image/png'})
                 .expect(200)
 
-            const res = await request(server.app).get(up.body.data.url).set(auth()).expect(200)
+            const res = await request(server.url).get(up.body.data.url).set(auth()).expect(200)
 
             expect(res.headers['x-content-type-options']).toBe('nosniff')
             expect(res.headers['content-disposition']).toBeUndefined()
@@ -291,7 +291,7 @@ describe('Path traversal hardening (Integration)', () => {
             fs.mkdirSync(d, {recursive: true})
             fs.writeFileSync(path.join(d, file), '<svg/>')
 
-            const res = await request(server.app)
+            const res = await request(server.url)
                 .get(`/${dir}/static-case/${file}`)
                 .set(auth())
                 .expect(200)
@@ -317,7 +317,7 @@ describe('Path traversal hardening (Integration)', () => {
             fs.mkdirSync(d, {recursive: true})
             fs.writeFileSync(path.join(d, file), '{}')
 
-            const res = await request(server.app)
+            const res = await request(server.url)
                 .get(`/attachments/static-inline/${file}`)
                 .set(auth())
                 .expect(200)

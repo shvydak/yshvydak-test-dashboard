@@ -56,7 +56,7 @@ describe('POST /api/tests/run-group - Filtered Group Run (Integration)', () => {
             process: child,
         })
         const post = () =>
-            request(server.app)
+            request(server.url)
                 .post('/api/tests/run-group')
                 .set('Authorization', `Bearer ${server.authToken}`)
                 .send({filePath: 'e2e/tests/auth.spec.ts'})
@@ -85,7 +85,7 @@ describe('POST /api/tests/run-group - Filtered Group Run (Integration)', () => {
             const testNames = ['Login Test', 'Logout Test']
 
             // Act
-            const response = await request(server.app)
+            const response = await request(server.url)
                 .post('/api/tests/run-group')
                 .set('Authorization', `Bearer ${server.authToken}`)
                 .send({
@@ -124,7 +124,7 @@ describe('POST /api/tests/run-group - Filtered Group Run (Integration)', () => {
                 })
 
             // Act
-            const response = await request(server.app)
+            const response = await request(server.url)
                 .post('/api/tests/run-group')
                 .set('Authorization', `Bearer ${server.authToken}`)
                 .send({
@@ -158,7 +158,7 @@ describe('POST /api/tests/run-group - Filtered Group Run (Integration)', () => {
             const testNames = ['Test 1', 'Test 2']
 
             // Act
-            const response = await request(server.app)
+            const response = await request(server.url)
                 .post('/api/tests/run-group')
                 .set('Authorization', `Bearer ${server.authToken}`)
                 .send({
@@ -193,7 +193,7 @@ describe('POST /api/tests/run-group - Filtered Group Run (Integration)', () => {
                 })
 
             // Act
-            await request(server.app)
+            await request(server.url)
                 .post('/api/tests/run-group')
                 .set('Authorization', `Bearer ${server.authToken}`)
                 .send({
@@ -222,7 +222,7 @@ describe('POST /api/tests/run-group - Filtered Group Run (Integration)', () => {
                 })
 
             // Act
-            await request(server.app)
+            await request(server.url)
                 .post('/api/tests/run-group')
                 .set('Authorization', `Bearer ${server.authToken}`)
                 .send({
@@ -243,7 +243,7 @@ describe('POST /api/tests/run-group - Filtered Group Run (Integration)', () => {
 
     describe('Error handling', () => {
         it('should return 400 if filePath is missing', async () => {
-            const response = await request(server.app)
+            const response = await request(server.url)
                 .post('/api/tests/run-group')
                 .set('Authorization', `Bearer ${server.authToken}`)
                 .send({
@@ -267,7 +267,7 @@ describe('POST /api/tests/run-group - Filtered Group Run (Integration)', () => {
                 process: null,
             })
 
-            const response = await request(server.app)
+            const response = await request(server.url)
                 .post('/api/tests/run-group')
                 .send({
                     filePath: 'e2e/tests/auth.spec.ts',
@@ -295,7 +295,7 @@ describe('POST /api/tests/run-group - Filtered Group Run (Integration)', () => {
             const testNames = ['Test 1', 'Test 2', 'Test 3']
 
             // Act
-            await request(server.app)
+            await request(server.url)
                 .post('/api/tests/run-group')
                 .set('Authorization', `Bearer ${server.authToken}`)
                 .send({
@@ -331,7 +331,7 @@ describe('POST /api/tests/run-group - Filtered Group Run (Integration)', () => {
             })
 
             // Act
-            await request(server.app)
+            await request(server.url)
                 .post('/api/tests/run-group')
                 .set('Authorization', `Bearer ${server.authToken}`)
                 .send({

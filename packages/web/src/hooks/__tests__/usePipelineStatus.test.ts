@@ -1,6 +1,7 @@
 import {describe, it, expect, vi, beforeEach, afterEach} from 'vitest'
 import {act, renderHook, waitFor} from '@testing-library/react'
 import {usePipelineStatus} from '../usePipelineStatus'
+import {LIVE_COUNTS_REFRESH_DELAY_MS} from '@features/tests/store/testsStore'
 
 vi.mock('@features/authentication/utils/authFetch', () => ({
     authGet: vi.fn(),
@@ -442,6 +443,219 @@ describe('usePipelineStatus', () => {
             })
 
             await waitFor(() => expect(result.current.stopping).toBe(false))
+        })
+    })
+
+    describe('live failure counts', () => {
+        const stopped = (stillFailing: number) => ({
+            pipelineRunId: 'p1',
+            status: 'stopped_early',
+            startedAt: '2026-01-01T00:00:00.000Z',
+            steps: [
+                {
+                    project: 'API',
+                    displayName: 'API',
+                    stopOnFailure: true,
+                    status: 'failed',
+                    runId: 'r1',
+                    failed: 3,
+                    failedTotal: 3,
+                    stillFailing,
+                },
+                {project: 'WEB', displayName: 'WEB', stopOnFailure: false, status: 'skipped'},
+            ],
+        })
+
+        const loaded = async (state: unknown) => {
+            mockAuthGet.mockResolvedValue(makeResponse({data: state}))
+            const hook = renderHook(() => usePipelineStatus())
+            await waitFor(() => expect(hook.result.current.pipeline).not.toBeNull())
+            mockAuthGet.mockClear()
+            return hook
+        }
+
+        const setHidden = (hidden: boolean) =>
+            Object.defineProperty(document, 'hidden', {configurable: true, value: hidden})
+
+        afterEach(() => {
+            vi.useRealTimers()
+            setHidden(false)
+        })
+
+        it('re-reads the counts once per window however many results arrive', async () => {
+            const {result} = await loaded(stopped(3))
+            mockAuthGet.mockResolvedValue(makeResponse({data: stopped(1)}))
+            vi.useFakeTimers()
+
+            act(() => {
+                result.current.refreshFailures()
+                result.current.refreshFailures()
+                result.current.refreshFailures()
+            })
+            expect(mockAuthGet).not.toHaveBeenCalled()
+            await act(async () => {
+                await vi.advanceTimersByTimeAsync(LIVE_COUNTS_REFRESH_DELAY_MS)
+            })
+            vi.useRealTimers()
+
+            expect(mockAuthGet).toHaveBeenCalledTimes(1)
+            await waitFor(() => expect(result.current.pipeline?.steps[0].stillFailing).toBe(1))
+        })
+
+        it('does not fetch when there is no stopped pipeline with a failed step', async () => {
+            const running = {...stopped(3), status: 'running'}
+            const {result} = await loaded(running)
+            vi.useFakeTimers()
+
+            act(() => {
+                result.current.refreshFailures()
+            })
+            await act(async () => {
+                await vi.advanceTimersByTimeAsync(LIVE_COUNTS_REFRESH_DELAY_MS * 2)
+            })
+
+            expect(mockAuthGet).not.toHaveBeenCalled()
+        })
+
+        it('a hidden tab skips the fetch and catches up once when visible again', async () => {
+            const {result} = await loaded(stopped(3))
+            vi.useFakeTimers()
+            setHidden(true)
+
+            act(() => {
+                result.current.refreshFailures()
+            })
+            await act(async () => {
+                await vi.advanceTimersByTimeAsync(LIVE_COUNTS_REFRESH_DELAY_MS * 2)
+            })
+            expect(mockAuthGet).not.toHaveBeenCalled()
+
+            setHidden(false)
+            await act(async () => {
+                document.dispatchEvent(new Event('visibilitychange'))
+            })
+
+            expect(mockAuthGet).toHaveBeenCalledTimes(1)
+        })
+
+        it('re-reads the status when a pipeline stops early (the event carries no counts)', async () => {
+            const {result} = await loaded({...stopped(3), status: 'running'})
+            mockAuthGet.mockResolvedValue(makeResponse({data: stopped(3)}))
+
+            act(() => {
+                result.current.applyPipelineEvent('pipeline:completed', {
+                    pipelineRunId: 'p1',
+                    status: 'stopped_early',
+                    steps: [
+                        {project: 'API', displayName: 'API', stopOnFailure: true, status: 'failed'},
+                    ],
+                })
+            })
+
+            expect(mockAuthGet).toHaveBeenCalledTimes(1)
+            await waitFor(() => expect(result.current.pipeline?.steps[0].stillFailing).toBe(3))
+        })
+
+        it('a refetch started before a pipeline event is re-read, not applied over the event', async () => {
+            const {result} = await loaded(stopped(3))
+            const running = {
+                pipelineRunId: 'p2',
+                status: 'running',
+                startedAt: '2026-01-02T00:00:00.000Z',
+                steps: [
+                    {project: 'API', displayName: 'API', stopOnFailure: true, status: 'running'},
+                ],
+            }
+            let releaseOld: (r: Response) => void = () => {}
+            mockAuthGet.mockReturnValueOnce(new Promise<Response>((r) => (releaseOld = r)))
+            mockAuthGet.mockResolvedValue(makeResponse({data: running}))
+
+            act(() => {
+                result.current.resync()
+            })
+            act(() => {
+                result.current.applyPipelineEvent('pipeline:started', {
+                    pipelineRunId: 'p2',
+                    steps: running.steps,
+                })
+            })
+            await act(async () => {
+                releaseOld(makeResponse({data: stopped(3)}))
+            })
+
+            await waitFor(() => expect(mockAuthGet).toHaveBeenCalledTimes(2))
+            await waitFor(() => expect(result.current.pipeline?.pipelineRunId).toBe('p2'))
+            expect(result.current.pipeline?.status).toBe('running')
+        })
+
+        const apiStep = (status: string) => ({
+            project: 'API',
+            displayName: 'API',
+            stopOnFailure: true,
+            status,
+        })
+        const live = (status: string, stepStatus: string) => ({
+            pipelineRunId: 'p1',
+            status,
+            startedAt: '2026-01-01T00:00:00.000Z',
+            steps: [apiStep(stepStatus)],
+        })
+
+        it.each([
+            [
+                'pipeline:step-started',
+                {pipelineRunId: 'p1', project: 'API', runId: 'r1'},
+                live('running', 'running'),
+            ],
+            [
+                'pipeline:step-completed',
+                {pipelineRunId: 'p1', step: apiStep('passed')},
+                live('running', 'passed'),
+            ],
+            [
+                'pipeline:completed',
+                {pipelineRunId: 'p1', status: 'completed', steps: [apiStep('passed')]},
+                live('completed', 'passed'),
+            ],
+        ])(
+            'a refetch started before %s is re-read, not applied over it',
+            async (type, eventData, afterEvent) => {
+                const {result} = await loaded(live('running', 'pending'))
+                let releaseOld: (r: Response) => void = () => {}
+                mockAuthGet.mockReturnValueOnce(new Promise<Response>((r) => (releaseOld = r)))
+                mockAuthGet.mockResolvedValue(makeResponse({data: afterEvent}))
+
+                act(() => {
+                    result.current.resync()
+                })
+                act(() => {
+                    result.current.applyPipelineEvent(type, eventData)
+                })
+                await act(async () => {
+                    releaseOld(makeResponse({data: live('running', 'pending')}))
+                })
+
+                await waitFor(() => expect(mockAuthGet).toHaveBeenCalledTimes(2))
+                await waitFor(() => expect(result.current.pipeline).toMatchObject(afterEvent))
+            }
+        )
+
+        it('ignores a slower, older reply', async () => {
+            const {result} = await loaded(stopped(3))
+            let releaseSlow: (r: Response) => void = () => {}
+            mockAuthGet.mockReturnValueOnce(new Promise<Response>((r) => (releaseSlow = r)))
+            mockAuthGet.mockResolvedValueOnce(makeResponse({data: stopped(1)}))
+
+            act(() => {
+                result.current.resync()
+                result.current.resync()
+            })
+            await waitFor(() => expect(result.current.pipeline?.steps[0].stillFailing).toBe(1))
+            await act(async () => {
+                releaseSlow(makeResponse({data: stopped(3)}))
+            })
+
+            expect(result.current.pipeline?.steps[0].stillFailing).toBe(1)
         })
     })
 })

@@ -15,6 +15,8 @@ interface WebSocketOptions {
     onPipelineEvent?: (type: string, data: any) => void
     onRunStatusEvent?: (type: string, data: any) => void
     onTestsDeleted?: (data: any) => void
+    // A test result was saved, a run ended or results were deleted: failure counts may have changed.
+    onResultsChanged?: () => void
 }
 
 // Max one list refresh per window while results stream in. Shared by every socket on the
@@ -221,6 +223,7 @@ export function useWebSocket(url: string | null, options?: WebSocketOptions) {
                 break
 
             case 'test:completed':
+                optionsRef.current?.onResultsChanged?.()
                 queryClient.invalidateQueries({
                     queryKey: ['dashboard-stats'],
                 })
@@ -238,6 +241,7 @@ export function useWebSocket(url: string | null, options?: WebSocketOptions) {
                     const {result, phase, ...progress} = message.data
                     updateProgress(progress)
                     if (phase === 'started') break
+                    if (phase === 'saved') optionsRef.current?.onResultsChanged?.()
                     // A saved result carries its row: patch it, no list reload. An unknown row
                     // (new test) or an old server without `phase` falls back to the throttled reload.
                     if (phase === 'saved' && result && applyLiveResult(result)) break
@@ -254,6 +258,7 @@ export function useWebSocket(url: string | null, options?: WebSocketOptions) {
                     fetchRuns()
                 })
                 optionsRef.current?.onTestsDeleted?.(message.data)
+                optionsRef.current?.onResultsChanged?.()
                 break
 
             case 'stats:update':
@@ -283,6 +288,7 @@ export function useWebSocket(url: string | null, options?: WebSocketOptions) {
                 break
 
             case 'run:completed':
+                optionsRef.current?.onResultsChanged?.()
                 queryClient.invalidateQueries({
                     queryKey: ['dashboard-stats'],
                 })

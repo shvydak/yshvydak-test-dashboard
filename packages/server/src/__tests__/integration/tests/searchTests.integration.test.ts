@@ -36,7 +36,7 @@ describe('GET /api/tests/search - command palette search (Integration)', () => {
     }
 
     const search = (q: string, extra = '') =>
-        request(server.app)
+        request(server.url)
             .get(`/api/tests/search?q=${encodeURIComponent(q)}${extra}`)
             .set('Authorization', `Bearer ${server.authToken}`)
 
@@ -57,7 +57,7 @@ describe('GET /api/tests/search - command palette search (Integration)', () => {
         const original = process.env.ENABLE_AUTH
         process.env.ENABLE_AUTH = 'true'
         try {
-            const res = await request(server.app).get('/api/tests/search?q=order')
+            const res = await request(server.url).get('/api/tests/search?q=order')
             expect(res.status).toBe(401)
         } finally {
             if (original === undefined) delete process.env.ENABLE_AUTH
@@ -74,7 +74,7 @@ describe('GET /api/tests/search - command palette search (Integration)', () => {
     it('rejects a query shorter than 2 characters', async () => {
         expect((await search('a')).status).toBe(400)
         expect((await search('  ')).status).toBe(400)
-        const missing = await request(server.app)
+        const missing = await request(server.url)
             .get('/api/tests/search')
             .set('Authorization', `Bearer ${server.authToken}`)
         expect(missing.status).toBe(400)

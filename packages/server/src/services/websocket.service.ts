@@ -146,4 +146,7 @@ export interface PipelineStepSummary {
     runId?: string
     passed?: number
     failed?: number
+    // Only on GET /pipeline/status/current for a failed step of a stopped_early pipeline (live, not broadcast).
+    failedTotal?: number
+    stillFailing?: number
 }

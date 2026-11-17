@@ -22,7 +22,7 @@ describe('Safe runs (Integration)', () => {
 
     const api = () => ({
         post: (url: string) =>
-            request(server.app).post(url).set('Authorization', `Bearer ${server.authToken}`),
+            request(server.url).post(url).set('Authorization', `Bearer ${server.authToken}`),
     })
 
     const catalog = async (filePath: string, testId: string) =>

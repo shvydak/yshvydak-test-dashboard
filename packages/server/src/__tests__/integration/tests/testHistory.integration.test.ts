@@ -73,7 +73,7 @@ describe('GET /api/tests/:id/history - Test History (Integration)', () => {
                 ]
             )
 
-            const response = await request(server.app)
+            const response = await request(server.url)
                 .get(`/api/tests/${testId}/history`)
                 .set('Authorization', `Bearer ${server.authToken}`)
                 .expect('Content-Type', /json/)
@@ -106,7 +106,7 @@ describe('GET /api/tests/:id/history - Test History (Integration)', () => {
             )
 
             // Use execution id instead of testId - should still work
-            const response = await request(server.app)
+            const response = await request(server.url)
                 .get('/api/tests/exec-1/history')
                 .set('Authorization', `Bearer ${server.authToken}`)
                 .expect(200)
@@ -136,7 +136,7 @@ describe('GET /api/tests/:id/history - Test History (Integration)', () => {
             }
 
             // Request only 3
-            const response = await request(server.app)
+            const response = await request(server.url)
                 .get(`/api/tests/${testId}/history?limit=3`)
                 .set('Authorization', `Bearer ${server.authToken}`)
                 .expect(200)
@@ -173,7 +173,7 @@ describe('GET /api/tests/:id/history - Test History (Integration)', () => {
                 ['exec-skipped', testId, 'run-2', 'Test', 'test.spec.ts', 'skipped', 0]
             )
 
-            const response = await request(server.app)
+            const response = await request(server.url)
                 .get(`/api/tests/${testId}/history`)
                 .set('Authorization', `Bearer ${server.authToken}`)
                 .expect(200)
@@ -188,7 +188,7 @@ describe('GET /api/tests/:id/history - Test History (Integration)', () => {
         })
 
         it('should return empty array for non-existent testId', async () => {
-            const response = await request(server.app)
+            const response = await request(server.url)
                 .get('/api/tests/non-existent-test/history')
                 .set('Authorization', `Bearer ${server.authToken}`)
                 .expect(200)
@@ -215,7 +215,7 @@ describe('GET /api/tests/:id/history - Test History (Integration)', () => {
                 ['exec-1', testId, 'run-default', 'Test', 'test.spec.ts', 'passed', 1000]
             )
 
-            const response = await request(server.app)
+            const response = await request(server.url)
                 .get(`/api/tests/${testId}/history`)
                 .set('Authorization', `Bearer ${server.authToken}`)
                 .expect(200)
@@ -237,7 +237,7 @@ describe('GET /api/tests/:id/history - Test History (Integration)', () => {
             )
 
             // Send invalid limit
-            const response = await request(server.app)
+            const response = await request(server.url)
                 .get(`/api/tests/${testId}/history?limit=invalid`)
                 .set('Authorization', `Bearer ${server.authToken}`)
                 .expect(200)
@@ -262,7 +262,7 @@ describe('GET /api/tests/:id/history - Test History (Integration)', () => {
             )
 
             // No Authorization header
-            const response = await request(server.app)
+            const response = await request(server.url)
                 .get(`/api/tests/${testId}/history`)
                 .expect(200)
 
@@ -282,7 +282,7 @@ describe('GET /api/tests/:id/history - Test History (Integration)', () => {
                 ['exec-1', testId, 'run-1', 'Test', 'test.spec.ts', 'passed', 1000]
             )
 
-            const response = await request(server.app)
+            const response = await request(server.url)
                 .get(`/api/tests/${testId}/history`)
                 .set('Authorization', `Bearer ${server.authToken}`)
                 .expect(200)
@@ -297,7 +297,7 @@ describe('GET /api/tests/:id/history - Test History (Integration)', () => {
             // Mock database error by passing invalid testId that causes SQL error
             // This is hard to test in integration test, so we'll just verify endpoint doesn't crash
 
-            const response = await request(server.app)
+            const response = await request(server.url)
                 .get('/api/tests/test-error/history')
                 .set('Authorization', `Bearer ${server.authToken}`)
 
@@ -320,7 +320,7 @@ describe('GET /api/tests/:id/history - Test History (Integration)', () => {
                 ['exec-1', testId, 'run-1', 'Test', 'test.spec.ts', 'passed', 1000]
             )
 
-            const response = await request(server.app)
+            const response = await request(server.url)
                 .get(`/api/tests/${testId}/history`)
                 .set('Authorization', `Bearer ${server.authToken}`)
                 .expect(200)

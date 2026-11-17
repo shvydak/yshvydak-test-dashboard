@@ -50,7 +50,7 @@ describe('POST /api/tests/run-all - Run All Tests (Integration)', () => {
                 process: null, // No real process in test
             })
 
-            const response = await request(server.app)
+            const response = await request(server.url)
                 .post('/api/tests/run-all')
                 .set('Authorization', `Bearer ${server.authToken}`)
                 .send({maxWorkers: 4})
@@ -88,7 +88,7 @@ describe('POST /api/tests/run-all - Run All Tests (Integration)', () => {
                     process: null,
                 })
 
-            const response = await request(server.app)
+            const response = await request(server.url)
                 .post('/api/tests/run-all')
                 .set('Authorization', `Bearer ${server.authToken}`)
                 .send({}) // No maxWorkers
@@ -112,7 +112,7 @@ describe('POST /api/tests/run-all - Run All Tests (Integration)', () => {
                     process: null,
                 })
 
-            await request(server.app)
+            await request(server.url)
                 .post('/api/tests/run-all')
                 .set('Authorization', `Bearer ${server.authToken}`)
                 .send({maxWorkers: 8})
@@ -163,7 +163,7 @@ describe('POST /api/tests/run-all - Run All Tests (Integration)', () => {
                 process: null,
             })
 
-            await request(server.app)
+            await request(server.url)
                 .post('/api/tests/run-all')
                 .set('Authorization', `Bearer ${server.authToken}`)
                 .send({project: 'P'})
@@ -196,7 +196,7 @@ describe('POST /api/tests/run-all - Run All Tests (Integration)', () => {
             })
 
             // Start first test run
-            await request(server.app)
+            await request(server.url)
                 .post('/api/tests/run-all')
                 .set('Authorization', `Bearer ${server.authToken}`)
                 .send({maxWorkers: 4})
@@ -206,7 +206,7 @@ describe('POST /api/tests/run-all - Run All Tests (Integration)', () => {
             expect(activeProcessesTracker.isRunAllActive()).toBe(true)
 
             // Try to start second test run (should fail with 409)
-            const response = await request(server.app)
+            const response = await request(server.url)
                 .post('/api/tests/run-all')
                 .set('Authorization', `Bearer ${server.authToken}`)
                 .send({maxWorkers: 4})
@@ -241,14 +241,14 @@ describe('POST /api/tests/run-all - Run All Tests (Integration)', () => {
             })
 
             // Start first test run
-            await request(server.app)
+            await request(server.url)
                 .post('/api/tests/run-all')
                 .set('Authorization', `Bearer ${server.authToken}`)
                 .send({})
                 .expect(200)
 
             // Try second run
-            const response = await request(server.app)
+            const response = await request(server.url)
                 .post('/api/tests/run-all')
                 .set('Authorization', `Bearer ${server.authToken}`)
                 .send({})
@@ -282,7 +282,7 @@ describe('POST /api/tests/run-all - Run All Tests (Integration)', () => {
                 process: null,
             })
 
-            await request(server.app)
+            await request(server.url)
                 .post('/api/tests/run-all')
                 .set('Authorization', `Bearer ${server.authToken}`)
                 .send({maxWorkers: 6})
@@ -328,14 +328,14 @@ describe('POST /api/tests/run-all - Run All Tests (Integration)', () => {
             })
 
             // First run
-            await request(server.app)
+            await request(server.url)
                 .post('/api/tests/run-all')
                 .set('Authorization', `Bearer ${server.authToken}`)
                 .send({})
                 .expect(200)
 
             // Second run (conflict)
-            await request(server.app)
+            await request(server.url)
                 .post('/api/tests/run-all')
                 .set('Authorization', `Bearer ${server.authToken}`)
                 .send({})
@@ -368,7 +368,7 @@ describe('POST /api/tests/run-all - Run All Tests (Integration)', () => {
                 'broadcastRunStarted'
             )
 
-            await request(server.app)
+            await request(server.url)
                 .post('/api/tests/run-all')
                 .set('Authorization', `Bearer ${server.authToken}`)
                 .send({})
@@ -400,7 +400,7 @@ describe('POST /api/tests/run-all - Run All Tests (Integration)', () => {
             )
 
             // First run
-            await request(server.app)
+            await request(server.url)
                 .post('/api/tests/run-all')
                 .set('Authorization', `Bearer ${server.authToken}`)
                 .send({})
@@ -413,7 +413,7 @@ describe('POST /api/tests/run-all - Run All Tests (Integration)', () => {
             broadcastSpy.mockClear()
 
             // Second run (conflict) - should not broadcast
-            await request(server.app)
+            await request(server.url)
                 .post('/api/tests/run-all')
                 .set('Authorization', `Bearer ${server.authToken}`)
                 .send({})
@@ -437,7 +437,7 @@ describe('POST /api/tests/run-all - Run All Tests (Integration)', () => {
             })
 
             // No Authorization header
-            const response = await request(server.app)
+            const response = await request(server.url)
                 .post('/api/tests/run-all')
                 .send({maxWorkers: 4})
                 .expect(200)
@@ -458,7 +458,7 @@ describe('POST /api/tests/run-all - Run All Tests (Integration)', () => {
                 process: null,
             })
 
-            const response = await request(server.app)
+            const response = await request(server.url)
                 .post('/api/tests/run-all')
                 .set('Authorization', `Bearer ${server.authToken}`)
                 .send({maxWorkers: 2})
@@ -477,7 +477,7 @@ describe('POST /api/tests/run-all - Run All Tests (Integration)', () => {
                 'runAllTests'
             ).mockRejectedValue(new Error('Playwright not found'))
 
-            const response = await request(server.app)
+            const response = await request(server.url)
                 .post('/api/tests/run-all')
                 .set('Authorization', `Bearer ${server.authToken}`)
                 .send({})
@@ -514,7 +514,7 @@ describe('POST /api/tests/run-all - Run All Tests (Integration)', () => {
                 process: null,
             })
 
-            const response = await request(server.app)
+            const response = await request(server.url)
                 .post('/api/tests/run-all')
                 .set('Authorization', `Bearer ${server.authToken}`)
                 .set('Content-Type', 'application/json')
@@ -544,7 +544,7 @@ describe('POST /api/tests/run-all - Run All Tests (Integration)', () => {
                 'runAllTests'
             ).mockRejectedValue(new Error('Service unavailable'))
 
-            const response = await request(server.app)
+            const response = await request(server.url)
                 .post('/api/tests/run-all')
                 .send({})
                 .expect(500)

@@ -49,3 +49,7 @@ await dbManager.initialize()
 ## SQLite window functions
 
 `ROW_NUMBER() OVER (PARTITION BY ...)` is supported (SQLite ≥ 3.25). Prefer over correlated subqueries.
+
+## Integration tests use `request(server.url)`
+
+Call supertest with `request(server.url)` from `setupTestServer()`, never `request(server.app)` / `request(app)`: its wildcard `listen(0)` can get a port another local process holds on 127.0.0.1 (macOS), and the request lands there. Guard: `testServer.guard.test.ts`.

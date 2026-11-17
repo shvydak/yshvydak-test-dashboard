@@ -33,7 +33,7 @@ describe('POST /api/tests/discovery - Test Discovery (Integration)', () => {
                 )
                 .mockResolvedValue(fixtures.playwrightListOutput)
 
-            const response = await request(server.app)
+            const response = await request(server.url)
                 .post('/api/tests/discovery')
                 .expect('Content-Type', /json/)
                 .expect(200)
@@ -82,7 +82,7 @@ describe('POST /api/tests/discovery - Test Discovery (Integration)', () => {
                 'executePlaywrightListCommand'
             ).mockResolvedValue(fixtures.playwrightListOutput)
 
-            await request(server.app).post('/api/tests/discovery').expect(200)
+            await request(server.url).post('/api/tests/discovery').expect(200)
 
             // Verify old pending tests were cleared and new ones added
             pendingCount = (await server.testRepository.dbManager.queryOne(
@@ -123,7 +123,7 @@ describe('POST /api/tests/discovery - Test Discovery (Integration)', () => {
                 'executePlaywrightListCommand'
             ).mockResolvedValue(fixtures.playwrightListOutput)
 
-            await request(server.app).post('/api/tests/discovery').expect(200)
+            await request(server.url).post('/api/tests/discovery').expect(200)
 
             // Verify completed test still exists
             const completedTest = await server.testRepository.dbManager.queryOne(
@@ -143,7 +143,7 @@ describe('POST /api/tests/discovery - Test Discovery (Integration)', () => {
                 suites: [],
             })
 
-            const response = await request(server.app).post('/api/tests/discovery').expect(200)
+            const response = await request(server.url).post('/api/tests/discovery').expect(200)
 
             expect(response.body).toMatchObject({
                 success: true,
@@ -167,7 +167,7 @@ describe('POST /api/tests/discovery - Test Discovery (Integration)', () => {
                 'executePlaywrightListCommand'
             ).mockRejectedValue(new Error('Playwright not found'))
 
-            const response = await request(server.app).post('/api/tests/discovery').expect(500)
+            const response = await request(server.url).post('/api/tests/discovery').expect(500)
 
             expect(response.body).toMatchObject({
                 success: false,
@@ -192,7 +192,7 @@ describe('POST /api/tests/discovery - Test Discovery (Integration)', () => {
                 .spyOn(server.testRepository, 'saveTestResult')
                 .mockRejectedValue(new Error('Database error'))
 
-            const response = await request(server.app).post('/api/tests/discovery').expect(200)
+            const response = await request(server.url).post('/api/tests/discovery').expect(200)
 
             // Should still return success but with saved count = 0
             expect(response.body.success).toBe(true)
@@ -212,7 +212,7 @@ describe('POST /api/tests/discovery - Test Discovery (Integration)', () => {
                 invalid: true,
             })
 
-            const response = await request(server.app).post('/api/tests/discovery').expect(200)
+            const response = await request(server.url).post('/api/tests/discovery').expect(200)
 
             // Should handle gracefully and return 0 discovered
             expect(response.body).toMatchObject({
@@ -258,9 +258,9 @@ describe('POST /api/tests/discovery - Test Discovery (Integration)', () => {
                 'executePlaywrightListCommand'
             ).mockResolvedValue(output)
 
-            await request(server.app).post('/api/tests/discovery').expect(200)
+            await request(server.url).post('/api/tests/discovery').expect(200)
 
-            const response = await request(server.app)
+            const response = await request(server.url)
                 .get('/api/tests')
                 .set('Authorization', `Bearer ${server.authToken}`)
                 .expect(200)
@@ -284,14 +284,14 @@ describe('POST /api/tests/discovery - Test Discovery (Integration)', () => {
                 server.serviceContainer.playwrightService as any,
                 'executePlaywrightListCommand'
             ).mockResolvedValue(fixtures.playwrightListOutput)
-            await request(server.app).post('/api/tests/discovery').expect(200)
+            await request(server.url).post('/api/tests/discovery').expect(200)
         }
         const getListAndCounts = async () => {
-            const list = await request(server.app)
+            const list = await request(server.url)
                 .get('/api/tests')
                 .set('Authorization', `Bearer ${server.authToken}`)
                 .expect(200)
-            const counts = await request(server.app)
+            const counts = await request(server.url)
                 .get('/api/tests/status-counts')
                 .set('Authorization', `Bearer ${server.authToken}`)
                 .expect(200)
@@ -377,7 +377,7 @@ describe('POST /api/tests/discovery - Test Discovery (Integration)', () => {
             ).mockResolvedValue(mockData)
 
             // First discovery
-            await request(server.app).post('/api/tests/discovery').expect(200)
+            await request(server.url).post('/api/tests/discovery').expect(200)
 
             const firstDiscovery = await getAllTestResults(server.testRepository.dbManager)
             expect(firstDiscovery.length).toBe(1)
@@ -385,7 +385,7 @@ describe('POST /api/tests/discovery - Test Discovery (Integration)', () => {
 
             // Clear and discover again
             await cleanDatabase(server.testRepository)
-            await request(server.app).post('/api/tests/discovery').expect(200)
+            await request(server.url).post('/api/tests/discovery').expect(200)
 
             const secondDiscovery = await getAllTestResults(server.testRepository.dbManager)
             expect(secondDiscovery.length).toBe(1)
@@ -404,7 +404,7 @@ describe('POST /api/tests/discovery - Test Discovery (Integration)', () => {
             ).mockResolvedValue(fixtures.playwrightListOutput)
 
             // No Authorization header
-            const response = await request(server.app).post('/api/tests/discovery').expect(200)
+            const response = await request(server.url).post('/api/tests/discovery').expect(200)
 
             expect(response.body.success).toBe(true)
             expect(response.body.data.discovered).toBe(3)
@@ -416,7 +416,7 @@ describe('POST /api/tests/discovery - Test Discovery (Integration)', () => {
                 'executePlaywrightListCommand'
             ).mockResolvedValue(fixtures.playwrightListOutput)
 
-            const response = await request(server.app)
+            const response = await request(server.url)
                 .post('/api/tests/discovery')
                 .set('Authorization', `Bearer ${server.authToken}`)
                 .expect(200)

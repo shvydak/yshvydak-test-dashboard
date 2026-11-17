@@ -128,4 +128,96 @@ describe('PipelineSkippedBanner', () => {
 
         expect(screen.getByText('WEB Tests was skipped')).toBeInTheDocument()
     })
+
+    describe('live still-failing count', () => {
+        const withCounts = (stillFailing?: number, failedTotal?: number) => {
+            const pipeline = makePipeline()
+            pipeline.steps[0] = {...pipeline.steps[0], stillFailing, failedTotal}
+            return pipeline
+        }
+
+        it('shows how many of the failed tests still fail', () => {
+            render(<PipelineSkippedBanner pipeline={withCounts(2, 3)} onViewProject={vi.fn()} />)
+
+            expect(
+                screen.getByText(
+                    'API Tests failed and the pipeline is set to stop on failure — 2 of 3 failed tests still failing'
+                )
+            ).toBeInTheDocument()
+            expect(screen.getByText('WEB Tests was skipped')).toBeInTheDocument()
+        })
+
+        it('updates the text when a newer status arrives', () => {
+            const {rerender} = render(
+                <PipelineSkippedBanner pipeline={withCounts(3, 3)} onViewProject={vi.fn()} />
+            )
+            rerender(<PipelineSkippedBanner pipeline={withCounts(1, 3)} onViewProject={vi.fn()} />)
+
+            expect(screen.getByText(/1 of 3 failed tests still failing/)).toBeInTheDocument()
+        })
+
+        it('disappears when no test still fails', () => {
+            const {container} = render(
+                <PipelineSkippedBanner pipeline={withCounts(0, 3)} onViewProject={vi.fn()} />
+            )
+
+            expect(container).toBeEmptyDOMElement()
+        })
+
+        it('keeps the count-less text when the server sent no counts', () => {
+            render(<PipelineSkippedBanner pipeline={withCounts()} onViewProject={vi.fn()} />)
+
+            expect(
+                screen.getByText('API Tests failed and the pipeline is set to stop on failure')
+            ).toBeInTheDocument()
+        })
+
+        it('names the step that stopped the pipeline, not an earlier non-blocking failure', () => {
+            const pipeline = makePipeline({
+                steps: [
+                    {
+                        project: 'Lint',
+                        displayName: 'Lint',
+                        stopOnFailure: false,
+                        status: 'failed',
+                        failedTotal: 1,
+                        stillFailing: 1,
+                    },
+                    {
+                        project: 'API_Tests',
+                        displayName: 'API Tests',
+                        stopOnFailure: true,
+                        status: 'failed',
+                        failedTotal: 4,
+                        stillFailing: 2,
+                    },
+                    {
+                        project: 'WEB_Tests',
+                        displayName: 'WEB Tests',
+                        stopOnFailure: false,
+                        status: 'skipped',
+                    },
+                ],
+            })
+            render(<PipelineSkippedBanner pipeline={pipeline} onViewProject={vi.fn()} />)
+
+            expect(screen.getByText(/API Tests failed .* 2 of 4/)).toBeInTheDocument()
+        })
+
+        it('the X hides it only for this mount: a remount (page reload) shows it again', () => {
+            const pipeline = withCounts(2, 3)
+            const first = render(
+                <PipelineSkippedBanner pipeline={pipeline} onViewProject={vi.fn()} />
+            )
+            fireEvent.click(screen.getByRole('button', {name: 'Dismiss'}))
+            expect(screen.queryByText('WEB Tests was skipped')).not.toBeInTheDocument()
+            expect(window.localStorage.length).toBe(0)
+            expect(window.sessionStorage.length).toBe(0)
+            first.unmount()
+
+            render(<PipelineSkippedBanner pipeline={pipeline} onViewProject={vi.fn()} />)
+
+            expect(screen.getByText('WEB Tests was skipped')).toBeInTheDocument()
+        })
+    })
 })

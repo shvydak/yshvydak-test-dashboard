@@ -104,6 +104,7 @@ function App() {
         stopping: ciStopping,
         applyPipelineEvent,
         resync: resyncPipeline,
+        refreshFailures: refreshPipelineFailures,
     } = usePipelineStatus(isAuthenticated)
     const {summary: projectStatusSummary} = useProjectStatusSummary(isAuthenticated)
     const {runningProjects, applyRunStatusEvent} = useProjectRunStatus()
@@ -273,6 +274,7 @@ function App() {
         onRunCompleted: triggerCheck,
         onPipelineEvent: applyPipelineEvent,
         onRunStatusEvent: applyRunStatusEvent,
+        onResultsChanged: refreshPipelineFailures,
     })
 
     // A dropped socket may have missed pipeline:completed / queue events.

@@ -44,7 +44,7 @@ describe('PipelineController', () => {
         mockPipelineExecutionService = {
             requestPipelineRun: vi.fn(),
             getPipeline: vi.fn(),
-            getCurrentPipeline: vi.fn(),
+            getCurrentPipelineLive: vi.fn(),
             getQueue: vi.fn().mockReturnValue([]),
             isStopping: vi.fn().mockReturnValue(false),
             stop: vi.fn(),
@@ -266,7 +266,7 @@ describe('PipelineController', () => {
     describe('getCurrentPipelineStatus', () => {
         it('returns the most recent pipeline state when one exists', async () => {
             const pipelineState = {pipelineRunId: 'p1', status: 'running', steps: []}
-            mockPipelineExecutionService.getCurrentPipeline.mockReturnValue(pipelineState)
+            mockPipelineExecutionService.getCurrentPipelineLive.mockResolvedValue(pipelineState)
 
             await controller.getCurrentPipelineStatus(
                 mockReq as ServiceRequest,
@@ -287,7 +287,7 @@ describe('PipelineController', () => {
         it('carries the CI queue next to the pipeline state', async () => {
             const pipelineState = {pipelineRunId: 'p1', status: 'running', steps: []}
             const queue = [{pipeline: 'production', queuedAt: '2026-01-01T00:00:00.000Z'}]
-            mockPipelineExecutionService.getCurrentPipeline.mockReturnValue(pipelineState)
+            mockPipelineExecutionService.getCurrentPipelineLive.mockResolvedValue(pipelineState)
             mockPipelineExecutionService.getQueue.mockReturnValue(queue)
 
             await controller.getCurrentPipelineStatus(
@@ -302,7 +302,7 @@ describe('PipelineController', () => {
 
         it('returns the queue with data null when only a request is queued', async () => {
             const queue = [{pipeline: 'develop', queuedAt: '2026-01-01T00:00:00.000Z'}]
-            mockPipelineExecutionService.getCurrentPipeline.mockReturnValue(null)
+            mockPipelineExecutionService.getCurrentPipelineLive.mockResolvedValue(null)
             mockPipelineExecutionService.getQueue.mockReturnValue(queue)
 
             await controller.getCurrentPipelineStatus(
@@ -317,7 +317,7 @@ describe('PipelineController', () => {
         })
 
         it('answers (not 404) while a stop is cleaning up, so a reload can show "Stopping..."', async () => {
-            mockPipelineExecutionService.getCurrentPipeline.mockReturnValue(null)
+            mockPipelineExecutionService.getCurrentPipelineLive.mockResolvedValue(null)
             mockPipelineExecutionService.isStopping.mockReturnValue(true)
 
             await controller.getCurrentPipelineStatus(
@@ -332,7 +332,7 @@ describe('PipelineController', () => {
         })
 
         it('returns 404 when no pipeline has ever run', async () => {
-            mockPipelineExecutionService.getCurrentPipeline.mockReturnValue(null)
+            mockPipelineExecutionService.getCurrentPipelineLive.mockResolvedValue(null)
 
             await controller.getCurrentPipelineStatus(
                 mockReq as ServiceRequest,

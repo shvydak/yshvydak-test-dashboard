@@ -687,6 +687,44 @@ describe('useWebSocket', () => {
             expect(mockStoreActions.fetchTests).toHaveBeenCalledTimes(2)
         })
 
+        describe('onResultsChanged', () => {
+            const saved = {
+                processId: 'p1',
+                phase: 'saved',
+                result: {testId: 't1', status: 'passed', project: 'WEB'},
+            }
+
+            it.each([
+                ['a saved test result', {type: 'test:progress', data: saved}],
+                ['test:completed', {type: 'test:completed', data: {}}],
+                ['run:completed', {type: 'run:completed', data: {}}],
+                ['tests:deleted', {type: 'tests:deleted', data: {scope: 'test', testId: 't1'}}],
+            ])('fires on %s', async (_name, message) => {
+                const onResultsChanged = vi.fn()
+                await open({onResultsChanged})
+
+                act(() => {
+                    mockWebSocket.simulateMessage(message)
+                })
+
+                expect(onResultsChanged).toHaveBeenCalledTimes(1)
+            })
+
+            it('does not fire when a test only started', async () => {
+                const onResultsChanged = vi.fn()
+                await open({onResultsChanged})
+
+                act(() => {
+                    mockWebSocket.simulateMessage({
+                        type: 'test:progress',
+                        data: {processId: 'p1', phase: 'started'},
+                    })
+                })
+
+                expect(onResultsChanged).not.toHaveBeenCalled()
+            })
+        })
+
         describe('live row patch', () => {
             const saved = {
                 processId: 'p1',

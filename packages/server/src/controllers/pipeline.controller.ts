@@ -166,7 +166,7 @@ export class PipelineController {
     // GET /api/pipeline/status/current - Rehydrate the most recent pipeline run (if any)
     getCurrentPipelineStatus = async (_req: ServiceRequest, res: Response): Promise<Response> => {
         try {
-            const pipeline = this.pipelineExecutionService.getCurrentPipeline()
+            const pipeline = await this.pipelineExecutionService.getCurrentPipelineLive()
             const queue = this.pipelineExecutionService.getQueue()
             const stopping = this.pipelineExecutionService.isStopping()
 

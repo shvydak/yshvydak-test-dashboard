@@ -455,6 +455,49 @@ export class TestRepository extends BaseRepository implements ITestRepository {
         return ids
     }
 
+    // Per run: failed/timedOut tests and how many still fail by their latest row in that project (same-project `pending` rows skipped).
+    async getStillFailingByRun(
+        runIds: string[]
+    ): Promise<Map<string, {failedInRun: number; stillFailing: number}>> {
+        const out = new Map<string, {failedInRun: number; stillFailing: number}>()
+        for (const batch of this.batches(runIds)) {
+            const marks = batch.map(() => '?').join(',')
+            const rows = await this.queryAll<{
+                run_id: string
+                failed_in_run: number
+                still_failing: number
+            }>(
+                `WITH h AS (
+                     SELECT test_id, status, project,
+                            ROW_NUMBER() OVER (PARTITION BY test_id ORDER BY created_at DESC) AS rn,
+                            ROW_NUMBER() OVER (PARTITION BY test_id ORDER BY (status = 'pending'), created_at DESC) AS rn_np
+                     FROM test_results
+                     WHERE test_id IN (
+                         SELECT test_id FROM test_results
+                         WHERE run_id IN (${marks}) AND status IN ('failed', 'timedOut')
+                     )
+                 )
+                 SELECT f.run_id AS run_id,
+                        COUNT(DISTINCT f.test_id) AS failed_in_run,
+                        COUNT(DISTINCT CASE
+                            WHEN l.status = 'pending' AND l.project = f.project
+                                THEN CASE WHEN n.project = f.project AND n.status IN ('failed', 'timedOut') THEN f.test_id END
+                            WHEN l.project = f.project AND l.status IN ('failed', 'timedOut') THEN f.test_id
+                        END) AS still_failing
+                 FROM test_results f
+                 LEFT JOIN h l ON l.test_id = f.test_id AND l.rn = 1
+                 LEFT JOIN h n ON n.test_id = f.test_id AND n.rn_np = 1
+                 WHERE f.run_id IN (${marks}) AND f.status IN ('failed', 'timedOut')
+                 GROUP BY f.run_id`,
+                [...batch, ...batch]
+            )
+            for (const r of rows) {
+                out.set(r.run_id, {failedInRun: r.failed_in_run, stillFailing: r.still_failing})
+            }
+        }
+        return out
+    }
+
     async deleteByRunIds(runIds: string[]): Promise<number> {
         let deleted = 0
         for (const batch of this.batches(runIds)) {

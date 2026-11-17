@@ -88,6 +88,38 @@ export class PipelineExecutionService {
         return this.currentPipeline
     }
 
+    // The banner's view: a stopped_early pipeline's failed steps carry how many of their failed tests still fail now.
+    async getCurrentPipelineLive(): Promise<PipelineState | null> {
+        const pipeline = this.currentPipeline
+        if (!pipeline || pipeline.status !== 'stopped_early') return pipeline
+
+        const counted = (s: PipelineStepSummary) =>
+            s.status === 'failed' && !!s.runId && (s.failed ?? 0) > 0
+        const runIds = pipeline.steps.filter(counted).map((s) => s.runId as string)
+        if (runIds.length === 0) return pipeline
+
+        try {
+            const counts = await this.testService.getStillFailingByRun(runIds)
+            return {
+                ...pipeline,
+                steps: pipeline.steps.map((s) => {
+                    if (!counted(s)) return s
+                    // No failed row left in the run (its tests were deleted) = all resolved.
+                    const c = counts.get(s.runId as string)
+                    return {
+                        ...s,
+                        failedTotal: Math.max(s.failed ?? 0, c?.failedInRun ?? 0),
+                        stillFailing: c?.stillFailing ?? 0,
+                    }
+                }),
+            }
+        } catch (error) {
+            // The banner falls back to its count-less text.
+            Logger.error('Failed to read still-failing counts for the pipeline status', error)
+            return pipeline
+        }
+    }
+
     getQueue(): QueuedPipelineRequest[] {
         return this.ciRunQueue.getQueue()
     }

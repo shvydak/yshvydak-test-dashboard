@@ -1799,7 +1799,9 @@ Stops everything active (a CI pipeline, a Run All, a group run, a rerun) and rem
 {"success": true, "data": <pipeline state or null>, "queue": [{"pipeline": "production", "maxWorkers": 2, "queuedAt": "2026-10-19T10:01:00.000Z"}], "stopping": false}
 ```
 
-`queue` is in drain order; `stopping` (boolean) is true while a stop cleans up. 404 only when no pipeline ran yet, nothing is queued and no stop is running. While a slot is filled or a pipeline runs, the UI disables every run button (WebSocket `pipeline:queue-changed`; it re-reads this endpoint on each WebSocket reconnect).
+`queue` is in drain order; `stopping` (boolean) is true while a stop cleans up.
+
+**Live failure counts:** while the pipeline is `stopped_early`, each `failed` step with a `runId` and `failed > 0` also carries `failedTotal` and `stillFailing` (read per request, never stored or broadcast; absent otherwise, so `GET /status/:pipelineRunId`, the WebSocket events and `scripts/trigger-test-run.js` see the old shape). The set is the tests with a `failed` or `timedOut` row in the step's run; `stillFailing` counts those whose latest row (`created_at`, any run) is still `failed`/`timedOut` in the step's project. A discovery `pending` row in the step's project (Discover, the start of a Run All) is skipped: the latest non-pending row decides. A test whose deciding row is `passed`/`skipped`, sits in another project (e.g. moved to `To_Fix`), or no longer exists counts as resolved. `failedTotal` = `max(failed, failed rows in the run)`, so it never drops below `stillFailing`. One query for all steps; if it fails the payload is returned without the two fields. The web banner reads them: "N of M failed tests still failing", hidden at `stillFailing: 0` for every viewer, re-read on test-result WebSocket events (throttled). 404 only when no pipeline ran yet, nothing is queued and no stop is running. While a slot is filled or a pipeline runs, the UI disables every run button (WebSocket `pipeline:queue-changed`; it re-reads this endpoint on each WebSocket reconnect).
 
 ### GET /api/pipeline/status/:pipelineRunId
 

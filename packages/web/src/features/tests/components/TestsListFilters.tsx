@@ -146,7 +146,7 @@ export function TestsListFilters({
                 <ConfirmationDialog
                     isOpen={showStopConfirm}
                     title="Stop the run?"
-                    description="Results of this run will be removed."
+                    description="Tests that already finished keep their results. Unfinished tests keep their previous result."
                     confirmText="Stop"
                     cancelText="Keep running"
                     variant="danger"

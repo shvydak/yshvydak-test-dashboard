@@ -2,6 +2,13 @@ import {BaseRepository} from './base.repository'
 import {TestRunData} from '../types/database.types'
 import {IRunRepository} from '../types/service.types'
 
+export interface StoppedRunCounts {
+    total: number
+    passed: number
+    failed: number
+    skipped: number
+}
+
 export class RunRepository extends BaseRepository implements IRunRepository {
     async createTestRun(runData: TestRunData): Promise<string> {
         await this.dbManager.createTestRun(runData)
@@ -29,7 +36,39 @@ export class RunRepository extends BaseRepository implements IRunRepository {
         }
     }
 
-    /** Stop: removes the run rows (their results go with them via ON DELETE CASCADE). */
+    // Keep-mode stop: failed + metadata.stopped, counts from the saved rows; metadata merged because updateTestRun replaces it whole.
+    async finalizeStoppedRun(
+        runId: string,
+        stopped: {reason: string; at: string}
+    ): Promise<StoppedRunCounts | null> {
+        const run = await this.getTestRun(runId)
+        if (!run) return null
+
+        const rows = await this.queryAll<{status: string; n: number}>(
+            'SELECT status, COUNT(*) AS n FROM test_results WHERE run_id = ? GROUP BY status',
+            [runId]
+        )
+        const count = (...statuses: string[]) =>
+            rows.filter((r) => statuses.includes(r.status)).reduce((sum, r) => sum + r.n, 0)
+        const counts: StoppedRunCounts = {
+            total: rows.reduce((sum, r) => sum + r.n, 0),
+            passed: count('passed'),
+            failed: count('failed', 'timedOut'),
+            skipped: count('skipped'),
+        }
+
+        await this.dbManager.updateTestRun(runId, {
+            status: 'failed',
+            totalTests: counts.total,
+            passedTests: counts.passed,
+            failedTests: counts.failed,
+            skippedTests: counts.skipped,
+            metadata: {...(run.metadata ?? {}), stopped},
+        })
+        return counts
+    }
+
+    /** Discard (replaced): removes the run rows (their results go with them via ON DELETE CASCADE). */
     async deleteTestRuns(runIds: string[]): Promise<number> {
         let deleted = 0
         for (let i = 0; i < runIds.length; i += 900) {

@@ -267,7 +267,7 @@ export const FloatingProgressPanel = () => {
                 {/* Time Estimate */}
                 {ciStopping ? (
                     <div className="px-4 py-3 border-t border-gray-200/70 dark:border-white/[0.06] text-sm text-gray-500 dark:text-gray-400">
-                        Stopping the run and removing its results...
+                        Stopping the run...
                     </div>
                 ) : (
                     <div className="px-4 py-3 border-t border-gray-200/70 dark:border-white/[0.06] flex items-center justify-between text-sm">

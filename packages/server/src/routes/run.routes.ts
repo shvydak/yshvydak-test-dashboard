@@ -6,7 +6,7 @@ import {ServiceContainer} from '../middleware/service-injection.middleware'
 export function createRunRoutes(container: ServiceContainer): Router {
     const router = Router()
     requireSafeIdParams(router, ['id'])
-    const runController = new RunController(container.runRepository)
+    const runController = new RunController(container.runRepository, container.testService)
 
     router.post('/', runController.createTestRun)
     router.get('/', runController.getAllTestRuns)

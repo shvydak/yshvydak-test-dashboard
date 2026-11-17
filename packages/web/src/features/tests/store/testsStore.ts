@@ -637,7 +637,7 @@ export const useTestsStore = create<TestsState>()(
 
             clearStopError: () => set({stopError: null}),
 
-            // The server answers once the run's data is removed; run:cancelled clears the flag too.
+            // The server answers once the stop is cleaned up; run:cancelled clears the flag too.
             stopRun: async () => {
                 try {
                     set({ciStopping: true, stopError: null})

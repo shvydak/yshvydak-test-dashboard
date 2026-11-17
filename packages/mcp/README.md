@@ -18,7 +18,7 @@ On by default only when the `DASHBOARD_URL` host is `localhost`, `127.0.0.1` or 
 
 - `run_test_file` also checks that the file is one the dashboard lists (exact `filePath` match). Playwright matches the path as a case-insensitive substring, so if another listed file contains it (`login.spec.ts` vs `admin-login.spec.ts`) the tool refuses and names those files; nothing starts. A server-side anchored match would remove the limit.
 - A start while another run is active (or a CI run is queued) is refused by the server (409/423); the tool returns "Not started: ..." and never retries.
-- There is **no stop tool**: the server has no way to stop one run (`/api/pipeline/stop` stops every active run and deletes its results). Stop in the dashboard UI.
+- There is **no stop tool**: the server has no way to stop one run (`/api/pipeline/stop` stops every active run and keeps the results it saved). Stop in the dashboard UI.
 - A 5xx on a start means the run may have started: check `get_run_status` or the UI before trying again.
 - A run adds a new execution to the test's history (results are insert-only).
 

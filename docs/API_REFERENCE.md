@@ -112,6 +112,8 @@ Save test results from Playwright reporter. Reporter route: accepted without a J
 
 Validation: `id`, `testId` and `runId` must match `[A-Za-z0-9_-]{1,128}` (UUID or stable-hash shape), else 400 — they become directory names. An `attachments[].path` is copied only if it resolves (symlinks followed) inside the Playwright output dir (`PLAYWRIGHT_OUTPUT_DIR`, default `<PLAYWRIGHT_PROJECT_DIR>/test-results`); other attachments are skipped and logged, the result is still saved.
 
+A reporter post for a run that a stop has settled is answered 200 `Ignored: run was stopped` and never stored. While a stop that keeps results is still ending a run, a result cut by that stop is answered 200 `Ignored: interrupted by stop` (no row, no attachments): `metadata.rawStatus === "interrupted"` (reporter 1.2.0+ never sends one), or, for a reporter that sends no `rawStatus`, a `failed` result whose `timestamp` is at or after the moment the server signalled the run. A missing or unparseable `timestamp`, and any non-`failed` status, is kept.
+
 **Request Body:**
 
 ```json
@@ -1336,7 +1338,7 @@ Get all test runs with pagination.
 
 ### PUT /api/runs/:id
 
-Update an existing test run.
+Update an existing test run. A run that a stop has settled answers 200 `Ignored: run was stopped` and is not changed (its row was finalized by the stop).
 
 **Request Body:**
 
@@ -1356,7 +1358,7 @@ Get a specific test run by ID.
 
 ### GET /api/runs/stats
 
-Get test run statistics and analytics.
+Get test run statistics and analytics. A run stopped with Stop or the time limit is stored as `failed` (see `POST /api/pipeline/stop`), so `failed_runs` counts it.
 
 **Response:**
 
@@ -1727,7 +1729,7 @@ Starts a pipeline; the steps run in the background, one tab after another. It ca
 
 **Busy** = a live Playwright child process (the server's own runId → process map, not the progress tracker), a pipeline running (including the gap between its steps), a run still starting (discovery before spawn), or a stop still cleaning up.
 
-**Replace:** a `source: "script"` + `notify: true` request for pipeline X while a CI run of X is active — a pipeline X that is running or still starting, itself started with `source: "script"` + `notify: true` — stops that run (reason `replaced`: kill, delete everything it wrote, pipeline `cancelled`; see `POST /api/pipeline/stop`) and puts the new request into X's slot; the answer is the usual 202 `queued` and it starts on the normal drain (a queued production request still goes first). Slack for the stopped run: `⏹️ Cancelled by a newer deploy — a new run has started`. Not replaced, queued as before: a run without `notify` (`--wait`), a manually started pipeline or run, another pipeline name. A stop already in progress (Stop button, watchdog, an earlier replace) is not repeated or re-announced — the request just fills or replaces the slot, so a burst of requests causes one stop and the newest wins. A paused auto-run or an empty pipeline refuses the request (423 / 400) before anything is stopped.
+**Replace:** a `source: "script"` + `notify: true` request for pipeline X while a CI run of X is active — a pipeline X that is running or still starting, itself started with `source: "script"` + `notify: true` — stops that run (reason `replaced`: kill, **delete** everything it wrote, pipeline `cancelled` with `resultsKept: false`; see `POST /api/pipeline/stop`) and puts the new request into X's slot; the answer is the usual 202 `queued` and it starts on the normal drain (a queued production request still goes first). Slack for the stopped run: `⏹️ Cancelled by a newer deploy — a new run has started`. Not replaced, queued as before: a run without `notify` (`--wait`), a manually started pipeline or run, another pipeline name. A stop already in progress (Stop button, watchdog, an earlier replace) is not repeated or re-announced — the request just fills or replaces the slot, so a burst of requests causes one stop and the newest wins. A paused auto-run or an empty pipeline refuses the request (423 / 400) before anything is stopped.
 
 **Queue:** one in-memory slot per pipeline name, the newest request replaces the queued one; lost on server restart. The queue drains when a non-pipeline run's process closes, when a pipeline finishes, when the last start claim is released without a process (a failed start), and after `POST /api/tests/force-reset` (never between steps, never on the reporter's `process-end`), production slot first, then develop. At drain the pause and the pipeline's tabs are checked again; a request that can no longer start is dropped and, as it always has `notify`, posts `⏸️ Auto-run is paused — tests were not started` or `❌ Did not start (pipeline_empty)`.
 
@@ -1755,26 +1757,28 @@ Starts a pipeline; the steps run in the background, one tab after another. It ca
 }
 ```
 
-`status`: `running` | `completed` | `stopped_early` | `paused` | `cancelled`. `cancelled`: stopped (see `POST /api/pipeline/stop`); every step is `skipped` and its results are deleted. `paused`: CI auto-run was paused while the pipeline ran; the running step finished, the remaining steps are `skipped` (none `failed`), finished steps keep their results. Step `status`: `queued` | `running` | `success` | `failed` | `skipped`. A step whose process closed while its run row is still `running` (the reporter's `onEnd` never landed) is `failed` and stops the pipeline (`stopped_early`).
+`status`: `running` | `completed` | `stopped_early` | `paused` | `cancelled`. `cancelled`: stopped (see `POST /api/pipeline/stop`) with `stopReason` (`manual` | `timeout` | `replaced`) and `resultsKept`. After a stop that keeps results (`manual`, `timeout`) finished steps keep their status, run id and counts, the step that was running is `stopped` (with the kept counts) and later steps are `skipped`; after `replaced` every step is `skipped` and its results are deleted. `paused`: CI auto-run was paused while the pipeline ran; the running step finished, the remaining steps are `skipped` (none `failed`), finished steps keep their results. Step `status`: `queued` | `running` | `success` | `failed` | `skipped` | `stopped`. A step whose process closed while its run row is still `running` (the reporter's `onEnd` never landed) is `failed` and stops the pipeline (`stopped_early`).
 
 **Result Slack message** (only when `notify: true`; payload `{"text": …}`): an 80-dash separator, `🧪 Automated tests · Development|Production`, a title, a `🔗` line, separator.
 
-| Outcome                          | Title                                                    | Link `<PUBLIC_DASHBOARD_URL>…`                                                                                    |
-| -------------------------------- | -------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
-| all steps passed                 | `✅ Test run passed`                                     | `/tests?project=<slug>` for a one-step pipeline, else `/tests`                                                    |
-| completed, some tests failed     | `⚠️ N test(s) failed in <tab names, comma separated>`    | the failing tab's slug when exactly one tab failed, else the pipeline link                                        |
-| stopped early on a blocking step | `⛔ Stopped at <tab> — remaining steps were skipped`     | the failed step's slug (no failed step → the pipeline link)                                                       |
-| running longer than the timeout  | `⏱️ Timed out — dashboard did not report completion`     | pipeline link; no result message follows; the pipeline is then stopped (reason `timeout`) and its results deleted |
-| dashboard restarted mid-run      | `⚠️ Test run was interrupted — the dashboard restarted`  | pipeline link                                                                                                     |
-| auto-run paused mid-pipeline     | `⏸️ Paused — remaining steps were skipped`               | pipeline link                                                                                                     |
-| stopped with the Stop button     | `⏹️ Stopped manually — no result for this run`           | pipeline link                                                                                                     |
-| replaced by a newer deploy       | `⏹️ Cancelled by a newer deploy — a new run has started` | pipeline link (reason `replaced`, see **Replace**)                                                                |
+| Outcome                          | Title                                                           | Link `<PUBLIC_DASHBOARD_URL>…`                                                                                                                                          |
+| -------------------------------- | --------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| all steps passed                 | `✅ Test run passed`                                            | `/tests?project=<slug>` for a one-step pipeline, else `/tests`                                                                                                          |
+| completed, some tests failed     | `⚠️ N test(s) failed in <tab names, comma separated>`           | the failing tab's slug when exactly one tab failed, else the pipeline link                                                                                              |
+| stopped early on a blocking step | `⛔ Stopped at <tab> — remaining steps were skipped`            | the failed step's slug (no failed step → the pipeline link)                                                                                                             |
+| running longer than the timeout  | `⏱️ Stopped after N min (time limit) — results so far are kept` | like a manual stop, see below; the pipeline is stopped (reason `timeout`), its results are kept                                                                         |
+| dashboard restarted mid-run      | `⚠️ Test run was interrupted — the dashboard restarted`         | pipeline link                                                                                                                                                           |
+| auto-run paused mid-pipeline     | `⏸️ Paused — remaining steps were skipped`                      | pipeline link                                                                                                                                                           |
+| stopped with the Stop button     | `⏹️ Stopped manually — results so far are kept`                 | the first failing tab's slug when something failed, else the pipeline link; a `⚠️ N test(s) failed in <tabs>` line (kept rows only) sits between the title and the link |
+| replaced by a newer deploy       | `⏹️ Cancelled by a newer deploy — a new run has started`        | pipeline link (reason `replaced`, see **Replace**)                                                                                                                      |
 
 Tab names are display names, URLs use the project slug. A failed webhook POST is logged and never reaches the pipeline.
 
+**Time limit:** after `CI_PIPELINE_TIMEOUT_MINUTES` (default 30) a `notify` pipeline is stopped with reason `timeout`; the stop posts the one Slack line (`Stopped after N min …`) once it has ended the pipeline. If the stop has not ended it 60 s after the limit, the old `⏱️ Timed out — dashboard did not report completion` line is posted instead and no later message follows for that pipeline — exactly one Slack message either way.
+
 ### POST /api/pipeline/stop
 
-Stops everything active (a CI pipeline, a Run All, a group run, a rerun) and removes what it wrote: **a stopped run counts as never run**. JWT required (`authMiddleware` + `requireJWT`, like `/api/settings/*`; with `ENABLE_AUTH` off it answers 403).
+Stops everything active (a CI pipeline, a Run All, a group run, a rerun). **A manual Stop and the time limit keep the results** the run already saved; only a newer CI deploy replacing a running one (`replaced`) deletes everything the run wrote. JWT required (`authMiddleware` + `requireJWT`, like `/api/settings/*`; with `ENABLE_AUTH` off it answers 403).
 
 **Request Body:** `{"reason": "manual"}` — the only value accepted over HTTP (omitted = `manual`; anything else → 400). `timeout` (watchdog), `restart` and `replaced` are internal callers of `PipelineExecutionService.stop()`.
 
@@ -1783,13 +1787,23 @@ Stops everything active (a CI pipeline, a Run All, a group run, a rerun) and rem
 ```json
 {
     "success": true,
-    "data": {"stopped": true, "reason": "manual", "pipelineRunId": "6f1c…", "runIds": ["…"]}
+    "data": {
+        "stopped": true,
+        "reason": "manual",
+        "pipelineRunId": "6f1c…",
+        "runIds": ["…"],
+        "resultsKept": true
+    }
 }
 ```
 
-`stopped: false` (`runIds: []`) when nothing was running. A second stop while one runs joins it. If the delete step fails the pipeline still ends `cancelled`, the dashboard is freed, the error is logged (`STOP CLEANUP FAILED`) and the call answers 500; the leftover rows must be deleted by hand. A run-all / run-group / rerun request that finds a stop requested while it was still preparing answers 409 `RUN_CANCELLED` and never spawns.
+`stopped: false` (`runIds: []`, no `resultsKept`) when nothing was running. A second stop while one runs joins it. If the cleanup step fails the pipeline still ends `cancelled`, the dashboard is freed, the error is logged (`STOP CLEANUP FAILED`) and the call answers 500. A run-all / run-group / rerun request that finds a stop requested while it was still preparing answers 409 `RUN_CANCELLED` and never spawns.
 
-**Order:** set the cancel flag for every run of the stop (reporter `process-start`, `test-start`, `POST /api/tests` and their attachments for those runIds are acknowledged and ignored) → SIGINT to the run's process group (SIGKILL after 20 s) → wait for the process to close + 1 s for late reporter posts → delete the attachment files, `test_results` rows (FK cascade removes attachment rows) and `test_runs` rows → delete the discovery `pending` rows (`run_id IS NULL`, same project) written by the run's own discovery — its auto-discovery, or the UI's discovery request in the 30 s before it; a run with no such discovery deletes none — for tests that have an older real result → pipeline ends `cancelled`, then the Slack line (reason `manual` / `replaced`, only with `notify`), then the queue drains (production first). `test_notes` are not touched. Works with no child yet (discovery, between steps): the next spawn simply never happens. A pipeline stop deletes the results of **every** step, finished ones included.
+**Keep mode (`manual`, `timeout`), in order:** mark every run of the stop as _stopping_ with the signal time (reporter posts are still accepted; `run:stopping` carries `resultsKept: true`) → SIGINT to each live run's process group (SIGKILL after 20 s) → wait for the processes to close (the pipeline loop is waited for at most 5 s more) + 1 s for late reporter posts → set the cancel flag (from here every reporter post, `process-start`, `test-start` and `PUT /api/runs/:id` for those runs is acknowledged and ignored) → **finalize only the runs that were still running at the signal**: `status = failed`, `metadata.stopped = {reason, at}` merged into the existing metadata, counts recomputed from the saved rows (retries count once per attempt, `timedOut` counts as failed). Finished pipeline steps are never rewritten. `test_results` rows are never updated or deleted → **clear both in-flight markers** (`ci_inflight_pipeline`, `inflight_run`) so a restart from here on does not delete the kept results (a restart before this point deletes the run, as restart cleanup always did) → delete the discovery `pending` rows (`run_id IS NULL`, same project) written by the run's own discovery — its auto-discovery, or the UI's discovery request in the 30 s before it — for tests that have an older real result → pipeline ends `cancelled`, then the Slack line (only with `notify`), then the queue drains (production first; a queued CI request starts right after a manual Stop). A test that was running at the stop gets no result row (a result cut by the stop is dropped, see `POST /api/tests`); it shows its previous result, or stays `pending` when it has none. `test_notes` are not touched. Works with no child yet (discovery, between steps): the next spawn simply never happens.
+
+A stopped run is a `failed` run (the `test_runs.status` CHECK has no `stopped`): `failed_runs` in `/api/runs/stats` counts it; `metadata.stopped` tells it apart. The pipeline is in-memory `cancelled` (the trigger script exits 1, as before) with `stopReason` and `resultsKept: true`.
+
+**Discard mode (`replaced`)** is the older order: cancel flag first → SIGINT/SIGKILL → wait → delete the attachment files, `test_results` rows (FK cascade removes attachment rows) and `test_runs` rows of **every** step, finished ones included → delete the discovery rows → pipeline `cancelled` with `resultsKept: false`, every step `skipped`.
 
 **Process groups:** Playwright is spawned `detached` (own group; `npx` sits between the server and Playwright). Chromium launched by Playwright runs in its own group but is wired over a pipe and exits with Playwright, also after SIGKILL of the group. The server shutdown (`SIGTERM`/`SIGINT`) SIGINTs every group and SIGKILLs the survivors after 2.5 s (inside pm2 `kill_timeout` 5 s). The in-flight markers (`ci_inflight_pipeline` for a pipeline, `inflight_run` for a manual run) hold the groups and runIds: at startup, before the server listens, groups still alive are SIGKILLed (only when a member's command line mentions Playwright and it started no later than the marker's last write, so a reused group id of an unrelated run is left alone) and the marker's runs are deleted (nothing else; old `running` rows are history). A restart posts `⚠️ Test run was interrupted — the dashboard restarted` as before.
 
@@ -1953,7 +1967,7 @@ Broadcast when a test process completes.
 
 ### Pipeline Events
 
-`pipeline:started` (`pipelineRunId`, `steps`), `pipeline:step-started` (`pipelineRunId`, `project`, `runId`), `pipeline:step-completed` (`pipelineRunId`, `step`), `pipeline:completed` (`pipelineRunId`, `status`, `steps`), `pipeline:queue-changed` (`queue`: the full list of queued CI requests, as in `GET /api/pipeline/status/current`). `pipeline:completed` carries `status: "cancelled"` after a stop.
+`pipeline:started` (`pipelineRunId`, `steps`), `pipeline:step-started` (`pipelineRunId`, `project`, `runId`), `pipeline:step-completed` (`pipelineRunId`, `step`), `pipeline:completed` (`pipelineRunId`, `status`, `steps`), `pipeline:queue-changed` (`queue`: the full list of queued CI requests, as in `GET /api/pipeline/status/current`). `pipeline:completed` carries `status: "cancelled"` after a stop; its steps may carry the status `stopped`.
 
 ### Discovery Events
 
@@ -1961,7 +1975,7 @@ Broadcast when a test process completes.
 
 ### Stop Events
 
-`run:stopping` (`reason`) — a stop started cleaning up; the Stop button shows "Stopping...". `run:cancelled` (`runIds`, `reason`, `pipelineRunId?`) — the runs' data is deleted: clients reset their run state and refetch, every test shows its previous result. A stopped run sends no `run:completed`.
+`run:stopping` (`reason`, `resultsKept`) — a stop started cleaning up; the Stop button shows "Stopping...". `run:cancelled` (`runIds`, `reason`, `pipelineRunId?`, `resultsKept`) — the stop is done: clients reset their run state and refetch. With `resultsKept: true` the finished tests keep their results and the others show their previous result; with `false` (`replaced`) the runs' data is deleted. A stopped run sends no `run:completed`.
 
 ### Delete Events
 

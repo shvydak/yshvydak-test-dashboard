@@ -7,6 +7,7 @@ import {
     buildReplacedMessage,
     buildResultMessage,
     buildStoppedMessage,
+    buildTimeLimitStopMessage,
     buildTimeoutMessage,
     CISlackContext,
     PipelineResultStatus,
@@ -43,8 +44,16 @@ export class CINotifierService {
         return this.send(buildInterruptedMessage(this.context(pipeline), projects))
     }
 
-    notifyStopped(pipeline: string, projects: string[]): Promise<void> {
-        return this.send(buildStoppedMessage(this.context(pipeline), projects))
+    notifyStopped(pipeline: string, steps: PipelineStepSummary[]): Promise<void> {
+        return this.send(buildStoppedMessage(this.context(pipeline), steps))
+    }
+
+    notifyTimeLimitStop(
+        pipeline: string,
+        minutes: number,
+        steps: PipelineStepSummary[]
+    ): Promise<void> {
+        return this.send(buildTimeLimitStopMessage(this.context(pipeline), minutes, steps))
     }
 
     notifyReplaced(pipeline: string, projects: string[]): Promise<void> {

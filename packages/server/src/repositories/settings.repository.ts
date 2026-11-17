@@ -69,7 +69,7 @@ export interface InFlightRunMarker {
     runId: string
     pgid: number | null
     project: string | null
-    // Run-all: discovery rows newer than this are removed with the run's results.
+    // Run-all: discovery rows newer than this are removed when the run is stopped.
     pendingSince: string | null
     startedAt: string
 }

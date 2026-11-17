@@ -179,7 +179,7 @@ export interface ITestRepository {
     getExecutionIdsByProject(project: string): Promise<string[]>
     getDistinctTestIdsByProject(project: string): Promise<string[]>
     deleteByProject(project: string): Promise<number>
-    // Stop: remove everything a stopped run wrote
+    // Discard (replaced): remove everything a stopped run wrote
     getResultIdsByRunIds(runIds: string[]): Promise<string[]>
     deleteByRunIds(runIds: string[]): Promise<number>
     deleteDiscoveryRowsHidingResults(project: string | undefined, since: string): Promise<number>
@@ -207,4 +207,8 @@ export interface IRunRepository {
     updateTestRun(runId: string, updates: Partial<TestRunData>): Promise<void>
     getTestRun(runId: string): Promise<TestRunData | null>
     deleteTestRuns(runIds: string[]): Promise<number>
+    finalizeStoppedRun(
+        runId: string,
+        stopped: {reason: string; at: string}
+    ): Promise<{total: number; passed: number; failed: number; skipped: number} | null>
 }

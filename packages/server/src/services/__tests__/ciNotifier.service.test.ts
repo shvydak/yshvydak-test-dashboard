@@ -119,11 +119,26 @@ describe('CINotifierService', () => {
     })
 
     it('posts the manual-stop line', async () => {
-        await new CINotifierService().notifyStopped('develop', ['A', 'B'])
+        await new CINotifierService().notifyStopped('develop', [
+            {project: 'A', displayName: 'A', stopOnFailure: false, status: 'stopped', failed: 1},
+            {project: 'B', displayName: 'B', stopOnFailure: false, status: 'skipped'},
+        ])
 
         const body = JSON.parse(fetchMock.mock.calls[0][1].body)
-        expect(body.text).toContain('⏹️ Stopped manually — no result for this run')
-        expect(body.text).toContain('🔗 https://dash.example.com/tests')
+        expect(body.text).toContain('⏹️ Stopped manually — results so far are kept')
+        expect(body.text).toContain('⚠️ 1 test failed in A')
+        expect(body.text).toContain('🔗 https://dash.example.com/tests?project=A')
+    })
+
+    it('posts the time-limit stop line', async () => {
+        await new CINotifierService().notifyTimeLimitStop('develop', 45, [
+            {project: 'A', displayName: 'A', stopOnFailure: false, status: 'stopped'},
+        ])
+
+        const body = JSON.parse(fetchMock.mock.calls[0][1].body)
+        expect(body.text).toContain(
+            '⏱️ Stopped after 45 min (time limit) — results so far are kept'
+        )
     })
 
     it('posts the replaced line', async () => {

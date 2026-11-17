@@ -88,6 +88,8 @@ describe('Replace a running CI run (PipelineExecutionService)', () => {
                 return {runId, process: child}
             }),
             discardRuns: vi.fn().mockResolvedValue(undefined),
+            discardDiscoveryRows: vi.fn().mockResolvedValue(undefined),
+            finalizeStoppedRuns: vi.fn().mockResolvedValue(new Map()),
             clearRunMarker: vi.fn().mockResolvedValue(undefined),
         }
         settings = {
@@ -118,6 +120,7 @@ describe('Replace a running CI run (PipelineExecutionService)', () => {
             notifyPaused: vi.fn().mockResolvedValue(undefined),
             notifyNotStarted: vi.fn().mockResolvedValue(undefined),
             notifyStopped: vi.fn().mockResolvedValue(undefined),
+            notifyTimeLimitStop: vi.fn().mockResolvedValue(undefined),
             notifyReplaced: vi.fn().mockResolvedValue(undefined),
         }
 
@@ -153,7 +156,7 @@ describe('Replace a running CI run (PipelineExecutionService)', () => {
             // Accepted at once; the stop is under way (signal first, nothing deleted yet).
             expect(result).toEqual({status: 'queued', pipeline: 'develop'})
             expect(children[0].kill).toHaveBeenCalledWith('SIGINT')
-            expect(websocket.broadcastRunStopping).toHaveBeenCalledWith('replaced')
+            expect(websocket.broadcastRunStopping).toHaveBeenCalledWith('replaced', false)
             expect(testService.discardRuns).not.toHaveBeenCalled()
             expect(queue.getQueue()).toEqual([expect.objectContaining({pipeline: 'develop'})])
 
@@ -312,7 +315,7 @@ describe('Replace a running CI run (PipelineExecutionService)', () => {
     })
 
     describe('a stop that is already ending the run', () => {
-        it('a manual stop in flight: no second signal, no second delete, no "newer deploy" line; the slot starts on the drain', async () => {
+        it('a manual stop in flight: no second signal, no second finalize/delete, no "newer deploy" line; the slot starts on the drain', async () => {
             const old = await startCI('develop')
             await flushPromises()
             const manualStop = service.stop('manual')
@@ -323,7 +326,8 @@ describe('Replace a running CI run (PipelineExecutionService)', () => {
 
             expect(result.status).toBe('queued')
             expect(children[0].kill).toHaveBeenCalledTimes(1)
-            expect(testService.discardRuns).toHaveBeenCalledTimes(1)
+            expect(testService.finalizeStoppedRuns).toHaveBeenCalledTimes(1)
+            expect(testService.discardRuns).not.toHaveBeenCalled()
             expect(notifier.notifyStopped).toHaveBeenCalledTimes(1)
             expect(notifier.notifyReplaced).not.toHaveBeenCalled()
             expect(service.getPipeline(old.pipelineRunId)?.status).toBe('cancelled')
@@ -331,19 +335,20 @@ describe('Replace a running CI run (PipelineExecutionService)', () => {
             expect(testService.runAllTests).toHaveBeenCalledTimes(2)
         })
 
-        it('the watchdog stop in flight: one timeout line, no "newer deploy" line, one delete', async () => {
+        it('the watchdog stop in flight: one time-limit line, no "newer deploy" line, one finalize', async () => {
             await startCI('develop')
             await flushPromises()
             await vi.advanceTimersByTimeAsync(30 * 60 * 1000)
-            expect(notifier.notifyTimeout).toHaveBeenCalledTimes(1)
 
             await ciRequest('develop')
             await finishStop()
 
             expect(children[0].kill).toHaveBeenCalledTimes(1)
-            expect(testService.discardRuns).toHaveBeenCalledTimes(1)
+            expect(testService.finalizeStoppedRuns).toHaveBeenCalledTimes(1)
+            expect(testService.discardRuns).not.toHaveBeenCalled()
             expect(notifier.notifyReplaced).not.toHaveBeenCalled()
-            expect(notifier.notifyTimeout).toHaveBeenCalledTimes(1)
+            expect(notifier.notifyTimeLimitStop).toHaveBeenCalledTimes(1)
+            expect(notifier.notifyTimeout).not.toHaveBeenCalled()
             expect(testService.runAllTests).toHaveBeenCalledTimes(2)
         })
 
@@ -359,6 +364,7 @@ describe('Replace a running CI run (PipelineExecutionService)', () => {
             await finishStop()
 
             expect(notifier.notifyTimeout).not.toHaveBeenCalled()
+            expect(notifier.notifyTimeLimitStop).not.toHaveBeenCalled()
             expect(notifier.notifyReplaced).toHaveBeenCalledTimes(1)
             expect(children[0].kill).toHaveBeenCalledTimes(1)
             expect(testService.discardRuns).toHaveBeenCalledTimes(1)

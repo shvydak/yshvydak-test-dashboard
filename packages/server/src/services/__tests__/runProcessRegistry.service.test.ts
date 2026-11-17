@@ -287,4 +287,25 @@ describe('RunProcessRegistry', () => {
             expect(registry.isCancelled('run-599')).toBe(true)
         })
     })
+
+    describe('stopping runs (keep-mode stop)', () => {
+        it('remembers the signal time per run; a stopping run is not cancelled', () => {
+            registry.markStopping(['a', 'b'], 1_700_000_000_000)
+
+            expect(registry.isStopping('a')).toBe(true)
+            expect(registry.getStopSignalledAt('b')).toBe(1_700_000_000_000)
+            expect(registry.isStopping('c')).toBe(false)
+            expect(registry.getStopSignalledAt('c')).toBeUndefined()
+            expect(registry.isCancelled('a')).toBe(false)
+        })
+
+        it('keeps the stopping map bounded, dropping the oldest ids', () => {
+            const ids = Array.from({length: 600}, (_, i) => `stopping-${i}`)
+
+            registry.markStopping(ids, 1)
+
+            expect(registry.isStopping('stopping-0')).toBe(false)
+            expect(registry.isStopping('stopping-599')).toBe(true)
+        })
+    })
 })

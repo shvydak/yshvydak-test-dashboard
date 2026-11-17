@@ -259,7 +259,7 @@ export class DashboardClient {
         } catch (err) {
             if (err instanceof DashboardError && err.status === 404) {
                 throw new DashboardError(
-                    'Run not found (it never existed, or it was stopped and deleted)',
+                    'Run not found (it never existed, or it was replaced by a newer CI run)',
                     404
                 )
             }

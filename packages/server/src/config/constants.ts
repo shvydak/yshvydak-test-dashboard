@@ -65,4 +65,8 @@ export const RUN_STOP = {
     LATE_POSTS_GRACE_MS: 1_000,
     /** Server shutdown: SIGINT every group, SIGKILL the survivors after this (pm2 kill_timeout is 5 s). */
     SHUTDOWN_GRACE_MS: 2_500,
+    /** The pipeline loop has no give-up of its own; the stop stops waiting for it after this. */
+    LOOP_GIVE_UP_MS: 5_000,
+    /** Watchdog stop that has not ended the pipeline by now: the old "Timed out" line goes out instead. */
+    TIMEOUT_NOTICE_FALLBACK_MS: 60_000,
 } as const

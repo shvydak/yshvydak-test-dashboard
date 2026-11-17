@@ -360,7 +360,7 @@ describe('get_run_status', () => {
         expect(stack.calls.every((c) => c.method === 'GET')).toBe(true)
     })
 
-    it('says so for an unknown (or stopped and deleted) run', async () => {
+    it('says so for an unknown run (or one replaced by a newer CI run)', async () => {
         const res = await stackWith({}).tool('get_run_status')({runId: RUN_1})
         expect(res.isError).toBe(true)
         expect(JSON.stringify(res)).toMatch(/Run not found/)

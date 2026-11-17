@@ -1,10 +1,14 @@
 import {Request, Response} from 'express'
 import {RunRepository} from '../repositories/run.repository'
+import {TestService} from '../services/test.service'
 import {ResponseHelper} from '../utils/response.helper'
 import {Logger} from '../utils/logger.util'
 
 export class RunController {
-    constructor(private runRepository: RunRepository) {}
+    constructor(
+        private runRepository: RunRepository,
+        private testService: TestService
+    ) {}
 
     // POST /api/runs - Create a new test run (compatible with yshvydakReporter.ts)
     createTestRun = async (req: Request, res: Response): Promise<Response> => {
@@ -49,6 +53,11 @@ export class RunController {
         try {
             const {id} = req.params
             const updates = req.body
+
+            // The stopped run's row was finalized from the DB: a late reporter PUT must not overwrite it.
+            if (this.testService.isRunCancelled(id)) {
+                return ResponseHelper.success(res, {id}, 'Ignored: run was stopped')
+            }
 
             await this.runRepository.updateTestRun(id, updates)
 

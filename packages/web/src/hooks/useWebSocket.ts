@@ -326,7 +326,7 @@ export function useWebSocket(url: string | null, options?: WebSocketOptions) {
                 break
 
             case 'run:cancelled':
-                // The stopped run's data is gone: every test shows its previous result again.
+                // A stopped run's counts changed (or its data was discarded): refetch.
                 queryClient.invalidateQueries({queryKey: ['dashboard-stats']})
                 queryClient.invalidateQueries({queryKey: ['project-status-summary']})
                 queryClient.invalidateQueries({queryKey: ['test-status-counts']})

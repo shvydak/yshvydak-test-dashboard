@@ -1,5 +1,6 @@
-import {useEffect, useRef, useState} from 'react'
-import {useQueryClient} from '@tanstack/react-query'
+import {useCallback, useEffect, useRef, useState} from 'react'
+import {useQueryClient, type QueryClient} from '@tanstack/react-query'
+import {useShallow} from 'zustand/react/shallow'
 import {useTestsStore} from '@features/tests/store/testsStore'
 
 interface WebSocketMessage {
@@ -19,12 +20,9 @@ interface WebSocketOptions {
     onResultsChanged?: () => void
 }
 
-// Max one list refresh per window while results stream in. Shared by every socket on the
-// page (App, modal, Dashboard each open one), so a progress event never triggers 2-3 fetches.
-// A refresh is a full list GET + count queries, so the window is long and a hidden tab skips it.
-// Only the fallback now: a saved result patches its own row (store.applyLiveResult).
+// Max one list refresh per window (a full list GET + counts); a hidden tab skips it. Only the fallback: a saved result patches its row.
 export const PROGRESS_REFRESH_INTERVAL_MS = 10000
-// Delete events arrive once per socket (2-3 per page): coalesce them into one refresh.
+// A delete is followed by an event burst from the server: coalesce it into one refresh.
 export const DELETE_REFRESH_DELAY_MS = 300
 let lastProgressRefresh = 0
 let progressRefreshTimer: ReturnType<typeof setTimeout> | null = null
@@ -78,40 +76,167 @@ if (typeof document !== 'undefined') {
     })
 }
 
-export function useWebSocket(url: string | null, options?: WebSocketOptions) {
-    const [isConnected, setIsConnected] = useState(false)
-    const [lastMessage, setLastMessage] = useState<WebSocketMessage | null>(null)
-    const wsRef = useRef<WebSocket | null>(null)
-    const queryClient = useQueryClient()
-    const {
-        fetchTests,
-        fetchRuns,
-        setGroupRunning,
-        setTestRunning,
-        setRunningAllTests,
-        applyRunSnapshot,
-        updateProgress,
-        applyLiveResult,
-        clearProgress,
-        resetRunState,
-    } = useTestsStore()
-    const reconnectTimeoutRef = useRef<NodeJS.Timeout>()
-    const reconnectAttempts = useRef(0)
-    const hasConnectedBefore = useRef(false)
-    // Set by disconnect(): a close we caused (unmount, URL null) must never reconnect, whatever
-    // its close code (a socket closed while CONNECTING reports 1006, not 1000).
-    const closedByUs = useRef(false)
-    // The socket outlives renders: dispatch through refs so callbacks are never from connect time.
-    const optionsRef = useRef(options)
-    optionsRef.current = options
-    const handleMessageRef = useRef<(message: WebSocketMessage) => void>(() => {})
+type StoreActions = Pick<
+    ReturnType<typeof useTestsStore.getState>,
+    | 'fetchTests'
+    | 'setGroupRunning'
+    | 'setTestRunning'
+    | 'setRunningAllTests'
+    | 'applyRunSnapshot'
+    | 'updateProgress'
+    | 'applyLiveResult'
+    | 'clearProgress'
+    | 'resetRunState'
+>
 
-    const handleConnectionStatus = (statusData: any) => {
+// Store functions are stable: the hook subscribes to no state, so a store change never re-renders its host.
+const selectSocketActions = (s: StoreActions): StoreActions => ({
+    fetchTests: s.fetchTests,
+    setGroupRunning: s.setGroupRunning,
+    setTestRunning: s.setTestRunning,
+    setRunningAllTests: s.setRunningAllTests,
+    applyRunSnapshot: s.applyRunSnapshot,
+    updateProgress: s.updateProgress,
+    applyLiveResult: s.applyLiveResult,
+    clearProgress: s.clearProgress,
+    resetRunState: s.resetRunState,
+})
+
+interface SocketDeps {
+    actions: StoreActions
+    queryClient: QueryClient
+}
+
+// One hook instance = one subscriber. Its callbacks and deps are read at dispatch time, never captured.
+interface Subscriber {
+    options: () => WebSocketOptions | undefined
+    deps: () => SocketDeps
+}
+
+// The tab's one socket per URL: store/cache work runs once per event, then each subscriber's callbacks.
+class SharedSocket {
+    connected = false
+    private ws: WebSocket | null = null
+    private subscribers = new Set<Subscriber>()
+    private statusListeners = new Set<(connected: boolean) => void>()
+    private reconnectTimeout: ReturnType<typeof setTimeout> | undefined
+    private reconnectAttempts = 0
+    private hasConnectedBefore = false
+    // A close we caused never reconnects, whatever its code (CONNECTING close reports 1006)
+    private closedByUs = false
+
+    constructor(private url: string) {}
+
+    addSubscriber(sub: Subscriber) {
+        this.subscribers.add(sub)
+    }
+
+    // Returns true when no subscriber is left (the caller drops the connection).
+    removeSubscriber(sub: Subscriber): boolean {
+        this.subscribers.delete(sub)
+        return this.subscribers.size === 0
+    }
+
+    onStatus(listener: (connected: boolean) => void) {
+        this.statusListeners.add(listener)
+        return () => {
+            this.statusListeners.delete(listener)
+        }
+    }
+
+    send(message: WebSocketMessage) {
+        if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+            this.ws.send(JSON.stringify(message))
+        }
+    }
+
+    open() {
+        this.closedByUs = false
+        this.connect()
+    }
+
+    close() {
+        this.closedByUs = true
+        if (this.reconnectTimeout) clearTimeout(this.reconnectTimeout)
+        if (this.ws) this.ws.close(1000, 'Intentional disconnect')
+    }
+
+    private setConnected(connected: boolean) {
+        this.connected = connected
+        this.statusListeners.forEach((listener) => listener(connected))
+    }
+
+    private deps(): SocketDeps | null {
+        for (const sub of this.subscribers) return sub.deps()
+        return null
+    }
+
+    private notify<K extends keyof WebSocketOptions>(
+        name: K,
+        ...args: Parameters<NonNullable<WebSocketOptions[K]>>
+    ) {
+        this.subscribers.forEach((sub) => {
+            const callback = sub.options()?.[name] as ((...a: unknown[]) => void) | undefined
+            try {
+                callback?.(...args)
+            } catch (error) {
+                // One consumer's failure must not skip the others
+                console.error(`WebSocket ${name} callback failed:`, error)
+            }
+        })
+    }
+
+    private connect() {
+        try {
+            const ws = new WebSocket(this.url)
+            this.ws = ws
+
+            ws.onopen = () => {
+                this.setConnected(true)
+                this.reconnectAttempts = 0
+                // Events broadcast while the socket was down are lost: re-read once.
+                if (this.hasConnectedBefore) this.deps()?.actions.fetchTests()
+                this.hasConnectedBefore = true
+            }
+
+            ws.onmessage = (event) => {
+                try {
+                    const message: WebSocketMessage = JSON.parse(event.data)
+                    this.handleMessage(message)
+                } catch (error) {
+                    console.error('Error parsing WebSocket message:', error)
+                }
+            }
+
+            ws.onclose = () => {
+                // A replaced socket or one we closed ourselves is not a drop
+                if (this.closedByUs || this.ws !== ws) return
+                this.setConnected(false)
+
+                // Keep retrying (a server restart can outlast any fixed attempt count); backoff caps at 30s.
+                const delay = Math.min(1000 * Math.pow(2, this.reconnectAttempts), 30000)
+
+                this.reconnectTimeout = setTimeout(() => {
+                    if (this.closedByUs) return
+                    this.reconnectAttempts++
+                    this.connect()
+                }, delay)
+            }
+
+            ws.onerror = (error) => {
+                console.error('❌ WebSocket error:', error)
+            }
+        } catch (error) {
+            console.error('Error creating WebSocket connection:', error)
+        }
+    }
+
+    private handleConnectionStatus(statusData: any, actions: StoreActions) {
         const {activeRuns, isAnyProcessRunning} = statusData
         const runs: any[] = isAnyProcessRunning && Array.isArray(activeRuns) ? activeRuns : []
 
         // The snapshot is the truth: a missed run:completed must not leave a stuck spinner.
-        applyRunSnapshot({
+        actions.applyRunSnapshot({
             isRunningAll: runs.some((run) => run.type === 'run-all'),
             testIds: runs
                 .filter((run) => run.type === 'rerun' && run.details?.originalTestId)
@@ -125,85 +250,32 @@ export function useWebSocket(url: string | null, options?: WebSocketOptions) {
             runs.forEach((run) => {
                 // Restore progress if available
                 if (run.progress) {
-                    updateProgress(run.progress)
+                    actions.updateProgress(run.progress)
                 }
             })
         } else {
             // Ensure all states are cleared
-            clearProgress()
+            actions.clearProgress()
         }
 
         // Refresh data to get latest state
-        fetchTests()
-        fetchRuns()
+        actions.fetchTests()
     }
 
-    const connect = () => {
-        // Don't connect if URL is null
-        if (!url) {
-            return
-        }
+    private handleMessage(message: WebSocketMessage) {
+        const deps = this.deps()
+        if (!deps) return
+        const {actions, queryClient} = deps
+        const {fetchTests} = actions
 
-        try {
-            const ws = new WebSocket(url)
-            wsRef.current = ws
-
-            ws.onopen = () => {
-                setIsConnected(true)
-                reconnectAttempts.current = 0
-                // Events broadcast while the socket was down are lost: re-read once.
-                if (hasConnectedBefore.current) {
-                    fetchTests()
-                    fetchRuns()
-                }
-                hasConnectedBefore.current = true
-            }
-
-            ws.onmessage = (event) => {
-                try {
-                    const message: WebSocketMessage = JSON.parse(event.data)
-                    setLastMessage(message)
-                    handleMessageRef.current(message)
-                } catch (error) {
-                    console.error('Error parsing WebSocket message:', error)
-                }
-            }
-
-            ws.onclose = () => {
-                // A replaced socket (URL change) or one we closed ourselves is not a drop
-                if (closedByUs.current || wsRef.current !== ws) return
-                setIsConnected(false)
-
-                // Keep retrying (a server restart can outlast any fixed attempt count); backoff caps at 30s.
-                const delay = Math.min(1000 * Math.pow(2, reconnectAttempts.current), 30000)
-
-                reconnectTimeoutRef.current = setTimeout(() => {
-                    if (closedByUs.current) return
-                    reconnectAttempts.current++
-                    connect()
-                }, delay)
-            }
-
-            ws.onerror = (error) => {
-                console.error('❌ WebSocket error:', error)
-            }
-        } catch (error) {
-            console.error('Error creating WebSocket connection:', error)
-        }
-    }
-
-    const handleMessage = (message: WebSocketMessage) => {
         switch (message.type) {
             case 'dashboard:refresh':
                 // Refresh both React Query and Zustand store
                 queryClient.invalidateQueries()
                 fetchTests()
-                fetchRuns()
 
                 // Notify about run completion if it's a rerun
-                if (message.data?.isRerun && optionsRef.current?.onRunCompleted) {
-                    optionsRef.current.onRunCompleted(message.data)
-                }
+                if (message.data?.isRerun) this.notify('onRunCompleted', message.data)
                 break
 
             case 'run:status':
@@ -214,16 +286,13 @@ export function useWebSocket(url: string | null, options?: WebSocketOptions) {
                 queryClient.invalidateQueries({queryKey: ['project-status-summary']})
                 queryClient.invalidateQueries({queryKey: ['test-status-counts']})
                 fetchTests()
-                fetchRuns()
 
                 // Notify about run completion
-                if (optionsRef.current?.onRunCompleted) {
-                    optionsRef.current.onRunCompleted(message.data)
-                }
+                this.notify('onRunCompleted', message.data)
                 break
 
             case 'test:completed':
-                optionsRef.current?.onResultsChanged?.()
+                this.notify('onResultsChanged')
                 queryClient.invalidateQueries({
                     queryKey: ['dashboard-stats'],
                 })
@@ -239,12 +308,12 @@ export function useWebSocket(url: string | null, options?: WebSocketOptions) {
             case 'test:progress':
                 if (message.data) {
                     const {result, phase, ...progress} = message.data
-                    updateProgress(progress)
+                    actions.updateProgress(progress)
                     if (phase === 'started') break
-                    if (phase === 'saved') optionsRef.current?.onResultsChanged?.()
+                    if (phase === 'saved') this.notify('onResultsChanged')
                     // A saved result carries its row: patch it, no list reload. An unknown row
                     // (new test) or an old server without `phase` falls back to the throttled reload.
-                    if (phase === 'saved' && result && applyLiveResult(result)) break
+                    if (phase === 'saved' && result && actions.applyLiveResult(result)) break
                 }
                 refreshTestsThrottled(fetchTests)
                 break
@@ -255,10 +324,9 @@ export function useWebSocket(url: string | null, options?: WebSocketOptions) {
                     queryClient.invalidateQueries({queryKey: ['storage-stats']})
                     queryClient.invalidateQueries({queryKey: ['dashboard-stats']})
                     fetchTests()
-                    fetchRuns()
                 })
-                optionsRef.current?.onTestsDeleted?.(message.data)
-                optionsRef.current?.onResultsChanged?.()
+                this.notify('onTestsDeleted', message.data)
+                this.notify('onResultsChanged')
                 break
 
             case 'stats:update':
@@ -275,7 +343,6 @@ export function useWebSocket(url: string | null, options?: WebSocketOptions) {
                 queryClient.invalidateQueries({queryKey: ['project-status-summary']})
                 queryClient.invalidateQueries({queryKey: ['test-status-counts']})
                 fetchTests()
-                fetchRuns()
                 break
 
             case 'jira:synced':
@@ -283,46 +350,39 @@ export function useWebSocket(url: string | null, options?: WebSocketOptions) {
                 queryClient.invalidateQueries({queryKey: ['jira-ticket-info']})
                 break
 
-            case 'run:started':
-                fetchRuns()
-                break
-
             case 'run:completed':
-                optionsRef.current?.onResultsChanged?.()
+                this.notify('onResultsChanged')
                 queryClient.invalidateQueries({
                     queryKey: ['dashboard-stats'],
                 })
                 queryClient.invalidateQueries({queryKey: ['project-status-summary']})
                 queryClient.invalidateQueries({queryKey: ['test-status-counts']})
                 fetchTests()
-                fetchRuns()
 
                 // Clear progress when run completes
-                clearProgress()
+                actions.clearProgress()
 
                 // Clear group running state if this was a group run
                 if (message.data?.type === 'run-group' && message.data?.filePath) {
-                    setGroupRunning(message.data.filePath, false)
+                    actions.setGroupRunning(message.data.filePath, false)
                 }
 
                 // Clear run-all state if this was a run-all
                 if (message.data?.type === 'run-all') {
-                    setRunningAllTests(false)
+                    actions.setRunningAllTests(false)
                 }
 
                 // Clear individual test running state if this was a rerun
                 if (message.data?.isRerun && message.data?.originalTestId) {
-                    setTestRunning(message.data.originalTestId, false)
+                    actions.setTestRunning(message.data.originalTestId, false)
                 }
 
                 // Notify about run completion
-                if (optionsRef.current?.onRunCompleted) {
-                    optionsRef.current.onRunCompleted(message.data)
-                }
+                this.notify('onRunCompleted', message.data)
                 break
 
             case 'run:stopping':
-                optionsRef.current?.onPipelineEvent?.(message.type, message.data)
+                this.notify('onPipelineEvent', message.type, message.data)
                 break
 
             case 'run:cancelled':
@@ -330,36 +390,26 @@ export function useWebSocket(url: string | null, options?: WebSocketOptions) {
                 queryClient.invalidateQueries({queryKey: ['dashboard-stats']})
                 queryClient.invalidateQueries({queryKey: ['project-status-summary']})
                 queryClient.invalidateQueries({queryKey: ['test-status-counts']})
-                resetRunState()
+                actions.resetRunState()
                 fetchTests()
-                fetchRuns()
-                optionsRef.current?.onPipelineEvent?.(message.type, message.data)
-                optionsRef.current?.onRunStatusEvent?.(message.type, message.data)
-                break
-
-            case 'connection':
+                this.notify('onPipelineEvent', message.type, message.data)
+                this.notify('onRunStatusEvent', message.type, message.data)
                 break
 
             case 'connection:status':
-                handleConnectionStatus(message.data)
-                optionsRef.current?.onRunStatusEvent?.('connection:status', message.data)
+                this.handleConnectionStatus(message.data, actions)
+                this.notify('onRunStatusEvent', 'connection:status', message.data)
                 break
 
             case 'process:started':
                 // Refresh data when process starts
                 fetchTests()
-                fetchRuns()
-                optionsRef.current?.onRunStatusEvent?.('process:started', message.data)
+                this.notify('onRunStatusEvent', 'process:started', message.data)
                 break
 
             case 'process:ended':
                 // Refresh data when process ends and request updated connection status
                 fetchTests()
-                fetchRuns()
-                break
-
-            case 'pong':
-                // Keep-alive response
                 break
 
             case 'pipeline:started':
@@ -367,61 +417,75 @@ export function useWebSocket(url: string | null, options?: WebSocketOptions) {
             case 'pipeline:step-completed':
             case 'pipeline:completed':
             case 'pipeline:queue-changed':
-                optionsRef.current?.onPipelineEvent?.(message.type, message.data)
+                this.notify('onPipelineEvent', message.type, message.data)
                 break
 
             default:
-            // Unknown message type - ignore
+            // connection, pong, run:started (nothing reads the runs list) and unknown types: ignore
         }
     }
+}
 
-    handleMessageRef.current = handleMessage
+const sockets = new Map<string, SharedSocket>()
 
-    const sendMessage = (message: WebSocketMessage) => {
-        if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
-            wsRef.current.send(JSON.stringify(message))
-        }
+function acquireSocket(url: string, sub: Subscriber): SharedSocket {
+    let socket = sockets.get(url)
+    const isNew = !socket
+    if (!socket) {
+        socket = new SharedSocket(url)
+        sockets.set(url, socket)
     }
+    socket.addSubscriber(sub)
+    if (isNew) socket.open()
+    return socket
+}
 
-    const disconnect = () => {
-        closedByUs.current = true
-        if (reconnectTimeoutRef.current) {
-            clearTimeout(reconnectTimeoutRef.current)
-        }
+function releaseSocket(url: string, socket: SharedSocket, sub: Subscriber) {
+    if (!socket.removeSubscriber(sub)) return
+    socket.close()
+    if (sockets.get(url) === socket) sockets.delete(url)
+}
 
-        if (wsRef.current) {
-            wsRef.current.close(1000, 'Intentional disconnect')
-        }
-    }
+export function useWebSocket(url: string | null, options?: WebSocketOptions) {
+    const [isConnected, setIsConnected] = useState(false)
+    const queryClient = useQueryClient()
+    const actions = useTestsStore(useShallow(selectSocketActions))
+    // The socket outlives renders: dispatch through refs so callbacks are never from connect time.
+    const optionsRef = useRef(options)
+    optionsRef.current = options
+    const depsRef = useRef<SocketDeps>({actions, queryClient})
+    depsRef.current = {actions, queryClient}
+    const socketRef = useRef<SharedSocket | null>(null)
+    const leaveRef = useRef<() => void>(() => {})
 
     useEffect(() => {
-        // Only try to connect if we have a valid URL
-        if (url) {
-            closedByUs.current = false
-            connect()
-        } else {
-            // Disconnect existing connection if URL becomes null
-            disconnect()
+        if (!url) {
             setIsConnected(false)
+            return
         }
-
-        // Send periodic ping to keep connection alive
-        const pingInterval = setInterval(() => {
-            if (isConnected) {
-                sendMessage({type: 'ping'})
-            }
-        }, 30000)
-
-        return () => {
-            clearInterval(pingInterval)
-            disconnect()
+        const sub: Subscriber = {options: () => optionsRef.current, deps: () => depsRef.current}
+        const socket = acquireSocket(url, sub)
+        socketRef.current = socket
+        setIsConnected(socket.connected)
+        const offStatus = socket.onStatus(setIsConnected)
+        let left = false
+        const leave = () => {
+            if (left) return
+            left = true
+            offStatus()
+            releaseSocket(url, socket, sub)
+            socketRef.current = null
         }
+        leaveRef.current = leave
+        return leave
     }, [url])
 
-    return {
-        isConnected,
-        lastMessage,
-        sendMessage,
-        disconnect,
-    }
+    const sendMessage = useCallback((message: WebSocketMessage) => {
+        socketRef.current?.send(message)
+    }, [])
+
+    // Leaves the shared socket; it closes once no consumer is left.
+    const disconnect = useCallback(() => leaveRef.current(), [])
+
+    return {isConnected, sendMessage, disconnect}
 }

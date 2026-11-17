@@ -1,4 +1,4 @@
-import {useMemo} from 'react'
+import {useMemo, useRef} from 'react'
 import {TestResult} from '@yshvydak/core'
 
 export interface TestGroupData {
@@ -11,7 +11,12 @@ export interface TestGroupData {
     pending: number
 }
 
+const sameRows = (a: TestResult[], b: TestResult[]) =>
+    a.length === b.length && a.every((row, i) => row === b[i])
+
 export function useTestGroups(tests: TestResult[]): TestGroupData[] {
+    // Groups whose rows did not change keep their object, so memoized TestGroups skip a live patch elsewhere
+    const previous = useRef(new Map<string, TestGroupData>())
     return useMemo(() => {
         const grouped = tests.reduce(
             (acc, test) => {
@@ -25,7 +30,8 @@ export function useTestGroups(tests: TestResult[]): TestGroupData[] {
             {} as Record<string, TestResult[]>
         )
 
-        return Object.entries(grouped)
+        const next = new Map<string, TestGroupData>()
+        const groups = Object.entries(grouped)
             .sort(([filePathA], [filePathB]) => filePathA.localeCompare(filePathB))
             .map(([filePath, testsInFile]) => {
                 const sortedTestsInFile = [...testsInFile].sort((a, b) => {
@@ -36,7 +42,7 @@ export function useTestGroups(tests: TestResult[]): TestGroupData[] {
                     return a.id.localeCompare(b.id)
                 })
 
-                return {
+                const group: TestGroupData = {
                     filePath,
                     tests: sortedTestsInFile,
                     total: testsInFile.length,
@@ -45,6 +51,12 @@ export function useTestGroups(tests: TestResult[]): TestGroupData[] {
                     skipped: testsInFile.filter((t) => t.status === 'skipped').length,
                     pending: testsInFile.filter((t) => t.status === 'pending').length,
                 }
+                const before = previous.current.get(filePath)
+                const kept = before && sameRows(before.tests, group.tests) ? before : group
+                next.set(filePath, kept)
+                return kept
             })
+        previous.current = next
+        return groups
     }, [tests])
 }

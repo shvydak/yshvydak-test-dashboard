@@ -30,7 +30,8 @@ function mockStore(overrides: StoreOverrides = {}) {
           ? 'A CI run is queued'
           : null
     const stoppable = Boolean(overrides.ciPipelineRunning || overrides.isRunningAllTests)
-    vi.mocked(useTestsStore).mockReturnValue({
+    // The component reads through selectors: apply them to the fake state
+    const state = {
         runAllTests: vi.fn(),
         discoverTests,
         stopRun,
@@ -42,7 +43,9 @@ function mockStore(overrides: StoreOverrides = {}) {
         getIsAnyTestRunning: () => reason !== null || stoppable || Boolean(overrides.isDiscovering),
         getIsStoppable: () => stoppable,
         getCIBusyReason: () => reason,
-    } as any)
+    }
+    vi.mocked(useTestsStore).mockImplementation(((selector: (s: unknown) => unknown) =>
+        selector(state)) as any)
 }
 
 function renderFilters() {

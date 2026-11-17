@@ -2,6 +2,7 @@ import {Play, ChevronDown, Search, Square} from 'lucide-react'
 import {useRef, useState} from 'react'
 import {FilterButtonGroup, SearchInput, Button, ConfirmationDialog} from '@shared/components'
 import {FilterKey, FILTER_OPTIONS} from '../constants'
+import {useShallow} from 'zustand/react/shallow'
 import {useTestsStore} from '../store/testsStore'
 import {useClickOutside} from '@/hooks/useClickOutside'
 
@@ -42,13 +43,21 @@ export function TestsListFilters({
         isRunningAllTests,
         isDiscovering,
         ciStopping,
-        getIsAnyTestRunning,
-        getIsStoppable,
-        getCIBusyReason,
-    } = useTestsStore()
-    const ciBusyReason = getCIBusyReason()
-    const isAnyTestRunning = getIsAnyTestRunning()
-    const isStoppable = getIsStoppable()
+    } = useTestsStore(
+        useShallow((s) => ({
+            runAllTests: s.runAllTests,
+            discoverTests: s.discoverTests,
+            stopRun: s.stopRun,
+            clearStopError: s.clearStopError,
+            stopError: s.stopError,
+            isRunningAllTests: s.isRunningAllTests,
+            isDiscovering: s.isDiscovering,
+            ciStopping: s.ciStopping,
+        }))
+    )
+    const ciBusyReason = useTestsStore((s) => s.getCIBusyReason())
+    const isAnyTestRunning = useTestsStore((s) => s.getIsAnyTestRunning())
+    const isStoppable = useTestsStore((s) => s.getIsStoppable())
     const [showDiscoverMenu, setShowDiscoverMenu] = useState(false)
     const [showStopConfirm, setShowStopConfirm] = useState(false)
     const splitButtonRef = useRef<HTMLDivElement>(null)

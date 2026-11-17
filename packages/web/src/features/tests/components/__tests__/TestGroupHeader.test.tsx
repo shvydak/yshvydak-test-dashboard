@@ -62,15 +62,21 @@ describe('TestGroupHeader', () => {
     const mockRunTestsGroup = vi.fn()
     const mockGetIsAnyTestRunning = vi.fn()
 
+    // The header reads through selectors: apply them to the fake state
+    const mockStore = (runningGroups: Set<string>) =>
+        (useTestsStore as any).mockImplementation((selector: (s: unknown) => unknown) =>
+            selector({
+                runningGroups,
+                getIsAnyTestRunning: mockGetIsAnyTestRunning,
+                getCIBusyReason: () => null,
+                runTestsGroup: mockRunTestsGroup,
+            })
+        )
+
     beforeEach(() => {
         vi.clearAllMocks()
         mockGetIsAnyTestRunning.mockReturnValue(false)
-        ;(useTestsStore as any).mockReturnValue({
-            runningGroups: new Set(),
-            getIsAnyTestRunning: mockGetIsAnyTestRunning,
-            getCIBusyReason: () => null,
-            runTestsGroup: mockRunTestsGroup,
-        })
+        mockStore(new Set())
     })
 
     describe('Filter-based test name extraction', () => {
@@ -221,12 +227,7 @@ describe('TestGroupHeader', () => {
         })
 
         it('should show running state when group is running', () => {
-            ;(useTestsStore as any).mockReturnValue({
-                runningGroups: new Set(['e2e/tests/auth.spec.ts']),
-                getIsAnyTestRunning: mockGetIsAnyTestRunning,
-                getCIBusyReason: () => null,
-                runTestsGroup: mockRunTestsGroup,
-            })
+            mockStore(new Set(['e2e/tests/auth.spec.ts']))
 
             renderHeader({filter: 'all'})
 

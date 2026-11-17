@@ -9,6 +9,7 @@ import {
     CircleDot,
     Timer,
 } from 'lucide-react'
+import {useShallow} from 'zustand/react/shallow'
 import {useTestsStore} from '@features/tests/store/testsStore'
 import {ProgressBar} from '@/shared/components/atoms/ProgressBar'
 import {LoadingSpinner} from '@/shared/components/atoms/LoadingSpinner'
@@ -26,7 +27,14 @@ const formatTime = (ms: number): string => {
 }
 
 export const FloatingProgressPanel = () => {
-    const {activeProgress, clearProgress, tests, ciStopping} = useTestsStore()
+    const {activeProgress, clearProgress, tests, ciStopping} = useTestsStore(
+        useShallow((s) => ({
+            activeProgress: s.activeProgress,
+            clearProgress: s.clearProgress,
+            tests: s.tests,
+            ciStopping: s.ciStopping,
+        }))
+    )
     const [isMinimized, setIsMinimized] = useState(false)
     const [shouldAutoHide, setShouldAutoHide] = useState(false)
     const [detailModalOpen, setDetailModalOpen] = useState(false)

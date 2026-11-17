@@ -12,11 +12,14 @@ import {
 } from '@features/dashboard/hooks/useJiraSettings'
 
 vi.mock('../../store/testsStore', () => ({
-    useTestsStore: vi.fn(() => ({
-        runningTests: new Set<string>(),
-        getIsAnyTestRunning: () => false,
-        activeProgress: null,
-    })),
+    // Components read through selectors: apply them to the fake state
+    useTestsStore: vi.fn((selector: (s: unknown) => unknown) =>
+        selector({
+            runningTests: new Set<string>(),
+            getIsAnyTestRunning: () => false,
+            activeProgress: null,
+        })
+    ),
 }))
 
 vi.mock('../../hooks/useNoteImages', () => ({

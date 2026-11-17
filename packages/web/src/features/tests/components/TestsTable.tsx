@@ -1,3 +1,4 @@
+import {memo} from 'react'
 import {TestResult} from '@yshvydak/core'
 import {useJiraSettings} from '@features/dashboard/hooks/useJiraSettings'
 import {TestRow} from './TestRow'
@@ -10,7 +11,7 @@ export interface TestsTableProps {
     showFilePath?: boolean
 }
 
-export function TestsTable({
+export const TestsTable = memo(function TestsTable({
     tests,
     selectedTest,
     onTestSelect,
@@ -69,4 +70,4 @@ export function TestsTable({
             </table>
         </div>
     )
-}
+})

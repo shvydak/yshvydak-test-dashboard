@@ -45,6 +45,8 @@ npx vitest run --project server <path>   # single file — from repo ROOT, never
 
 Root npm scripts silently scope to one workspace if your cwd drifted into `packages/*`. Run `pwd` first if unsure.
 
+`npm run dev` runs the server with `tsx watch` from this tree: saving a server file restarts it, and the restart cleanup ends a running local test run. Batch server edits and warn whoever is running tests.
+
 ## After any code change
 
 `npm run format` → `npm run type-check` → `npm run lint:fix` → `npm test` → `npm run build`

@@ -61,7 +61,7 @@ Placeholders below: `X.Y.Z` is the new version, `<bump>` is `patch`, `minor` or 
     npm publish
     ```
 
-    `prepublishOnly` runs `npm run build && npm run type-check` first, so a broken build fails the publish. `--access public` is not needed (`publishConfig`). With 2FA on the account add `--otp=<code>`. `npm run release:reporter` at the repo root does the same as the two commands above.
+    `prepublishOnly` runs `npm run build && npm run type-check` first, so a broken build fails the publish. `--access public` is not needed (`publishConfig`). With 2FA on the account, run it in your own terminal: npm prints an auth link and opens the browser on Enter to approve the publish (or pass `--otp=<code>` from an authenticator app). A non-interactive shell (an agent, `!` in Claude Code) cannot complete the browser step. `npm run release:reporter` at the repo root does the same as the two commands above.
 
 6. **Verify.** `npm view playwright-dashboard-reporter version` prints `X.Y.Z`.
 

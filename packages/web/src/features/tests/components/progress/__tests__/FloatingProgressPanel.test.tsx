@@ -520,7 +520,7 @@ describe('FloatingProgressPanel', () => {
             expect(screen.getByText('Stopping...')).toBeInTheDocument()
             expect(screen.queryByText('Running Tests')).toBeNull()
             expect(screen.queryByText('Elapsed:')).toBeNull()
-            expect(screen.getByText(/removing its results/i)).toBeInTheDocument()
+            expect(screen.getByText(/stopping the run/i)).toBeInTheDocument()
         })
 
         it('the minimized pill says "Stopping..." as well', () => {

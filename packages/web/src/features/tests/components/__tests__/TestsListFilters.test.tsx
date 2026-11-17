@@ -155,7 +155,11 @@ describe('TestsListFilters Stop', () => {
         fireEvent.click(screen.getByRole('button', {name: /^stop$/i}))
 
         expect(screen.getByText('Stop the run?')).toBeInTheDocument()
-        expect(screen.getByText('Results of this run will be removed.')).toBeInTheDocument()
+        expect(
+            screen.getByText(
+                'Tests that already finished keep their results. Unfinished tests keep their previous result.'
+            )
+        ).toBeInTheDocument()
         expect(stopRun).not.toHaveBeenCalled()
     })
 

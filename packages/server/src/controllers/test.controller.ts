@@ -470,6 +470,15 @@ export class TestController {
                 return ResponseHelper.success(res, {id: testData.id}, 'Ignored: run was stopped')
             }
 
+            // A test cut by a Stop is not a result: no row, no attachments.
+            if (this.testService.isInterruptedByStop(testData)) {
+                return ResponseHelper.success(
+                    res,
+                    {id: testData.id},
+                    'Ignored: interrupted by stop'
+                )
+            }
+
             const testResultData = {
                 id: testData.id,
                 runId: testData.runId,

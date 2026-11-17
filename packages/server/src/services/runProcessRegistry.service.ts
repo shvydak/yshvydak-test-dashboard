@@ -11,7 +11,7 @@ export interface RegisteredRun {
     project?: string
     // Process group of the run (Playwright is spawned detached, so pid === pgid).
     pgid?: number
-    // Run-all only: discovery rows newer than this belong to the run and are removed if it is stopped.
+    // Run-all only: discovery rows newer than this belong to the run and are removed if it is stopped (results too, only on discard).
     pendingSince?: string
     startedAt: string
 }
@@ -24,6 +24,7 @@ interface Entry extends RegisteredRun {
 }
 
 const CANCELLED_KEPT = 500
+const STOPPING_KEPT = 500
 
 function delay(ms: number): Promise<void> {
     return new Promise((resolve) => {
@@ -51,10 +52,12 @@ function isGone({child, pgid}: Entry): boolean {
     return !pidExists(pgid) && !groupAlive
 }
 
-// runId -> ChildProcess (the busy source), cancel flags for reporter endpoints, and the stop generation.
+// runId -> ChildProcess (the busy source), cancel/stopping flags for reporter endpoints, and the stop generation.
 export class RunProcessRegistry {
     private runs = new Map<string, Entry>()
     private cancelled = new Set<string>()
+    // Keep-mode stops: runId -> epoch ms of the signal. Reporter posts are still accepted; see TestService.isInterruptedByStop.
+    private stopping = new Map<string, number>()
     private stopGeneration = 0
     private shuttingDown = false
 
@@ -212,6 +215,24 @@ export class RunProcessRegistry {
 
     isCancelled(runId: string): boolean {
         return this.cancelled.has(runId)
+    }
+
+    /** Keep-mode stop: the run is being ended by a stop that keeps its results (settled for close handlers). */
+    markStopping(runIds: string[], signalledAt: number): void {
+        for (const id of runIds) this.stopping.set(id, signalledAt)
+        while (this.stopping.size > STOPPING_KEPT) {
+            const oldest = this.stopping.keys().next().value
+            if (oldest === undefined) break
+            this.stopping.delete(oldest)
+        }
+    }
+
+    isStopping(runId: string): boolean {
+        return this.stopping.has(runId)
+    }
+
+    getStopSignalledAt(runId: string): number | undefined {
+        return this.stopping.get(runId)
     }
 
     private signal(entry: Entry, signal: NodeJS.Signals): void {

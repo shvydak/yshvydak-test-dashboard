@@ -442,7 +442,7 @@ export class TestRepository extends BaseRepository implements ITestRepository {
         return result.changes || 0
     }
 
-    // Stop deletes what a run wrote; DELETE keeps the INSERT-only rule intact.
+    // Discard (replaced) deletes what a run wrote; DELETE keeps the INSERT-only rule intact.
     async getResultIdsByRunIds(runIds: string[]): Promise<string[]> {
         const ids: string[] = []
         for (const batch of this.batches(runIds)) {

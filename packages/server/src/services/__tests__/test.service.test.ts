@@ -115,6 +115,7 @@ describe('TestService', () => {
             updateTestRun: vi.fn(),
             getTestRun: vi.fn(),
             deleteTestRuns: vi.fn().mockResolvedValue(0),
+            finalizeStoppedRun: vi.fn(),
         }
 
         mockPlaywrightService = {
@@ -2740,6 +2741,126 @@ describe('TestService', () => {
                 expect(testService.isRunCancelled('someone-else')).toBe(false)
                 runProcessRegistry.markCancelled(['flagged'])
                 expect(testService.isRunCancelled('flagged')).toBe(true)
+            })
+
+            describe('a keep-mode stop (stopping run)', () => {
+                const SIGNAL = Date.parse('2026-11-17T10:00:00.000Z')
+
+                it('a run that is stopping counts as settled: its close neither announces completion nor drains', async () => {
+                    const run = startedRun('stopping-run')
+                    mockPlaywrightService.runAllTests.mockResolvedValue(run)
+                    await testService.runAllTests(2, true, 'API')
+                    runProcessRegistry.markStopping(['stopping-run'], Date.now())
+
+                    run.process.emit('close', 0)
+
+                    expect(mockWebSocketService.broadcastRunCompleted).not.toHaveBeenCalled()
+                    expect(mockCIRunQueue.requestDrain).not.toHaveBeenCalled()
+                })
+
+                it.each([
+                    [
+                        'an interrupted-with-error post stamped after the signal',
+                        'failed',
+                        '2026-11-17T10:00:00.040Z',
+                        undefined,
+                        true,
+                    ],
+                    [
+                        'a post stamped exactly at the signal',
+                        'failed',
+                        '2026-11-17T10:00:00.000Z',
+                        undefined,
+                        true,
+                    ],
+                    [
+                        'a real failure stamped before the signal',
+                        'failed',
+                        '2026-11-17T09:59:59.999Z',
+                        undefined,
+                        false,
+                    ],
+                    ['a failed post without a timestamp', 'failed', undefined, undefined, false],
+                    [
+                        'a failed post with an unparseable timestamp',
+                        'failed',
+                        'not-a-date',
+                        undefined,
+                        false,
+                    ],
+                    [
+                        'a passed post after the signal',
+                        'passed',
+                        '2026-11-17T10:00:00.040Z',
+                        undefined,
+                        false,
+                    ],
+                    [
+                        'a skipped post after the signal',
+                        'skipped',
+                        '2026-11-17T10:00:00.040Z',
+                        undefined,
+                        false,
+                    ],
+                    [
+                        'a timedOut post after the signal',
+                        'timedOut',
+                        '2026-11-17T10:00:00.040Z',
+                        undefined,
+                        false,
+                    ],
+                    [
+                        'rawStatus interrupted, even stamped before the signal',
+                        'failed',
+                        '2026-11-17T09:00:00.000Z',
+                        {rawStatus: 'interrupted'},
+                        true,
+                    ],
+                    [
+                        'a reporter that sends rawStatus failed: a real failure after the signal',
+                        'failed',
+                        '2026-11-17T10:00:00.040Z',
+                        {rawStatus: 'failed'},
+                        false,
+                    ],
+                ])('%s -> dropped: %s', (_name, status, timestamp, metadata, dropped) => {
+                    runProcessRegistry.markStopping(['window-run'], SIGNAL)
+
+                    expect(
+                        testService.isInterruptedByStop({
+                            runId: 'window-run',
+                            status,
+                            timestamp,
+                            metadata,
+                        })
+                    ).toBe(dropped)
+                })
+
+                it('a run that is not stopping is never dropped by the timestamp rule', () => {
+                    expect(
+                        testService.isInterruptedByStop({
+                            runId: 'calm-run',
+                            status: 'failed',
+                            timestamp: '2026-11-17T10:00:00.040Z',
+                        })
+                    ).toBe(false)
+                })
+
+                it('finalizeStoppedRuns asks the repository once per run and returns the recounts', async () => {
+                    mockRunRepository.finalizeStoppedRun
+                        .mockResolvedValueOnce({total: 2, passed: 1, failed: 1, skipped: 0})
+                        .mockResolvedValueOnce(null)
+                    const stopped = {reason: 'manual', at: '2026-11-17T10:00:01.000Z'}
+
+                    const counts = await testService.finalizeStoppedRuns(['r1', 'gone'], stopped)
+
+                    expect(mockRunRepository.finalizeStoppedRun).toHaveBeenCalledWith('r1', stopped)
+                    expect(mockRunRepository.finalizeStoppedRun).toHaveBeenCalledWith(
+                        'gone',
+                        stopped
+                    )
+                    expect([...counts.keys()]).toEqual(['r1'])
+                })
             })
         })
 

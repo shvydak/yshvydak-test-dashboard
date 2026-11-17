@@ -269,6 +269,99 @@ describe('RunRepository', () => {
         })
     })
 
+    describe('finalizeStoppedRun', () => {
+        const insertResult = (id: string, runId: string, status: string) =>
+            dbManager.execute(
+                `INSERT INTO test_results (id, run_id, test_id, name, file_path, status, project)
+                 VALUES (?, ?, ?, 'n', 'f.spec.ts', ?, 'API')`,
+                [id, runId, `test-${id}`, status]
+            )
+
+        it('marks the run failed + metadata.stopped, recounts from its rows (retries per attempt, timedOut as failed) and keeps the rest of the metadata', async () => {
+            await runRepository.createTestRun({
+                id: 'cut-run',
+                status: 'running',
+                totalTests: 0,
+                passedTests: 0,
+                failedTests: 0,
+                skippedTests: 0,
+                duration: 123,
+                metadata: {type: 'run-all', project: 'API', filteredTests: 4},
+            })
+            await insertResult('a', 'cut-run', 'passed')
+            await insertResult('b', 'cut-run', 'failed')
+            await insertResult('b-retry', 'cut-run', 'failed')
+            await insertResult('c', 'cut-run', 'timedOut')
+            await insertResult('d', 'cut-run', 'skipped')
+            const stopped = {reason: 'manual', at: '2026-11-17T10:00:00.000Z'}
+
+            const counts = await runRepository.finalizeStoppedRun('cut-run', stopped)
+
+            expect(counts).toEqual({total: 5, passed: 1, failed: 3, skipped: 1})
+            expect(await runRepository.getTestRun('cut-run')).toEqual({
+                id: 'cut-run',
+                status: 'failed',
+                totalTests: 5,
+                passedTests: 1,
+                failedTests: 3,
+                skippedTests: 1,
+                duration: 123,
+                metadata: {type: 'run-all', project: 'API', filteredTests: 4, stopped},
+            })
+        })
+
+        it('a run with no saved rows ends failed with zero counts', async () => {
+            await runRepository.createTestRun({
+                id: 'empty-run',
+                status: 'running',
+                totalTests: 0,
+                passedTests: 0,
+                failedTests: 0,
+                skippedTests: 0,
+                duration: 0,
+            })
+
+            const counts = await runRepository.finalizeStoppedRun('empty-run', {
+                reason: 'timeout',
+                at: '2026-11-17T10:00:00.000Z',
+            })
+
+            expect(counts).toEqual({total: 0, passed: 0, failed: 0, skipped: 0})
+            expect((await runRepository.getTestRun('empty-run'))?.metadata).toEqual({
+                stopped: {reason: 'timeout', at: '2026-11-17T10:00:00.000Z'},
+            })
+        })
+
+        it('an unknown run is skipped (null), nothing is created', async () => {
+            expect(
+                await runRepository.finalizeStoppedRun('nope', {reason: 'manual', at: 'x'})
+            ).toBeNull()
+            expect(await runRepository.getTestRun('nope')).toBeNull()
+        })
+
+        it('never touches test_results: the saved rows are unchanged', async () => {
+            await runRepository.createTestRun({
+                id: 'keep-run',
+                status: 'running',
+                totalTests: 0,
+                passedTests: 0,
+                failedTests: 0,
+                skippedTests: 0,
+                duration: 0,
+            })
+            await insertResult('x', 'keep-run', 'passed')
+            const before = await dbManager.queryOne('SELECT * FROM test_results WHERE id = ?', [
+                'x',
+            ])
+
+            await runRepository.finalizeStoppedRun('keep-run', {reason: 'manual', at: 'x'})
+
+            expect(
+                await dbManager.queryOne('SELECT * FROM test_results WHERE id = ?', ['x'])
+            ).toEqual(before)
+        })
+    })
+
     describe('getTestRun', () => {
         it('should retrieve an existing test run', async () => {
             const runData: TestRunData = {

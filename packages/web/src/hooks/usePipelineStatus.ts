@@ -40,7 +40,7 @@ export interface QueuedPipeline {
 export interface UsePipelineStatusReturn {
     pipeline: PipelineState | null
     queue: QueuedPipeline[]
-    /** A Stop is cleaning up (results being removed); the Stop button shows "Stopping...". */
+    /** A Stop is cleaning up; the Stop button shows "Stopping...". */
     stopping: boolean
     applyPipelineEvent: (type: string, data: any) => void
     /** Re-reads pipeline + queue from the server; call after a WebSocket (re)connect. */

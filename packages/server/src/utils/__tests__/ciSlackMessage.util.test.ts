@@ -7,6 +7,7 @@ import {
     buildReplacedMessage,
     buildResultMessage,
     buildStoppedMessage,
+    buildTimeLimitStopMessage,
     buildTimeoutMessage,
     classifyPipelineOutcome,
 } from '../ciSlackMessage.util'
@@ -281,23 +282,63 @@ describe('timeout and interrupted messages', () => {
 })
 
 describe('stopped and replaced messages', () => {
-    it('manual stop: same 80-dash block, header and pipeline link, no result claimed', () => {
-        const message = buildStoppedMessage(ctx(), ['A', 'B'])
+    it('manual stop, nothing failed: title says results are kept, then the pipeline link', () => {
+        const message = buildStoppedMessage(ctx(), [step('A', 'success'), step('B', 'stopped')])
 
         expect(lines(message)).toEqual([
             SEP,
             '🧪 Automated tests · Development',
-            '⏹️ Stopped manually — no result for this run',
+            '⏹️ Stopped manually — results so far are kept',
             `🔗 ${BASE}/tests`,
             SEP,
         ])
     })
 
+    it('manual stop with kept failures: failure line over the first failing tab link', () => {
+        const message = buildStoppedMessage(ctx(), [
+            step('A', 'success'),
+            step('B', 'stopped', 2),
+            step('C', 'skipped', 0),
+        ])
+
+        expect(lines(message)).toEqual([
+            SEP,
+            '🧪 Automated tests · Development',
+            '⏹️ Stopped manually — results so far are kept',
+            '⚠️ 2 tests failed in B tab',
+            `🔗 ${BASE}/tests?project=B`,
+            SEP,
+        ])
+    })
+
+    it('failures in several steps: counted together, link to the first failing tab', () => {
+        const message = buildStoppedMessage(ctx(), [
+            step('A', 'failed', 1),
+            step('B', 'stopped', 3),
+        ])
+
+        expect(lines(message)[3]).toBe('⚠️ 4 tests failed in A tab, B tab')
+        expect(lines(message)[4]).toBe(`🔗 ${BASE}/tests?project=A`)
+    })
+
     it('manual stop of a one-step pipeline deep-links to that tab', () => {
-        const message = buildStoppedMessage(ctx('production'), ['Smoke'])
+        const message = buildStoppedMessage(ctx('production'), [step('Smoke', 'stopped')])
 
         expect(lines(message)[1]).toBe('🧪 Automated tests · Production')
         expect(lines(message)[3]).toBe(`🔗 ${BASE}/tests?project=Smoke`)
+    })
+
+    it('time limit: names the minutes and keeps the failure line', () => {
+        const message = buildTimeLimitStopMessage(ctx(), 30, [step('A', 'stopped', 1)])
+
+        expect(lines(message)).toEqual([
+            SEP,
+            '🧪 Automated tests · Development',
+            '⏱️ Stopped after 30 min (time limit) — results so far are kept',
+            '⚠️ 1 test failed in A tab',
+            `🔗 ${BASE}/tests?project=A`,
+            SEP,
+        ])
     })
 
     it('replaced: names the newer deploy', () => {
@@ -314,7 +355,9 @@ describe('stopped and replaced messages', () => {
 
     it('both omit the link line when no dashboard URL is configured', () => {
         expect(
-            lines(buildStoppedMessage(ctx('develop', ''), ['A'])).some((l) => l.startsWith('🔗'))
+            lines(buildStoppedMessage(ctx('develop', ''), [step('A', 'stopped')])).some((l) =>
+                l.startsWith('🔗')
+            )
         ).toBe(false)
         expect(
             lines(buildReplacedMessage(ctx('develop', ''), ['A'])).some((l) => l.startsWith('🔗'))

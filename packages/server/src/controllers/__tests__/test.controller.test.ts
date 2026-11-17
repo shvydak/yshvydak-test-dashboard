@@ -73,6 +73,7 @@ describe('TestController', () => {
         // Setup mock services
         mockTestService = {
             isRunCancelled: vi.fn().mockReturnValue(false),
+            isInterruptedByStop: vi.fn().mockReturnValue(false),
             requestQueueDrain: vi.fn(),
             discoverTests: vi.fn(),
             assertResetDiscoveryAllowed: vi.fn(),
@@ -1332,6 +1333,29 @@ describe('TestController', () => {
             await controller.createTestResult(mockReq as ServiceRequest, mockRes as Response)
 
             expect(mockTestService.saveTestResult).toHaveBeenCalled()
+        })
+
+        it('POST /tests of a result cut by a keep-mode stop is acknowledged but never stored', async () => {
+            mockTestService.isInterruptedByStop.mockReturnValue(true)
+            mockReq.body = {
+                id: 'cut-1',
+                testId: 'test-1',
+                runId: 'live-run',
+                name: 'Cut test',
+                status: 'failed',
+                attachments: [{name: 'trace', path: '/tmp/trace.zip'}],
+            }
+
+            await controller.createTestResult(mockReq as ServiceRequest, mockRes as Response)
+
+            expect(mockTestService.isInterruptedByStop).toHaveBeenCalledWith(mockReq.body)
+            expect(mockTestService.saveTestResult).not.toHaveBeenCalled()
+            expect(activeProcessesTracker.updateProgress).not.toHaveBeenCalled()
+            expect(ResponseHelper.success).toHaveBeenCalledWith(
+                mockRes,
+                {id: 'cut-1'},
+                'Ignored: interrupted by stop'
+            )
         })
 
         it('process-start is ignored: no tracker entry (no ghost run), no broadcast', async () => {

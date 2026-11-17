@@ -460,16 +460,50 @@ export class TestService implements ITestService {
         return resultId
     }
 
-    /** Reporter requests for a stopped run are dropped: its data is being (or was) deleted. */
+    /** Reporter requests for a stopped run are dropped once its stop has settled (data deleted or finalized). */
     isRunCancelled(runId: string): boolean {
         return runProcessRegistry.isCancelled(runId)
+    }
+
+    // A result cut by a Stop is no real result: rawStatus `interrupted`, or (old reporters) a `failed` stamped at/after the signal.
+    isInterruptedByStop(result: {
+        runId: string
+        status?: string
+        timestamp?: string
+        metadata?: {rawStatus?: unknown} | null
+    }): boolean {
+        const rawStatus = result.metadata?.rawStatus
+        if (rawStatus === 'interrupted') return true
+        // A reporter that sends rawStatus never posts a cut test, so its `failed` is a real failure.
+        if (typeof rawStatus === 'string') return false
+
+        const signalledAt = runProcessRegistry.getStopSignalledAt(result.runId)
+        if (signalledAt === undefined || result.status !== 'failed') return false
+        const stampedAt = Date.parse(result.timestamp ?? '')
+        return Number.isFinite(stampedAt) && stampedAt >= signalledAt
+    }
+
+    /** Keep-mode stop: the runs that were alive at the signal end as failed + metadata.stopped; counts come from the DB. */
+    async finalizeStoppedRuns(
+        runIds: string[],
+        stopped: {reason: string; at: string}
+    ): Promise<Map<string, {total: number; passed: number; failed: number; skipped: number}>> {
+        const counts = new Map<
+            string,
+            {total: number; passed: number; failed: number; skipped: number}
+        >()
+        for (const runId of runIds) {
+            const runCounts = await this.runRepository.finalizeStoppedRun(runId, stopped)
+            if (runCounts) counts.set(runId, runCounts)
+        }
+        return counts
     }
 
     async getStillFailingByRun(runIds: string[]) {
         return this.testRepository.getStillFailingByRun(runIds)
     }
 
-    // Stop: deletes what the runs wrote (files, results, run rows) and the discovery rows hiding older results; notes stay.
+    // Discard (replaced): deletes what the runs wrote (files, results, run rows) and the discovery rows hiding older results; notes stay.
     async discardRuns(
         runIds: string[],
         discoveryScopes: Array<{project?: string; since: string}> = []
@@ -487,11 +521,18 @@ export class TestService implements ITestService {
             await this.runRepository.deleteTestRuns(runIds)
         }
 
+        await this.discardDiscoveryRows(discoveryScopes)
+
+        Logger.info(`Discarded ${runIds.length} stopped run(s)`)
+    }
+
+    // Placeholder rows a stopped run's discovery left on top of older results; also used by the keep-mode stop.
+    async discardDiscoveryRows(
+        discoveryScopes: Array<{project?: string; since: string}>
+    ): Promise<void> {
         for (const scope of discoveryScopes) {
             await this.testRepository.deleteDiscoveryRowsHidingResults(scope.project, scope.since)
         }
-
-        Logger.info(`Discarded ${runIds.length} stopped run(s)`)
     }
 
     async getTestStats(): Promise<DatabaseStats> {
@@ -672,7 +713,7 @@ export class TestService implements ITestService {
                     activeProcessesTracker.removeProcess(result.runId)
                 }
 
-                // A stopped run reports through run:cancelled once its data is deleted; the Stop drains.
+                // A stopped run reports through run:cancelled once its stop has settled it; the Stop drains.
                 // At shutdown the marker must survive: the next start deletes what this run wrote.
                 if (this.isRunSettledElsewhere(result.runId)) return
 
@@ -855,7 +896,7 @@ export class TestService implements ITestService {
             })
 
             result.process.on('close', async (code) => {
-                // A stopped rerun is deleted by the Stop; nothing to record, broadcast or drain here.
+                // A stopped rerun is ended by the Stop; nothing to record, broadcast or drain here.
                 if (this.isRunSettledElsewhere(result.runId)) {
                     if (activeProcessesTracker.isProcessRunning(result.runId)) {
                         activeProcessesTracker.removeProcess(result.runId)
@@ -920,9 +961,13 @@ export class TestService implements ITestService {
         return recent[0]?.startedAt
     }
 
-    // A stopped run is cleaned up by the Stop; at shutdown the next start cleans up via the marker.
+    // A stopped run is ended by the Stop (deleted or finalized); at shutdown the next start cleans up via the marker.
     private isRunSettledElsewhere(runId: string): boolean {
-        return runProcessRegistry.isCancelled(runId) || runProcessRegistry.isShuttingDown()
+        return (
+            runProcessRegistry.isCancelled(runId) ||
+            runProcessRegistry.isStopping(runId) ||
+            runProcessRegistry.isShuttingDown()
+        )
     }
 
     private isStopRequestedSince(stopGeneration: number): boolean {

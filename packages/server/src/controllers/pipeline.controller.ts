@@ -119,7 +119,7 @@ export class PipelineController {
         }
     }
 
-    // POST /api/pipeline/stop - Stop every active run and remove its results (JWT, see pipeline.routes)
+    // POST /api/pipeline/stop - Stop every active run, results saved so far are kept (JWT, see pipeline.routes)
     stopPipeline = async (req: ServiceRequest, res: Response): Promise<Response> => {
         try {
             const reason = req.body?.reason ?? 'manual'

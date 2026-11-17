@@ -26,6 +26,9 @@ vi.mock('../activeProcesses.service', () => ({
 import {activeProcessesTracker} from '../activeProcesses.service'
 import {killLeftoverPlaywrightGroups} from '../../utils/processGroup.util'
 
+// What the DB recount gives for a run that was cut: 2 tests kept, 1 of them failed.
+const KEPT = {total: 2, passed: 1, failed: 1, skipped: 0}
+
 const flushPromises = () => new Promise((resolve) => setImmediate(resolve))
 
 function deferred<T = void>() {
@@ -39,12 +42,13 @@ function deferred<T = void>() {
 }
 
 // A fake Playwright child: it dies when signalled (SIGINT unless told to ignore it).
-function createChild(options: {ignoreSigint?: boolean} = {}) {
+function createChild(options: {ignoreSigint?: boolean; neverClose?: boolean} = {}) {
     const child: any = new EventEmitter()
     child.pid = undefined
     child.exitCode = null
     child.signalCode = null
     child.kill = vi.fn((signal: string) => {
+        if (options.neverClose) return true
         if (options.ignoreSigint && signal === 'SIGINT') return true
         setImmediate(() => child.emit('close', null, signal))
         return true
@@ -74,7 +78,7 @@ describe('Stop (PipelineExecutionService)', () => {
     }
 
     // Like TestService.runAllTests: every spawn is registered in the run registry.
-    function stubRuns(childOptions: {ignoreSigint?: boolean} = {}) {
+    function stubRuns(childOptions: {ignoreSigint?: boolean; neverClose?: boolean} = {}) {
         testService.runAllTests.mockImplementation(
             async (_workers: unknown, _skip: unknown, project: string) => {
                 const child = createChild(childOptions)
@@ -104,10 +108,17 @@ describe('Stop (PipelineExecutionService)', () => {
         vi.mocked(killLeftoverPlaywrightGroups).mockResolvedValue([])
         vi.useFakeTimers({toFake: ['setTimeout', 'clearTimeout']})
         children = []
+        // The registry is a singleton and tests reuse run ids: forget earlier tests' stop flags.
+        ;(runProcessRegistry as any).cancelled.clear()
+        ;(runProcessRegistry as any).stopping.clear()
 
         testService = {
             runAllTests: vi.fn(),
             discardRuns: vi.fn().mockResolvedValue(undefined),
+            discardDiscoveryRows: vi.fn().mockResolvedValue(undefined),
+            finalizeStoppedRuns: vi.fn(
+                async (ids: string[]) => new Map(ids.map((id) => [id, KEPT]))
+            ),
             clearRunMarker: vi.fn().mockResolvedValue(undefined),
         }
         settings = {
@@ -137,6 +148,7 @@ describe('Stop (PipelineExecutionService)', () => {
             notifyPaused: vi.fn().mockResolvedValue(undefined),
             notifyNotStarted: vi.fn().mockResolvedValue(undefined),
             notifyStopped: vi.fn().mockResolvedValue(undefined),
+            notifyTimeLimitStop: vi.fn().mockResolvedValue(undefined),
             notifyReplaced: vi.fn().mockResolvedValue(undefined),
         }
 
@@ -163,8 +175,8 @@ describe('Stop (PipelineExecutionService)', () => {
         vi.restoreAllMocks()
     })
 
-    describe('stopping a pipeline mid-step', () => {
-        it('signals the child, waits for it to close, deletes the run, and ends the pipeline cancelled', async () => {
+    describe('keep mode (manual stop) mid-step', () => {
+        it('signals the child, waits for it to close, finalizes the run (kept), and ends the pipeline cancelled with the results kept', async () => {
             stubRuns()
             const pipeline = await service.startPipeline(undefined, 'script', 'develop', {
                 notify: true,
@@ -173,11 +185,13 @@ describe('Stop (PipelineExecutionService)', () => {
 
             const stopped = service.stop('manual')
 
-            // Flags and signal first; nothing is deleted while the child may still be writing.
+            // Flags and signal first; nothing is rewritten while the child may still be writing.
             expect(children[0].kill).toHaveBeenCalledWith('SIGINT')
-            expect(websocket.broadcastRunStopping).toHaveBeenCalledWith('manual')
+            expect(websocket.broadcastRunStopping).toHaveBeenCalledWith('manual', true)
+            expect(runProcessRegistry.isStopping('run-1')).toBe(true)
+            expect(runProcessRegistry.isCancelled('run-1')).toBe(false)
             expect(queue.isBusy()).toBe(true)
-            expect(testService.discardRuns).not.toHaveBeenCalled()
+            expect(testService.finalizeStoppedRuns).not.toHaveBeenCalled()
 
             const outcome = await finishStop(stopped)
 
@@ -186,13 +200,25 @@ describe('Stop (PipelineExecutionService)', () => {
                 reason: 'manual',
                 pipelineRunId: pipeline.pipelineRunId,
                 runIds: ['run-1'],
+                resultsKept: true,
             })
             // The second step never spawned.
             expect(testService.runAllTests).toHaveBeenCalledTimes(1)
-            expect(service.getPipeline(pipeline.pipelineRunId)?.status).toBe('cancelled')
-            expect(service.getPipeline(pipeline.pipelineRunId)?.steps.map((s) => s.status)).toEqual(
-                ['skipped', 'skipped']
-            )
+            expect(testService.discardRuns).not.toHaveBeenCalled()
+            expect(testService.finalizeStoppedRuns).toHaveBeenCalledWith(['run-1'], {
+                reason: 'manual',
+                at: expect.any(String),
+            })
+            const ended = service.getPipeline(pipeline.pipelineRunId)
+            expect(ended).toMatchObject({
+                status: 'cancelled',
+                stopReason: 'manual',
+                resultsKept: true,
+            })
+            expect(ended?.steps.map((s) => s.status)).toEqual(['stopped', 'skipped'])
+            // The stopped step keeps its run id and the recounted numbers.
+            expect(ended?.steps[0]).toMatchObject({runId: 'run-1', passed: 1, failed: 1})
+            expect(runProcessRegistry.isCancelled('run-1')).toBe(true)
             expect(websocket.broadcastPipelineCompleted).toHaveBeenCalledWith(
                 pipeline.pipelineRunId,
                 'cancelled',
@@ -201,30 +227,36 @@ describe('Stop (PipelineExecutionService)', () => {
             expect(websocket.broadcastRunCancelled).toHaveBeenCalledWith(
                 ['run-1'],
                 'manual',
-                pipeline.pipelineRunId
+                pipeline.pipelineRunId,
+                true
             )
-            expect(settings.clearInFlightPipeline).toHaveBeenCalled()
             expect(queue.isBusy()).toBe(false)
         })
 
-        it('deletes the run, the discovery rows of every step since the pipeline began, and clears the manual-run marker', async () => {
+        it('keeps the placeholder cleanup scopes of every step and clears both markers right after the finalize, before the Slack post', async () => {
             stubRuns()
-            const pipeline = await service.startPipeline(undefined, 'script', 'develop')
+            const pipeline = await service.startPipeline(undefined, 'script', 'develop', {
+                notify: true,
+            })
             await flushPromises()
 
             await finishStop(service.stop('manual'))
 
-            expect(testService.discardRuns).toHaveBeenCalledWith(
-                ['run-1'],
-                [
-                    {project: 'API', since: pipeline.startedAt},
-                    {project: 'WEB', since: pipeline.startedAt},
-                ]
+            expect(testService.discardDiscoveryRows).toHaveBeenCalledWith([
+                {project: 'API', since: pipeline.startedAt},
+                {project: 'WEB', since: pipeline.startedAt},
+            ])
+            const order = (fn: any) => fn.mock.invocationCallOrder[0]
+            expect(order(testService.finalizeStoppedRuns)).toBeLessThan(
+                order(testService.clearRunMarker)
             )
-            expect(testService.clearRunMarker).toHaveBeenCalled()
+            expect(order(testService.clearRunMarker)).toBeLessThan(order(notifier.notifyStopped))
+            expect(order(settings.clearInFlightPipeline)).toBeLessThan(
+                order(notifier.notifyStopped)
+            )
         })
 
-        it('does not read the killed step as a crash: no stopped_early, no "Stopped at" message', async () => {
+        it('does not read the cut step as a crash: no stopped_early, no "Stopped at" message', async () => {
             // The killed child never finished its run row; without the stop this is a crash (stopped_early).
             runRepository.getTestRun.mockResolvedValue({
                 status: 'running',
@@ -254,17 +286,19 @@ describe('Stop (PipelineExecutionService)', () => {
             expect(activeProcessesTracker.removeProcess).toHaveBeenCalledWith('run-1')
         })
 
-        it('marks the run as cancelled so late reporter posts are ignored', async () => {
+        it('close handlers see the run as settled from the signal on (stopping), reporter posts stay accepted', async () => {
             stubRuns()
             await service.startPipeline(undefined, 'script', 'develop')
             await flushPromises()
 
             const stopped = service.stop('manual')
-            expect(runProcessRegistry.isCancelled('run-1')).toBe(true)
+            expect(runProcessRegistry.isStopping('run-1')).toBe(true)
+            expect(runProcessRegistry.isCancelled('run-1')).toBe(false)
+            expect(typeof runProcessRegistry.getStopSignalledAt('run-1')).toBe('number')
             await finishStop(stopped)
         })
 
-        it('escalates to SIGKILL for a child that ignores SIGINT', async () => {
+        it('escalates to SIGKILL for a child that ignores SIGINT, then still finalizes', async () => {
             stubRuns({ignoreSigint: true})
             await service.startPipeline(undefined, 'script', 'develop')
             await flushPromises()
@@ -277,12 +311,15 @@ describe('Stop (PipelineExecutionService)', () => {
             expect(children[0].kill).toHaveBeenCalledWith('SIGKILL')
 
             await finishStop(stopped)
-            expect(testService.discardRuns).toHaveBeenCalled()
+            expect(testService.finalizeStoppedRuns).toHaveBeenCalledWith(
+                ['run-1'],
+                expect.any(Object)
+            )
         })
     })
 
-    describe('deleting finished steps too', () => {
-        it('stopping during step 2 deletes step 1 results as well', async () => {
+    describe('finished steps are never rewritten (keep mode)', () => {
+        it('stopping during step 2 finalizes only step 2; step 1 stays as it ended', async () => {
             stubRuns()
             const pipeline = await service.startPipeline(undefined, 'script', 'develop')
             await flushPromises()
@@ -293,18 +330,101 @@ describe('Stop (PipelineExecutionService)', () => {
 
             await finishStop(service.stop('manual'))
 
+            expect(testService.finalizeStoppedRuns).toHaveBeenCalledWith(
+                ['run-2'],
+                expect.any(Object)
+            )
+            expect(testService.discardRuns).not.toHaveBeenCalled()
+            const steps = service.getPipeline(pipeline.pipelineRunId)?.steps
+            expect(steps?.map((s) => s.status)).toEqual(['success', 'stopped'])
+            // Step 1 keeps its run id and the counts it ended with (the run row mock: 1 passed, 0 failed).
+            expect(steps?.[0]).toMatchObject({runId: 'run-1', passed: 1, failed: 0})
+            expect(steps?.[1]).toMatchObject({runId: 'run-2', passed: 1, failed: 1})
+        })
+
+        it('a failed finished step stays failed', async () => {
+            runRepository.getTestRun.mockResolvedValueOnce(runOk(1, 2))
+            stubRuns()
+            const pipeline = await service.startPipeline(undefined, 'script', 'develop')
+            await flushPromises()
+            children[0].emit('close', 0)
+            await flushPromises()
+
+            await finishStop(service.stop('manual'))
+
+            const steps = service.getPipeline(pipeline.pipelineRunId)?.steps
+            expect(steps?.map((s) => s.status)).toEqual(['failed', 'stopped'])
+            expect(steps?.[0]).toMatchObject({passed: 1, failed: 2})
+        })
+
+        it('a running step whose child closed on its own just before the signal: finalized only when its row still says running', async () => {
+            // The child closed (so it is not in the registry), but the loop has not read the row yet.
+            stubRuns()
+            const pipeline = await service.startPipeline(undefined, 'script', 'develop')
+            await flushPromises()
+            const step = service.getPipeline(pipeline.pipelineRunId)!.steps[0]
+            runRepository.getTestRun.mockResolvedValue(runOk(3, 0))
+            // Simulate: registry no longer holds the run, step still `running` (the loop gives up on the child after 5 s).
+            ;(runProcessRegistry as any).runs.delete('run-1')
+
+            const stopped = service.stop('manual')
+            await flushPromises()
+            await vi.advanceTimersByTimeAsync(7_000)
+            await stopped
+
+            expect(testService.finalizeStoppedRuns).toHaveBeenCalledWith([], expect.any(Object))
+            expect(step.status).toBe('success')
+            expect(step).toMatchObject({passed: 3, failed: 0})
+        })
+    })
+
+    describe('discard mode (replaced by a newer deploy)', () => {
+        it('deletes the run, the discovery rows of every step since the pipeline began, and clears the manual-run marker; steps read as never run', async () => {
+            stubRuns()
+            const pipeline = await service.startPipeline(undefined, 'script', 'develop', {
+                notify: true,
+            })
+            await flushPromises()
+            children[0].emit('close', 0)
+            await flushPromises()
+
+            const stopped = service.stop('replaced')
+            expect(websocket.broadcastRunStopping).toHaveBeenCalledWith('replaced', false)
+            expect(runProcessRegistry.isCancelled('run-2')).toBe(true)
+            const outcome = await finishStop(stopped)
+
+            expect(outcome).toMatchObject({stopped: true, reason: 'replaced', resultsKept: false})
+            // Finished steps go too (a replaced run counts as never run).
             expect(testService.discardRuns).toHaveBeenCalledWith(
                 ['run-1', 'run-2'],
-                expect.any(Array)
+                [
+                    {project: 'API', since: pipeline.startedAt},
+                    {project: 'WEB', since: pipeline.startedAt},
+                ]
             )
-            const steps = service.getPipeline(pipeline.pipelineRunId)?.steps
-            expect(steps?.map((s) => s.status)).toEqual(['skipped', 'skipped'])
-            expect(steps?.every((s) => s.runId === undefined && s.passed === undefined)).toBe(true)
+            expect(testService.finalizeStoppedRuns).not.toHaveBeenCalled()
+            expect(testService.clearRunMarker).toHaveBeenCalled()
+            const ended = service.getPipeline(pipeline.pipelineRunId)
+            expect(ended).toMatchObject({
+                status: 'cancelled',
+                stopReason: 'replaced',
+                resultsKept: false,
+            })
+            expect(ended?.steps.map((s) => s.status)).toEqual(['skipped', 'skipped'])
+            expect(ended?.steps.every((s) => s.runId === undefined && s.passed === undefined)).toBe(
+                true
+            )
+            expect(websocket.broadcastRunCancelled).toHaveBeenCalledWith(
+                ['run-1', 'run-2'],
+                'replaced',
+                pipeline.pipelineRunId,
+                false
+            )
         })
     })
 
     describe('stopping before a child exists', () => {
-        it('between steps: step 2 is still in discovery, so it never spawns and step 1 is deleted', async () => {
+        it('between steps: step 2 is still in discovery, so it never spawns and step 1 stays as it ended', async () => {
             stubPipelines({develop: [tab('API'), tab('WEB')]})
             const step2Discovery = deferred()
             testService.runAllTests
@@ -337,17 +457,21 @@ describe('Stop (PipelineExecutionService)', () => {
             let done = false
             stopped.then(() => (done = true))
             await flushPromises()
-            // Waits for the start in discovery to unwind before it deletes anything.
+            // Waits for the start in discovery to unwind before it touches anything.
             expect(done).toBe(false)
-            expect(testService.discardRuns).not.toHaveBeenCalled()
+            expect(testService.finalizeStoppedRuns).not.toHaveBeenCalled()
 
             step2Discovery.resolve()
             await finishStop(stopped)
 
             expect(testService.runAllTests).toHaveBeenCalledTimes(2)
             expect(children).toHaveLength(1)
-            expect(testService.discardRuns).toHaveBeenCalledWith(['run-1'], expect.any(Array))
-            expect(service.getPipeline(pipeline.pipelineRunId)?.status).toBe('cancelled')
+            // Nothing was live: no run is rewritten, step 1 keeps its ending.
+            expect(testService.finalizeStoppedRuns).toHaveBeenCalledWith([], expect.any(Object))
+            expect(testService.discardRuns).not.toHaveBeenCalled()
+            const ended = service.getPipeline(pipeline.pipelineRunId)
+            expect(ended?.status).toBe('cancelled')
+            expect(ended?.steps.map((s) => s.status)).toEqual(['success', 'skipped'])
             expect(notifier.notifyStopped).toHaveBeenCalledTimes(1)
             expect(notifier.notifyResult).not.toHaveBeenCalled()
         })
@@ -372,11 +496,13 @@ describe('Stop (PipelineExecutionService)', () => {
 
             expect(outcome.stopped).toBe(true)
             expect(outcome.runIds).toEqual([])
-            expect(testService.discardRuns).toHaveBeenCalledWith(
-                [],
+            expect(testService.discardDiscoveryRows).toHaveBeenCalledWith(
                 expect.arrayContaining([{project: 'API', since: pipeline.startedAt}])
             )
             expect(service.getPipeline(pipeline.pipelineRunId)?.status).toBe('cancelled')
+            expect(service.getPipeline(pipeline.pipelineRunId)?.steps.map((s) => s.status)).toEqual(
+                ['skipped', 'skipped']
+            )
         })
 
         it('while the pipeline is still starting (tab list being read): the first step never runs', async () => {
@@ -417,10 +543,10 @@ describe('Stop (PipelineExecutionService)', () => {
         })
     })
 
-    describe('a failed delete', () => {
-        it('still ends the pipeline cancelled, frees the dashboard, logs loudly, and rejects (HTTP 500)', async () => {
+    describe('a failed cleanup', () => {
+        it('keep mode: a failed finalize still ends the pipeline cancelled, frees the dashboard, logs loudly, and rejects (HTTP 500)', async () => {
             stubRuns()
-            testService.discardRuns.mockRejectedValue(new Error('database is locked'))
+            testService.finalizeStoppedRuns.mockRejectedValue(new Error('database is locked'))
             const pipeline = await service.startPipeline(undefined, 'script', 'develop', {
                 notify: true,
             })
@@ -434,25 +560,42 @@ describe('Stop (PipelineExecutionService)', () => {
             expect(service.getPipeline(pipeline.pipelineRunId)?.status).toBe('cancelled')
             expect(queue.isBusy()).toBe(false)
             expect(service.isStopping()).toBe(false)
-            // The text must be true: a second Stop finds nothing running, so the log names the run ids to delete by hand.
+            // The text must be true: a second Stop finds nothing running, so the log names the run ids.
             expect(Logger.error).toHaveBeenCalledWith(
-                expect.stringMatching(/STOP CLEANUP FAILED.*delete them by hand.*run-1/),
+                expect.stringMatching(/STOP CLEANUP FAILED.*run-1/),
                 expect.any(Error)
             )
-            expect(Logger.error).not.toHaveBeenCalledWith(
-                expect.stringContaining('press Stop again'),
-                expect.anything()
-            )
-            testService.discardRuns.mockClear()
+            testService.finalizeStoppedRuns.mockClear()
             expect(await service.stop('manual')).toEqual({stopped: false, runIds: []})
-            expect(testService.discardRuns).not.toHaveBeenCalled()
+            expect(testService.finalizeStoppedRuns).not.toHaveBeenCalled()
             expect(websocket.broadcastRunCancelled).toHaveBeenCalled()
             expect(settings.clearInFlightPipeline).toHaveBeenCalled()
         })
 
+        it('discard mode: a failed delete still ends the pipeline and names the run ids to delete by hand', async () => {
+            stubRuns()
+            testService.discardRuns.mockRejectedValue(new Error('database is locked'))
+            const pipeline = await service.startPipeline(undefined, 'script', 'develop', {
+                notify: true,
+            })
+            await flushPromises()
+
+            const stopped = service.stop('replaced')
+            const rejection = expect(stopped).rejects.toThrow('database is locked')
+            await finishStop(stopped.catch(() => undefined))
+            await rejection
+
+            expect(service.getPipeline(pipeline.pipelineRunId)?.status).toBe('cancelled')
+            expect(queue.isBusy()).toBe(false)
+            expect(Logger.error).toHaveBeenCalledWith(
+                expect.stringMatching(/STOP CLEANUP FAILED.*delete them by hand.*run-1/),
+                expect.any(Error)
+            )
+        })
+
         it('a new run can start right after a failed stop', async () => {
             stubRuns()
-            testService.discardRuns.mockRejectedValueOnce(new Error('disk full'))
+            testService.finalizeStoppedRuns.mockRejectedValueOnce(new Error('disk full'))
             await service.startPipeline(undefined, 'script', 'develop')
             await flushPromises()
             const stopped = service.stop('manual')
@@ -494,6 +637,7 @@ describe('Stop (PipelineExecutionService)', () => {
 
             expect(outcome).toEqual({stopped: false, runIds: []})
             expect(websocket.broadcastRunStopping).not.toHaveBeenCalled()
+            expect(testService.finalizeStoppedRuns).not.toHaveBeenCalled()
             expect(testService.discardRuns).not.toHaveBeenCalled()
             expect(notifier.notifyStopped).not.toHaveBeenCalled()
             expect(queue.isBusy()).toBe(false)
@@ -512,7 +656,7 @@ describe('Stop (PipelineExecutionService)', () => {
     })
 
     describe('a second stop while one is running', () => {
-        it('joins the first one: one signal, one deletion', async () => {
+        it('joins the first one: one signal, one finalize', async () => {
             stubRuns()
             await service.startPipeline(undefined, 'script', 'develop')
             await flushPromises()
@@ -523,7 +667,7 @@ describe('Stop (PipelineExecutionService)', () => {
 
             expect(await second).toEqual(await first)
             expect(children[0].kill).toHaveBeenCalledTimes(1)
-            expect(testService.discardRuns).toHaveBeenCalledTimes(1)
+            expect(testService.finalizeStoppedRuns).toHaveBeenCalledTimes(1)
             expect(service.isStopping()).toBe(false)
         })
 
@@ -547,10 +691,14 @@ describe('Stop (PipelineExecutionService)', () => {
             await finishStop(service.stop(reason))
         }
 
-        it('manual -> "Stopped manually"', async () => {
+        it('manual -> "Stopped manually, results kept", with the kept counts of the steps', async () => {
             await runStopped('manual', true)
 
-            expect(notifier.notifyStopped).toHaveBeenCalledWith('develop', ['API', 'WEB'])
+            expect(notifier.notifyStopped).toHaveBeenCalledTimes(1)
+            expect(notifier.notifyStopped).toHaveBeenCalledWith('develop', [
+                expect.objectContaining({project: 'API', status: 'stopped', failed: 1}),
+                expect.objectContaining({project: 'WEB', status: 'skipped'}),
+            ])
             expect(notifier.notifyReplaced).not.toHaveBeenCalled()
             expect(notifier.notifyResult).not.toHaveBeenCalled()
         })
@@ -562,16 +710,27 @@ describe('Stop (PipelineExecutionService)', () => {
             expect(notifier.notifyStopped).not.toHaveBeenCalled()
         })
 
-        it.each(['timeout', 'restart'] as const)(
-            '%s -> no extra line from the stop (the watchdog / startup announce it themselves)',
-            async (reason) => {
-                await runStopped(reason, true)
+        it('timeout -> one "Stopped after N min" line from the stop', async () => {
+            await runStopped('timeout', true)
 
-                expect(notifier.notifyStopped).not.toHaveBeenCalled()
-                expect(notifier.notifyReplaced).not.toHaveBeenCalled()
-                expect(notifier.notifyResult).not.toHaveBeenCalled()
-            }
-        )
+            expect(notifier.notifyTimeLimitStop).toHaveBeenCalledTimes(1)
+            expect(notifier.notifyTimeLimitStop).toHaveBeenCalledWith(
+                'develop',
+                30,
+                expect.any(Array)
+            )
+            expect(notifier.notifyStopped).not.toHaveBeenCalled()
+            expect(notifier.notifyResult).not.toHaveBeenCalled()
+        })
+
+        it('restart -> no extra line from the stop (startup announces it itself)', async () => {
+            await runStopped('restart', true)
+
+            expect(notifier.notifyStopped).not.toHaveBeenCalled()
+            expect(notifier.notifyTimeLimitStop).not.toHaveBeenCalled()
+            expect(notifier.notifyReplaced).not.toHaveBeenCalled()
+            expect(notifier.notifyResult).not.toHaveBeenCalled()
+        })
 
         it.each(['manual', 'replaced', 'timeout', 'restart'] as const)(
             '%s without notify -> nothing is posted',
@@ -579,6 +738,7 @@ describe('Stop (PipelineExecutionService)', () => {
                 await runStopped(reason, false)
 
                 expect(notifier.notifyStopped).not.toHaveBeenCalled()
+                expect(notifier.notifyTimeLimitStop).not.toHaveBeenCalled()
                 expect(notifier.notifyReplaced).not.toHaveBeenCalled()
                 expect(notifier.notifyResult).not.toHaveBeenCalled()
                 expect(notifier.notifyTimeout).not.toHaveBeenCalled()
@@ -595,28 +755,45 @@ describe('Stop (PipelineExecutionService)', () => {
         })
     })
 
-    describe('watchdog', () => {
-        it('posts the timeout once, then stops the pipeline and deletes its data (reason timeout)', async () => {
+    describe('watchdog (time limit, keeps results)', () => {
+        const LIMIT_MS = 30 * 60 * 1000
+
+        it('stops the pipeline with reason timeout, keeps the results, and posts ONE line after the stop', async () => {
             stubRuns()
             const pipeline = await service.startPipeline(undefined, 'script', 'develop', {
                 notify: true,
             })
             await flushPromises()
 
-            await vi.advanceTimersByTimeAsync(30 * 60 * 1000)
+            await vi.advanceTimersByTimeAsync(LIMIT_MS)
 
-            expect(notifier.notifyTimeout).toHaveBeenCalledTimes(1)
+            // Signalled, but no Slack line before the stop has ended.
             expect(children[0].kill).toHaveBeenCalledWith('SIGINT')
+            expect(notifier.notifyTimeout).not.toHaveBeenCalled()
+            expect(notifier.notifyTimeLimitStop).not.toHaveBeenCalled()
 
             await vi.advanceTimersByTimeAsync(1_000)
             await flushPromises()
 
-            expect(service.getPipeline(pipeline.pipelineRunId)?.status).toBe('cancelled')
-            expect(testService.discardRuns).toHaveBeenCalledWith(['run-1'], expect.any(Array))
-            // One line only: the timeout, no "Stopped manually" and no result.
+            expect(service.getPipeline(pipeline.pipelineRunId)).toMatchObject({
+                status: 'cancelled',
+                stopReason: 'timeout',
+                resultsKept: true,
+            })
+            expect(testService.finalizeStoppedRuns).toHaveBeenCalledWith(['run-1'], {
+                reason: 'timeout',
+                at: expect.any(String),
+            })
+            expect(testService.discardRuns).not.toHaveBeenCalled()
+            expect(notifier.notifyTimeLimitStop).toHaveBeenCalledTimes(1)
+            expect(notifier.notifyTimeLimitStop).toHaveBeenCalledWith(
+                'develop',
+                30,
+                expect.any(Array)
+            )
+            expect(notifier.notifyTimeout).not.toHaveBeenCalled()
             expect(notifier.notifyStopped).not.toHaveBeenCalled()
             expect(notifier.notifyResult).not.toHaveBeenCalled()
-            expect(notifier.notifyTimeout).toHaveBeenCalledTimes(1)
         })
 
         it('stops a hung child that ignores SIGINT', async () => {
@@ -626,12 +803,101 @@ describe('Stop (PipelineExecutionService)', () => {
             })
             await flushPromises()
 
-            await vi.advanceTimersByTimeAsync(30 * 60 * 1000 + 21_000)
+            await vi.advanceTimersByTimeAsync(LIMIT_MS + 21_000)
             await vi.advanceTimersByTimeAsync(1_000)
             await flushPromises()
 
             expect(children[0].kill).toHaveBeenCalledWith('SIGKILL')
             expect(service.getPipeline(pipeline.pipelineRunId)?.status).toBe('cancelled')
+        })
+
+        it('a child that never emits close: the stop still finishes (loop cap) and exactly one Slack line goes out', async () => {
+            stubRuns({neverClose: true})
+            const pipeline = await service.startPipeline(undefined, 'script', 'develop', {
+                notify: true,
+            })
+            await flushPromises()
+
+            // SIGINT -> 20 s -> SIGKILL -> 5 s give-up; the loop gives up 5 s later; then the late-post grace.
+            await vi.advanceTimersByTimeAsync(LIMIT_MS + 20_000 + 5_000 + 5_000 + 1_000)
+            await flushPromises()
+
+            expect(children[0].kill).toHaveBeenCalledWith('SIGKILL')
+            expect(service.getPipeline(pipeline.pipelineRunId)?.status).toBe('cancelled')
+            expect(notifier.notifyTimeLimitStop).toHaveBeenCalledTimes(1)
+            expect(notifier.notifyTimeout).not.toHaveBeenCalled()
+
+            // The fallback timer died with the pipeline: nothing more arrives later.
+            await vi.advanceTimersByTimeAsync(5 * 60_000)
+            expect(notifier.notifyTimeLimitStop).toHaveBeenCalledTimes(1)
+            expect(notifier.notifyTimeout).not.toHaveBeenCalled()
+        })
+
+        it('a stop that hangs past the fallback posts the old "Timed out" line once and no second message follows', async () => {
+            stubRuns()
+            const finalize = deferred<Map<string, typeof KEPT>>()
+            testService.finalizeStoppedRuns.mockReturnValueOnce(finalize.promise)
+            const pipeline = await service.startPipeline(undefined, 'script', 'develop', {
+                notify: true,
+            })
+            await flushPromises()
+
+            await vi.advanceTimersByTimeAsync(LIMIT_MS + 1_000)
+            await flushPromises()
+            expect(notifier.notifyTimeout).not.toHaveBeenCalled()
+            expect(service.getPipeline(pipeline.pipelineRunId)?.status).toBe('running')
+
+            await vi.advanceTimersByTimeAsync(60_000)
+            expect(notifier.notifyTimeout).toHaveBeenCalledTimes(1)
+
+            // The hung step ends later: the stop finishes without a second message.
+            finalize.resolve(new Map([['run-1', KEPT]]))
+            await flushPromises()
+            await vi.advanceTimersByTimeAsync(1_000)
+            await flushPromises()
+
+            expect(service.getPipeline(pipeline.pipelineRunId)?.status).toBe('cancelled')
+            expect(notifier.notifyTimeout).toHaveBeenCalledTimes(1)
+            expect(notifier.notifyTimeLimitStop).not.toHaveBeenCalled()
+            expect(notifier.notifyStopped).not.toHaveBeenCalled()
+            expect(notifier.notifyResult).not.toHaveBeenCalled()
+        })
+    })
+
+    describe('a pipeline loop the stop gave up on', () => {
+        it('a late close of the cut step does not rewrite the finalized step or spawn the next one', async () => {
+            stubPipelines({develop: [tab('API'), tab('WEB'), tab('SMOKE')]})
+            testService.runAllTests.mockImplementation(
+                async (_workers: unknown, _skip: unknown, project: string) => {
+                    // The second child never emits close on its own.
+                    const child = createChild({neverClose: children.length === 1})
+                    children.push(child)
+                    const runId = `run-${children.length}`
+                    runProcessRegistry.register({runId, type: 'run-all', project}, child)
+                    return {runId, process: child}
+                }
+            )
+            const pipeline = await service.startPipeline(undefined, 'script', 'develop')
+            await flushPromises()
+            children[0].emit('close', 0)
+            await flushPromises()
+            expect(children).toHaveLength(2)
+
+            const stopped = service.stop('manual')
+            await vi.advanceTimersByTimeAsync(20_000 + 5_000 + 5_000 + 1_000)
+            await stopped
+            expect(service.getPipeline(pipeline.pipelineRunId)?.status).toBe('cancelled')
+
+            // The child finally dies after the stop gave up waiting for the loop.
+            children[1].emit('close', 0)
+            await flushPromises()
+            await vi.advanceTimersByTimeAsync(1_000)
+
+            expect(children).toHaveLength(2)
+            expect(testService.runAllTests).toHaveBeenCalledTimes(2)
+            expect(service.getPipeline(pipeline.pipelineRunId)?.steps.map((s) => s.status)).toEqual(
+                ['success', 'stopped', 'skipped']
+            )
         })
     })
 

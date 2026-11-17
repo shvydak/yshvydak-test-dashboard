@@ -37,7 +37,7 @@ For CI pipeline runs started with `notify: true` (`scripts/trigger-test-run.js` 
 
 - `CI_SLACK_WEBHOOK_URL`: Slack incoming webhook. Unset → no messages (logged once). Server-side only, never logged.
 - `PUBLIC_DASHBOARD_URL`: link base for the message links, e.g. `https://dashboard.example.com` (links are `<base>/tests` and `<base>/tests?project=<slug>`). Unset → messages carry no link (logged once).
-- `CI_PIPELINE_TIMEOUT_MINUTES`: a notify pipeline running longer posts `⏱️ Timed out` once, then is stopped (reason `timeout`: Playwright is killed and the pipeline's results are deleted, like the Stop button); no result message follows. Default `30`.
+- `CI_PIPELINE_TIMEOUT_MINUTES`: a notify pipeline running longer is stopped (reason `timeout`, like the Stop button: Playwright is killed and the results saved so far are kept) and one Slack line `⏱️ Stopped after N min (time limit)` is posted (`⏱️ Timed out` instead if the stop itself hangs for 60 s); no result message follows. Default `30`.
 
 ## Override Support
 

@@ -19,6 +19,7 @@ vi.mock('../../utils/logger.util', () => ({
 describe('RunController', () => {
     let controller: RunController
     let mockRunRepository: any
+    let mockTestService: any
     let mockReq: Partial<Request>
     let mockRes: Partial<Response>
 
@@ -57,7 +58,8 @@ describe('RunController', () => {
         }
 
         // Create controller instance
-        controller = new RunController(mockRunRepository)
+        mockTestService = {isRunCancelled: vi.fn().mockReturnValue(false)}
+        controller = new RunController(mockRunRepository, mockTestService)
 
         // Setup default request and response
         mockReq = createMockRequest()
@@ -280,6 +282,20 @@ describe('RunController', () => {
                 'Test run updated successfully'
             )
             expect(Logger.success).toHaveBeenCalledWith('Test run updated: run-123')
+        })
+
+        it('ignores the update of a stopped run: its row was finalized by the stop', async () => {
+            mockReq = createMockRequest({params: {id: 'run-123'}, body: {status: 'completed'}})
+            mockTestService.isRunCancelled.mockReturnValue(true)
+
+            await controller.updateTestRun(mockReq as Request, mockRes as Response)
+
+            expect(mockRunRepository.updateTestRun).not.toHaveBeenCalled()
+            expect(ResponseHelper.success).toHaveBeenCalledWith(
+                mockRes,
+                {id: 'run-123'},
+                'Ignored: run was stopped'
+            )
         })
 
         it('should handle empty updates', async () => {

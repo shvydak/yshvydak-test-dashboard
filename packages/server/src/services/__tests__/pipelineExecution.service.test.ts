@@ -1154,7 +1154,7 @@ describe('PipelineExecutionService', () => {
             delete process.env.CI_PIPELINE_TIMEOUT_MINUTES
         })
 
-        it('posts the timeout once after 30 minutes by default, asks for a stop with reason timeout, and skips the result message', async () => {
+        it('asks for a stop with reason timeout after 30 minutes by default; no Slack line from the watchdog itself until the fallback', async () => {
             // The stop itself is covered in pipelineStop.service.test.ts; here it is a spy.
             const stop = vi.spyOn(service, 'stop').mockResolvedValue({stopped: true, runIds: []})
             const procs = stubRuns()
@@ -1162,14 +1162,17 @@ describe('PipelineExecutionService', () => {
             await flushPromises()
 
             vi.advanceTimersByTime(29 * 60 * 1000)
-            expect(mockNotifier.notifyTimeout).not.toHaveBeenCalled()
             expect(stop).not.toHaveBeenCalled()
 
             vi.advanceTimersByTime(60 * 1000)
+            expect(stop).toHaveBeenCalledWith('timeout')
+            expect(mockNotifier.notifyTimeout).not.toHaveBeenCalled()
+            expect(service.getCurrentPipeline()?.status).toBe('running')
+
+            // The stop (mocked) never ended the pipeline: the fallback posts the old line once.
+            vi.advanceTimersByTime(60 * 1000)
             expect(mockNotifier.notifyTimeout).toHaveBeenCalledTimes(1)
             expect(mockNotifier.notifyTimeout).toHaveBeenCalledWith('develop', ['API', 'WEB'])
-            expect(stop).toHaveBeenCalledWith('timeout')
-            expect(service.getCurrentPipeline()?.status).toBe('running')
 
             vi.advanceTimersByTime(60 * 60 * 1000)
             expect(mockNotifier.notifyTimeout).toHaveBeenCalledTimes(1)
@@ -1186,13 +1189,16 @@ describe('PipelineExecutionService', () => {
 
         it('uses CI_PIPELINE_TIMEOUT_MINUTES', async () => {
             process.env.CI_PIPELINE_TIMEOUT_MINUTES = '5'
+            const stop = vi.spyOn(service, 'stop').mockResolvedValue({stopped: true, runIds: []})
             stubRuns()
             await service.startPipeline(undefined, 'script', 'develop', {notify: true})
             await flushPromises()
 
-            vi.advanceTimersByTime(5 * 60 * 1000)
+            vi.advanceTimersByTime(5 * 60 * 1000 - 1)
+            expect(stop).not.toHaveBeenCalled()
+            vi.advanceTimersByTime(1)
 
-            expect(mockNotifier.notifyTimeout).toHaveBeenCalledTimes(1)
+            expect(stop).toHaveBeenCalledWith('timeout')
         })
 
         it('does not fire when the pipeline finishes in time', async () => {

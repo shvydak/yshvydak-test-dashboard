@@ -37,7 +37,7 @@ function block(ctx: CISlackContext, title: string, body: string | undefined): st
 const linkLine = (ctx: CISlackContext, url: string): string | undefined =>
     ctx.dashboardUrl ? `🔗 ${url}` : undefined
 
-// A cancelled pipeline has no result message (see buildStoppedMessage / buildReplacedMessage).
+// A cancelled pipeline has no result message (see buildStoppedMessage / buildTimeLimitStopMessage / buildReplacedMessage).
 export type PipelineResultStatus = Exclude<PipelineFinishStatus, 'cancelled'>
 
 export function classifyPipelineOutcome(
@@ -104,11 +104,36 @@ export function buildInterruptedMessage(ctx: CISlackContext, projects: string[])
     )
 }
 
-export function buildStoppedMessage(ctx: CISlackContext, projects: string[]): string {
+// Stop that keeps results: the failure line counts kept rows only; the link goes to the first failing tab.
+function stoppedBody(ctx: CISlackContext, steps: PipelineStepSummary[]): string | undefined {
+    const failedSteps = steps.filter((s) => (s.failed || 0) > 0)
+    const projects = steps.map((s) => s.project)
+    const lines: string[] = []
+    if (failedSteps.length > 0) {
+        const failedTotal = failedSteps.reduce((sum, s) => sum + (s.failed || 0), 0)
+        const word = failedTotal === 1 ? 'test' : 'tests'
+        lines.push(`⚠️ ${failedTotal} ${word} failed in ${failedSteps.map(stepName).join(', ')}`)
+    }
+    const url =
+        failedSteps.length > 0 ? testsUrl(ctx, failedSteps[0].project) : pipelineLink(ctx, projects)
+    const link = linkLine(ctx, url)
+    if (link) lines.push(link)
+    return lines.length > 0 ? lines.join('\n') : undefined
+}
+
+export function buildStoppedMessage(ctx: CISlackContext, steps: PipelineStepSummary[]): string {
+    return block(ctx, '⏹️ Stopped manually — results so far are kept', stoppedBody(ctx, steps))
+}
+
+export function buildTimeLimitStopMessage(
+    ctx: CISlackContext,
+    minutes: number,
+    steps: PipelineStepSummary[]
+): string {
     return block(
         ctx,
-        '⏹️ Stopped manually — no result for this run',
-        linkLine(ctx, pipelineLink(ctx, projects))
+        `⏱️ Stopped after ${minutes} min (time limit) — results so far are kept`,
+        stoppedBody(ctx, steps)
     )
 }
 

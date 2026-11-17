@@ -7,6 +7,7 @@ import {SettingsModal} from '@features/dashboard/components/settings'
 import {DiskSpaceWarningBanner} from '@features/dashboard/components/DiskSpaceWarningBanner'
 import {CIAutoRunPauseBanner} from '@features/dashboard/components/CIAutoRunPauseBanner'
 import {PipelineSkippedBanner} from '@features/dashboard/components/PipelineSkippedBanner'
+import {StoppedRunBanner} from '@features/dashboard/components/StoppedRunBanner'
 import {useDiskSpaceWarning, useJiraSettings} from '@features/dashboard/hooks'
 import {useCIAutoRun} from '@/hooks/useCIAutoRun'
 import {TestsList, CommandPalette, useCommandPalette} from '@features/tests'
@@ -102,6 +103,7 @@ function App() {
     const {
         pipeline,
         queue: ciQueue,
+        lastStop,
         stopping: ciStopping,
         applyPipelineEvent,
         resync: resyncPipeline,
@@ -118,6 +120,7 @@ function App() {
         checkAndRestoreActiveStates,
         setCIRunQueued,
         setCIPipelineRunning,
+        setCIPipelineRun,
         setCIStopping,
     } = useTestsStore(
         useShallow((s) => ({
@@ -128,6 +131,7 @@ function App() {
             checkAndRestoreActiveStates: s.checkAndRestoreActiveStates,
             setCIRunQueued: s.setCIRunQueued,
             setCIPipelineRunning: s.setCIPipelineRunning,
+            setCIPipelineRun: s.setCIPipelineRun,
             setCIStopping: s.setCIStopping,
         }))
     )
@@ -144,6 +148,13 @@ function App() {
     useEffect(() => {
         setCIPipelineRunning(isPipelineRunning)
     }, [isPipelineRunning, setCIPipelineRunning])
+
+    // The Stop button sends the id of what the user sees: the running pipeline's.
+    const ciPipelineRunId = isPipelineRunning ? (pipeline?.pipelineRunId ?? null) : null
+    const ciPipelineName = isPipelineRunning ? (pipeline?.pipeline ?? null) : null
+    useEffect(() => {
+        setCIPipelineRun(ciPipelineRunId ? {id: ciPipelineRunId, name: ciPipelineName} : null)
+    }, [ciPipelineRunId, ciPipelineName, setCIPipelineRun])
 
     // Setup global logout function
     useEffect(() => {
@@ -369,6 +380,8 @@ function App() {
                 pipeline={pipeline}
                 onViewProject={handleViewProjectFromBanner}
             />
+
+            <StoppedRunBanner lastStop={lastStop} />
 
             {severity && !isDismissed && diskStats && thresholds && (
                 <DiskSpaceWarningBanner

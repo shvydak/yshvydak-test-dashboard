@@ -2,6 +2,7 @@ import {describe, it, expect, vi, beforeEach} from 'vitest'
 import {render, screen, fireEvent} from '@testing-library/react'
 import {TestsListFilters} from '../TestsListFilters'
 import {useTestsStore} from '../../store/testsStore'
+import type {StopTarget} from '../../utils/stopTarget'
 
 vi.mock('../../store/testsStore', () => ({
     useTestsStore: vi.fn(),
@@ -16,9 +17,11 @@ interface StoreOverrides {
     isDiscovering?: boolean
     ciStopping?: boolean
     stopError?: string | null
+    stopTarget?: StopTarget
 }
 
 const stopRun = vi.fn()
+const PIPELINE_TARGET: StopTarget = {id: 'pipe-1', kind: 'pipeline', name: 'develop'}
 const discoverTests = vi.fn()
 const clearStopError = vi.fn()
 
@@ -35,6 +38,7 @@ function mockStore(overrides: StoreOverrides = {}) {
         runAllTests: vi.fn(),
         discoverTests,
         stopRun,
+        getStopTarget: () => overrides.stopTarget ?? PIPELINE_TARGET,
         clearStopError,
         stopError: overrides.stopError ?? null,
         isRunningAllTests: overrides.isRunningAllTests ?? false,
@@ -154,7 +158,7 @@ describe('TestsListFilters Stop', () => {
 
         fireEvent.click(screen.getByRole('button', {name: /^stop$/i}))
 
-        expect(screen.getByText('Stop the run?')).toBeInTheDocument()
+        expect(screen.getByText('Stop the develop pipeline?')).toBeInTheDocument()
         expect(
             screen.getByText(
                 'Tests that already finished keep their results. Unfinished tests keep their previous result.'
@@ -171,7 +175,8 @@ describe('TestsListFilters Stop', () => {
         fireEvent.click(screen.getAllByRole('button', {name: /^stop$/i}).at(-1)!)
 
         expect(stopRun).toHaveBeenCalledTimes(1)
-        expect(screen.queryByText('Stop the run?')).toBeNull()
+        expect(stopRun).toHaveBeenCalledWith('pipe-1')
+        expect(screen.queryByText('Stop the develop pipeline?')).toBeNull()
     })
 
     it('keeps running when the dialog is cancelled', () => {
@@ -182,7 +187,62 @@ describe('TestsListFilters Stop', () => {
         fireEvent.click(screen.getByRole('button', {name: /keep running/i}))
 
         expect(stopRun).not.toHaveBeenCalled()
-        expect(screen.queryByText('Stop the run?')).toBeNull()
+        expect(screen.queryByText('Stop the develop pipeline?')).toBeNull()
+    })
+
+    it.each<[string, StopTarget, string]>([
+        ['a pipeline', {id: 'p1', kind: 'pipeline', name: 'develop'}, 'Stop the develop pipeline?'],
+        ['a Run All', {id: 'r1', kind: 'run-all', name: 'Smoke'}, 'Stop Run All — Smoke?'],
+        [
+            'a group run',
+            {id: 'r2', kind: 'run-group', name: 'login.spec.ts'},
+            'Stop the run of login.spec.ts?',
+        ],
+        [
+            'a rerun',
+            {id: 'r3', kind: 'rerun', name: 'user can log in'},
+            'Stop the rerun of user can log in?',
+        ],
+        ['a run the web has no name for', {id: null, kind: 'run'}, 'Stop the run?'],
+    ])('the dialog title names the target: %s', (_name, stopTarget, title) => {
+        mockStore({ciPipelineRunning: true, stopTarget})
+        renderFilters()
+
+        fireEvent.click(screen.getByRole('button', {name: /^stop$/i}))
+
+        expect(screen.getByText(title)).toBeInTheDocument()
+    })
+
+    it('Stop sends the id the dialog named when it opened, not whatever runs at the click', () => {
+        mockStore({ciPipelineRunning: true, stopTarget: {id: 'run-A', kind: 'run-all'}})
+        const view = renderFilters()
+        fireEvent.click(screen.getByRole('button', {name: /^stop$/i}))
+
+        // A CI pipeline starts while the dialog is open.
+        mockStore({ciPipelineRunning: true, stopTarget: {id: 'pipe-B', kind: 'pipeline'}})
+        view.rerender(
+            <TestsListFilters
+                filter="all"
+                onFilterChange={vi.fn()}
+                counts={counts}
+                searchQuery=""
+                onSearchChange={vi.fn()}
+                activeProject="API_Tests"
+            />
+        )
+        fireEvent.click(screen.getAllByRole('button', {name: /^stop$/i}).at(-1)!)
+
+        expect(stopRun).toHaveBeenCalledWith('run-A')
+    })
+
+    it('with no id known the dialog confirms the global stop (id null)', () => {
+        mockStore({ciPipelineRunning: true, stopTarget: {id: null, kind: 'run-all'}})
+        renderFilters()
+
+        fireEvent.click(screen.getByRole('button', {name: /^stop$/i}))
+        fireEvent.click(screen.getAllByRole('button', {name: /^stop$/i}).at(-1)!)
+
+        expect(stopRun).toHaveBeenCalledWith(null)
     })
 
     it('shows "Stopping..." and cannot be clicked again while a stop is in progress', () => {

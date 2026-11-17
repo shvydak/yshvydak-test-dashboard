@@ -215,6 +215,13 @@ describe('Stop (PipelineExecutionService)', () => {
                 stopReason: 'manual',
                 resultsKept: true,
             })
+            expect(ended?.timeLimitMinutes).toBeUndefined()
+            // The pipeline's name rides on pipeline:started: the web's Stop dialog names it.
+            expect(websocket.broadcastPipelineStarted).toHaveBeenCalledWith(
+                pipeline.pipelineRunId,
+                expect.any(Array),
+                'develop'
+            )
             expect(ended?.steps.map((s) => s.status)).toEqual(['stopped', 'skipped'])
             // The stopped step keeps its run id and the recounted numbers.
             expect(ended?.steps[0]).toMatchObject({runId: 'run-1', passed: 1, failed: 1})
@@ -228,8 +235,10 @@ describe('Stop (PipelineExecutionService)', () => {
                 ['run-1'],
                 'manual',
                 pipeline.pipelineRunId,
-                true
+                true,
+                ended?.stoppedAt
             )
+            expect(ended?.stoppedAt).toEqual(expect.any(String))
             expect(queue.isBusy()).toBe(false)
         })
 
@@ -418,8 +427,10 @@ describe('Stop (PipelineExecutionService)', () => {
                 ['run-1', 'run-2'],
                 'replaced',
                 pipeline.pipelineRunId,
-                false
+                false,
+                undefined
             )
+            expect(ended?.stoppedAt).toBeUndefined()
         })
     })
 
@@ -779,6 +790,8 @@ describe('Stop (PipelineExecutionService)', () => {
                 status: 'cancelled',
                 stopReason: 'timeout',
                 resultsKept: true,
+                // The dashboard banner says "stopped after 30 min".
+                timeLimitMinutes: 30,
             })
             expect(testService.finalizeStoppedRuns).toHaveBeenCalledWith(['run-1'], {
                 reason: 'timeout',

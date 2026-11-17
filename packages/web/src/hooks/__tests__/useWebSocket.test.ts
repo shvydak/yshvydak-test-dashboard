@@ -920,6 +920,23 @@ describe('useWebSocket', () => {
             expect(mockStoreActions.fetchTests).not.toHaveBeenCalled()
         })
 
+        it('run:completed is forwarded to the pipeline hook (it re-reads the stop notice)', async () => {
+            const onPipelineEvent = vi.fn()
+            renderHook(() => useWebSocket('ws://localhost:3001', {onPipelineEvent}), {
+                wrapper: createWrapper(),
+            })
+            await act(async () => {
+                await Promise.resolve()
+            })
+
+            const data = {runId: 'r9', type: 'rerun'}
+            act(() => {
+                mockWebSocket.simulateMessage({type: 'run:completed', data})
+            })
+
+            expect(onPipelineEvent).toHaveBeenCalledWith('run:completed', data)
+        })
+
         it('should handle run:completed for run-group', async () => {
             const url = 'ws://localhost:3001'
             renderHook(() => useWebSocket(url), {
@@ -1110,7 +1127,7 @@ describe('useWebSocket', () => {
             const message = {
                 type: 'connection:status',
                 data: {
-                    activeRuns: [{type: 'run-all', details: {}}],
+                    activeRuns: [{id: 'run-1', type: 'run-all', details: {project: 'API'}}],
                     activeGroups: [],
                     isAnyProcessRunning: true,
                 },
@@ -1124,6 +1141,7 @@ describe('useWebSocket', () => {
                 isRunningAll: true,
                 testIds: [],
                 filePaths: [],
+                runs: [{id: 'run-1', type: 'run-all', project: 'API'}],
             })
             expect(mockStoreActions.fetchTests).toHaveBeenCalled()
         })
@@ -1141,7 +1159,13 @@ describe('useWebSocket', () => {
             const message = {
                 type: 'connection:status',
                 data: {
-                    activeRuns: [{type: 'run-group', details: {filePath: 'tests/example.spec.ts'}}],
+                    activeRuns: [
+                        {
+                            id: 'run-2',
+                            type: 'run-group',
+                            details: {filePath: 'tests/example.spec.ts', project: 'WEB'},
+                        },
+                    ],
                     activeGroups: [],
                     isAnyProcessRunning: true,
                 },
@@ -1155,6 +1179,14 @@ describe('useWebSocket', () => {
                 isRunningAll: false,
                 testIds: [],
                 filePaths: ['tests/example.spec.ts'],
+                runs: [
+                    {
+                        id: 'run-2',
+                        type: 'run-group',
+                        project: 'WEB',
+                        filePath: 'tests/example.spec.ts',
+                    },
+                ],
             })
         })
 
@@ -1171,7 +1203,7 @@ describe('useWebSocket', () => {
             const message = {
                 type: 'connection:status',
                 data: {
-                    activeRuns: [{type: 'rerun', details: {originalTestId: '123'}}],
+                    activeRuns: [{id: 'run-3', type: 'rerun', details: {originalTestId: '123'}}],
                     activeGroups: [],
                     isAnyProcessRunning: true,
                 },
@@ -1185,6 +1217,7 @@ describe('useWebSocket', () => {
                 isRunningAll: false,
                 testIds: ['123'],
                 filePaths: [],
+                runs: [{id: 'run-3', type: 'rerun', originalTestId: '123'}],
             })
         })
 
@@ -1215,6 +1248,7 @@ describe('useWebSocket', () => {
                 isRunningAll: false,
                 testIds: [],
                 filePaths: [],
+                runs: [],
             })
             expect(mockStoreActions.fetchTests).toHaveBeenCalled()
         })
@@ -1250,6 +1284,11 @@ describe('useWebSocket', () => {
                 isRunningAll: false,
                 testIds: ['123'],
                 filePaths: ['tests/test1.spec.ts', 'tests/test2.spec.ts'],
+                runs: [
+                    {id: undefined, type: 'run-group', filePath: 'tests/test1.spec.ts'},
+                    {id: undefined, type: 'run-group', filePath: 'tests/test2.spec.ts'},
+                    {id: undefined, type: 'rerun', originalTestId: '123'},
+                ],
             })
         })
     })

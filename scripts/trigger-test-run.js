@@ -98,6 +98,19 @@ function printPipelineResult(status, extra = {}) {
     console.log('::PIPELINE_RESULT::' + JSON.stringify({status, ...extra}))
 }
 
+// A stopped pipeline stays `cancelled` (exit 1, as before); these say why, and whether the saved results stayed.
+function stopInfo(completionData) {
+    return completionData.resultsKept === undefined
+        ? {}
+        : {stopReason: completionData.stopReason, resultsKept: completionData.resultsKept}
+}
+
+function cancelledMessage(completionData) {
+    if (!completionData.resultsKept) return 'Pipeline was cancelled'
+    const how = completionData.stopReason === 'timeout' ? 'time limit' : 'manual'
+    return `Pipeline was stopped (${how}) — results so far are kept`
+}
+
 function exitWithError(message, code = 1, status = 'error') {
     log(message, 'error')
     if (config.silent) {
@@ -345,6 +358,8 @@ async function waitForTestCompletion(baseUrl, token, pipelineRunId, timeout) {
                         status: pipeline.status,
                         pipelineRunId: pipeline.pipelineRunId,
                         steps: pipeline.steps,
+                        stopReason: pipeline.stopReason,
+                        resultsKept: pipeline.resultsKept,
                         timestamp: new Date().toISOString(),
                     }
                 }
@@ -635,13 +650,14 @@ Exit Codes:
                   : pipelineOutcome === 'stopped_early'
                     ? `Pipeline stopped early at ${failedStepEntry?.project || 'unknown step'}`
                     : pipelineOutcome === 'cancelled'
-                      ? 'Pipeline was cancelled'
+                      ? cancelledMessage(completionData)
                       : pipelineOutcome === 'paused_midway'
                         ? 'CI auto-run was paused — remaining steps were skipped'
                         : 'Pipeline execution timeout',
         pipelineRunId: completionData.pipelineRunId,
         status: pipelineOutcome,
         steps,
+        ...stopInfo(completionData),
         timestamp: completionData.timestamp,
         dashboardUrl: envConfig.baseUrl,
         stats: stats
@@ -667,7 +683,9 @@ Exit Codes:
                       ? '❌'
                       : step.status === 'skipped'
                         ? '⏭️'
-                        : '⏳'
+                        : step.status === 'stopped'
+                          ? '⏹️'
+                          : '⏳'
             log(
                 `  ${icon} ${step.displayName}: ${step.status} (${step.passed ?? 0} passed, ${step.failed ?? 0} failed)`
             )
@@ -678,6 +696,7 @@ Exit Codes:
     printPipelineResult(pipelineOutcome, {
         failedStep: failedStepEntry?.project || null,
         steps,
+        ...stopInfo(completionData),
     })
 
     // Exit with appropriate code

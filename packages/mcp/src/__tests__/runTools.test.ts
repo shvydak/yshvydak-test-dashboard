@@ -360,6 +360,40 @@ describe('get_run_status', () => {
         expect(stack.calls.every((c) => c.method === 'GET')).toBe(true)
     })
 
+    it('a stopped run exposes why and when, and says unfinished tests have no result (read-only: no stop tool)', async () => {
+        const stack = stackWith(
+            {
+                run: {
+                    ...run,
+                    status: 'failed',
+                    metadata: {
+                        ...run.metadata,
+                        stopped: {reason: 'manual', at: '2026-11-17T10:00:00.000Z'},
+                    },
+                },
+                runRows: [row({status: 'passed'})],
+            },
+            false
+        )
+
+        const out = textOf(await stack.tool('get_run_status')({runId: RUN_1}))
+
+        expect(out).toMatchObject({
+            status: 'failed',
+            stopped: {reason: 'manual', at: '2026-11-17T10:00:00.000Z'},
+        })
+        expect(out.note).toMatch(/Stopped \(manual\).*no result in this run/)
+        expect(stack.calls.every((c) => c.method === 'GET')).toBe(true)
+    })
+
+    it('a run that was not stopped has no stopped field', async () => {
+        const stack = stackWith({run, runRows: [row({status: 'failed'})]}, false)
+
+        const out = textOf(await stack.tool('get_run_status')({runId: RUN_1}))
+
+        expect(out.stopped).toBeUndefined()
+    })
+
     it('says so for an unknown run (or one replaced by a newer CI run)', async () => {
         const res = await stackWith({}).tool('get_run_status')({runId: RUN_1})
         expect(res.isError).toBe(true)

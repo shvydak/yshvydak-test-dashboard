@@ -159,12 +159,14 @@ export function runStatusTool(client: DashboardClient): ToolDef {
             const ageSec = (t: number) => Math.max(0, Math.round((now - t) / 1000))
             const first = times.length ? Math.min(...times) : undefined
             const last = times.length ? Math.max(...times) : undefined
-            const note =
-                run.status === 'running'
-                    ? 'Still running as far as the dashboard knows. A run can stay "running" if its reporter crashed: if no new result appears for a long time, check the dashboard UI.'
-                    : run.status === 'completed' && tests.length === 0
-                      ? 'Completed with no results: no test matched (check the file, test title and project).'
-                      : undefined
+            const stopped = run.metadata?.stopped
+            const note = stopped
+                ? `Stopped${stopped.reason ? ` (${cut(stopped.reason, MAX_FIELD_CHARS)})` : ''}: the run was ended on purpose, tests that had not finished have no result in this run. status "failed" here only means "did not complete".`
+                : run.status === 'running'
+                  ? 'Still running as far as the dashboard knows. A run can stay "running" if its reporter crashed: if no new result appears for a long time, check the dashboard UI.'
+                  : run.status === 'completed' && tests.length === 0
+                    ? 'Completed with no results: no test matched (check the file, test title and project).'
+                    : undefined
             return textResult(
                 fitRows(tests, (kept) => ({
                     runId: run.id,
@@ -173,6 +175,12 @@ export function runStatusTool(client: DashboardClient): ToolDef {
                     firstResultSecondsAgo: first === undefined ? undefined : ageSec(first),
                     lastResultSecondsAgo: last === undefined ? undefined : ageSec(last),
                     status: run.status,
+                    stopped: stopped
+                        ? {
+                              reason: cut(stopped.reason, MAX_FIELD_CHARS),
+                              at: cut(stopped.at, MAX_FIELD_CHARS),
+                          }
+                        : undefined,
                     type: cut(run.metadata?.type, MAX_FIELD_CHARS),
                     project: cut(run.metadata?.project, MAX_FIELD_CHARS),
                     counters: {

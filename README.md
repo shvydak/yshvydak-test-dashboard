@@ -98,7 +98,7 @@ Variables are read from the root `.env` (the server loads `../../.env` relative 
 
 With `ENABLE_AUTH=true` the web UI requires login (`POST /api/auth/login`, JWT). Middleware coverage as implemented (`packages/server/src/app.ts`, `routes/index.routes.ts`):
 
-- JWT required: `/api/settings/*`, `/api/jira/*`, `POST /api/pipeline/stop`, `POST /api/pipeline/run`, and the static routes `/reports`, `/attachments`, `/note-images`, `/test-results`. `/api/settings/*`, `/api/jira/*` and `/api/pipeline/stop` also demand a JWT specifically, so they answer 403 when `ENABLE_AUTH` is not `true`; `POST /api/pipeline/run` stays open when auth is off (local runs, the trigger script).
+- JWT required: `/api/settings/*`, `/api/jira/*`, `POST /api/pipeline/stop`, `POST /api/runs/:id/stop`, `POST /api/pipeline/run`, and the static routes `/reports`, `/attachments`, `/note-images`, `/test-results`. `/api/settings/*`, `/api/jira/*`, `/api/pipeline/stop` and `/api/runs/:id/stop` also demand a JWT specifically, so they answer 403 when `ENABLE_AUTH` is not `true`; `POST /api/pipeline/run` stays open when auth is off (local runs, the trigger script).
 - JWT required too: `/api/tests/*` (including `/api/tests/diagnostics`), `/api/runs/*`, `/api/storage/*`, `GET /api/pipeline/status/*`. The five reporter routes skip the JWT only on the server's internal loopback listener, which spawned Playwright processes use (see API_REFERENCE → Authentication).
 - No auth middleware: `/api/health`, `/api/auth/*`.
 

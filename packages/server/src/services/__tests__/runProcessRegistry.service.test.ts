@@ -100,6 +100,43 @@ describe('RunProcessRegistry', () => {
         })
     })
 
+    describe('hasRunEndedSince', () => {
+        const at = (iso: string) => Date.parse(iso)
+
+        it('is true only once a run registered AFTER the time has ended', () => {
+            vi.useFakeTimers({toFake: ['Date']})
+            vi.setSystemTime(at('2026-11-17T10:00:00.000Z'))
+            const before = fakeChild(1)
+            registry.register(meta('before'), before as any)
+            const stoppedAt = at('2026-11-17T10:05:00.000Z')
+
+            // A run begun before the stop ends after it: not a newer run.
+            vi.setSystemTime(stoppedAt + 1000)
+            before.emit('close', 0)
+            expect(registry.hasRunEndedSince(stoppedAt)).toBe(false)
+
+            // A newer run that is still running does not count yet.
+            const after = fakeChild(2)
+            registry.register(meta('after'), after as any)
+            expect(registry.hasRunEndedSince(stoppedAt)).toBe(false)
+
+            vi.setSystemTime(stoppedAt + 5000)
+            after.emit('close', 1)
+            expect(registry.hasRunEndedSince(stoppedAt)).toBe(true)
+        })
+
+        it('stays true afterwards and is false for a later reference time', () => {
+            vi.useFakeTimers({toFake: ['Date']})
+            vi.setSystemTime(at('2026-11-17T10:00:00.000Z'))
+            const child = fakeChild(1)
+            registry.register(meta('r1'), child as any)
+            child.emit('close', 0)
+
+            expect(registry.hasRunEndedSince(at('2026-11-17T09:59:59.000Z'))).toBe(true)
+            expect(registry.hasRunEndedSince(at('2026-11-17T10:00:01.000Z'))).toBe(false)
+        })
+    })
+
     describe('terminate', () => {
         it('SIGINTs the whole process group (negative pgid), not just the pid', () => {
             registry.register(meta('r1'), fakeChild(4242) as any)

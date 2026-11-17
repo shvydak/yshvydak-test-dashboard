@@ -84,5 +84,12 @@ export interface RunRow {
     failedTests: number
     skippedTests: number
     duration: number
-    metadata?: {type?: string; filePath?: string; project?: string; originalTestId?: string}
+    metadata?: {
+        type?: string
+        filePath?: string
+        project?: string
+        originalTestId?: string
+        /** Set by a Stop (or the CI time limit): the run was ended on purpose and its saved results were kept. */
+        stopped?: {reason?: string; at?: string}
+    }
 }

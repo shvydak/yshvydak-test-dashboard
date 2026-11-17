@@ -6,6 +6,7 @@ import {authGet, authPost, authDelete} from '@features/authentication/utils/auth
 import {getMaxWorkersFromStorage} from '@/hooks/usePlaywrightWorkers'
 import {getProjectWorkersOverride} from '@/hooks/useProjectTabs'
 import {getAutoDiscoverFromStorage} from '@/hooks/useAutoDiscoverSetting'
+import {specFileName, type ActiveRunRef, type StopTarget} from '../utils/stopTarget'
 
 export type DiscoveryMode = 'reset' | 'incremental'
 
@@ -13,6 +14,8 @@ interface RunSnapshot {
     isRunningAll: boolean
     testIds: string[]
     filePaths: string[]
+    /** The runs the server lists (ids for the per-run Stop, project/file for its confirm title). */
+    runs?: ActiveRunRef[]
 }
 
 interface TestsState {
@@ -36,6 +39,11 @@ interface TestsState {
     ciRunQueued: boolean
     /** A CI pipeline is running; the server refuses manual Run All meanwhile. */
     ciPipelineRunning: boolean
+    /** The running pipeline's run id and name: what the Stop button sends while a pipeline runs. */
+    ciPipelineRunId: string | null
+    ciPipelineName: string | null
+    /** Runs of the last server snapshot; only Stop reads them. */
+    activeRuns: ActiveRunRef[]
     /** A Stop is cleaning up the run's data; the Stop button is disabled meanwhile. */
     ciStopping: boolean
     /** Why the last Stop failed; shown next to the Stop button, never the page-wide `error` (the run goes on). */
@@ -47,6 +55,8 @@ interface TestsState {
     getIsAnyTestRunning: () => boolean
     /** A run Stop can end: pipeline, run-all, group or rerun (not a bare discovery). */
     getIsStoppable: () => boolean
+    /** What Stop would stop right now: the pipeline, the single live run, else unknown (id null = the global stop). */
+    getStopTarget: () => StopTarget
     /** Tooltip text for run buttons disabled by a CI pipeline / queued CI run, else null. */
     getCIBusyReason: () => string | null
 
@@ -68,9 +78,11 @@ interface TestsState {
     setRunningAllTests: (isRunning: boolean) => void
     setCIRunQueued: (queued: boolean) => void
     setCIPipelineRunning: (running: boolean) => void
+    setCIPipelineRun: (run: {id: string; name: string | null} | null) => void
     setCIStopping: (stopping: boolean) => void
     clearStopError: () => void
-    stopRun: () => Promise<void>
+    /** `id` undefined = whatever `getStopTarget()` says now; the confirm dialog passes the id it showed; null = the global stop. */
+    stopRun: (id?: string | null) => Promise<void>
     /** After run:cancelled: nothing is running any more, whatever the local flags still say. */
     resetRunState: () => void
     /** Server snapshot replaces the running flags; a flag set by a click in the last 5 s stays, then the latest snapshot is re-applied. */
@@ -224,6 +236,9 @@ export const useTestsStore = create<TestsState>()(
             listProject: null,
             ciRunQueued: false,
             ciPipelineRunning: false,
+            ciPipelineRunId: null,
+            ciPipelineName: null,
+            activeRuns: [],
             ciStopping: false,
             stopError: null,
 
@@ -249,6 +264,37 @@ export const useTestsStore = create<TestsState>()(
                     state.runningTests.size > 0 ||
                     state.runningGroups.size > 0
                 )
+            },
+
+            getStopTarget: () => {
+                const state = get()
+                if (state.ciPipelineRunId) {
+                    return {
+                        id: state.ciPipelineRunId,
+                        kind: 'pipeline',
+                        name: state.ciPipelineName ?? undefined,
+                    }
+                }
+                // Several runs listed (should not happen: one global lock) = no single id to name.
+                const run = state.activeRuns.length === 1 ? state.activeRuns[0] : null
+                if (run?.type === 'run-all') {
+                    return {id: run.id, kind: 'run-all', name: run.project}
+                }
+                if (run?.type === 'run-group') {
+                    return {
+                        id: run.id,
+                        kind: 'run-group',
+                        name: run.filePath ? specFileName(run.filePath) : undefined,
+                    }
+                }
+                if (run?.type === 'rerun') {
+                    const test = state.tests.find((t) => t.id === run.originalTestId)
+                    return {id: run.id, kind: 'rerun', name: test?.name}
+                }
+                if (state.isRunningAllTests) return {id: null, kind: 'run-all'}
+                if (state.runningGroups.size > 0) return {id: null, kind: 'run-group'}
+                if (state.runningTests.size > 0) return {id: null, kind: 'rerun'}
+                return {id: null, kind: 'run'}
             },
 
             getCIBusyReason: () => {
@@ -606,23 +652,33 @@ export const useTestsStore = create<TestsState>()(
 
             setCIPipelineRunning: (running: boolean) => set({ciPipelineRunning: running}),
 
+            setCIPipelineRun: (run) =>
+                set({ciPipelineRunId: run?.id ?? null, ciPipelineName: run?.name ?? null}),
+
             setCIStopping: (stopping: boolean) => set({ciStopping: stopping}),
 
             clearStopError: () => set({stopError: null}),
 
             // The server answers once the stop is cleaned up; run:cancelled clears the flag too.
-            stopRun: async () => {
+            stopRun: async (id) => {
                 try {
                     set({ciStopping: true, stopError: null})
-                    const response = await authPost(`${API_BASE_URL}/pipeline/stop`, {
-                        reason: 'manual',
-                    })
+                    const targetId = id === undefined ? get().getStopTarget().id : id
+                    // A run still starting has no id the web knows yet: the global stop covers it.
+                    const response = targetId
+                        ? await authPost(
+                              `${API_BASE_URL}/runs/${encodeURIComponent(targetId)}/stop`,
+                              {}
+                          )
+                        : await authPost(`${API_BASE_URL}/pipeline/stop`, {reason: 'manual'})
                     // Stop sits behind JWT like Settings: with ENABLE_AUTH off the server answers 403.
                     if (response.status === 403) {
                         throw new Error(
                             'Sign-in is required to stop a run: enable ENABLE_AUTH on the server'
                         )
                     }
+                    // The run ended (or was replaced) before the click landed; the next snapshot shows what runs now.
+                    if (response.status === 409) throw new Error('That run already ended.')
                     if (!response.ok) {
                         throw new Error(`HTTP error! status: ${response.status}`)
                     }
@@ -649,6 +705,7 @@ export const useTestsStore = create<TestsState>()(
                     currentRunAllId: null,
                     runningTests: new Set(),
                     runningGroups: new Set(),
+                    activeRuns: [],
                     activeProgress: null,
                 })
             },
@@ -656,7 +713,7 @@ export const useTestsStore = create<TestsState>()(
             applyRunSnapshot: (snapshot) => {
                 lastSnapshot = snapshot
                 clearGraceTimer()
-                const {isRunningAll, testIds, filePaths} = snapshot
+                const {isRunningAll, testIds, filePaths, runs = []} = snapshot
                 const state = get()
                 const keep = (current: Set<string>, prefix: string) =>
                     [...current].filter((id) => isFreshMark(`${prefix}${id}`))
@@ -665,6 +722,7 @@ export const useTestsStore = create<TestsState>()(
                 const keptAll = !isRunningAll && state.isRunningAllTests && isFreshMark('all')
                 const runAll = isRunningAll || keptAll
                 set({
+                    activeRuns: runs,
                     isRunningAllTests: runAll,
                     currentRunAllId: runAll ? state.currentRunAllId : null,
                     runningTests: new Set([...testIds, ...keptTests]),

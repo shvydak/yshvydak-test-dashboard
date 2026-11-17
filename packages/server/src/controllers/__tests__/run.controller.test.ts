@@ -20,6 +20,7 @@ describe('RunController', () => {
     let controller: RunController
     let mockRunRepository: any
     let mockTestService: any
+    let mockPipelineService: any
     let mockReq: Partial<Request>
     let mockRes: Partial<Response>
 
@@ -59,7 +60,8 @@ describe('RunController', () => {
 
         // Create controller instance
         mockTestService = {isRunCancelled: vi.fn().mockReturnValue(false)}
-        controller = new RunController(mockRunRepository, mockTestService)
+        mockPipelineService = {stopTarget: vi.fn()}
+        controller = new RunController(mockRunRepository, mockTestService, mockPipelineService)
 
         // Setup default request and response
         mockReq = createMockRequest()
@@ -368,6 +370,60 @@ describe('RunController', () => {
                 mockRes,
                 'Unknown error',
                 'Failed to update test run',
+                500
+            )
+        })
+    })
+
+    describe('stopRun', () => {
+        it('answers the stop outcome for a stopped target', async () => {
+            const outcome = {stopped: true, reason: 'manual', runIds: ['r1'], resultsKept: true}
+            mockPipelineService.stopTarget.mockResolvedValue({kind: 'stopped', outcome})
+            mockReq.params = {id: 'r1'}
+
+            await controller.stopRun(mockReq as Request, mockRes as Response)
+
+            expect(mockPipelineService.stopTarget).toHaveBeenCalledWith('r1')
+            expect(ResponseHelper.success).toHaveBeenCalledWith(mockRes, outcome)
+        })
+
+        it('answers 409 RUN_NOT_ACTIVE with the id that runs now', async () => {
+            mockPipelineService.stopTarget.mockResolvedValue({
+                kind: 'not_active',
+                activeRunId: 'r2',
+            })
+            mockReq.params = {id: 'r1'}
+
+            await controller.stopRun(mockReq as Request, mockRes as Response)
+
+            expect(mockRes.status).toHaveBeenCalledWith(409)
+            expect(mockRes.json).toHaveBeenCalledWith(
+                expect.objectContaining({code: 'RUN_NOT_ACTIVE', activeRunId: 'r2'})
+            )
+        })
+
+        it('answers 404 RUN_NOT_FOUND for an unknown id', async () => {
+            mockPipelineService.stopTarget.mockResolvedValue({kind: 'not_found'})
+            mockReq.params = {id: 'nope'}
+
+            await controller.stopRun(mockReq as Request, mockRes as Response)
+
+            expect(mockRes.status).toHaveBeenCalledWith(404)
+            expect(mockRes.json).toHaveBeenCalledWith(
+                expect.objectContaining({code: 'RUN_NOT_FOUND'})
+            )
+        })
+
+        it('answers 500 when the stop itself fails', async () => {
+            mockPipelineService.stopTarget.mockRejectedValue(new Error('cleanup failed'))
+            mockReq.params = {id: 'r1'}
+
+            await controller.stopRun(mockReq as Request, mockRes as Response)
+
+            expect(ResponseHelper.error).toHaveBeenCalledWith(
+                mockRes,
+                'cleanup failed',
+                'Failed to stop the run',
                 500
             )
         })

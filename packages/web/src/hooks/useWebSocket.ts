@@ -244,6 +244,13 @@ class SharedSocket {
             filePaths: runs
                 .filter((run) => run.type === 'run-group' && run.details?.filePath)
                 .map((run) => run.details.filePath),
+            runs: runs.map((run) => ({
+                id: run.id,
+                type: run.type,
+                project: run.details?.project,
+                filePath: run.details?.filePath,
+                originalTestId: run.details?.originalTestId,
+            })),
         })
 
         if (runs.length > 0) {
@@ -351,6 +358,8 @@ class SharedSocket {
                 break
 
             case 'run:completed':
+                // A newer run finished: the pipeline hook re-reads the server's verdict on the stop notice.
+                this.notify('onPipelineEvent', message.type, message.data)
                 this.notify('onResultsChanged')
                 queryClient.invalidateQueries({
                     queryKey: ['dashboard-stats'],

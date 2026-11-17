@@ -4,7 +4,7 @@ import {SettingsService} from './settings.service'
 import {RunRepository} from '../repositories/run.repository'
 import {WebSocketService, PipelineStepSummary, PipelineFinishStatus} from './websocket.service'
 import {activeProcessesTracker} from './activeProcesses.service'
-import {runProcessRegistry} from './runProcessRegistry.service'
+import {runProcessRegistry, RegisteredRun} from './runProcessRegistry.service'
 import {CIRunQueueService, QueuedPipelineRequest} from './ciRunQueue.service'
 import {CINotifierService} from './ciNotifier.service'
 import {config} from '../config/environment.config'
@@ -31,6 +31,23 @@ export interface PipelineState {
     // Only on a `cancelled` pipeline: why it was stopped, and whether the results it saved stayed.
     stopReason?: StopReason
     resultsKept?: boolean
+    // Only after a `timeout` stop: the limit that was hit, for the dashboard banner.
+    timeLimitMinutes?: number
+    // Only on a kept stop (ISO): when it ended.
+    stoppedAt?: string
+}
+
+// The last Stop that kept its results, of any kind, for the dashboard's stopped banner.
+export interface LastStop {
+    stoppedAt: string
+    reason: 'manual' | 'timeout'
+    kind: 'pipeline' | 'run-all' | 'run-group' | 'rerun' | 'run'
+    // Pipeline name, project (Run All), spec file name (group), test name (rerun).
+    name?: string
+    pipelineRunId?: string
+    timeLimitMinutes?: number
+    // A pipeline stop only: the steps as they ended (counts, which never ran).
+    steps?: PipelineStepSummary[]
 }
 
 export type PipelineRunRequestResult =
@@ -54,6 +71,12 @@ export interface StopOutcome {
     resultsKept?: boolean
 }
 
+export type StopTargetResult =
+    | {kind: 'stopped'; outcome: StopOutcome}
+    // A known id that is not running (any more); `activeRunId` is what runs now, if anything.
+    | {kind: 'not_active'; activeRunId: string | null}
+    | {kind: 'not_found'}
+
 // How a running step ended once a keep-mode stop settled it.
 interface StepOutcome {
     status: 'stopped' | 'success' | 'failed'
@@ -69,6 +92,8 @@ export class PipelineExecutionService {
     // Stop generation seen when each pipeline began: a newer one means a Stop was requested since.
     private startGenerations = new Map<string, number>()
     private stopInFlight: Promise<StopOutcome> | null = null
+    // Cleared when the next CI pipeline starts; lost on restart like the pipeline state.
+    private lastStop: LastStop | null = null
     private watchdog: ReturnType<typeof setTimeout> | null = null
     private watchdogNotice: ReturnType<typeof setTimeout> | null = null
     // The fallback "Timed out" line went out for these pipelines: no later message may follow (one Slack post per pipeline).
@@ -100,6 +125,13 @@ export class PipelineExecutionService {
 
     getCurrentPipeline(): PipelineState | null {
         return this.currentPipeline
+    }
+
+    // The last kept stop, unless a run that began after it has ended since (then its notice is over for everyone).
+    getLastStop(): LastStop | null {
+        const stop = this.lastStop
+        if (!stop || runProcessRegistry.hasRunEndedSince(Date.parse(stop.stoppedAt))) return null
+        return stop
     }
 
     // The banner's view: a stopped_early pipeline's failed steps carry how many of their failed tests still fail now.
@@ -237,6 +269,7 @@ export class PipelineExecutionService {
                 notify: options.notify === true,
             }
             this.currentPipeline = pipeline
+            this.lastStop = null
             this.startGenerations.set(pipeline.pipelineRunId, stopGeneration)
         } finally {
             this.startingPipeline = null
@@ -244,7 +277,11 @@ export class PipelineExecutionService {
         }
 
         this.startWatchdog(pipeline)
-        this.websocketService.broadcastPipelineStarted(pipeline.pipelineRunId, pipeline.steps)
+        this.websocketService.broadcastPipelineStarted(
+            pipeline.pipelineRunId,
+            pipeline.steps,
+            pipeline.pipeline
+        )
 
         const loop = this.runSteps(pipeline.pipelineRunId, maxWorkers, source).catch((error) => {
             Logger.error('Pipeline execution failed unexpectedly', error)
@@ -345,6 +382,35 @@ export class PipelineExecutionService {
         return this.stopInFlight
     }
 
+    // Per-run Stop: resolve the id and start the stop in the same tick, so a run that just ended can never stop the next one.
+    async stopTarget(id: string): Promise<StopTargetResult> {
+        const pipeline = this.runningPipeline()
+        const isPipelineId =
+            !!pipeline && (pipeline.pipelineRunId === id || this.stepRunIds(pipeline).includes(id))
+        if (isPipelineId || runProcessRegistry.has(id)) {
+            const outcome = await this.stop('manual')
+            if (outcome.stopped) return {kind: 'stopped', outcome}
+            return {kind: 'not_active', activeRunId: this.activeRunId()}
+        }
+
+        if (this.knowsPipelineId(id) || (await this.runRepository.getTestRun(id))) {
+            return {kind: 'not_active', activeRunId: this.activeRunId()}
+        }
+        return {kind: 'not_found'}
+    }
+
+    private activeRunId(): string | null {
+        return (
+            this.runningPipeline()?.pipelineRunId ?? runProcessRegistry.getRuns()[0]?.runId ?? null
+        )
+    }
+
+    // A pipeline run id or step run id still remembered in memory (finished, replaced).
+    private knowsPipelineId(id: string): boolean {
+        const known = [this.currentPipeline, ...this.finishedPipelines.values()]
+        return known.some((p) => !!p && (p.pipelineRunId === id || this.stepRunIds(p).includes(id)))
+    }
+
     // Keep: stopping flag, signal, wait, cancel flag, finalize live runs, clear markers; discard: cancel flag first, delete all.
     private async performStop(reason: StopReason): Promise<StopOutcome> {
         const keep = reason !== 'replaced'
@@ -420,15 +486,19 @@ export class PipelineExecutionService {
                 }
             }
 
+            const stoppedAt = new Date().toISOString()
             if (pipeline) {
-                if (keep) this.finishStopped(pipeline, reason, outcomes)
+                if (keep) this.finishStopped(pipeline, reason, outcomes, stoppedAt)
                 else this.finishCancelled(pipeline, reason)
             }
+            // Before the broadcast: a tab that re-reads on run:cancelled must find it.
+            if (keep) this.rememberLastStop(reason, stoppedAt, pipeline, standalone)
             this.websocketService.broadcastRunCancelled(
                 runIds,
                 reason,
                 pipeline?.pipelineRunId,
-                keep
+                keep,
+                keep ? stoppedAt : undefined
             )
 
             if (cleanupError) throw cleanupError
@@ -496,11 +566,45 @@ export class PipelineExecutionService {
         return outcomes
     }
 
+    // What the banner names: the pipeline, or the single standalone run that was live at the signal.
+    private rememberLastStop(
+        reason: StopReason,
+        stoppedAt: string,
+        pipeline: PipelineState | null,
+        standalone: RegisteredRun[]
+    ): void {
+        if (reason !== 'manual' && reason !== 'timeout') return
+        const base = {
+            stoppedAt,
+            reason,
+            ...(reason === 'timeout' ? {timeLimitMinutes: config.ci.pipelineTimeoutMinutes} : {}),
+        }
+        if (pipeline) {
+            this.lastStop = {
+                ...base,
+                kind: 'pipeline',
+                name: pipeline.pipeline,
+                pipelineRunId: pipeline.pipelineRunId,
+                steps: pipeline.steps.map((s) => ({...s})),
+            }
+            return
+        }
+        const run = standalone.length === 1 ? standalone[0] : null
+        const name =
+            run?.type === 'run-all'
+                ? run.project
+                : run?.type === 'run-group'
+                  ? run.filePath?.split('/').pop()
+                  : run?.testName
+        this.lastStop = {...base, kind: run?.type ?? 'run', name}
+    }
+
     // Keep mode: finished steps stay as they ended, the step cut by the stop is `stopped` with its kept counts, the rest never ran.
     private finishStopped(
         pipeline: PipelineState,
         reason: StopReason,
-        outcomes: Map<string, StepOutcome>
+        outcomes: Map<string, StepOutcome>,
+        stoppedAt: string
     ): void {
         for (const step of pipeline.steps) {
             if (step.status === 'running' && step.runId) {
@@ -516,6 +620,8 @@ export class PipelineExecutionService {
         }
         pipeline.stopReason = reason
         pipeline.resultsKept = true
+        pipeline.stoppedAt = stoppedAt
+        if (reason === 'timeout') pipeline.timeLimitMinutes = config.ci.pipelineTimeoutMinutes
         this.finish(pipeline, 'cancelled', reason)
     }
 

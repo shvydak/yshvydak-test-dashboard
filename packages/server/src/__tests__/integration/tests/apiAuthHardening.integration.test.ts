@@ -88,30 +88,30 @@ describe('API auth hardening (Integration)', () => {
             ['GET', '/api/pipeline/status/abc'],
         ])('%s %s without a token → 401', async (method, url) => {
             authOn()
-            const res = await (request(server.app) as any)[method.toLowerCase()](url)
+            const res = await (request(server.url) as any)[method.toLowerCase()](url)
             expect(res.status).toBe(401)
         })
 
         it('keeps /api/health and /api/auth/config public', async () => {
             authOn()
-            await request(server.app).get('/api/health').expect(200)
-            await request(server.app).get('/api/auth/config').expect(200)
+            await request(server.url).get('/api/health').expect(200)
+            await request(server.url).get('/api/auth/config').expect(200)
         })
 
         it('accepts a valid JWT from the header and from ?token=', async () => {
             authOn()
-            await request(server.app)
+            await request(server.url)
                 .get('/api/tests/diagnostics')
                 .set('Authorization', `Bearer ${server.authToken}`)
                 .expect(200)
-            await request(server.app).get(`/api/runs?token=${server.authToken}`).expect(200)
+            await request(server.url).get(`/api/runs?token=${server.authToken}`).expect(200)
         })
 
         it('reporter routes on the main port need a JWT too', async () => {
             authOn()
-            await request(server.app).post('/api/tests').send(result()).expect(401)
-            await request(server.app).post('/api/tests/process-start').send({}).expect(401)
-            await request(server.app).put('/api/runs/run-1').send({status: 'completed'}).expect(401)
+            await request(server.url).post('/api/tests').send(result()).expect(401)
+            await request(server.url).post('/api/tests/process-start').send({}).expect(401)
+            await request(server.url).put('/api/runs/run-1').send({status: 'completed'}).expect(401)
         })
 
         it('ENABLE_AUTH=false leaves everything open', async () => {
@@ -122,11 +122,11 @@ describe('API auth hardening (Integration)', () => {
                 '/api/storage/stats',
                 '/api/pipeline/status/current',
             ]) {
-                const res = await request(server.app).get(url)
+                const res = await request(server.url).get(url)
                 expect(res.status, url).not.toBe(401)
                 expect(res.status, url).not.toBe(403)
             }
-            await request(server.app).get('/api/tests').expect(200)
+            await request(server.url).get('/api/tests').expect(200)
         })
     })
 
@@ -191,7 +191,7 @@ describe('API auth hardening (Integration)', () => {
             ['testId', '..'],
             ['runId', 'run/../x'],
         ])('rejects a traversal %s (%s) with 400', async (field, value) => {
-            const res = await request(server.app)
+            const res = await request(server.url)
                 .post('/api/tests')
                 .send(result({[field]: value}))
             expect(res.status).toBe(400)
@@ -201,7 +201,7 @@ describe('API auth hardening (Integration)', () => {
             const secret = path.join(outsideDir, 'secret.env')
             fs.writeFileSync(secret, 'JWT_SECRET=x')
 
-            await request(server.app)
+            await request(server.url)
                 .post('/api/tests')
                 .send(result({attachments: [{name: 'x', path: secret, contentType: 'text/plain'}]}))
                 .expect(200)
@@ -218,7 +218,7 @@ describe('API auth hardening (Integration)', () => {
             const link = path.join(outputDir, 'link.txt')
             fs.symlinkSync(secret, link)
 
-            await request(server.app)
+            await request(server.url)
                 .post('/api/tests')
                 .send(result({attachments: [{name: 'x', path: link, contentType: 'text/plain'}]}))
                 .expect(200)
@@ -233,7 +233,7 @@ describe('API auth hardening (Integration)', () => {
             const shot = path.join(outputDir, 'shot.png')
             fs.writeFileSync(shot, 'png-bytes')
 
-            await request(server.app)
+            await request(server.url)
                 .post('/api/tests')
                 .send(result({attachments: [{name: 'shot', path: shot, contentType: 'image/png'}]}))
                 .expect(200)
@@ -247,14 +247,14 @@ describe('API auth hardening (Integration)', () => {
         it.each(['--config=evil.js', '--output=/tmp/x', '../../etc/passwd', '/etc/passwd'])(
             'rejects %s with 400',
             async (filePath) => {
-                await request(server.app).post('/api/tests/run-group').send({filePath}).expect(400)
+                await request(server.url).post('/api/tests/run-group').send({filePath}).expect(400)
             }
         )
     })
 
     describe('note image upload', () => {
         it('rejects image/svg+xml', async () => {
-            const res = await request(server.app)
+            const res = await request(server.url)
                 .post('/api/tests/test-abc/notes/images')
                 .attach('image', Buffer.from('<svg xmlns="http://www.w3.org/2000/svg"/>'), {
                     filename: 'x.svg',

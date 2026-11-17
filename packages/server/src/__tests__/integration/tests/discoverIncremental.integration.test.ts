@@ -52,7 +52,7 @@ describe('POST /api/tests/discovery - incremental mode + test catalog (Integrati
         })
 
     const discover = (body: Record<string, unknown> = {}) =>
-        request(server.app).post('/api/tests/discovery').send(body)
+        request(server.url).post('/api/tests/discovery').send(body)
 
     const seed = async (
         title: string,
@@ -76,7 +76,7 @@ describe('POST /api/tests/discovery - incremental mode + test catalog (Integrati
     }
 
     const list = async (project?: string) => {
-        const res = await request(server.app)
+        const res = await request(server.url)
             .get('/api/tests')
             .query(project ? {project, limit: 5000} : {limit: 5000})
             .set('Authorization', `Bearer ${server.authToken}`)
@@ -483,7 +483,7 @@ describe('POST /api/tests/discovery - incremental mode + test catalog (Integrati
                 '@PB-77'
             )
 
-            await request(server.app)
+            await request(server.url)
                 .delete(`/api/tests/${id}`)
                 .set('Authorization', `Bearer ${server.authToken}`)
                 .expect(200)
@@ -499,7 +499,7 @@ describe('POST /api/tests/discovery - incremental mode + test catalog (Integrati
             await discover({project: 'P', mode: 'incremental'}).expect(200)
             expect(await catalogRows()).toHaveLength(1)
 
-            await request(server.app)
+            await request(server.url)
                 .delete('/api/tests/all')
                 .set('Authorization', `Bearer ${server.authToken}`)
                 .expect(200)

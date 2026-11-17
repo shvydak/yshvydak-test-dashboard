@@ -3,6 +3,8 @@ import {DatabaseManager} from '../../../database/database.manager'
 import type {ServiceContainer} from '../../../middleware/service-injection.middleware'
 import {createApp} from '../../../app'
 import * as fs from 'fs'
+import * as http from 'http'
+import type {AddressInfo} from 'net'
 import * as path from 'path'
 import * as crypto from 'crypto'
 
@@ -12,6 +14,9 @@ import * as crypto from 'crypto'
  */
 export interface TestServerInstance {
     app: Express
+    /** Loopback base URL for supertest: `request(server.url)`, never `request(server.app)`. */
+    url: string
+    httpServer: http.Server
     serviceContainer: ServiceContainer
     testRepository: any
     authToken: string
@@ -57,8 +62,18 @@ export async function setupTestServer(): Promise<TestServerInstance> {
         throw new Error(`Failed to generate test auth token: ${loginResult.message}`)
     }
 
+    // supertest's own listen(0) takes the wildcard address, where macOS can hand out a port another process holds on 127.0.0.1.
+    const httpServer = http.createServer(app)
+    await new Promise<void>((resolve, reject) => {
+        httpServer.once('error', reject)
+        httpServer.listen(0, '127.0.0.1', resolve)
+    })
+    const url = `http://127.0.0.1:${(httpServer.address() as AddressInfo).port}`
+
     return {
         app,
+        url,
+        httpServer,
         serviceContainer,
         testRepository: serviceContainer.testRepository,
         authToken: loginResult.token,
@@ -75,6 +90,9 @@ export async function setupTestServer(): Promise<TestServerInstance> {
  */
 export async function teardownTestServer(server: TestServerInstance): Promise<void> {
     try {
+        server.httpServer.closeAllConnections()
+        await new Promise((resolve) => server.httpServer.close(resolve))
+
         // Restore original environment variable
         if (server.originalEnv !== undefined) {
             process.env.PLAYWRIGHT_PROJECT_DIR = server.originalEnv

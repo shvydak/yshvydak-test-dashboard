@@ -33,7 +33,7 @@ describe('POST /api/tests - Create Test Result (Integration)', () => {
         it('should save test result with all fields and return 200', async () => {
             const testData = fixtures.validTestResult
 
-            const response = await request(server.app)
+            const response = await request(server.url)
                 .post('/api/tests')
                 .set('Authorization', `Bearer ${server.authToken}`)
                 .send(testData)
@@ -65,7 +65,7 @@ describe('POST /api/tests - Create Test Result (Integration)', () => {
         it('should save test result with minimal fields', async () => {
             const testData = fixtures.minimalTestResult
 
-            const response = await request(server.app)
+            const response = await request(server.url)
                 .post('/api/tests')
                 .set('Authorization', `Bearer ${server.authToken}`)
                 .send(testData)
@@ -86,7 +86,7 @@ describe('POST /api/tests - Create Test Result (Integration)', () => {
         it('should save failed test with error details', async () => {
             const testData = fixtures.failedTestResult
 
-            const response = await request(server.app)
+            const response = await request(server.url)
                 .post('/api/tests')
                 .set('Authorization', `Bearer ${server.authToken}`)
                 .send(testData)
@@ -105,7 +105,7 @@ describe('POST /api/tests - Create Test Result (Integration)', () => {
 
     describe('Validation errors', () => {
         it('should return 400 when missing id field', async () => {
-            const response = await request(server.app)
+            const response = await request(server.url)
                 .post('/api/tests')
                 .send(fixtures.invalidTestResults.missingId)
                 .expect(400)
@@ -121,7 +121,7 @@ describe('POST /api/tests - Create Test Result (Integration)', () => {
         })
 
         it('should return 400 when missing testId field', async () => {
-            const response = await request(server.app)
+            const response = await request(server.url)
                 .post('/api/tests')
                 .send(fixtures.invalidTestResults.missingTestId)
                 .expect(400)
@@ -133,7 +133,7 @@ describe('POST /api/tests - Create Test Result (Integration)', () => {
         })
 
         it('should return 400 when missing runId field', async () => {
-            const response = await request(server.app)
+            const response = await request(server.url)
                 .post('/api/tests')
                 .send(fixtures.invalidTestResults.missingRunId)
                 .expect(400)
@@ -145,7 +145,7 @@ describe('POST /api/tests - Create Test Result (Integration)', () => {
         })
 
         it('should return 400 when missing name field', async () => {
-            const response = await request(server.app)
+            const response = await request(server.url)
                 .post('/api/tests')
                 .send(fixtures.invalidTestResults.missingName)
                 .expect(400)
@@ -154,7 +154,7 @@ describe('POST /api/tests - Create Test Result (Integration)', () => {
         })
 
         it('should return 400 when sending empty object', async () => {
-            const response = await request(server.app).post('/api/tests').send({}).expect(400)
+            const response = await request(server.url).post('/api/tests').send({}).expect(400)
 
             expect(response.body.success).toBe(false)
             expect(response.body.message || response.body.error).toContain(
@@ -166,7 +166,7 @@ describe('POST /api/tests - Create Test Result (Integration)', () => {
     describe('Public endpoint (Reporter integration)', () => {
         it('should accept requests without Authorization header (public endpoint)', async () => {
             // /api/tests is public for reporter integration - no auth required
-            const response = await request(server.app)
+            const response = await request(server.url)
                 .post('/api/tests')
                 .send(fixtures.validTestResult)
                 .expect(200)
@@ -179,7 +179,7 @@ describe('POST /api/tests - Create Test Result (Integration)', () => {
         })
 
         it('should work with Authorization header (backward compatibility)', async () => {
-            const response = await request(server.app)
+            const response = await request(server.url)
                 .post('/api/tests')
                 .set('Authorization', `Bearer ${server.authToken}`)
                 .send(fixtures.failedTestResult)
@@ -192,7 +192,7 @@ describe('POST /api/tests - Create Test Result (Integration)', () => {
         })
 
         it('should accept requests with any Authorization format (ignored)', async () => {
-            const response = await request(server.app)
+            const response = await request(server.url)
                 .post('/api/tests')
                 .set('Authorization', 'InvalidFormat')
                 .send(fixtures.minimalTestResult)
@@ -212,7 +212,7 @@ describe('POST /api/tests - Create Test Result (Integration)', () => {
             }
 
             // First execution - passed
-            await request(server.app)
+            await request(server.url)
                 .post('/api/tests')
                 .set('Authorization', `Bearer ${server.authToken}`)
                 .send({
@@ -224,7 +224,7 @@ describe('POST /api/tests - Create Test Result (Integration)', () => {
                 .expect(200)
 
             // Second execution - failed
-            await request(server.app)
+            await request(server.url)
                 .post('/api/tests')
                 .set('Authorization', `Bearer ${server.authToken}`)
                 .send({
@@ -237,7 +237,7 @@ describe('POST /api/tests - Create Test Result (Integration)', () => {
                 .expect(200)
 
             // Third execution - passed
-            await request(server.app)
+            await request(server.url)
                 .post('/api/tests')
                 .set('Authorization', `Bearer ${server.authToken}`)
                 .send({
@@ -284,13 +284,13 @@ describe('POST /api/tests - Create Test Result (Integration)', () => {
                 errorMessage: 'Timeout exceeded',
             }
 
-            await request(server.app)
+            await request(server.url)
                 .post('/api/tests')
                 .set('Authorization', `Bearer ${server.authToken}`)
                 .send(testData1)
                 .expect(200)
 
-            await request(server.app)
+            await request(server.url)
                 .post('/api/tests')
                 .set('Authorization', `Bearer ${server.authToken}`)
                 .send(testData2)
@@ -328,7 +328,7 @@ describe('POST /api/tests - Create Test Result (Integration)', () => {
             // 7. Repository layer saves to database
             // 8. Response helper formats response
 
-            const response = await request(server.app)
+            const response = await request(server.url)
                 .post('/api/tests')
                 .set('Authorization', `Bearer ${server.authToken}`)
                 .set('Content-Type', 'application/json')
@@ -350,7 +350,7 @@ describe('POST /api/tests - Create Test Result (Integration)', () => {
 
         it('should handle errors through error middleware', async () => {
             // Send invalid data to trigger error
-            const response = await request(server.app)
+            const response = await request(server.url)
                 .post('/api/tests')
                 .send({invalid: 'data'})
                 .expect(400)

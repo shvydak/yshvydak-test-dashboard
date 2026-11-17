@@ -37,7 +37,7 @@ describe('GET /api/tests/projects - Get Available Projects (Integration)', () =>
             ).mockResolvedValue(mockListOutput)
 
             // Act
-            const response = await request(server.app)
+            const response = await request(server.url)
                 .get('/api/tests/projects')
                 .set('Authorization', `Bearer ${server.authToken}`)
                 .expect('Content-Type', /json/)
@@ -58,7 +58,7 @@ describe('GET /api/tests/projects - Get Available Projects (Integration)', () =>
             ).mockResolvedValue({suites: []})
 
             // Act
-            const response = await request(server.app)
+            const response = await request(server.url)
                 .get('/api/tests/projects')
                 .set('Authorization', `Bearer ${server.authToken}`)
                 .expect(200)
@@ -76,7 +76,7 @@ describe('GET /api/tests/projects - Get Available Projects (Integration)', () =>
             ).mockRejectedValue(new Error('Playwright not found'))
 
             // Act
-            const response = await request(server.app)
+            const response = await request(server.url)
                 .get('/api/tests/projects')
                 .set('Authorization', `Bearer ${server.authToken}`)
                 .expect(200)
@@ -96,7 +96,7 @@ describe('GET /api/tests/projects - Get Available Projects (Integration)', () =>
             ).mockResolvedValue({config: {projects: [{id: 'p', name: 'All_Tests'}]}, suites: []})
 
             // Act & Assert — no Authorization header
-            const response = await request(server.app).get('/api/tests/projects').expect(200)
+            const response = await request(server.url).get('/api/tests/projects').expect(200)
 
             expect(response.body.success).toBe(true)
         })

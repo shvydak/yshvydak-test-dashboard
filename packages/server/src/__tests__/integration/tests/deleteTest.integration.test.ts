@@ -49,7 +49,7 @@ describe('DELETE /api/tests/:testId - Delete Test (Integration)', () => {
             const countBefore = await getTestResultCount(server.testRepository.dbManager)
             expect(countBefore).toBe(3)
 
-            const response = await request(server.app)
+            const response = await request(server.url)
                 .delete(`/api/tests/${testId}`)
                 .set('Authorization', `Bearer ${server.authToken}`)
                 .expect('Content-Type', /json/)
@@ -90,7 +90,7 @@ describe('DELETE /api/tests/:testId - Delete Test (Integration)', () => {
             )
 
             // Delete only testId1
-            const response = await request(server.app)
+            const response = await request(server.url)
                 .delete(`/api/tests/${testId1}`)
                 .set('Authorization', `Bearer ${server.authToken}`)
                 .expect(200)
@@ -104,7 +104,7 @@ describe('DELETE /api/tests/:testId - Delete Test (Integration)', () => {
         })
 
         it('should return 0 deletedExecutions for non-existent testId', async () => {
-            const response = await request(server.app)
+            const response = await request(server.url)
                 .delete('/api/tests/non-existent-test')
                 .set('Authorization', `Bearer ${server.authToken}`)
                 .expect(200)
@@ -122,7 +122,7 @@ describe('DELETE /api/tests/:testId - Delete Test (Integration)', () => {
     describe('Validation', () => {
         it('should return 400 when testId is missing', async () => {
             // Send DELETE to base endpoint without testId
-            const response = await request(server.app)
+            const response = await request(server.url)
                 .delete('/api/tests/')
                 .set('Authorization', `Bearer ${server.authToken}`)
 
@@ -132,7 +132,7 @@ describe('DELETE /api/tests/:testId - Delete Test (Integration)', () => {
 
         it('should handle empty testId parameter', async () => {
             // This will actually be caught by routing as missing param
-            const response = await request(server.app)
+            const response = await request(server.url)
                 .delete('/api/tests/ ')
                 .set('Authorization', `Bearer ${server.authToken}`)
 
@@ -177,7 +177,7 @@ describe('DELETE /api/tests/:testId - Delete Test (Integration)', () => {
             expect(attachmentsBefore.length).toBe(1)
 
             // Delete test
-            await request(server.app)
+            await request(server.url)
                 .delete(`/api/tests/${testId}`)
                 .set('Authorization', `Bearer ${server.authToken}`)
                 .expect(200)
@@ -204,7 +204,7 @@ describe('DELETE /api/tests/:testId - Delete Test (Integration)', () => {
             )
 
             // No Authorization header
-            const response = await request(server.app).delete(`/api/tests/${testId}`).expect(200)
+            const response = await request(server.url).delete(`/api/tests/${testId}`).expect(200)
 
             expect(response.body.success).toBe(true)
             expect(response.body.data.deletedExecutions).toBe(1)
@@ -226,7 +226,7 @@ describe('DELETE /api/tests/:testId - Delete Test (Integration)', () => {
                 ['exec-1', testId, 'run-1', 'Test', 'test.spec.ts', 'passed', 1000]
             )
 
-            const response = await request(server.app)
+            const response = await request(server.url)
                 .delete(`/api/tests/${testId}`)
                 .set('Authorization', `Bearer ${server.authToken}`)
                 .expect(200)
@@ -241,7 +241,7 @@ describe('DELETE /api/tests/:testId - Delete Test (Integration)', () => {
             // This is hard to test in integration test
             // Just verify endpoint doesn't crash with various inputs
 
-            const response = await request(server.app)
+            const response = await request(server.url)
                 .delete('/api/tests/some-test-id')
                 .set('Authorization', `Bearer ${server.authToken}`)
 
@@ -263,7 +263,7 @@ describe('DELETE /api/tests/:testId - Delete Test (Integration)', () => {
                 ['exec-1', testId, 'run-1', 'Test', 'test.spec.ts', 'passed', 1000]
             )
 
-            const response = await request(server.app)
+            const response = await request(server.url)
                 .delete(`/api/tests/${testId}`)
                 .set('Authorization', `Bearer ${server.authToken}`)
                 .expect(200)

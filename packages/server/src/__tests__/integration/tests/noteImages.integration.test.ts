@@ -36,7 +36,7 @@ describe('Note Images API (Integration)', () => {
     })
 
     it('should return distinct file paths for repeated uploads with the same original filename', async () => {
-        const firstUpload = await request(server.app)
+        const firstUpload = await request(server.url)
             .post(`/api/tests/${testId}/notes/images`)
             .set('Authorization', `Bearer ${server.authToken}`)
             .attach('image', png('first-image-content'), {
@@ -46,7 +46,7 @@ describe('Note Images API (Integration)', () => {
             .expect('Content-Type', /json/)
             .expect(200)
 
-        const secondUpload = await request(server.app)
+        const secondUpload = await request(server.url)
             .post(`/api/tests/${testId}/notes/images`)
             .set('Authorization', `Bearer ${server.authToken}`)
             .attach('image', png('second-image-content'), {
@@ -63,7 +63,7 @@ describe('Note Images API (Integration)', () => {
         expect(firstUpload.body.data.fileName).not.toBe(secondUpload.body.data.fileName)
         expect(firstUpload.body.data.url).not.toBe(secondUpload.body.data.url)
 
-        const imagesResponse = await request(server.app)
+        const imagesResponse = await request(server.url)
             .get(`/api/tests/${testId}/notes/images`)
             .set('Authorization', `Bearer ${server.authToken}`)
             .expect('Content-Type', /json/)

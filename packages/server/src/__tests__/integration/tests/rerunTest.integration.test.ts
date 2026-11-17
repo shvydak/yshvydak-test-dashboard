@@ -59,7 +59,7 @@ describe('POST /api/tests/:id/rerun - Rerun Test (Integration)', () => {
                 process: null,
             })
 
-            const response = await request(server.app)
+            const response = await request(server.url)
                 .post('/api/tests/exec-1/rerun')
                 .set('Authorization', `Bearer ${server.authToken}`)
                 .send({maxWorkers: 2})
@@ -123,7 +123,7 @@ describe('POST /api/tests/:id/rerun - Rerun Test (Integration)', () => {
                     process: null,
                 })
 
-            const response = await request(server.app)
+            const response = await request(server.url)
                 .post('/api/tests/exec-2/rerun')
                 .set('Authorization', `Bearer ${server.authToken}`)
                 .send({}) // No maxWorkers
@@ -169,7 +169,7 @@ describe('POST /api/tests/:id/rerun - Rerun Test (Integration)', () => {
                     process: null,
                 })
 
-            await request(server.app)
+            await request(server.url)
                 .post('/api/tests/exec-3/rerun')
                 .set('Authorization', `Bearer ${server.authToken}`)
                 .send({maxWorkers: 4})
@@ -186,7 +186,7 @@ describe('POST /api/tests/:id/rerun - Rerun Test (Integration)', () => {
 
     describe('Error handling', () => {
         it('should return 404 when test not found', async () => {
-            const response = await request(server.app)
+            const response = await request(server.url)
                 .post('/api/tests/non-existent-test/rerun')
                 .set('Authorization', `Bearer ${server.authToken}`)
                 .send({})
@@ -220,7 +220,7 @@ describe('POST /api/tests/:id/rerun - Rerun Test (Integration)', () => {
                 'rerunSingleTest'
             ).mockRejectedValue(new Error('Playwright not available'))
 
-            const response = await request(server.app)
+            const response = await request(server.url)
                 .post('/api/tests/exec-error/rerun')
                 .set('Authorization', `Bearer ${server.authToken}`)
                 .send({})
@@ -256,7 +256,7 @@ describe('POST /api/tests/:id/rerun - Rerun Test (Integration)', () => {
                 process: null,
             })
 
-            await request(server.app)
+            await request(server.url)
                 .post('/api/tests/exec-track/rerun')
                 .set('Authorization', `Bearer ${server.authToken}`)
                 .send({})
@@ -301,7 +301,7 @@ describe('POST /api/tests/:id/rerun - Rerun Test (Integration)', () => {
                 process: null,
             })
 
-            await request(server.app)
+            await request(server.url)
                 .post('/api/tests/exec-db-test/rerun')
                 .set('Authorization', `Bearer ${server.authToken}`)
                 .send({maxWorkers: 1})
@@ -363,7 +363,7 @@ describe('POST /api/tests/:id/rerun - Rerun Test (Integration)', () => {
             })
 
             // No Authorization header
-            const response = await request(server.app)
+            const response = await request(server.url)
                 .post('/api/tests/exec-public/rerun')
                 .send({maxWorkers: 2})
                 .expect(200)
@@ -394,7 +394,7 @@ describe('POST /api/tests/:id/rerun - Rerun Test (Integration)', () => {
                 process: null,
             })
 
-            const response = await request(server.app)
+            const response = await request(server.url)
                 .post('/api/tests/exec-auth/rerun')
                 .set('Authorization', `Bearer ${server.authToken}`)
                 .send({maxWorkers: 1})
@@ -436,7 +436,7 @@ describe('POST /api/tests/:id/rerun - Rerun Test (Integration)', () => {
                 process: null,
             })
 
-            const response = await request(server.app)
+            const response = await request(server.url)
                 .post('/api/tests/exec-middleware/rerun')
                 .set('Authorization', `Bearer ${server.authToken}`)
                 .set('Content-Type', 'application/json')
@@ -462,7 +462,7 @@ describe('POST /api/tests/:id/rerun - Rerun Test (Integration)', () => {
 
         it('should handle errors through error middleware', async () => {
             // Test doesn't exist - should trigger 404
-            const response = await request(server.app)
+            const response = await request(server.url)
                 .post('/api/tests/nonexistent/rerun')
                 .send({})
                 .expect(404)

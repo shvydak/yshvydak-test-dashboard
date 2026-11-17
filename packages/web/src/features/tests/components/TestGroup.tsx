@@ -1,4 +1,4 @@
-import {useState} from 'react'
+import {memo, useState} from 'react'
 import {TestResult} from '@yshvydak/core'
 import {Card} from '@shared/components'
 import {TestGroupData} from '../hooks/useTestGroups'
@@ -14,7 +14,7 @@ export interface TestGroupProps {
     filter?: FilterKey
 }
 
-export function TestGroup({
+export const TestGroup = memo(function TestGroup({
     group,
     selectedTest,
     onTestSelect,
@@ -44,4 +44,4 @@ export function TestGroup({
             )}
         </Card>
     )
-}
+})

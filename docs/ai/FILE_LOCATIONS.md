@@ -364,7 +364,8 @@ packages/web/src/
 │           └── __tests__/              # Auth context tests
 │
 ├── hooks/                               # Global hooks
-│   ├── useWebSocket.ts                 # WebSocket connection management
+│   ├── useWebSocket.ts                 # Subscription to the tab's one shared socket (per URL, ref-counted)
+│   ├── useStableCallback.ts            # Fixed-identity callback for memoized rows
 │   ├── useTheme.ts                     # Theme management
 │   │   ├── ThemeMode: 'auto' | 'light' | 'dark'
 │   │   ├── applyThemeMode() utility (exported for LoginPage)

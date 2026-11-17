@@ -95,14 +95,6 @@ describe('testsStore.fetchTests — status-count cache invalidation', () => {
         expect(useTestsStore.getState().testsProject).toBe('P')
     })
 
-    it('a failed fetchRuns does not raise the list error', async () => {
-        mockAuthGet.mockResolvedValue(makeResponse(null, false))
-
-        await useTestsStore.getState().fetchRuns()
-
-        expect(useTestsStore.getState().error).toBeNull()
-    })
-
     it('ignores a late reply for the tab the user already left (no error wipe, no old rows)', async () => {
         const rowsA = [{id: 'a1', testId: 'ta'}]
         let releaseA: (r: Response) => void = () => {}

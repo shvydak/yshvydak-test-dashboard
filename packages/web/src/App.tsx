@@ -12,6 +12,7 @@ import {useCIAutoRun} from '@/hooks/useCIAutoRun'
 import {TestsList, CommandPalette, useCommandPalette} from '@features/tests'
 import {FloatingProgressPanel} from '@features/tests/components/progress/FloatingProgressPanel'
 import {LoginPage, setGlobalLogout} from '@features/authentication'
+import {useShallow} from 'zustand/react/shallow'
 import {useTestsStore} from '@features/tests/store/testsStore'
 import {useProjectTabs, resolveDefaultProjectTab} from '@/hooks/useProjectTabs'
 import {usePipelineStatus} from '@/hooks/usePipelineStatus'
@@ -19,7 +20,7 @@ import {useProjectStatusSummary} from '@/hooks/useProjectStatusSummary'
 import {useProjectRunStatus} from '@/hooks/useProjectRunStatus'
 import {VERSION} from '@/config/version'
 import {useWebSocket} from './hooks/useWebSocket'
-import {config} from '@config/environment.config'
+import {getWebSocketUrl} from '@features/authentication/utils/webSocketUrl'
 import {verifyToken} from '@features/authentication/utils/tokenValidator'
 
 function App() {
@@ -118,7 +119,18 @@ function App() {
         setCIRunQueued,
         setCIPipelineRunning,
         setCIStopping,
-    } = useTestsStore()
+    } = useTestsStore(
+        useShallow((s) => ({
+            fetchTests: s.fetchTests,
+            setListProject: s.setListProject,
+            isLoading: s.isLoading,
+            rerunTest: s.rerunTest,
+            checkAndRestoreActiveStates: s.checkAndRestoreActiveStates,
+            setCIRunQueued: s.setCIRunQueued,
+            setCIPipelineRunning: s.setCIPipelineRunning,
+            setCIStopping: s.setCIStopping,
+        }))
+    )
 
     useEffect(() => {
         setCIRunQueued(ciQueue.length > 0)
@@ -236,37 +248,10 @@ function App() {
         return () => clearInterval(interval)
     }, [isAuthenticated])
 
-    // Get JWT token for WebSocket connection with proper memoization
+    // The same util Dashboard and the detail modal use, so all three share one socket
     const webSocketUrl = useMemo(() => {
-        // Don't connect to WebSocket if loading or not authenticated
-        if (isLoading || !isAuthenticated) {
-            return null
-        }
-
-        // Only connect to WebSocket if we're authenticated
-        // Try to get token directly from storage
-        try {
-            const authData = localStorage.getItem('_auth') || sessionStorage.getItem('_auth')
-            if (authData) {
-                const parsedAuth = JSON.parse(authData)
-                let token = null
-
-                if (parsedAuth?.auth?.token) {
-                    token = parsedAuth.auth.token
-                } else if (parsedAuth?.token) {
-                    token = parsedAuth.token
-                }
-
-                if (token) {
-                    return `${config.websocket.url}?token=${encodeURIComponent(token)}`
-                }
-            }
-        } catch {
-            // Silent error handling
-        }
-
-        // Return null if no token found (shouldn't happen if authenticated, but safety check)
-        return null
+        if (isLoading || !isAuthenticated) return null
+        return getWebSocketUrl(true)
     }, [isAuthenticated, isLoading])
 
     // WebSocket connection for live updates
@@ -303,13 +288,17 @@ function App() {
         return () => clearInterval(interval)
     }, [fetchTests, checkAndRestoreActiveStates, isAuthenticated, activeProject, setListProject])
 
-    const handleTestSelect = (test: TestResult) => {
+    // Stable identities: they reach every memoized test row
+    const handleTestSelect = useCallback((test: TestResult) => {
         setSelectedTest(test)
-    }
+    }, [])
 
-    const handleTestRerun = async (testId: string) => {
-        await rerunTest(testId)
-    }
+    const handleTestRerun = useCallback(
+        async (testId: string) => {
+            await rerunTest(testId)
+        },
+        [rerunTest]
+    )
 
     if (isLoading) {
         return (

@@ -13,11 +13,12 @@ export interface TestGroupHeaderProps {
 }
 
 export function TestGroupHeader({group, expanded, onToggle, filter}: TestGroupHeaderProps) {
-    const {runningGroups, getIsAnyTestRunning, getCIBusyReason, runTestsGroup} = useTestsStore()
+    const isRunning = useTestsStore((s) => s.runningGroups.has(group.filePath))
+    const isAnyTestRunning = useTestsStore((s) => s.getIsAnyTestRunning())
+    const ciBusyReason = useTestsStore((s) => s.getCIBusyReason())
+    const runTestsGroup = useTestsStore((s) => s.runTestsGroup)
     const [searchParams] = useSearchParams()
     const activeProject = searchParams.get('project') || ''
-    const isRunning = runningGroups.has(group.filePath)
-    const isAnyTestRunning = getIsAnyTestRunning()
     const noProject = !activeProject
 
     // When in "failed" filter, extract only failed test names
@@ -68,7 +69,7 @@ export function TestGroupHeader({group, expanded, onToggle, filter}: TestGroupHe
                     </div>
                     <div
                         className="relative inline-flex shrink-0 group/noproject"
-                        title={getCIBusyReason() ?? undefined}>
+                        title={ciBusyReason ?? undefined}>
                         <ActionButton
                             size="sm"
                             variant="secondary"

@@ -1,4 +1,4 @@
-import React, {useState, useEffect, useContext} from 'react'
+import React, {memo, useState, useEffect, useContext} from 'react'
 import {Play, MessageSquare, FileX} from 'lucide-react'
 import {TestResult} from '@yshvydak/core'
 import {StatusBadge, ActionButton, LoadingSpinner, Badge} from '@shared/components'
@@ -28,7 +28,8 @@ export interface TestRowProps {
 // Dimmed text of a test that is no longer in the code (status badge keeps its colour)
 const dimText = 'text-gray-400 dark:text-gray-500'
 
-export function TestRow({
+// Memoized: a live event re-renders only the row whose test (or running flag) changed.
+export const TestRow = memo(function TestRow({
     test,
     selected,
     onSelect,
@@ -36,22 +37,20 @@ export function TestRow({
     chipAlignment = 'left',
     tagMode = 'tickets',
 }: TestRowProps) {
-    const {runningTests, getIsAnyTestRunning, activeProgress} = useTestsStore()
-    const isAnyTestRunning = getIsAnyTestRunning()
+    // Booleans, not the store slices: a progress event for another test must not re-render this row
+    const isRerunning = useTestsStore((s) => s.runningTests.has(test.id))
+    // Group/all run progress; also hides the stale error/note under the name
+    const runningInfo = useTestsStore(
+        (s) => !!s.activeProgress?.runningTests.some((t) => t.testId === test.testId)
+    )
+    const isRunning = isRerunning || runningInfo
+    const isAnyTestRunning = useTestsStore((s) => s.getIsAnyTestRunning())
 
     // Load note images for this test
     const {images: noteImages} = useNoteImages(
         test.note?.content ? test.testId : null,
         !!test.note?.content
     )
-
-    // Find if this test is currently running in the active progress
-    const runningInfo = activeProgress?.runningTests.find((t) => t.testId === test.testId)
-
-    // Check if test is running from either source:
-    // 1. runningTests Set (for single test reruns)
-    // 2. activeProgress.runningTests (for group/all runs)
-    const isRunning = runningTests.has(test.id) || !!runningInfo
 
     // Parse note content to extract images
     const noteParts = test.note?.content ? parseNoteContent(test.note.content, noteImages) : []
@@ -179,7 +178,7 @@ export function TestRow({
             </td>
         </tr>
     )
-}
+})
 
 // Small thumbnail component for table rows (16x16px)
 function NoteImageMiniThumbnail({image}: {image: NoteImage}) {

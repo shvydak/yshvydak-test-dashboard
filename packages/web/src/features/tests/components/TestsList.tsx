@@ -6,7 +6,9 @@ import {TestResult} from '@yshvydak/core'
 import {LoadingSpinner} from '@shared/components'
 import {AlertBanner} from '@shared/components/molecules/AlertBanner'
 import {ConfirmationDialog} from '@shared/components/molecules/ConfirmationDialog'
+import {useShallow} from 'zustand/react/shallow'
 import {useTestsStore} from '../store/testsStore'
+import {useStableCallback} from '@/hooks/useStableCallback'
 import {useTestFilters, useTestLink} from '../hooks'
 import {useTestStatusCounts} from '../hooks/useTestStatusCounts'
 import {useFilteredTestsByStatus} from '../hooks/useFilteredTestsByStatus'
@@ -45,7 +47,16 @@ export default function TestsList({
         clearActionError,
         testsProject,
         listProject,
-    } = useTestsStore()
+    } = useTestsStore(
+        useShallow((s) => ({
+            tests: s.tests,
+            error: s.error,
+            actionError: s.actionError,
+            clearActionError: s.clearActionError,
+            testsProject: s.testsProject,
+            listProject: s.listProject,
+        }))
+    )
     const [searchParams, setSearchParams] = useSearchParams()
     const [searchQuery, setSearchQuery] = useState(() => searchParams.get('q') || '')
     const [detailModalOpen, setDetailModalOpen] = useState(false)
@@ -200,7 +211,8 @@ export default function TestsList({
         },
     })
 
-    const openTestDetail = (test: TestResult) => {
+    // Stable identity: the memoized rows must not re-render because the list did
+    const openTestDetail = useStableCallback((test: TestResult) => {
         setDetailModalTest(test)
         setDetailModalOpen(true)
         onTestSelect(test)
@@ -209,7 +221,7 @@ export default function TestsList({
         const params = new URLSearchParams(searchParams)
         params.set('testId', test.testId)
         setSearchParams(params, {replace: false})
-    }
+    })
 
     const closeTestDetail = () => {
         setDetailModalOpen(false)

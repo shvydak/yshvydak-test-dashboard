@@ -2,6 +2,7 @@ import {useEffect, useState, useCallback} from 'react'
 import {AlertTriangle, PartyPopper, BarChart2} from 'lucide-react'
 import {useSearchParams} from 'react-router-dom'
 import {TestResult} from '@yshvydak/core'
+import {useShallow} from 'zustand/react/shallow'
 import {useTestsStore} from '@features/tests/store/testsStore'
 import {useTestLink} from '@features/tests/hooks/useTestLink'
 import type {TestLinkFailure} from '@features/tests/hooks/useTestLink'
@@ -16,7 +17,9 @@ import {getWebSocketUrl} from '@features/authentication/utils/webSocketUrl'
 import {TestDetailModal} from '@features/tests/components/testDetail'
 
 export default function Dashboard() {
-    const {tests, fetchTests, lastUpdated} = useTestsStore()
+    const {tests, fetchTests, lastUpdated} = useTestsStore(
+        useShallow((s) => ({tests: s.tests, fetchTests: s.fetchTests, lastUpdated: s.lastUpdated}))
+    )
     const queryClient = useQueryClient()
     const [searchParams, setSearchParams] = useSearchParams()
 
@@ -44,12 +47,11 @@ export default function Dashboard() {
         setWebSocketUrl(url)
     }, [])
 
+    // The socket hook already re-reads the list and the counts on a run end; only the stats widgets are left
     const handleRunCompleted = useCallback(() => {
         queryClient.invalidateQueries({queryKey: ['flaky-tests']})
         queryClient.invalidateQueries({queryKey: ['test-timeline']})
-        queryClient.invalidateQueries({queryKey: ['test-status-counts']})
-        fetchTests()
-    }, [queryClient, fetchTests])
+    }, [queryClient])
 
     // The socket hook already re-reads tests/counts on a delete; only the stats widgets are left
     const handleTestsDeleted = useCallback(() => {

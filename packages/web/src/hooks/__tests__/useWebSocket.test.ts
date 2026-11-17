@@ -7,7 +7,7 @@
  * - Connection lifecycle (connect, disconnect, reconnect)
  * - Reconnection with capped exponential backoff (never gives up)
  * - Message parsing and handling
- * - State synchronization (tests, runs, running states)
+ * - State synchronization (tests, running states)
  * - handleConnectionStatus() - restore active processes
  * - Query invalidation on updates
  * - Keep-alive ping mechanism
@@ -113,7 +113,6 @@ describe('useWebSocket', () => {
         // Mock store actions
         mockStoreActions = {
             fetchTests: vi.fn(),
-            fetchRuns: vi.fn(),
             setGroupRunning: vi.fn(),
             setTestRunning: vi.fn(),
             setRunningAllTests: vi.fn(),
@@ -404,7 +403,7 @@ describe('useWebSocket', () => {
     describe('Message Handling', () => {
         it('should parse and handle incoming messages', async () => {
             const url = 'ws://localhost:3001'
-            const {result} = renderHook(() => useWebSocket(url), {
+            renderHook(() => useWebSocket(url), {
                 wrapper: createWrapper(),
             })
 
@@ -412,13 +411,20 @@ describe('useWebSocket', () => {
                 await Promise.resolve()
             })
 
-            const message = {type: 'test:completed', data: {testId: '123'}}
+            // The parsed payload (minus phase/result) reaches the store action
+            const message = {
+                type: 'test:progress',
+                data: {processId: 'p1', totalTests: 3, phase: 'started'},
+            }
 
             act(() => {
                 mockWebSocket.simulateMessage(message)
             })
 
-            expect(result.current.lastMessage).toEqual(message)
+            expect(mockStoreActions.updateProgress).toHaveBeenCalledWith({
+                processId: 'p1',
+                totalTests: 3,
+            })
         })
 
         it('should handle malformed JSON gracefully', async () => {
@@ -489,7 +495,6 @@ describe('useWebSocket', () => {
 
             expect(invalidateQueriesSpy).toHaveBeenCalled()
             expect(mockStoreActions.fetchTests).toHaveBeenCalled()
-            expect(mockStoreActions.fetchRuns).toHaveBeenCalled()
         })
     })
 
@@ -613,7 +618,6 @@ describe('useWebSocket', () => {
             })
 
             expect(mockStoreActions.fetchTests).toHaveBeenCalledTimes(1)
-            expect(mockStoreActions.fetchRuns).toHaveBeenCalledTimes(1)
         })
 
         it('does not reconnect after an intentional disconnect (unmount)', async () => {
@@ -661,7 +665,6 @@ describe('useWebSocket', () => {
                 vi.advanceTimersByTime(DELETE_REFRESH_DELAY_MS)
             })
             expect(mockStoreActions.fetchTests).toHaveBeenCalledTimes(1)
-            expect(mockStoreActions.fetchRuns).toHaveBeenCalledTimes(1)
         })
 
         it('test:progress refreshes the list, at most once per window, with a trailing refresh', async () => {
@@ -834,7 +837,7 @@ describe('useWebSocket', () => {
             })
         })
 
-        it('coalesces the delete event of several sockets into one refresh', async () => {
+        it('coalesces a burst of delete events into one refresh', async () => {
             await open()
             const msg = {type: 'tests:deleted', data: {scope: 'test', testId: 't1'}}
 
@@ -849,7 +852,6 @@ describe('useWebSocket', () => {
                 vi.advanceTimersByTime(DELETE_REFRESH_DELAY_MS)
             })
             expect(mockStoreActions.fetchTests).toHaveBeenCalledTimes(1)
-            expect(mockStoreActions.fetchRuns).toHaveBeenCalledTimes(1)
         })
     })
 
@@ -857,7 +859,7 @@ describe('useWebSocket', () => {
         const testMessageType = async (
             messageType: string,
             additionalData?: any,
-            expectedCalls?: {fetchTests?: boolean; fetchRuns?: boolean}
+            expectedCalls?: {fetchTests?: boolean}
         ) => {
             const url = 'ws://localhost:3001'
             renderHook(() => useWebSocket(url), {
@@ -877,13 +879,10 @@ describe('useWebSocket', () => {
             if (expectedCalls?.fetchTests) {
                 expect(mockStoreActions.fetchTests).toHaveBeenCalled()
             }
-            if (expectedCalls?.fetchRuns) {
-                expect(mockStoreActions.fetchRuns).toHaveBeenCalled()
-            }
         }
 
         it('should handle run:status message', async () => {
-            await testMessageType('run:status', {}, {fetchTests: true, fetchRuns: true})
+            await testMessageType('run:status', {}, {fetchTests: true})
         })
 
         it('should handle test:completed message', async () => {
@@ -899,7 +898,7 @@ describe('useWebSocket', () => {
         })
 
         it('should handle discovery:completed message', async () => {
-            await testMessageType('discovery:completed', {}, {fetchTests: true, fetchRuns: true})
+            await testMessageType('discovery:completed', {}, {fetchTests: true})
         })
 
         it('jira:synced invalidates the Jira ticket cache query', async () => {
@@ -916,8 +915,9 @@ describe('useWebSocket', () => {
             expect(invalidate).toHaveBeenCalledWith({queryKey: ['jira-ticket-info']})
         })
 
-        it('should handle run:started message', async () => {
-            await testMessageType('run:started', {}, {fetchRuns: true})
+        it('ignores run:started (nothing reads the runs list any more)', async () => {
+            await testMessageType('run:started', {}, {})
+            expect(mockStoreActions.fetchTests).not.toHaveBeenCalled()
         })
 
         it('should handle run:completed for run-group', async () => {
@@ -1008,7 +1008,6 @@ describe('useWebSocket', () => {
 
             expect(mockStoreActions.resetRunState).toHaveBeenCalledTimes(1)
             expect(mockStoreActions.fetchTests).toHaveBeenCalled()
-            expect(mockStoreActions.fetchRuns).toHaveBeenCalled()
             expect(invalidate).toHaveBeenCalledWith({queryKey: ['test-status-counts']})
             expect(invalidate).toHaveBeenCalledWith({queryKey: ['project-status-summary']})
             expect(onPipelineEvent).toHaveBeenCalledWith('run:cancelled', data)
@@ -1127,7 +1126,6 @@ describe('useWebSocket', () => {
                 filePaths: [],
             })
             expect(mockStoreActions.fetchTests).toHaveBeenCalled()
-            expect(mockStoreActions.fetchRuns).toHaveBeenCalled()
         })
 
         it('should restore run-group state from connection status', async () => {
@@ -1219,7 +1217,6 @@ describe('useWebSocket', () => {
                 filePaths: [],
             })
             expect(mockStoreActions.fetchTests).toHaveBeenCalled()
-            expect(mockStoreActions.fetchRuns).toHaveBeenCalled()
         })
 
         it('should handle multiple active runs from connection status', async () => {
@@ -1275,7 +1272,6 @@ describe('useWebSocket', () => {
             })
 
             expect(mockStoreActions.fetchTests).toHaveBeenCalled()
-            expect(mockStoreActions.fetchRuns).toHaveBeenCalled()
         })
 
         it('should refresh data on process:ended', async () => {
@@ -1295,7 +1291,6 @@ describe('useWebSocket', () => {
             })
 
             expect(mockStoreActions.fetchTests).toHaveBeenCalled()
-            expect(mockStoreActions.fetchRuns).toHaveBeenCalled()
         })
     })
 

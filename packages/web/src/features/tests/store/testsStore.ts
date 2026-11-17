@@ -1,6 +1,6 @@
 import {create} from 'zustand'
 import {devtools} from 'zustand/middleware'
-import {TestResult, TestRun, TestProgress, LiveTestResult} from '@yshvydak/core'
+import {TestResult, TestProgress, LiveTestResult} from '@yshvydak/core'
 import {queryClient} from '@config/queryClient'
 import {authGet, authPost, authDelete} from '@features/authentication/utils/authFetch'
 import {getMaxWorkersFromStorage} from '@/hooks/usePlaywrightWorkers'
@@ -19,7 +19,6 @@ interface TestsState {
     tests: TestResult[]
     /** The project (null = all) the loaded `tests` belong to; differs from `listProject` right after a tab switch. */
     testsProject: string | null
-    runs: TestRun[]
     isLoading: boolean
     isDiscovering: boolean
     isRunningAllTests: boolean
@@ -54,7 +53,6 @@ interface TestsState {
     // Actions
     setListProject: (project: string | null) => void
     fetchTests: () => Promise<void>
-    fetchRuns: () => Promise<void>
     /** `project` of the test when the caller knows it: an older execution picked in the history is not in the list. */
     rerunTest: (executionId: string, project?: string) => Promise<void>
     deleteTest: (testId: string) => Promise<void>
@@ -212,7 +210,6 @@ export const useTestsStore = create<TestsState>()(
         (set, get) => ({
             tests: [],
             testsProject: null,
-            runs: [],
             isLoading: false,
             isDiscovering: false,
             isRunningAllTests: false,
@@ -329,26 +326,6 @@ export const useTestsStore = create<TestsState>()(
                         error: error instanceof Error ? error.message : 'Failed to fetch tests',
                         isLoading: false,
                     })
-                }
-            },
-
-            fetchRuns: async () => {
-                try {
-                    const response = await authGet(`${API_BASE_URL}/runs`)
-                    if (!response.ok) {
-                        throw new Error(`HTTP error! status: ${response.status}`)
-                    }
-
-                    const data = await response.json()
-
-                    if (data.success && Array.isArray(data.data)) {
-                        set({runs: data.data})
-                    } else {
-                        throw new Error('Invalid response format')
-                    }
-                } catch (error) {
-                    // Nothing renders `runs`: a failure must not raise the list's error banner
-                    console.error('Error fetching runs:', error)
                 }
             },
 
@@ -540,9 +517,7 @@ export const useTestsStore = create<TestsState>()(
                         // Сохраняем ID run для отслеживания (используется WebSocket для завершения)
                         set({currentRunAllId: runId})
 
-                        // Обновляем runs список
                         setTimeout(() => {
-                            get().fetchRuns()
                             get().fetchTests()
                         }, 1000)
                     } else {
@@ -581,9 +556,7 @@ export const useTestsStore = create<TestsState>()(
                     const data = await response.json()
 
                     if (data.success) {
-                        // Обновляем runs и tests списки
                         setTimeout(() => {
-                            get().fetchRuns()
                             get().fetchTests()
                         }, 1000)
                     } else {

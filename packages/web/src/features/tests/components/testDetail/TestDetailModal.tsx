@@ -50,9 +50,6 @@ export function TestDetailModal({test, isOpen, onClose, onNoteDirtyChange}: Test
     const fetchTests = useTestsStore((state) => state.fetchTests)
     const deleteTest = useTestsStore((state) => state.deleteTest)
     const deleteExecution = useTestsStore((state) => state.deleteExecution)
-    const runningTests = useTestsStore((state) => state.runningTests)
-    const getIsAnyTestRunning = useTestsStore((state) => state.getIsAnyTestRunning)
-    const activeProgress = useTestsStore((state) => state.activeProgress)
 
     // Lock body scroll when modal is open + ESC to close
     useEffect(() => {
@@ -136,6 +133,16 @@ export function TestDetailModal({test, isOpen, onClose, onNoteDirtyChange}: Test
         : executions.length > 0
           ? executions[0]
           : test
+
+    // Booleans, not store slices: this modal is mounted closed in several places
+    const runningExecutionId = currentExecution?.id || test?.id
+    const isRunning = useTestsStore(
+        (state) =>
+            !!runningExecutionId &&
+            (state.runningTests.has(runningExecutionId) ||
+                !!state.activeProgress?.runningTests.some((t) => t.testId === test?.testId))
+    )
+    const isAnyTestRunning = useTestsStore((state) => state.getIsAnyTestRunning())
 
     // The modal can switch to another test while open (palette, back/forward): drop the old pick
     const shownTestId = useRef(test?.testId)
@@ -384,11 +391,8 @@ export function TestDetailModal({test, isOpen, onClose, onNoteDirtyChange}: Test
                             onBackToLatest={() => selectExecution(null)}
                             onDelete={handleDeleteClick}
                             onRerun={() => handleRerun(currentExecution?.id || test.id)}
-                            isRunning={
-                                runningTests.has(currentExecution?.id || test.id) ||
-                                !!activeProgress?.runningTests.find((t) => t.testId === test.testId)
-                            }
-                            isAnyTestRunning={getIsAnyTestRunning()}
+                            isRunning={isRunning}
+                            isAnyTestRunning={isAnyTestRunning}
                             notInCode={!!test.notInCode}
                             project={test.project}
                         />

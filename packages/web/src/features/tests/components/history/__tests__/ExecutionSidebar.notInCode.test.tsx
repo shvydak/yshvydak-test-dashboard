@@ -3,11 +3,14 @@ import {render, screen} from '@testing-library/react'
 import {ExecutionSidebar} from '../ExecutionSidebar'
 
 vi.mock('../../../store/testsStore', () => ({
-    useTestsStore: vi.fn(() => ({
-        runningTests: new Set<string>(),
-        getIsAnyTestRunning: () => false,
-        activeProgress: null,
-    })),
+    // Components read through selectors: apply them to the fake state
+    useTestsStore: vi.fn((selector: (s: unknown) => unknown) =>
+        selector({
+            runningTests: new Set<string>(),
+            getIsAnyTestRunning: () => false,
+            activeProgress: null,
+        })
+    ),
 }))
 
 const renderSidebar = (notInCode?: boolean) =>

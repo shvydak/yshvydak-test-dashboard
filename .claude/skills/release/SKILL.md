@@ -21,7 +21,7 @@ Tags (one scheme): `reporter-vX.Y.Z`, `dashboard-vX.Y.Z`. Annotated (`-m`).
    `git diff --stat` must show exactly 2 changed lines: `packages/reporter/package.json` and the `packages/reporter` entry in `package-lock.json` (else `npm install --package-lock-only`). On some npm versions the whole lockfile is re-indented from 4 to 2 spaces (~26k-line diff; prettier ignores that file). Then restore it: `node -e "const f='package-lock.json',fs=require('fs');fs.writeFileSync(f,JSON.stringify(JSON.parse(fs.readFileSync(f)),null,4)+'\n')"` and re-check `git diff --stat`.
 3. Commit: `chore(reporter): release X.Y.Z`.
 4. Check: `npm run type-check`, `npx vitest run --project reporter`, `npm run build -w playwright-dashboard-reporter`, `npm pack --dry-run -w playwright-dashboard-reporter` (version must be X.Y.Z).
-5. Publish: `cd packages/reporter && npm publish` (add `--otp=<code>` if 2FA is on). `prepublishOnly` rebuilds and type-checks; `--access public` is not needed.
+5. Publish: `cd packages/reporter && npm publish` — with 2FA the user runs it in their own terminal and approves in the browser (Enter opens it; or `--otp=<code>`); an agent shell can't. `prepublishOnly` rebuilds and type-checks; `--access public` is not needed.
 6. Verify: `npm view playwright-dashboard-reporter version`.
 7. Tag and push: `git tag reporter-vX.Y.Z -m "Reporter release X.Y.Z"`, `git push origin main --follow-tags`.
 8. Consumers update with `npm install playwright-dashboard-reporter@latest`.
